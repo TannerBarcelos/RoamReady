@@ -31,7 +31,7 @@ This also lints the project with Apple's `plutil` and runs an unsigned simulator
 
 ## Validation completed in the development environment
 
-The portable Swift suite runs in Swift 6 on Linux. Apple CI also compiles the actual Core Data/CloudKit package and runs SQLite integration tests on macOS. The expanded suite contains 26 portable tests and 12 Apple-only database tests, including interrupted-download/reopen, migration preservation, one-step incremental writes, immutable note recovery, and upload acknowledgement races.
+The portable Swift suite runs in Swift 6 on Linux. Apple CI also compiles the actual Core Data/CloudKit package and runs SQLite integration tests on macOS. The expanded suite contains 26 portable tests and 13 Apple-only database tests, including interrupted-download/reopen, migration preservation, one-step incremental writes, immutable note recovery, upload acknowledgement races, and backup/restore writer identity.
 
 Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 and the available iOS 26.5 SDK, using a temporary deployment override. This verifies native API compilation, not iOS 27 acceptance or physical-device runtime behavior. The product project retains its requested iOS 27 deployment target. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 

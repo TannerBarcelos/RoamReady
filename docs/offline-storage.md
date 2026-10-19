@@ -16,7 +16,7 @@ Sync uses one private custom record zone, stable logical record names, change to
 
 ## Conflict and deletion rules
 
-- Each field has a Lamport counter plus stable installation writer ID. Counters advance past observed remote counters; device wall clocks do not decide winners.
+- Each field has a Lamport counter plus stable installation writer ID. Counters advance past observed remote counters; device wall clocks do not decide winners. Writer IDs live in a non-backed-up installation folder, so restoring a database onto another device cannot clone an active writer identity.
 - Independent fields merge. Concurrent changes to the same field resolve deterministically by counter, then writer ID. Reordering uses per-item numeric positions with identity as a stable tie-break; it is not a collaborative sequence editor.
 - Notes also create immutable revision records. Losing text remains recoverable from **Earlier note versions**. Revisions may include intermediate saved drafts; timestamps are display information only.
 - A tombstone permanently deletes an identity, even if an old device later edits it. Restoring a deleted object requires a new identity. Saved campground toggles use a versioned boolean so saving a favorite again remains possible.

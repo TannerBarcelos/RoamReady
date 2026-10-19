@@ -20,8 +20,9 @@ public final class SQLiteStore: @unchecked Sendable {
     private let container: NSPersistentContainer
     private let context: NSManagedObjectContext
     public let directory: URL
-    private init(container: NSPersistentContainer, directory: URL) {
-        self.container = container; self.directory = directory
+    private let writerID: String
+    private init(container: NSPersistentContainer, directory: URL, writerID: String) {
+        self.container = container; self.directory = directory; self.writerID = writerID
         context = container.newBackgroundContext()
         context.mergePolicy = NSErrorMergePolicy
         context.undoManager = nil
@@ -29,6 +30,7 @@ public final class SQLiteStore: @unchecked Sendable {
     }
     public static func open(directory: URL) async throws -> SQLiteStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let writer = try installationID(directory: directory)
         let container = NSPersistentContainer(name: "RoamReady", managedObjectModel: StoreModel.v1())
         let description = NSPersistentStoreDescription(url: directory.appendingPathComponent("RoamReady.sqlite"))
         description.type = NSSQLiteStoreType
@@ -44,7 +46,20 @@ public final class SQLiteStore: @unchecked Sendable {
                 if let error { continuation.resume(throwing: error) } else { continuation.resume() }
             }
         }
-        return SQLiteStore(container: container, directory: directory)
+        return SQLiteStore(container: container, directory: directory, writerID: writer)
+    }
+    private static func installationID(directory: URL) throws -> String {
+        // A restored database must not clone a live device's logical-clock writer ID.
+        // This folder survives relaunches but is excluded from device/iCloud backups.
+        var folder = directory.appendingPathComponent("Installation", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var values = URLResourceValues(); values.isExcludedFromBackup = true
+        try folder.setResourceValues(values)
+        let file = folder.appendingPathComponent("writer-id")
+        if let data = try? Data(contentsOf: file), let text = String(data: data, encoding: .utf8), UUID(uuidString: text) != nil { return text }
+        let id = UUID().uuidString
+        try Data(id.utf8).write(to: file, options: .atomic)
+        return id
     }
     public func close() async throws {
         try await context.perform { [self] in
@@ -252,9 +267,7 @@ public final class SQLiteStore: @unchecked Sendable {
     private func apply(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) throws {
         let before = try RecordProjection.documents(baseline), after = try RecordProjection.documents(desired)
         let nextCounter = try counter() + 1
-        let writer: String
-        if let data = try meta("writer"), let existing = String(data: data, encoding: .utf8) { writer = existing }
-        else { writer = UUID().uuidString; try putMeta("writer", Data(writer.utf8)) }
+        let writer = writerID
         let version = FieldVersion(counter: nextCounter, writer: writer)
         for key in Set(before.keys).union(after.keys).sorted() {
             let previous = before[key], next = after[key]

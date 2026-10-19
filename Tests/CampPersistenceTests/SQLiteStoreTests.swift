@@ -199,5 +199,29 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await receiver.close(); try await sender.close()
     }
 
+    func testBackupRestoreDoesNotCloneTheOriginalDevicesClockWriter() async throws {
+        let d = try directory(), base = try library()
+        let source = try await SQLiteStore.open(directory: d)
+        try await source.save(from: LibrarySnapshot(), to: base)
+        try await source.close()
+        let destination = try directory().appendingPathComponent("Restored")
+        try FileManager.default.copyItem(at: d, to: destination)
+        // Simulate system backup semantics: this installation-only folder is excluded.
+        try FileManager.default.removeItem(at: destination.appendingPathComponent("Installation"))
+        let original = try await SQLiteStore.open(directory: d)
+        let restored = try await SQLiteStore.open(directory: destination)
+        var a = base; a.state.trips[0].siteNumber = "original device"
+        var b = base; b.state.trips[0].siteNumber = "restored device"
+        try await original.save(from: base, to: a)
+        try await restored.save(from: base, to: b)
+        let first = try await original.pending(limit: 1000)
+        let second = try await restored.pending(limit: 1000)
+        let left = try XCTUnwrap(first.first { $0.record.kind == .trip }?.record)
+        let right = try XCTUnwrap(second.first { $0.record.kind == .trip }?.record)
+        XCTAssertNotEqual(left.versions["siteNumber"]?.writer, right.versions["siteNumber"]?.writer)
+        XCTAssertNoThrow(try left.merging(right))
+        try await original.close(); try await restored.close()
+    }
+
 }
 #endif
