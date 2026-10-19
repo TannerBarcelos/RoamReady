@@ -3,15 +3,15 @@ import MapKit
 import CampCore
 
 struct CampFinderView: View {
+    @Environment(CampStore.self) private var store
     @State private var filter = CampgroundFilter()
     @State private var showFilters = false
     @State private var showMap = true
     @State private var savedOnly = false
     @State private var camera = MapCameraPosition.automatic
     @State private var connection = ConnectionStatus()
-    @AppStorage("savedCampgroundIDs") private var savedIDs = ""
 
-    var saved: Set<String> { Set(savedIDs.split(separator: ",").map(String.init)) }
+    var saved: Set<String> { store.savedCampgroundIDs }
     var results: [Campground] {
         CampgroundLibrary.all.filter { filter.matches($0) && (!savedOnly || saved.contains($0.id)) }
     }
@@ -137,8 +137,7 @@ struct CampgroundDetailView: View {
     @Environment(CampStore.self) private var store
     let campground: Campground
     @State private var planning = false
-    @AppStorage("savedCampgroundIDs") private var savedIDs = ""
-    var saved: Bool { savedIDs.split(separator: ",").contains(Substring(campground.id)) }
+    var saved: Bool { store.savedCampgroundIDs.contains(campground.id) }
     var previousTrips: [Trip] {
         store.state.trips.filter {
             $0.campgroundID == campground.id || ($0.campgroundID == nil && $0.campgroundName.localizedCaseInsensitiveCompare(campground.name) == .orderedSame)
@@ -152,9 +151,7 @@ struct CampgroundDetailView: View {
                 Text(campground.notes)
                 Button("Plan a trip here", systemImage: "calendar.badge.plus") { planning = true }
                 Button(saved ? "Remove from saved" : "Save campground", systemImage: saved ? "bookmark.fill" : "bookmark") {
-                    var ids = Set(savedIDs.split(separator: ",").map(String.init))
-                    if saved { ids.remove(campground.id) } else { ids.insert(campground.id) }
-                    savedIDs = ids.sorted().joined(separator: ",")
+                    store.toggleSavedCampground(campground.id)
                 }
             }
             Section("Known amenities") {

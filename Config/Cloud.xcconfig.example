@@ -1,0 +1,7 @@
+// Apply to BOTH build configurations after registering your App ID and iCloud container.
+// Replace placeholders, then use a configuration stored outside public source if desired.
+PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.RoamReady
+DEVELOPMENT_TEAM = YOURTEAMID
+ROAMREADY_CLOUD_CONTAINER = iCloud.com.yourcompany.RoamReady
+CODE_SIGN_ENTITLEMENTS = Config/Cloud.entitlements
+// CloudKit uses its own account; Sign in with Apple is not required for this capability.

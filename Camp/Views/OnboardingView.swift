@@ -18,6 +18,7 @@ struct OnboardingView: View {
                                 .foregroundStyle(.secondary)
                         }.padding(.vertical)
                     }
+                    if store.sync.configured { CloudSyncSection() }
                     Section("What do you camp in?") {
                         ForEach(RigType.allCases) { type in
                             Button {
@@ -48,11 +49,11 @@ struct OnboardingView: View {
                         Text("You can plan, check off steps, and save photos without an account or internet connection.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("This development build stores data locally. iCloud sync and account services are not yet enabled.")
+                        Text("Your local library is available without an account. Optional iCloud sync can be managed from Profile.")
                     }
                 }
             }
-            .navigationTitle(step == 0 ? "Welcome to Camp" : step == 1 ? "Your rig" : "Make it yours")
+            .navigationTitle(step == 0 ? "Welcome to RoamReady" : step == 1 ? "Your rig" : "Make it yours")
             .navigationBarTitleDisplayMode(step == 0 ? .inline : .large)
             .toolbar {
                 if step > 0 { ToolbarItem(placement: .topBarLeading) { Button("Back", systemImage: "chevron.left") { step -= 1 } } }

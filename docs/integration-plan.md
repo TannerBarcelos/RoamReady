@@ -31,3 +31,7 @@ Obtain actual offline distribution terms and sample coverage matrices before sel
 ## Native release gate
 
 Run the checked-in native build script with Xcode and the iOS 27 SDK, then the airplane-mode acceptance pass in `validation.md`. Validate genuine Liquid Glass behavior, light/dark appearance, large text, VoiceOver, Reduce Transparency/Motion, photo-library edge cases, time zones, low storage, and unsupported Foundation Models states. WeatherKit needs App ID provisioning and provider attribution review. A passing portable Swift test suite cannot substitute for this gate.
+
+## Storage implementation update
+
+The live app store has now moved to Core Data SQLite with an explicit CloudKit transport and durable per-row outbox. This supersedes the archive-store paragraph and automatic-mirroring assumptions above. See [offline-storage.md](offline-storage.md) for actual conflict semantics, account policy, configuration, photo retention, and remaining physical-device gates. The native prototype and two-device acceptance must still be completed before calling this production-ready.

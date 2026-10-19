@@ -7,6 +7,7 @@
 
 /* Begin PBXBuildFile section */
 		CA0000000000000000000001 /* CampCore in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000012 /* CampCore */; };
+		CA0000000000000000000018 /* CampPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000019 /* CampPersistence */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,7 +40,7 @@
 		CA0000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (CA0000000000000000000001 /* CampCore in Frameworks */,);
+			files = (CA0000000000000000000001 /* CampCore in Frameworks */, CA0000000000000000000018 /* CampPersistence in Frameworks */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -67,7 +68,7 @@
 			dependencies = ();
 			fileSystemSynchronizedGroups = (CA0000000000000000000004 /* Camp */,);
 			name = Camp;
-			packageProductDependencies = (CA0000000000000000000012 /* CampCore */,);
+			packageProductDependencies = (CA0000000000000000000012 /* CampCore */, CA0000000000000000000019 /* CampPersistence */,);
 			productName = "RoamReady";
 			productReference = CA0000000000000000000002 /* RoamReady.app */;
 			productType = "com.apple.product-type.application";
@@ -165,6 +166,7 @@
 				INFOPLIST_FILE = Camp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
 				MARKETING_VERSION = 0.1.0;
+				ROAMREADY_CLOUD_CONTAINER = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReady;
 				PRODUCT_NAME = "RoamReady";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -186,6 +188,7 @@
 				INFOPLIST_FILE = Camp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
 				MARKETING_VERSION = 0.1.0;
+				ROAMREADY_CLOUD_CONTAINER = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReady;
 				PRODUCT_NAME = "RoamReady";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -225,6 +228,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference . */;
 			productName = CampCore;
+		};
+		CA0000000000000000000019 /* CampPersistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference . */;
+			productName = CampPersistence;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

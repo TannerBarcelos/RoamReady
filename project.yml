@@ -26,10 +26,13 @@ targets:
     dependencies:
       - package: CampCore
         product: CampCore
+      - package: CampCore
+        product: CampPersistence
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.RoamReady
         PRODUCT_NAME: RoamReady
+        ROAMREADY_CLOUD_CONTAINER: ""
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
         CODE_SIGN_STYLE: Automatic

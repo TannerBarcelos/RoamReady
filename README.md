@@ -2,7 +2,7 @@
 
 A native SwiftUI iOS app following the approved **A · System-first** design: system lists, clear checklist progress, four native tabs, semantic colors, and automatic light/dark appearance. The app deployment target is **iOS 27.0**. Standard SwiftUI navigation and tab controls provide the system's Liquid Glass styling.
 
-**Current milestone: the offline foundation and native app source are implemented.** Core behavior is compiled and tested on Linux. Native Apple SDK compilation, simulator use, and device acceptance testing still require a Mac with Xcode and the iOS 27 SDK. This repository is an initial development build; production services and data acquisition remain outstanding.
+**Current milestone: SQLite persistence, recoverable archive migration, and optional CloudKit synchronization are implemented in source.** Core behavior is compiled and tested on Linux. Native Apple SDK compilation, simulator use, and device acceptance testing still require a Mac with Xcode and the iOS 27 SDK. This repository is an initial development build; production services and data acquisition remain outstanding.
 
 ## Run
 
@@ -25,7 +25,7 @@ There are no third-party app dependencies. The Xcode project references the loca
 | Profile | Edit profile/rig, manage templates, restore curated defaults, view storage status, and export metadata JSON. Cosmetic rig changes preserve customized defaults. |
 | Weather | WeatherKit request and local forecast cache, download timestamp, partial-window handling, and provider attribution. Can appear during planning or inside a trip. Live access requires a provisioned WeatherKit capability. |
 | Camping help | Bundled checklist guidance always works offline. On-device Foundation Models explains relevant saved guidance when available. Runtime availability checks and non-generative fallback are included. No model picker. |
-| Durability | Versioned Codable archive; atomic writes; coalescing serialized saves; surfaced write errors; corrupt/future-format preservation; retry/export; short background save allowance. |
+| Durability | Core Data SQLite/WAL transactions; individual records and field changes; recoverable legacy import; durable upload queue; permanent deletion tombstones; note history; explicit JSON export. |
 
 Each new trip preserves its original rig context. Planning dates retain their original time zone; forecast matching uses the campground's time zone, including daylight-saving transitions.
 
@@ -41,7 +41,7 @@ Checklist wording is original, with the [Camping World setup and teardown articl
 
 ## Remaining integrations
 
-- **iCloud/CloudKit sync:** not implemented. Local persistence is not cloud sync. A record/asset sync engine, durable outbox, conflict handling, account isolation, provisioning, and multi-device interruption tests are required.
+- **iCloud/CloudKit provisioning and acceptance:** optional private CloudKit sync is implemented behind configuration and explicit opt-in. The default build is local-only. Register/provision the Apple container, deploy its schema, and pass two-device, account-change, interrupted-transfer, and quota tests before shipping cloud sync. See [storage architecture and setup](docs/offline-storage.md).
 - **Sign in with Apple:** not implemented. Initial online sign-in, verified backend identity exchange, secure session storage, account deletion, and recovery must be added without gating local trip access. Sign in with Apple and the device's iCloud account are separate identities.
 - **Online AI:** not implemented. Add one automatically selected hosted-model route through an authenticated, rate-limited backend. No provider secret may ship in the app. Measure quality, latency, and cost before selecting the provider. Disclose when a question leaves the device.
 - **Production campground finder:** licensed structured coverage, updates, regional downloads, and any live booking availability are outstanding. Offline map regions require their own supported implementation and rights.
@@ -64,16 +64,17 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The core suite currently has **17 passing tests**, covering save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
+The portable core suite currently has **24 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 
 - `Camp/`: native SwiftUI screens, photo storage, WeatherKit and Foundation Models adapters, and bundled data.
 - `Sources/CampCore/`: portable Foundation-only domain, original checklist templates, filters, date rules, and atomic archive store.
-- `Tests/CampCoreTests/`: compiled behavior tests.
+- `Sources/CampPersistence/`: native SQLite transactions, legacy migration, media assets, durable sync queue, and private CloudKit transport.
+- `Tests/CampCoreTests/` and `Tests/CampPersistenceTests/`: domain/merge tests and Apple-only persistence integration tests.
 - `docs/`: acquisition research, build instructions, source coverage, and integration plan.
 - `scripts/`: repeatable validation.
 
-The initial archive store uses explicit Codable snapshots to make offline behavior testable independently of Apple services. Its format is versioned and replaceable behind the persistence boundary; any future SwiftData or CloudKit migration must preserve existing local data.
+The app now uses Core Data with SQLite. The original `camp-state.json` is an import/recovery format, not the live store. A one-time, verified transaction imports it and leaves the source file intact. SQLite holds individual trips, checklist steps, photos, rigs, favorites, note versions, and sync metadata. Local saves never require a network or account. See [offline storage and sync](docs/offline-storage.md) for conflict rules, setup, limitations, and release gates.
 
-Photos are resized on import (maximum 2560 pixels), stored as local JPEGs, and displayed using bounded thumbnails. JSON export includes metadata and photo references, not image bytes. Removing photos/trips removes their visible records; unreferenced image-file garbage collection is still a production storage task. Original photos remain in the user's photo library.
+Photos are resized on import (maximum 2560 pixels), stored as local JPEGs, and displayed using bounded thumbnails. Photo bytes also enter an externally stored database asset in the same transaction as the trip reference, allowing optional CKAsset transfer and local cache repair. JSON export includes metadata and photo references, not image bytes. Removing photos/trips records permanent tombstones; automatic purging of unreferenced photo bytes is intentionally deferred until a tested retention policy exists. Original photos remain in the user's photo library.

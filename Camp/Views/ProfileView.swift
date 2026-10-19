@@ -6,6 +6,9 @@ struct ProfileView: View {
     @State private var editing = false
     @State private var editingTemplates = false
     @State private var resetConfirmation = false
+    @State private var exportURL: URL?
+    @State private var exportFailure: String?
+    @State private var preparingExport = false
     var body: some View {
         List {
             if let profile = store.state.profile {
@@ -31,24 +34,31 @@ struct ProfileView: View {
                 SaveStatus()
                 LabeledContent("Trips on this iPhone", value: String(store.state.trips.count))
                 LabeledContent("Trip photos", value: String(store.state.trips.reduce(0) { $0 + $1.photos.count }))
-                if FileManager.default.fileExists(atPath: store.archiveURL.path) {
-                    ShareLink(item: store.archiveURL) { Label("Export trip data (JSON)", systemImage: "square.and.arrow.up") }
-                        .disabled(store.isSaving || store.saveFailure != nil)
-                }
+                Button(preparingExport ? "Preparing export…" : "Prepare trip data export", systemImage: "square.and.arrow.up") {
+                    Task {
+                        preparingExport = true; exportFailure = nil
+                        defer { preparingExport = false }
+                        do { exportURL = try await store.exportLibrary() }
+                        catch { exportFailure = error.localizedDescription }
+                    }
+                }.disabled(preparingExport || store.isSaving || store.saveFailure != nil)
+                if let exportURL { ShareLink("Share JSON export", item: exportURL) }
+                if let exportFailure { Text(exportFailure).font(.caption).foregroundStyle(.red) }
                 if store.saveFailure != nil { Button("Retry saving", systemImage: "arrow.clockwise") { store.retrySave() } }
             } header: { Text("On this iPhone") } footer: {
-                Text("JSON exports include your profile, checklists, and notes. Share photos individually from each trip. iCloud sync and account services are not enabled in this build.")
+                Text("JSON exports include your profile, checklists, notes, and saved campgrounds. Share photos individually from each trip.")
             }
+            CloudSyncSection()
             Section("Camping help") {
                 Label(CampingAssistant.availability, systemImage: "iphone").font(.subheadline)
-                Text("Saved guidance is always available. On supported iPhones with Apple Intelligence ready, Camp can explain that guidance on device. Online AI is not enabled in this build.").font(.footnote).foregroundStyle(.secondary)
+                Text("Saved guidance is always available. On supported iPhones with Apple Intelligence ready, RoamReady can explain that guidance on device. Online AI is not enabled in this build.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
                 Text(store.catalogNotice).font(.footnote).foregroundStyle(.secondary)
                 Text(CampgroundLibrary.notice).font(.footnote).foregroundStyle(.secondary)
                 if let url = URL(string: ChecklistFactory.sourceURL) { Link("Checklist reference: Camping World", destination: url) }
             } header: { Text("Sources & coverage") } footer: {
-                Text("Camp · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")
+                Text("RoamReady · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")
             }
         }
         .navigationTitle("Profile")

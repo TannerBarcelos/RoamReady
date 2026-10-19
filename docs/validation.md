@@ -73,3 +73,9 @@ Add capabilities through Xcode only when their corresponding integration is read
 ```
 
 CloudKit subscription delivery also needs the appropriate Push Notifications capability and the `remote-notification` background mode if your sync design uses silent pushes; allow Xcode to generate the environment-specific push entitlement. Enabling CloudKit alone does not implement syncing or conflict handling. Sign in with Apple and iCloud are separate identities and must not gate access to local trips. Foundation Models availability must be checked at runtime; an empty entitlements file cannot make an unsupported device eligible.
+
+## SQLite and explicit CloudKit transport
+
+The live store is now `RoamReady.sqlite`; the JSON actor remains the legacy migration decoder. `Sources/CampPersistence` compiles only on Apple platforms; its SQLite tests run with `swift test` on macOS. Linux reports only portable tests. The Apple validation workflow also compiles the native app using the installed simulator SDK, with an explicit temporary target override if that SDK predates iOS 27. This does not replace actual iOS 27 acceptance.
+
+See [offline-storage.md](offline-storage.md) for the opt-in CloudKit configuration, account binding, recovery, outbox/conflict tests, and physical-device release matrix. `Config/Cloud.entitlements` is an optional configured build; the default app entitlements remain empty. Background pushes are not implemented; this transport syncs while the app is active.

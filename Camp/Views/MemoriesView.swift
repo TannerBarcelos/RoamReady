@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import CampCore
+import CampPersistence
 import UIKit
 import ImageIO
 
@@ -24,6 +25,7 @@ struct MemoriesView: View {
                         TextField("Shade, slope, noise, favorite spots…", text: Binding(get: { store.trip(tripID)?.notes ?? "" }, set: { value in store.editTrip(tripID) { $0.notes = value } }), axis: .vertical)
                             .lineLimit(5...15)
                         SaveStatus()
+                        NavigationLink("Earlier note versions") { NoteHistoryView(tripID: tripID) }
                     }
                     Section {
                         PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images) {
@@ -46,7 +48,7 @@ struct MemoriesView: View {
                             }.padding(.vertical, 6)
                         }
                     } header: { Text("Photos · \(trip.photos.count)") } footer: {
-                        Text("Photos are copied into Camp and resized for storage. Keep originals in your photo library. iCloud-only photos need a connection before importing.")
+                        Text("Photos are copied into RoamReady and resized for storage. Keep originals in your photo library. iCloud-only photos need a connection before importing.")
                     }
                 }
             } else { ContentUnavailableView("Trip unavailable", systemImage: "photo") }
@@ -75,16 +77,24 @@ struct LocalPhoto: View {
     let filename: String
     var maximumDimension = 512
     @State private var thumbnail: UIImage?
+    @State private var photoFailure: String?
     var body: some View {
         Group {
             if let thumbnail {
                 Image(uiImage: thumbnail).resizable().scaledToFill()
             } else {
-                Color(.tertiarySystemFill).overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
+                Color(.tertiarySystemFill).overlay {
+                    VStack {
+                        Image(systemName: photoFailure == nil ? "photo" : "icloud.and.arrow.down")
+                        if photoFailure != nil { Text("Not on this iPhone yet").font(.caption2) }
+                    }.foregroundStyle(.secondary)
+                }.accessibilityLabel(photoFailure ?? "Loading photo")
             }
         }
-        .task(id: "\(filename)-\(maximumDimension)") {
-            guard let url = store.media.url(for: filename) else { return }
+        .task(id: "\(filename)-\(maximumDimension)-\(store.mediaRevision)") {
+            let url: URL
+            do { url = try await store.photoURL(filename: filename); photoFailure = nil }
+            catch { photoFailure = error.localizedDescription; return }
             let bound = maximumDimension
             // Only Sendable JPEG bytes cross the task boundary; UIKit images stay on the UI actor.
             let data = await Task.detached(priority: .utility) { () -> Data? in
@@ -108,14 +118,16 @@ struct PhotoDetailView: View {
     let tripID: UUID
     @State var photo: TripPhoto
     @State private var deleting = false
+    @State private var shareURL: URL?
     var body: some View {
         NavigationStack {
             Form {
                 LocalPhoto(filename: photo.filename, maximumDimension: 2048).frame(height: 300).clipped()
                 TextField("Caption", text: $photo.caption, axis: .vertical)
-                if let url = store.media.url(for: photo.filename) { ShareLink("Share photo", item: url) }
+                if let shareURL { ShareLink("Share photo", item: shareURL) }
                 Button("Remove from trip", role: .destructive) { deleting = true }
             }
+            .task(id: store.mediaRevision) { shareURL = try? await store.photoURL(filename: photo.filename) }
             .navigationTitle("Trip photo").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -129,6 +141,35 @@ struct PhotoDetailView: View {
             .confirmationDialog("Remove this photo from the trip?", isPresented: $deleting, titleVisibility: .visible) {
                 Button("Remove photo", role: .destructive) { store.editTrip(tripID) { $0.photos.removeAll { $0.id == photo.id } }; dismiss() }
             }
+        }
+    }
+}
+
+
+struct NoteHistoryView: View {
+    @Environment(CampStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let tripID: UUID
+    @State private var revisions: [NoteRevision] = []
+    @State private var failure: String?
+    var body: some View {
+        List {
+            if let failure { Text(failure).foregroundStyle(.secondary) }
+            if revisions.isEmpty { Text("Earlier versions of saved notes will appear here.").foregroundStyle(.secondary) }
+            ForEach(revisions) { revision in
+                Section {
+                    Text(revision.text)
+                    Button("Use this version") {
+                        store.editTrip(tripID) { $0.notes = revision.text }
+                        dismiss()
+                    }
+                } header: { Text(revision.date, style: .date) }
+            }
+        }
+        .navigationTitle("Note history")
+        .task {
+            do { revisions = try await store.revisions(for: tripID) }
+            catch { failure = error.localizedDescription }
         }
     }
 }

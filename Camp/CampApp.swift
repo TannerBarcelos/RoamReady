@@ -13,6 +13,7 @@ struct CampApp: App {
                 .tint(.blue)
                 .task { await store.load() }
                 .onChange(of: scenePhase) { _, phase in
+                    store.sync.setActive(phase == .active)
                     if phase != .active { Task { await store.flushForBackground() } }
                 }
         }
@@ -34,7 +35,7 @@ struct AppRoot: View {
                 } actions: {
                     Button("Try again") { Task { await store.load() } }
                     if FileManager.default.fileExists(atPath: store.archiveURL.path) {
-                        ShareLink("Export saved file", item: store.archiveURL)
+                        ShareLink("Export legacy recovery file", item: store.archiveURL)
                     }
                 }
             } else if store.state.profile == nil {
