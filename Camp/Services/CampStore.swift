@@ -53,7 +53,7 @@ final class CampStore {
         do {
             let database: SQLiteStore
             if let disk { database = disk } else {
-                database = try await SQLiteStore.open(directory: directory)
+                database = try await SQLiteStore.open(directory: directory, cloudContainerIdentifier: sync.launchContainerIdentifier)
                 disk = database
             }
             await sync.configure(store: database) { [weak self] in
@@ -63,6 +63,7 @@ final class CampStore {
             let legacySaved = Set((UserDefaults.standard.string(forKey: "savedCampgroundIDs") ?? "").split(separator: ",").map(String.init))
             let restored = try await database.migrateLegacy(archiveURL: archiveURL, favorites: legacySaved)
             baseline = restored; state = restored.state; savedCampgroundIDs = restored.favorites
+            libraryNotice = try await database.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
             didLoad = true; loadFailure = nil; lastSavedAt = .now
         } catch {
             loadFailure = "RoamReady couldn’t open its local library. Your database, legacy archive, and photos have been preserved. \(error.localizedDescription)"
@@ -99,7 +100,8 @@ final class CampStore {
             let fresh = try await disk.snapshot()
             guard revision == saveRevision, saveTask == nil else { return }
             baseline = fresh; state = fresh.state; savedCampgroundIDs = fresh.favorites
-            libraryNotice = nil; mediaRevision += 1
+            libraryNotice = try await disk.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
+            mediaRevision += 1
         } catch { libraryNotice = "Waiting for related records. Your current library is preserved. \(error.localizedDescription)" }
     }
 
@@ -209,7 +211,7 @@ final class CampStore {
         }
         isSaving = false
         saveTask = nil
-        if saveFailure == nil { await refreshFromDisk(); sync.schedule() }
+        if saveFailure == nil { await refreshFromDisk() }
     }
 
     func flushForBackground() async {

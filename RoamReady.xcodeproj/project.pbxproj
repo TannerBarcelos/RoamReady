@@ -166,7 +166,7 @@
 				INFOPLIST_FILE = Camp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
 				MARKETING_VERSION = 0.1.0;
-				ROAMREADY_CLOUD_CONTAINER = "";
+				ROAMREADY_MIRRORING_CONTAINER = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReady;
 				PRODUCT_NAME = "RoamReady";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -188,7 +188,7 @@
 				INFOPLIST_FILE = Camp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
 				MARKETING_VERSION = 0.1.0;
-				ROAMREADY_CLOUD_CONTAINER = "";
+				ROAMREADY_MIRRORING_CONTAINER = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReady;
 				PRODUCT_NAME = "RoamReady";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

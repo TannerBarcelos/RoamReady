@@ -1,65 +1,63 @@
 # RoamReady offline storage and synchronization
 
-## Implemented architecture
+## Managed persistence
 
-SwiftUI reads a local value projection. Core Data owns `RoamReady.sqlite` (WAL mode, full synchronization); a single private context serializes transactions. Separate entities store profile, rig, trip, checklist item, template, photo, asset, favorite, and immutable note revision records. Attributes are native SQLite/Core Data attributes; a small per-row version map supports deterministic field merges. Photo bytes use external binary storage. The existing `Application Support/Camp` directory stays unchanged to preserve installed data.
+`NSPersistentCloudKitContainer` manages the local SQLite library and, in a provisioned build after opt-in, automatic private CloudKit mirroring. The app never executes SQL or uses SQLite APIs. Core Data owns database transactions, persistent history, remote imports, CloudKit records, asset transfers, scheduling, and retries. There is no custom CloudKit record transport, upload queue, change token, polling loop, or retry scheduler.
 
-`CampStore` compares the last accepted UI projection with the desired projection. The persistence layer changes only fields the user actually edited; it never replaces all database rows with an old UI snapshot. Remote additions or changes to unrelated fields therefore survive local saves. The UI currently retains an in-memory library projection; record writes are incremental, but projection/diff computation is still proportional to library size. Pagination and query-driven UI are future optimizations that must be driven by measurements.
+The `Library` model configuration contains native attributes for profiles, rigs, trips, individual checklist items, templates, photos, assets, saved campgrounds, and note revisions. Every mirrored attribute is optional or has a default, and mirrored entities have no uniqueness constraints, as required by CloudKit. `RoamReadyManaged.sqlite` stores these entities. A separate `Device` configuration in `RoamReadyDevice.sqlite` holds migration markers and a last coherent UI projection. Device metadata never mirrors.
 
-Every local record mutation updates its persistent `dirty` flag and revision in the same SQLite transaction. This is the durable outbox. An upload acknowledgement clears a flag only if the local revision still matches the uploaded revision. Network failures, app termination, and newer edits leave the appropriate work pending.
+A private managed-object context serializes app reads and writes, automatically merges imported changes, and uses a property merge policy. `CampStore` changes only fields that differ between its accepted baseline and the user's desired state, preserving unrelated changes. Codable domain values remain independent of Core Data. The retained record projection/version types also decode the previous development store; they are not a network replication engine.
 
-### Why explicit CloudKit transport
+The app still projects its library into memory. The projection cache is a device-only recovery view, not the authoritative database or an archive used for synchronization. It preserves the last complete view across a restart if a cloud import has delivered parents before their rig/checklist dependencies. Subsequent managed-store notifications refresh the view as remaining records arrive. Large-library memory and save performance require measurement before release.
 
-This implementation uses `NSPersistentContainer` plus an explicit private CloudKit transport, rather than automatic `NSPersistentCloudKitContainer` mirroring. We need application-controlled field merges, retained competing note text, permanent deletion semantics, and a persistent account binding before an upload. This is a deliberate change from the original plan. Do not also enable managed mirroring on this SQLite store.
+## Attachments
 
-Sync uses one private custom record zone, stable logical record names, change tokens, and conditional writes with server change tags. Each cloud record contains one versioned domain document; images travel as CKAssets. Downloaded pages and their tokens commit together in durable staging. Coherent records are promoted transactionally; a parent waiting for initial checklist/rig records stays staged across restarts, while the existing local library remains usable. An interrupted page can be replayed. Expired tokens trigger a full re-read without discarding local edits. A removed cloud zone pauses sync and requires explicit re-enablement before recreating/uploading a library; cloud removal never silently triggers a local-data reupload. Foreground polling and reachability hints schedule bounded batches with exponential retry and server retry-after handling. No continuous background delivery or push subscription is claimed.
+Core Data binary attributes with **Allows External Storage** hold durable attachment contents. Core Data may store smaller bytes in SQLite and larger bytes in its private external files. This is intentionally not a strict metadata-only database. Core Data and its CloudKit mirroring own physical file placement and transfer; the app must not inspect or manipulate those private files.
 
-## Conflict and deletion rules
+Existing photo import resizes and recompresses JPEGs to at most 2560 pixels. `Media/` contains readable local copies; when one is missing it is recreated from the managed binary attribute. Imported or downloaded contents remain available offline. A new device needs an online initial download before attachments are available offline. There is no guarantee that every cloud attachment has finished downloading simply because metadata is visible. Camera capture, PDF/manual import, original-quality preservation, and storage eviction controls are not implemented by this change. The same managed binary storage can support those future attachment types.
 
-- Each field has a Lamport counter plus stable installation writer ID. Counters advance past observed remote counters; device wall clocks do not decide winners. Writer IDs live in a non-backed-up installation folder, so restoring a database onto another device cannot clone an active writer identity.
-- Independent fields merge. Concurrent changes to the same field resolve deterministically by counter, then writer ID. Reordering uses per-item numeric positions with identity as a stable tie-break; it is not a collaborative sequence editor.
-- Notes also create immutable revision records. Losing text remains recoverable from **Earlier note versions**. Revisions may include intermediate saved drafts; timestamps are display information only.
-- A tombstone permanently deletes an identity, even if an old device later edits it. Restoring a deleted object requires a new identity. Saved campground toggles use a versioned boolean so saving a favorite again remains possible.
-- Newly created trips/templates carry initial child-record membership. A partial first download cannot appear as an incorrectly complete checklist. Related records are retained while the UI waits for a coherent projection.
-- Tombstones are not automatically pruned. Photo deletion removes visible references; asset bytes are retained pending a tested retention/garbage-collection policy. This trades storage usage for recoverability and avoids premature multi-device deletion.
+Photo removal drops visible references. Durable assets and soft-deleted rows currently remain retained; automatic pruning needs a separately tested multi-device retention policy. Cache copies are not the sole durable source.
+
+## Conflicts and logical identities
+
+Apple manages synchronization conflicts and timing; this is eventual consistency, not an immediate-sync service. A local merge policy is not a promise of a particular winner for concurrent CloudKit edits to the same value. Independent checklist items remain separate managed objects. Saved note edits create immutable revision objects so previously saved text can be recovered, but unsaved text or every possible remote conflict loser is not guaranteed to be retained.
+
+Because CloudKit does not support unique constraints, offline devices can independently create the same logical singleton or migrate the same library into distinct physical objects. The projection chooses a stable winner by persisted row UUID for each logical key, rather than crashing or duplicating visible trips. Duplicate singleton fields are not automatically combined; the selected profile/template is consistent once both devices receive the rows. Retained soft deletions take precedence within a logical identity; stale app edits do not explicitly clear deletion. Reordering remains numeric positions with a stable identity tie-break.
 
 ## Migration and recovery
 
-On first upgraded launch, read and validate the existing version-zero/version-one JSON with the legacy decoder. Import the profile, rig snapshots, trips, list order, task states, photos/captions, and saved campground UserDefaults into one database transaction. Copy available referenced JPEG bytes into external database assets, verify the reconstructed projection, and commit the completion marker with the records/outbox flags.
+The previous development store's frozen v1 model remains in `LegacyStoreModel.swift`. Before enabling mirroring, the app opens `RoamReady.sqlite` read-only, imports domain records, deletion markers, note revisions, and managed asset bytes into the new local store, verifies the reconstructed library, then saves device-only completion markers. Repeating an interrupted import skips existing logical rows. The source SQLite, its external files, the original JSON archive, and Media directory are preserved.
 
-The source JSON and existing media are never overwritten or deleted by migration. Corrupt/future archives fail without marking migration complete. Missing old photos do not discard their trip records. Retrying after interruption is idempotent. If a newer application changes the Core Data model, preserve the frozen v1 model and provide an explicit next-version migration; never edit v1 in place after release.
+If the previous custom transport left incomplete records in its incoming staging table, the verified active local library is still imported and remains usable offline. A visible migration notice explains that unfinished downloads remain preserved in the old source database for recovery; they are not silently considered migrated. This is a development migration, not a cloud-schema conversion.
 
-Use Profile's explicit export to produce a fresh JSON snapshot including saved campground IDs. It excludes image bytes. A raw copy of `RoamReady.sqlite` alone is **not** a safe backup: the WAL and external binary files belong to the store too. Use supported Core Data backup/migration mechanisms for a future complete-library backup feature.
+For older JSON installations, the legacy decoder imports validated data and available photos idempotently. A corrupt/future archive fails without marking migration complete; missing old photos do not discard trips. JSON is not re-imported over a successfully migrated SQLite library. Import data commits before its device-only completion marker; the separate stores are not claimed to provide a cross-store atomic transaction.
 
-## Photo availability
+Profile's explicit JSON export includes metadata and saved campground IDs, not attachment bytes. Copying a `.sqlite` file alone is not a complete backup: WAL and Core Data external asset files belong to the store. A full backup must use supported Core Data mechanisms.
 
-Import resizes JPEGs to at most 2560 pixels. The database asset is durable; `Media/` files are a readable local copy. When that copy is missing, the app restores it from the database. A cloud photo that has not downloaded displays an availability placeholder. iCloud Photos originals still require downloading before they can be imported. App-managed thumbnails decode at bounded sizes.
+## iCloud setup
 
-## iCloud configuration
+The default build has empty entitlements and an empty `ROAMREADY_MIRRORING_CONTAINER`. It makes no CloudKit requests and needs no account for local features.
 
-The checked-in default has empty entitlements and `ROAMREADY_CLOUD_CONTAINER` empty. It creates a local SQLite library and makes no CloudKit requests. Offline onboarding, trip changes, photos, exports, and saved campgrounds require no account.
+1. Register the App ID, team, and a **new dedicated CloudKit container** for managed mirroring. Do not reuse the previous custom-transport container/schema: automatic mirroring cannot adopt those records. Existing cloud-only data must first download through the previous build; this change migrates on-device data only.
+2. Apply `Config/Cloud.xcconfig.example`, set the actual new `ROAMREADY_MIRRORING_CONTAINER`, and use `Config/Cloud.entitlements`. Enable the iCloud/CloudKit and Push Notifications capabilities in Xcode. Let signing supply the appropriate `aps-environment`. `remote-notification` background mode is declared in Info.plist.
+3. In Profile or onboarding, enable iCloud sync. This preference applies on the **next app launch after closing the app**. Disabling also takes effect on next launch; transfers may continue in the current session. This avoids tearing down a live mirroring coordinator while local writes or imports are running. Existing local/cloud copies are not explicitly deleted by the setting.
+4. Run a signed development build on Apple hardware. In a developer-only harness call `initializeCloudKitSchema(options: [])` on the configured container to initialize all entity/attribute types, including entities not yet created in normal app use. Never initialize the schema in a production build. Inspect Core Data's generated schema in CloudKit Console and deploy it to production before TestFlight/production testing. Do not manually create the old `RoamReadyRecord` type or mutate generated system fields.
+5. Test two devices, account transitions, offline operation, and large attachments before shipping.
 
-To test sync on Apple hardware:
+Managed import/export/setup event notifications provide progress/error reporting. A completed event means that activity completed, not that every device is up to date. No force-sync button or immediate transfer guarantee is exposed. Apple controls foreground/background scheduling; silent notifications need correct provisioning and remain subject to OS constraints.
 
-1. Register your actual App ID, developer team, and private iCloud container in Apple Developer. Enable CloudKit for that App ID.
-2. Apply the settings from `Config/Cloud.xcconfig.example` to both build configurations, replacing identifiers. `Config/Cloud.entitlements` requests only the chosen CloudKit container. Sign/provision through Xcode.
-3. Run on a development device, explicitly enable iCloud sync in Profile (or onboarding to restore a library), and create sample records/assets. Inspect the development schema in CloudKit Console.
-4. Confirm the `RoamReadyRecord` type has `payload` (Bytes) and `image` (Asset), and deploy the schema to production before TestFlight/production validation. First test in an isolated development container.
-5. Perform all acceptance checks below before shipping with sync enabled.
+The OS iCloud account supplies private CloudKit identity; an app OAuth login is not required. Account transitions are handled by Apple's mirroring stack, with availability reported by the UI. The previous custom account binding is not reused and no cross-account isolation behavior beyond Apple's documented lifecycle is claimed. Sign-out/switch behavior, local-cache retention, and cloud deletion/reset semantics must be validated on devices before release. Do not implement an automatic cloud reset/reupload on errors. Sign in with Apple remains a separate future backend identity.
 
-The first explicit opt-in binds the local library to the verified CloudKit user record ID. Every sync checks that binding; every upload rechecks identity, and account-change notifications cancel active operations and pause scheduling. A different account cannot automatically adopt or upload this library. Turning sync off leaves both existing copies intact. Rebinding a library, clearing cloud data, and automatically switching local libraries are deliberately unavailable; such workflows require a separately reviewed migration design. A connection is needed to enable/verify cloud access, never to edit the existing local library. Sign in with Apple is a separate future backend identity.
+## Validation and outstanding release gates
 
-## Verification and release gates
+macOS integration tests exercise actual Core Data SQLite: model compatibility, close/reopen/export, JSON and v1 SQLite migration, attachment persistence without Media copies, incremental field saves, note recovery, logical duplicates, deletion, and partial-import recovery across restart. Linux tests cannot compile Core Data. Apple CI also builds the SwiftUI app; compiling against a pre-iOS-27 SDK with a temporary target override does not establish iOS 27 readiness.
 
-`swift test` on macOS compiles and runs the real Core Data SQLite integration suite. Linux runs the portable domain, migration-decoder, and merge tests; conditional Apple code is excluded there. The Apple validation workflow runs macOS tests and builds the SwiftUI app. If the installed SDK is below iOS 27, its temporary deployment override is only a compile check and does not establish iOS 27 readiness.
+Still required on provisioned devices:
 
-Required physical-device acceptance, still outstanding:
+- Airplane-mode first launch and relaunch, checklist edits, notes, photos, favorites, exports, interrupted local saves, low storage.
+- Two-device initial download, same-value and independent edits, concurrent onboarding, duplicate migrations, template replacement, reordering, and offline deletion.
+- Large/interrupted attachment transfers, quota exhaustion, throttling, delayed push delivery, app termination, and long periods offline.
+- Sign out/switch accounts during imports/exports, reopen offline, inspect local retention and verify account separation; cloud-library deletion and re-enable behavior.
+- Actual iOS 27 runtime, accessibility, WeatherKit/Foundation Models behavior, and measured save/memory/storage limits with large trip histories.
 
-- Airplane-mode first launch, create/edit/reorder/check off steps, add photos, save favorite, relaunch, export, and interrupted background saves.
-- Interrupt migration before/after commit; corrupt and future archives; absent media; low storage and write permission errors. Verify all original files remain intact.
-- Two devices: independent item/field edits, same-field conflicts, competing notes and restoration, reordered lists, concurrent favorite toggles, trip deletion while a second device is offline.
-- Partial first download, interrupted image transfer, missing assets, token expiration, zone removal, quota exhaustion, throttling, and queued local edits during sync.
-- Sign out/switch iCloud during fetch/upload, app termination during those operations, launch offline afterwards, verify no new-account records enter the old library or old-library records enter the new account.
-- Measure save latency, UI responsiveness, memory, SQLite size, and cloud bandwidth with representative large histories (e.g. 1,000 trips and 50,000 checklist items). The full UI projection and indefinite revision/asset retention need measured limits before release.
-
-A passing portable suite does not certify Core Data compilation, live CloudKit behavior, or production readiness.
+Passing local tests is not certification of live CloudKit operation or production readiness.

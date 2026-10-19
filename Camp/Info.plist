@@ -11,7 +11,8 @@
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
-    <key>RoamReadyCloudContainerIdentifier</key><string>$(ROAMREADY_CLOUD_CONTAINER)</string>
+    <key>RoamReadyMirroringContainerIdentifier</key><string>$(ROAMREADY_MIRRORING_CONTAINER)</string>
+    <key>UIBackgroundModes</key><array><string>remote-notification</string></array>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>UIApplicationSceneManifest</key>
     <dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>

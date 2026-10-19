@@ -4,97 +4,152 @@ import Foundation
 import CryptoKit
 import CampCore
 
-public struct PendingRecord: Sendable {
-    public let record: ReplicaRecord
-    public let revision: Int64
-    public let asset: Data?
-}
 public struct NoteRevision: Identifiable, Sendable {
     public let id: String
     public let text: String
     public let date: Date
 }
 
-/// All managed objects stay on one private context queue. Only Sendable values leave it.
+/// Core Data owns SQLite, external binary files, persistent history, and CloudKit mirroring.
+/// Only value types leave the private managed-object context.
 public final class SQLiteStore: @unchecked Sendable {
-    private let container: NSPersistentContainer
+    private let container: NSPersistentCloudKitContainer
     private let context: NSManagedObjectContext
     public let directory: URL
-    private let writerID: String
-    private init(container: NSPersistentContainer, directory: URL, writerID: String) {
-        self.container = container; self.directory = directory; self.writerID = writerID
+    public let cloudEnabled: Bool
+    public var coordinator: NSPersistentStoreCoordinator { container.persistentStoreCoordinator }
+
+    private init(container: NSPersistentCloudKitContainer, directory: URL, cloudEnabled: Bool) {
+        self.container = container; self.directory = directory; self.cloudEnabled = cloudEnabled
         context = container.newBackgroundContext()
-        context.mergePolicy = NSErrorMergePolicy
+        context.automaticallyMergesChangesFromParent = true
+        context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         context.undoManager = nil
         context.transactionAuthor = "RoamReady"
     }
-    public static func open(directory: URL) async throws -> SQLiteStore {
+
+    public static func open(directory: URL, cloudContainerIdentifier: String? = nil) async throws -> SQLiteStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let writer = try installationID(directory: directory)
-        let container = NSPersistentContainer(name: "RoamReady", managedObjectModel: StoreModel.v1())
-        let description = NSPersistentStoreDescription(url: directory.appendingPathComponent("RoamReady.sqlite"))
-        description.type = NSSQLiteStoreType
-        description.shouldMigrateStoreAutomatically = true
-        description.shouldInferMappingModelAutomatically = true
-        description.setOption(["journal_mode": "WAL", "synchronous": "FULL"] as NSDictionary, forKey: NSSQLitePragmasOption)
-        #if os(iOS)
-        description.setOption(FileProtectionType.completeUntilFirstUserAuthentication.rawValue as NSString, forKey: NSPersistentStoreFileProtectionKey)
-        #endif
-        container.persistentStoreDescriptions = [description]
+        // Bootstrap locally so a v1 import is verified before mirroring can upload anything.
+        let local = try await load(directory: directory, cloudContainerIdentifier: nil)
+        do {
+            try await local.importPreviousDatabase()
+            _ = try await local.snapshot()
+        } catch {
+            try? await local.close()
+            throw error
+        }
+        guard let cloudContainerIdentifier else { return local }
+        try await local.close()
+        return try await load(directory: directory, cloudContainerIdentifier: cloudContainerIdentifier)
+    }
+
+    private static func load(directory: URL, cloudContainerIdentifier: String?) async throws -> SQLiteStore {
+        let container = NSPersistentCloudKitContainer(name: "RoamReady", managedObjectModel: ManagedStoreModel.make())
+        let library = NSPersistentStoreDescription(url: directory.appendingPathComponent("RoamReadyManaged.sqlite"))
+        library.configuration = "Library"
+        library.type = NSSQLiteStoreType
+        library.shouldMigrateStoreAutomatically = true
+        library.shouldInferMappingModelAutomatically = true
+        library.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        library.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+        if let cloudContainerIdentifier {
+            library.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(containerIdentifier: cloudContainerIdentifier)
+        }
+        let local = NSPersistentStoreDescription(url: directory.appendingPathComponent("RoamReadyDevice.sqlite"))
+        local.configuration = "Device"
+        local.type = NSSQLiteStoreType
+        for description in [library, local] {
+            description.shouldMigrateStoreAutomatically = true
+            description.shouldInferMappingModelAutomatically = true
+            #if os(iOS)
+            description.setOption(FileProtectionType.completeUntilFirstUserAuthentication.rawValue as NSString, forKey: NSPersistentStoreFileProtectionKey)
+            #endif
+        }
+        // Load descriptions separately: completion is called once per store.
+        container.persistentStoreDescriptions = [local]
+        try await loadStores(container)
+        container.persistentStoreDescriptions = [library]
+        try await loadStores(container)
+        return SQLiteStore(container: container, directory: directory, cloudEnabled: cloudContainerIdentifier != nil)
+    }
+
+    private static func loadStores(_ container: NSPersistentContainer) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             container.loadPersistentStores { _, error in
                 if let error { continuation.resume(throwing: error) } else { continuation.resume() }
             }
         }
-        return SQLiteStore(container: container, directory: directory, writerID: writer)
     }
-    private static func installationID(directory: URL) throws -> String {
-        // A restored database must not clone a live device's logical-clock writer ID.
-        // This folder survives relaunches but is excluded from device/iCloud backups.
-        var folder = directory.appendingPathComponent("Installation", isDirectory: true)
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        var values = URLResourceValues(); values.isExcludedFromBackup = true
-        try folder.setResourceValues(values)
-        let file = folder.appendingPathComponent("writer-id")
-        if let data = try? Data(contentsOf: file), let text = String(data: data, encoding: .utf8), UUID(uuidString: text) != nil { return text }
-        let id = UUID().uuidString
-        try Data(id.utf8).write(to: file, options: .atomic)
-        return id
-    }
+
     public func close() async throws {
         try await context.perform { [self] in
             context.reset()
-            for store in container.persistentStoreCoordinator.persistentStores {
-                try container.persistentStoreCoordinator.remove(store)
-            }
+            for store in coordinator.persistentStores { try coordinator.remove(store) }
         }
     }
+
     public func snapshot() async throws -> LibrarySnapshot {
-        try await context.perform { [self] in try RecordProjection.snapshot(allRecords(projectionOnly: true)) }
+        try await context.perform { [self] in
+            // Refault imported rows after remote notifications; no pending writes live here.
+            context.refreshAllObjects()
+            let saved = try meta("coherentProjection").map { try JSONDecoder().decode(CachedLibrary.self, from: $0).library }
+            let documents = try coherentDocuments(records(), previous: saved)
+            let library = try RecordProjection.snapshot(documents)
+            try cache(library)
+            return library
+        }
     }
+
+    /// Hide only incomplete imported graphs, not unrelated local edits or new local trips.
+    private func coherentDocuments(_ actual: [ReplicaRecord], previous: LibrarySnapshot?) throws -> [ReplicaRecord] {
+        let cached = try previous.map { try RecordProjection.documents($0) } ?? [:]
+        var candidate = Dictionary(uniqueKeysWithValues: actual.map { ($0.key, $0) })
+        for parent in actual where parent.deletion == nil && [.profile, .templates, .trip].contains(parent.kind) {
+            var incomplete = false
+            if let key = parent.fields["rigKey"]?.string, candidate[key] == nil || candidate[key]?.deletion != nil {
+                if let old = cached[key] { candidate[key] = old } else { incomplete = true }
+            }
+            if case .array(let required) = parent.fields["initialChecklistKeys"] {
+                for value in required {
+                    guard let key = value.string else { throw ReplicationError.invalidRecord }
+                    if candidate[key] == nil || (parent.kind == .templates && candidate[key]?.deletion != nil) {
+                        if let old = cached[key] { candidate[key] = old } else { incomplete = true }
+                    }
+                }
+            }
+            if incomplete {
+                candidate[parent.key] = cached[parent.key]
+                if let old = cached[parent.key] {
+                    let owner = parent.kind == .templates ? "templates:\(old.fields["id"]?.string ?? "")" : old.key
+                    for doc in cached.values where doc.fields["owner"]?.string == owner { candidate[doc.key] = doc }
+                    if let key = old.fields["rigKey"]?.string { candidate[key] = cached[key] }
+                }
+            }
+        }
+        return Array(candidate.values)
+    }
+
     public func migrateLegacy(archiveURL: URL, favorites: Set<String>) async throws -> LibrarySnapshot {
         if try await metadata("legacyMigrationV1") != nil { return try await snapshot() }
         let legacy = try await FileAppStore(directory: archiveURL.deletingLastPathComponent()).load()
         let expected = LibrarySnapshot(state: legacy, favorites: favorites)
-        return try await context.perform { [self] in
-            if try meta("legacyMigrationV1") != nil { return try RecordProjection.snapshot(allRecords()) }
-            do {
-                // One SQLite transaction includes records, asset bytes, outbox flags, and marker.
-                try apply(from: LibrarySnapshot(), to: expected)
-                let actual = try RecordProjection.snapshot(allRecords())
-                guard actual == expected else { throw ReplicationError.incompleteLibrary }
-                try putMeta("legacyMigrationV1", Data("complete".utf8))
-                try context.save()
-                return actual
-            } catch { context.rollback(); throw error }
-        }
+        try await save(from: LibrarySnapshot(), to: expected)
+        // Metadata is device-only. Commit the idempotent import before its completion marker.
+        try await setMetadata("legacyMigrationV1", value: Data("complete".utf8))
+        return try await snapshot()
     }
+
     public func save(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) async throws {
         try await context.perform { [self] in
-            do { try apply(from: baseline, to: desired); try promoteIncoming(); if context.hasChanges { try context.save() } }
-            catch { context.rollback(); throw error }
+            do {
+                try apply(from: baseline, to: desired)
+                if context.hasChanges { try context.save() }
+            } catch { context.rollback(); throw error }
         }
+        _ = try await snapshot()
     }
+
     public func export(to url: URL) async throws {
         let library = try await snapshot()
         struct Export: Encodable { let schemaVersion = 1; let state: AppState; let savedCampgroundIDs: [String] }
@@ -104,147 +159,7 @@ public final class SQLiteStore: @unchecked Sendable {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
     }
-    public func pending(limit: Int = 25) async throws -> [PendingRecord] {
-        try await context.perform { [self] in
-            var result: [PendingRecord] = []; var byteCount = 0
-            for kind in RecordKind.allCases {
-                let request = NSFetchRequest<NSManagedObject>(entityName: StoreModel.name(kind))
-                request.predicate = NSPredicate(format: "dirty == YES")
-                request.sortDescriptors = [NSSortDescriptor(key: "key", ascending: true)]
-                request.fetchLimit = max(0, limit - result.count)
-                if request.fetchLimit == 0 { break }
-                for row in try context.fetch(request) {
-                    let asset = kind == .asset ? row.value(forKey: "bytes") as? Data : nil
-                    if !result.isEmpty && byteCount + (asset?.count ?? 0) > 15_000_000 { return result }
-                    result.append(PendingRecord(record: try read(row, kind), revision: row.value(forKey: "revision") as? Int64 ?? 0, asset: asset))
-                    byteCount += asset?.count ?? 0
-                }
-            }
-            return result
-        }
-    }
-    public func acknowledge(key: String, kind: RecordKind, revision: Int64) async throws {
-        try await context.perform { [self] in
-            do {
-                if let row = try find(key, kind), row.value(forKey: "revision") as? Int64 == revision {
-                    row.setValue(false, forKey: "dirty"); try context.save()
-                }
-            } catch { context.rollback(); throw error }
-        }
-    }
-    /// Persist incoming pages and their token together; only promote coherent graphs.
-    /// Partial new parents stay staged across app termination; existing local trips still open offline.
-    public func receive(_ changes: [(ReplicaRecord, Data?)], deletedKeys: [String] = [], token: Data? = nil) async throws {
-        try await context.perform { [self] in
-            do {
-                for (remote, bytes) in changes {
-                    _ = try remote.validated()
-                    guard Set(remote.fields.keys).isSubset(of: Set(StoreModel.fields(remote.kind).keys)) else { throw ReplicationError.invalidRecord }
-                    if remote.kind == .asset, let bytes {
-                        guard remote.fields["checksum"]?.string == Self.checksum(bytes) else { throw ReplicationError.invalidRecord }
-                    }
-                    try putCounter(max(try counter(), remote.maximumCounter))
-                    try stage(remote, bytes: bytes, forceUpload: false)
-                }
-                for key in deletedKeys {
-                    guard let prefix = key.split(separator: ":").first, let kind = RecordKind(rawValue: String(prefix)) else { throw ReplicationError.invalidRecord }
-                    let existing = try find(key, kind)
-                    var record = try existing.map { try read($0, kind) } ?? ReplicaRecord(key: key, kind: kind)
-                    let next = try counter() + 1
-                    record.deletion = FieldVersion(counter: next, writer: "cloud-deletion")
-                    try putCounter(next)
-                    try stage(record, bytes: nil, forceUpload: true)
-                }
-                try promoteIncoming()
-                if let token { try putMeta("cloudToken", token) }
-                if context.hasChanges { try context.save() }
-            } catch { context.rollback(); throw error }
-        }
-    }
-    public func hasStagedDownloads() async throws -> Bool {
-        try await context.perform { [self] in
-            let request = NSFetchRequest<NSManagedObject>(entityName: "IncomingRecord"); request.fetchLimit = 1
-            return try context.count(for: request) > 0
-        }
-    }
-    private func stage(_ remote: ReplicaRecord, bytes: Data?, forceUpload: Bool) throws {
-        let request = NSFetchRequest<NSManagedObject>(entityName: "IncomingRecord")
-        request.predicate = NSPredicate(format: "key == %@", remote.key); request.fetchLimit = 1
-        let row = try context.fetch(request).first ?? NSEntityDescription.insertNewObject(forEntityName: "IncomingRecord", into: context)
-        let previous = try (row.value(forKey: "payload") as? Data).map { try JSONDecoder().decode(ReplicaRecord.self, from: $0) }
-        let combined = try previous.map { try $0.merging(remote) } ?? remote
-        row.setValue(remote.key, forKey: "key")
-        row.setValue(try JSONEncoder().encode(combined), forKey: "payload")
-        if let bytes { row.setValue(bytes, forKey: "bytes") }
-        row.setValue(forceUpload || (row.value(forKey: "forceUpload") as? Bool ?? false), forKey: "forceUpload")
-    }
-    private func promoteIncoming() throws {
-        let stages = try context.fetch(NSFetchRequest<NSManagedObject>(entityName: "IncomingRecord"))
-        guard !stages.isEmpty else { return }
-        let existing = try allRecords()
-        let original = Dictionary(uniqueKeysWithValues: existing.map { ($0.key, $0) })
-        var candidate = original
-        var staged: [String: ReplicaRecord] = [:]
-        for row in stages {
-            let doc = try JSONDecoder().decode(ReplicaRecord.self, from: row.value(forKey: "payload") as! Data)
-            staged[doc.key] = doc
-            candidate[doc.key] = try original[doc.key].map { try $0.merging(doc) } ?? doc
-        }
-        var blocked: Set<String> = []
-        // Keep both sides of retained dependencies coherent, including out-of-order deletions.
-        var changed = true
-        while changed {
-            changed = false
-            for doc in Array(candidate.values) where doc.deletion == nil {
-                if case .array(let keys) = doc.fields["initialChecklistKeys"],
-                   !keys.allSatisfy({ $0.string.map { candidate[$0] != nil } ?? false }),
-                   !blocked.contains(doc.key) {
-                    blocked.insert(doc.key); candidate[doc.key] = original[doc.key]; changed = true
-                    continue
-                }
-                if doc.kind == .templates, case .array(let initial) = doc.fields["initialChecklistKeys"] {
-                    for value in initial {
-                        guard let key = value.string, candidate[key]?.deletion != nil,
-                              let previous = original[key], previous.deletion == nil, !blocked.contains(key) else { continue }
-                        blocked.insert(key); candidate[key] = previous; changed = true
-                    }
-                }
-                if let rigKey = doc.fields["rigKey"]?.string,
-                   candidate[rigKey] == nil || candidate[rigKey]?.deletion != nil {
-                    if let oldRig = original[rigKey], oldRig.deletion == nil, !blocked.contains(rigKey) {
-                        blocked.insert(rigKey); candidate[rigKey] = oldRig; changed = true
-                    } else if !blocked.contains(doc.key) {
-                        blocked.insert(doc.key); candidate[doc.key] = original[doc.key]; changed = true
-                    }
-                }
-            }
-        }
-        _ = try RecordProjection.snapshot(Array(candidate.values))
-        for stage in stages {
-            let key = stage.value(forKey: "key") as! String
-            guard !blocked.contains(key), let document = candidate[key], let remote = staged[key] else { continue }
-            let row = try find(key, document.kind)
-            let dirty = document != remote || (stage.value(forKey: "forceUpload") as? Bool ?? false)
-            let updated = try write(document, dirty: dirty, existing: row)
-            if document.kind == .asset, let bytes = stage.value(forKey: "bytes") as? Data {
-                guard document.fields["checksum"]?.string == Self.checksum(bytes) else { throw ReplicationError.invalidRecord }
-                updated.setValue(bytes, forKey: "bytes")
-            }
-            context.delete(stage)
-        }
-    }
-    public func markAllForUpload() async throws {
-        try await context.perform { [self] in
-            do {
-                for kind in RecordKind.allCases {
-                    for row in try context.fetch(NSFetchRequest<NSManagedObject>(entityName: StoreModel.name(kind))) {
-                        row.setValue(true, forKey: "dirty")
-                    }
-                }
-                try context.save()
-            } catch { context.rollback(); throw error }
-        }
-    }
+
     public func metadata(_ key: String) async throws -> Data? { try await context.perform { [self] in try meta(key) } }
     public func setMetadata(_ key: String, value: Data?) async throws {
         try await context.perform { [self] in
@@ -252,116 +167,117 @@ public final class SQLiteStore: @unchecked Sendable {
         }
     }
     public func asset(filename: String) async throws -> Data? {
-        try await context.perform { [self] in try find("asset:\(filename)", .asset)?.value(forKey: "bytes") as? Data }
+        try await context.perform { [self] in
+            context.refreshAllObjects()
+            return try rows("asset:\(filename)", .asset).compactMap { $0.value(forKey: "bytes") as? Data }.first
+        }
     }
     public func noteRevisions(tripID: UUID) async throws -> [NoteRevision] {
         try await context.perform { [self] in
-            let request = NSFetchRequest<NSManagedObject>(entityName: StoreModel.name(.noteRevision))
-            request.predicate = NSPredicate(format: "owner == %@", "trip:\(tripID)")
-            return try context.fetch(request).map { row in
-                let record = try read(row, .noteRevision)
-                return NoteRevision(id: record.key, text: record.fields["body"]?.string ?? "", date: Date(timeIntervalSinceReferenceDate: record.fields["createdAt"]?.number ?? 0))
+            context.refreshAllObjects()
+            return try records(kinds: [.noteRevision]).filter { $0.fields["owner"]?.string == "trip:\(tripID)" }.map {
+                NoteRevision(id: $0.key, text: $0.fields["body"]?.string ?? "", date: Date(timeIntervalSinceReferenceDate: $0.fields["createdAt"]?.number ?? 0))
             }.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date > $1.date }
         }
     }
+
     private func apply(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) throws {
         let before = try RecordProjection.documents(baseline), after = try RecordProjection.documents(desired)
-        let nextCounter = try counter() + 1
-        let writer = writerID
-        let version = FieldVersion(counter: nextCounter, writer: writer)
         for key in Set(before.keys).union(after.keys).sorted() {
             let previous = before[key], next = after[key]
             guard previous?.fields != next?.fields else { continue }
             let kind = (next ?? previous)!.kind
-            let existing = try find(key, kind)
-            var record = try existing.map { try read($0, kind) } ?? ReplicaRecord(key: key, kind: kind)
-            guard record.deletion == nil else { continue } // A stale offline edit cannot undo deletion.
-            if next == nil && kind != .favorite { record.deletion = version }
-            else {
-                let target = next?.fields ?? ["campgroundID": previous!.fields["campgroundID"]!, "saved": .bool(false)]
-                for field in Set(previous?.fields.keys.map { $0 } ?? []).union(target.keys) {
-                    if previous?.fields[field] != target[field] {
-                        record.fields[field] = target[field] ?? .null; record.versions[field] = version
-                    }
-                }
+            let matches = try rows(key, kind)
+            // Soft deletion is an application rule, not a replacement synchronization engine.
+            if kind != .favorite && matches.contains(where: { $0.value(forKey: "removed") as? Bool == true }) { continue }
+            let row = matches.first ?? insert(key, kind)
+            if next == nil && kind != .favorite {
+                for match in matches { match.setValue(true, forKey: "removed") }
+                continue
             }
-            if (existing == nil && kind == .trip) || (kind == .templates && (existing == nil || previous?.fields["id"] != next?.fields["id"])) {
+            let target = next?.fields ?? ["campgroundID": previous!.fields["campgroundID"]!, "saved": .bool(false)]
+            for field in Set(previous?.fields.keys.map { $0 } ?? []).union(target.keys) where previous?.fields[field] != target[field] {
+                try set(target[field] ?? .null, field: field, kind: kind, row: row)
+            }
+            if previous == nil && (kind == .trip || kind == .templates) || (kind == .templates && previous?.fields["id"] != next?.fields["id"]) {
                 let owner = kind == .templates ? "templates:\(next?.fields["id"]?.string ?? "")" : key
                 let keys = after.values.filter { $0.kind == .checklistItem && $0.fields["owner"]?.string == owner }.map(\.key).sorted()
-                record.fields["initialChecklistKeys"] = .array(keys.map(RecordValue.string))
-                record.versions["initialChecklistKeys"] = version
+                try set(.array(keys.map(RecordValue.string)), field: "initialChecklistKeys", kind: kind, row: row)
             }
-            _ = try write(record, dirty: true, existing: existing)
             if kind == .trip, let note = next?.fields["notes"]?.string, previous?.fields["notes"]?.string != note {
-                // Immutable versions preserve text even if simultaneous note edits resolve differently.
                 for text in Set([note, previous?.fields["notes"]?.string ?? ""]).filter({ !$0.isEmpty }) {
-                    let revisionKey = "noteRevision:\(UUID())"
-                    let fields: [String: RecordValue] = ["owner": .string(key), "body": .string(text), "createdAt": .number(Date().timeIntervalSinceReferenceDate)]
-                    _ = try write(ReplicaRecord(key: revisionKey, kind: .noteRevision, fields: fields, versions: fields.mapValues { _ in version }), dirty: true)
+                    let revision = insert("noteRevision:\(UUID())", .noteRevision)
+                    revision.setValue(key, forKey: "owner"); revision.setValue(text, forKey: "body")
+                    revision.setValue(Date().timeIntervalSinceReferenceDate, forKey: "createdAt")
                 }
             }
         }
         for filename in RecordProjection.referencedPhotos(desired.state).subtracting(RecordProjection.referencedPhotos(baseline.state)) {
-            let key = "asset:\(filename)"
-            guard try find(key, .asset) == nil else { continue }
+            guard try rows("asset:\(filename)", .asset).isEmpty else { continue }
+            guard filename == (filename as NSString).lastPathComponent, !filename.contains("..") else { throw ReplicationError.invalidRecord }
             let path = directory.appendingPathComponent("Media", isDirectory: true).appendingPathComponent(filename)
-            guard FileManager.default.fileExists(atPath: path.path) else { continue } // Missing legacy files stay recoverable.
-            let bytes = try Data(contentsOf: path)
-            let fields: [String: RecordValue] = ["filename": .string(filename), "checksum": .string(Self.checksum(bytes))]
-            let row = try write(ReplicaRecord(key: key, kind: .asset, fields: fields, versions: fields.mapValues { _ in version }), dirty: true)
+            guard FileManager.default.fileExists(atPath: path.path) else { continue }
+            let bytes = try Data(contentsOf: path), row = insert("asset:\(filename)", .asset)
+            row.setValue(filename, forKey: "filename"); row.setValue(Self.checksum(bytes), forKey: "checksum")
             row.setValue(bytes, forKey: "bytes")
         }
-        try putCounter(nextCounter)
     }
+
     private static func checksum(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
-    private func counter() throws -> Int64 { try meta("counter").flatMap { String(data: $0, encoding: .utf8).flatMap(Int64.init) } ?? 0 }
-    private func putCounter(_ value: Int64) throws { try putMeta("counter", Data(String(value).utf8)) }
-    private func allRecords(projectionOnly: Bool = false) throws -> [ReplicaRecord] {
-        try RecordKind.allCases.filter { !projectionOnly || ($0 != .asset && $0 != .noteRevision) }.flatMap { kind in
-            try context.fetch(NSFetchRequest<NSManagedObject>(entityName: StoreModel.name(kind))).map { try read($0, kind) }
-        }
+    private func rows(_ key: String, _ kind: RecordKind) throws -> [NSManagedObject] {
+        let request = NSFetchRequest<NSManagedObject>(entityName: LegacyStoreModel.name(kind))
+        request.predicate = NSPredicate(format: "key == %@", key)
+        return try context.fetch(request).sorted { identity($0) < identity($1) }
     }
-    private func find(_ key: String, _ kind: RecordKind) throws -> NSManagedObject? {
-        let request = NSFetchRequest<NSManagedObject>(entityName: StoreModel.name(kind))
-        request.predicate = NSPredicate(format: "key == %@", key); request.fetchLimit = 1
-        return try context.fetch(request).first
-    }
-    private struct Clocks: Codable { let versions: [String: FieldVersion]; let deletion: FieldVersion? }
-    private func read(_ row: NSManagedObject, _ kind: RecordKind) throws -> ReplicaRecord {
-        guard let key = row.value(forKey: "key") as? String, let data = row.value(forKey: "clocks") as? Data else { throw ReplicationError.invalidRecord }
-        let clocks = try JSONDecoder().decode(Clocks.self, from: data)
-        var fields: [String: RecordValue] = [:]
-        for field in clocks.versions.keys {
-            guard let type = StoreModel.fields(kind)[field] else { throw ReplicationError.invalidRecord }
-            guard let value = row.value(forKey: field) else { fields[field] = .null; continue }
-            switch type {
-            case .stringAttributeType: fields[field] = .string(value as! String)
-            case .doubleAttributeType: fields[field] = .number((value as! NSNumber).doubleValue)
-            case .booleanAttributeType: fields[field] = .bool((value as! NSNumber).boolValue)
-            default: fields[field] = try JSONDecoder().decode(RecordValue.self, from: value as! Data)
-            }
-        }
-        return try ReplicaRecord(key: key, kind: kind, fields: fields, versions: clocks.versions, deletion: clocks.deletion).validated()
-    }
-    @discardableResult private func write(_ record: ReplicaRecord, dirty: Bool, existing: NSManagedObject? = nil) throws -> NSManagedObject {
-        _ = try record.validated()
-        let row = existing ?? NSEntityDescription.insertNewObject(forEntityName: StoreModel.name(record.kind), into: context)
-        row.setValue(record.key, forKey: "key")
-        row.setValue(try JSONEncoder().encode(Clocks(versions: record.versions, deletion: record.deletion)), forKey: "clocks")
-        for (key, value) in record.fields {
-            guard let type = StoreModel.fields(record.kind)[key] else { throw ReplicationError.invalidRecord }
-            switch (type, value) {
-            case (_, .null): row.setValue(nil, forKey: key)
-            case (.stringAttributeType, .string(let v)): row.setValue(v, forKey: key)
-            case (.doubleAttributeType, .number(let v)): guard v.isFinite else { throw ReplicationError.invalidRecord }; row.setValue(v, forKey: key)
-            case (.booleanAttributeType, .bool(let v)): row.setValue(v, forKey: key)
-            case (.binaryDataAttributeType, _): row.setValue(try JSONEncoder().encode(value), forKey: key)
-            default: throw ReplicationError.invalidRecord
-            }
-        }
-        row.setValue(dirty, forKey: "dirty")
-        row.setValue((row.value(forKey: "revision") as? Int64 ?? 0) + 1, forKey: "revision")
+    private func identity(_ row: NSManagedObject) -> String { row.value(forKey: "rowID") as? String ?? row.objectID.uriRepresentation().absoluteString }
+    private func insert(_ key: String, _ kind: RecordKind) -> NSManagedObject {
+        let row = NSEntityDescription.insertNewObject(forEntityName: LegacyStoreModel.name(kind), into: context)
+        row.setValue(key, forKey: "key"); row.setValue(UUID().uuidString, forKey: "rowID")
         return row
+    }
+    private func records(kinds: [RecordKind] = RecordKind.allCases.filter { $0 != .asset && $0 != .noteRevision }) throws -> [ReplicaRecord] {
+        try kinds.flatMap { kind in
+            let fetched = try context.fetch(NSFetchRequest<NSManagedObject>(entityName: LegacyStoreModel.name(kind)))
+            // CloudKit does not support Core Data uniqueness constraints. Reconcile logical
+            // identities deterministically, including singletons created offline on two devices.
+            let groups = Dictionary(grouping: fetched) { $0.value(forKey: "key") as? String ?? "" }
+            return try groups.keys.sorted().compactMap { key -> ReplicaRecord? in
+                guard !key.isEmpty, let row = groups[key]?.sorted(by: { identity($0) < identity($1) }).first else { return nil }
+                let deleted = groups[key]!.contains { $0.value(forKey: "removed") as? Bool == true }
+                var fields: [String: RecordValue] = [:]
+                for (field, type) in LegacyStoreModel.fields(kind) {
+                    guard let value = row.value(forKey: field) else { continue }
+                    switch type {
+                    case .stringAttributeType: fields[field] = .string(value as! String)
+                    case .doubleAttributeType: fields[field] = .number((value as! NSNumber).doubleValue)
+                    case .booleanAttributeType: fields[field] = .bool((value as! NSNumber).boolValue)
+                    default: fields[field] = try JSONDecoder().decode(RecordValue.self, from: value as! Data)
+                    }
+                }
+                return ReplicaRecord(key: key, kind: kind, fields: fields, deletion: deleted ? .init(counter: 1, writer: "managed-deletion") : nil)
+            }
+        }
+    }
+    private func set(_ value: RecordValue, field: String, kind: RecordKind, row: NSManagedObject) throws {
+        guard let type = LegacyStoreModel.fields(kind)[field] else { throw ReplicationError.invalidRecord }
+        switch (type, value) {
+        case (_, .null): row.setValue(nil, forKey: field)
+        case (.stringAttributeType, .string(let v)): row.setValue(v, forKey: field)
+        case (.doubleAttributeType, .number(let v)): guard v.isFinite else { throw ReplicationError.invalidRecord }; row.setValue(v, forKey: field)
+        case (.booleanAttributeType, .bool(let v)): row.setValue(v, forKey: field)
+        case (.binaryDataAttributeType, _): row.setValue(try JSONEncoder().encode(value), forKey: field)
+        default: throw ReplicationError.invalidRecord
+        }
+    }
+    private struct CachedLibrary: Codable {
+        let state: AppState
+        let favorites: Set<String>
+        var library: LibrarySnapshot { LibrarySnapshot(state: state, favorites: favorites) }
+    }
+    private func cache(_ library: LibrarySnapshot) throws {
+        let bytes = try JSONEncoder().encode(CachedLibrary(state: library.state, favorites: library.favorites))
+        guard try meta("coherentProjection") != bytes else { return }
+        try putMeta("coherentProjection", bytes); try context.save()
     }
     private func meta(_ key: String) throws -> Data? {
         let request = NSFetchRequest<NSManagedObject>(entityName: "LocalMetadata")
@@ -374,59 +290,89 @@ public final class SQLiteStore: @unchecked Sendable {
         let row = try context.fetch(request).first ?? NSEntityDescription.insertNewObject(forEntityName: "LocalMetadata", into: context)
         row.setValue(key, forKey: "key"); row.setValue(value, forKey: "value")
     }
+
+    private func importPreviousDatabase() async throws {
+        guard try await metadata("managedMigrationV2") == nil else { return }
+        let source = directory.appendingPathComponent("RoamReady.sqlite")
+        guard FileManager.default.fileExists(atPath: source.path) else {
+            try await setMetadata("managedMigrationV2", value: Data("no-source".utf8)); return
+        }
+        let old = NSPersistentContainer(name: "RoamReadyLegacy", managedObjectModel: LegacyStoreModel.v1())
+        let description = NSPersistentStoreDescription(url: source)
+        description.isReadOnly = true; old.persistentStoreDescriptions = [description]
+        try await Self.loadStores(old)
+        let oldContext = old.newBackgroundContext()
+        defer { for store in old.persistentStoreCoordinator.persistentStores { try? old.persistentStoreCoordinator.remove(store) } }
+        struct Imported: Sendable { let record: ReplicaRecord; let bytes: Data? }
+        struct Clocks: Decodable { let versions: [String: FieldVersion]; let deletion: FieldVersion? }
+        let deferredCount = try await oldContext.perform {
+            try oldContext.count(for: NSFetchRequest<NSManagedObject>(entityName: "IncomingRecord"))
+        }
+        let imported = try await oldContext.perform {
+            return try RecordKind.allCases.flatMap { kind in
+                try oldContext.fetch(NSFetchRequest<NSManagedObject>(entityName: LegacyStoreModel.name(kind))).map { row in
+                    guard let key = row.value(forKey: "key") as? String, let data = row.value(forKey: "clocks") as? Data else { throw ReplicationError.invalidRecord }
+                    let clocks = try JSONDecoder().decode(Clocks.self, from: data)
+                    var fields: [String: RecordValue] = [:]
+                    for field in clocks.versions.keys {
+                        guard let value = row.value(forKey: field) else { fields[field] = .null; continue }
+                        switch LegacyStoreModel.fields(kind)[field] {
+                        case .stringAttributeType: fields[field] = .string(value as! String)
+                        case .doubleAttributeType: fields[field] = .number((value as! NSNumber).doubleValue)
+                        case .booleanAttributeType: fields[field] = .bool((value as! NSNumber).boolValue)
+                        default: fields[field] = try JSONDecoder().decode(RecordValue.self, from: value as! Data)
+                        }
+                    }
+                    return Imported(record: ReplicaRecord(key: key, kind: kind, fields: fields, versions: clocks.versions, deletion: clocks.deletion), bytes: kind == .asset ? row.value(forKey: "bytes") as? Data : nil)
+                }
+            }
+        }
+        let expected = try RecordProjection.snapshot(imported.map(\.record))
+        try await context.perform { [self] in
+            do {
+                for item in imported {
+                    let doc = item.record
+                    guard try rows(doc.key, doc.kind).isEmpty else { continue }
+                    let row = insert(doc.key, doc.kind)
+                    for (field, value) in doc.fields { try set(value, field: field, kind: doc.kind, row: row) }
+                    row.setValue(doc.deletion != nil, forKey: "removed")
+                    if let bytes = item.bytes { row.setValue(bytes, forKey: "bytes") }
+                }
+                try context.save()
+                guard try RecordProjection.snapshot(records()) == expected else { throw ReplicationError.incompleteLibrary }
+                try cache(expected)
+                // Do not re-import older JSON over the migrated SQLite library.
+                try putMeta("legacyMigrationV1", Data("sqlite-source".utf8))
+                try putMeta("managedMigrationV2", Data("complete".utf8))
+                if deferredCount > 0 {
+                    try putMeta("migrationNotice", Data("Your saved local library was migrated. Some incomplete downloads from the previous sync system remain preserved in the old database for recovery.".utf8))
+                }
+                try context.save()
+            } catch { context.rollback(); throw error }
+        }
+    }
 }
 
-/// Freeze v1. Add future model versions explicitly; never silently mutate this schema.
-enum StoreModel {
-    static func name(_ kind: RecordKind) -> String { "RR_" + kind.rawValue }
-    static func fields(_ kind: RecordKind) -> [String: NSAttributeType] {
-        var strings: [String] = [], numbers: [String] = [], binary: [String] = [], booleans: [String] = []
-        switch kind {
-        case .profile: strings = ["name", "experience", "rigKey"]
-        case .rig: strings = ["id", "type", "make", "model", "floorplan", "emoji", "photoFilename"]; numbers = ["year"]; binary = ["equipment"]
-        case .trip:
-            strings = ["id", "campgroundName", "siteNumber", "notes", "rating", "rigKey", "campgroundID", "planningTimeZoneIdentifier", "campgroundTimeZoneIdentifier"]
-            numbers = ["latitude", "longitude", "arrival", "departure", "position"]; binary = ["initialChecklistKeys"]
-        case .checklistItem: strings = ["id", "title", "detail", "section", "status", "owner", "phase"]; numbers = ["position"]
-        case .templates: strings = ["id", "sourceURL"]; numbers = ["version"]; binary = ["initialChecklistKeys"]
-        case .photo: strings = ["id", "filename", "caption", "owner"]; numbers = ["createdAt", "position"]
-        case .asset: strings = ["filename", "checksum"]
-        case .favorite: strings = ["campgroundID"]; booleans = ["saved"]
-        case .noteRevision: strings = ["owner", "body"]; numbers = ["createdAt"]
+enum ManagedStoreModel {
+    static func make() -> NSManagedObjectModel {
+        func attribute(_ name: String, _ type: NSAttributeType) -> NSAttributeDescription {
+            let value = NSAttributeDescription(); value.name = name; value.attributeType = type; value.isOptional = true; return value
         }
-        var result = Dictionary(uniqueKeysWithValues: strings.map { ($0, NSAttributeType.stringAttributeType) })
-        for n in numbers { result[n] = .doubleAttributeType }
-        for n in binary { result[n] = .binaryDataAttributeType }
-        for n in booleans { result[n] = .booleanAttributeType }
-        return result
-    }
-    static func v1() -> NSManagedObjectModel {
-        func attribute(_ name: String, _ type: NSAttributeType, optional: Bool = true) -> NSAttributeDescription {
-            let a = NSAttributeDescription(); a.name = name; a.attributeType = type; a.isOptional = optional; return a
-        }
-        let model = NSManagedObjectModel(); model.versionIdentifiers = ["RoamReady.v1"]
-        model.entities = RecordKind.allCases.map { kind in
-            let entity = NSEntityDescription(); entity.name = name(kind); entity.managedObjectClassName = "NSManagedObject"
-            let dirty = attribute("dirty", .booleanAttributeType, optional: false); dirty.defaultValue = false
-            let revision = attribute("revision", .integer64AttributeType, optional: false); revision.defaultValue = 0
-            var properties = [attribute("key", .stringAttributeType, optional: false), attribute("clocks", .binaryDataAttributeType, optional: false), dirty, revision]
-            properties += fields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
+        let model = NSManagedObjectModel(); model.versionIdentifiers = ["RoamReady.Managed.v2"]
+        let library = RecordKind.allCases.map { kind in
+            let entity = NSEntityDescription(); entity.name = LegacyStoreModel.name(kind); entity.managedObjectClassName = "NSManagedObject"
+            let deleted = attribute("removed", .booleanAttributeType); deleted.defaultValue = false
+            var properties = [attribute("key", .stringAttributeType), attribute("rowID", .stringAttributeType), deleted]
+            properties += LegacyStoreModel.fields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
             if kind == .asset { let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true; properties.append(bytes) }
-            entity.properties = properties; entity.uniquenessConstraints = [["key"]]
-            entity.indexes = [NSFetchIndexDescription(name: name(kind) + "_outbox", elements: [
-                NSFetchIndexElementDescription(property: dirty, collationType: .binary),
-                NSFetchIndexElementDescription(property: properties[0], collationType: .binary)
-            ])]
+            entity.properties = properties
             return entity
         }
-        let meta = NSEntityDescription(); meta.name = "LocalMetadata"; meta.managedObjectClassName = "NSManagedObject"
-        meta.properties = [attribute("key", .stringAttributeType, optional: false), attribute("value", .binaryDataAttributeType)]
-        meta.uniquenessConstraints = [["key"]]; model.entities.append(meta)
-        let incoming = NSEntityDescription(); incoming.name = "IncomingRecord"; incoming.managedObjectClassName = "NSManagedObject"
-        let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true
-        let force = attribute("forceUpload", .booleanAttributeType, optional: false); force.defaultValue = false
-        incoming.properties = [attribute("key", .stringAttributeType, optional: false), attribute("payload", .binaryDataAttributeType, optional: false), bytes, force]
-        incoming.uniquenessConstraints = [["key"]]; model.entities.append(incoming)
+        let device = NSEntityDescription(); device.name = "LocalMetadata"; device.managedObjectClassName = "NSManagedObject"
+        device.properties = [attribute("key", .stringAttributeType), attribute("value", .binaryDataAttributeType)]
+        model.entities = library + [device]
+        model.setEntities(library, forConfigurationName: "Library")
+        model.setEntities([device], forConfigurationName: "Device")
         return model
     }
 }

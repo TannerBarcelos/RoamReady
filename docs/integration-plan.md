@@ -12,9 +12,9 @@ Implement Sign in with Apple for backend identity and CloudKit private storage f
 
 An already signed-in person must be able to use locally available trips without refreshing their remote session. Initial sign-in and recovery require connectivity. People without iCloud keep local use. Changing either identity must isolate its associated remote state; never silently merge another account's trips into the active local library. Offer explicit, reviewed local-data migration where necessary.
 
-The explicit CloudKit transport mirrors individual records and CKAssets using stable IDs, per-field logical versions, tombstones, persistent incoming staging, and a transactional local outbox. It retries while active using exponential backoff and reachability hints. Background push delivery is not implemented.
+`NSPersistentCloudKitContainer` now manages private CloudKit mirroring, retries, persistent history, imports, and external binary asset transfers. The default build stays local-only. Configure a new dedicated container and opt in on next launch; do not reuse the previous custom CloudKit schema.
 
-Independent item/photo fields merge by stable IDs. Simultaneous edits to the same scalar field resolve deterministically; competing note text remains recoverable in immutable note revisions. Delete tombstones must prevent stale offline devices resurrecting deleted trips. Test partial asset uploads, concurrent checklist edits, account sign-out/switch, revoked access, full iCloud storage, and long disconnections. Do not adopt whole-archive last-writer-wins syncing.
+The app retains incremental property edits, logical duplicate reconciliation, note history, soft deletions, and a device-only coherent projection during partial imports. Apple controls transfer timing and concurrent cloud conflict resolution. Device acceptance for account changes, quota, partial transfers, concurrent edits, and offline use remains required. See [offline storage](offline-storage.md) for the implemented contract and migration details.
 
 ## Hosted AI
 

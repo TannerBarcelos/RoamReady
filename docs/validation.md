@@ -31,7 +31,7 @@ This also lints the project with Apple's `plutil` and runs an unsigned simulator
 
 ## Validation completed in the development environment
 
-The portable Swift suite runs in Swift 6 on Linux. Apple CI also compiles the actual Core Data/CloudKit package and runs SQLite integration tests on macOS. The expanded suite contains 26 portable tests and 13 Apple-only database tests, including interrupted-download/reopen, migration preservation, one-step incremental writes, immutable note recovery, upload acknowledgement races, and backup/restore writer identity.
+The portable Swift suite runs in Swift 6 on Linux. Apple CI also compiles the actual Core Data/CloudKit package and runs SQLite integration tests on macOS. The portable suite is supplemented by Apple-only managed-store tests, including model compatibility, partial-import/reopen recovery, JSON and SQLite migration, managed asset persistence, logical duplicate reconciliation, and note history.
 
 Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 and the available iOS 26.5 SDK, using a temporary deployment override. This verifies native API compilation, not iOS 27 acceptance or physical-device runtime behavior. The product project retains its requested iOS 27 deployment target. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
@@ -46,7 +46,7 @@ Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 
 7. Check large text, VoiceOver, reduced motion/transparency, light/dark mode, rotation, and iPad split view. Check list controls remain usable outdoors and with long campground names.
 8. Check supported and unsupported on-device AI states, and cached weather timestamps when offline. A network request must never block checklist editing.
 
-Cloud sync is not established by local persistence tests. Validate multi-device conflicts, account changes, asset upload interruption, and background delivery using a provisioned CloudKit container. The current transport runs while the app is active; background pushes are not implemented.
+Cloud sync is not established by local persistence tests. Validate multi-device conflicts, account changes, asset upload interruption, and background delivery using a provisioned CloudKit container. Apple manages mirroring scheduling; background push delivery still requires signed-device provisioning and acceptance.
 
 ## Apple capability configuration
 
@@ -74,8 +74,8 @@ Add capabilities through Xcode only when their corresponding integration is read
 
 CloudKit subscription delivery also needs the appropriate Push Notifications capability and the `remote-notification` background mode if your sync design uses silent pushes; allow Xcode to generate the environment-specific push entitlement. Enabling CloudKit alone does not implement syncing or conflict handling. Sign in with Apple and iCloud are separate identities and must not gate access to local trips. Foundation Models availability must be checked at runtime; an empty entitlements file cannot make an unsupported device eligible.
 
-## SQLite and explicit CloudKit transport
+## Core Data and automatic CloudKit mirroring
 
-The live store is now `RoamReady.sqlite`; the JSON actor remains the legacy migration decoder. `Sources/CampPersistence` compiles only on Apple platforms; its SQLite tests run with `swift test` on macOS. Linux reports only portable tests. The Apple validation workflow also compiles the native app using the installed simulator SDK, with an explicit temporary target override if that SDK predates iOS 27. This does not replace actual iOS 27 acceptance.
+Core Data manages the local SQLite store; no raw SQL or SQLite driver is used. `NSPersistentCloudKitContainer` manages cloud transfers and external binary assets. The former custom CloudKit transport has been removed.
 
-See [offline-storage.md](offline-storage.md) for the opt-in CloudKit configuration, account binding, recovery, outbox/conflict tests, and physical-device release matrix. `Config/Cloud.entitlements` is an optional configured build; the default app entitlements remain empty. Background pushes are not implemented; this transport syncs while the app is active.
+See [offline-storage.md](offline-storage.md) for new-container provisioning, next-launch opt-in, migration, asset behavior, and physical-device acceptance. Default entitlements remain empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of Core Data's generated schema.

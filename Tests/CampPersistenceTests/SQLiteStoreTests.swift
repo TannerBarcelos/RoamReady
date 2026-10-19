@@ -1,5 +1,6 @@
 #if canImport(CoreData)
 import Foundation
+import CoreData
 import XCTest
 import CampCore
 @testable import CampPersistence
@@ -16,27 +17,42 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         let trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000), departure: Date(timeIntervalSince1970: 1_750_086_400), rig: rig)
         return LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig), trips: [trip], templates: ChecklistFactory.templates(for: rig)), favorites: ["ridb-232447"])
     }
-    func testSQLiteSaveCloseReopenAndExport() async throws {
+    func testManagedSQLiteSaveCloseReopenAndExport() async throws {
         let d = try directory(), original = try library()
         let store = try await SQLiteStore.open(directory: d)
+        XCTAssertFalse(store.cloudEnabled)
         try await store.save(from: LibrarySnapshot(), to: original)
         try await store.close()
         let reopened = try await SQLiteStore.open(directory: d)
         let restored = try await reopened.snapshot()
         XCTAssertEqual(restored, original)
-        let header = try Data(contentsOf: d.appendingPathComponent("RoamReady.sqlite")).prefix(16)
+        let header = try Data(contentsOf: d.appendingPathComponent("RoamReadyManaged.sqlite")).prefix(16)
         XCTAssertEqual(String(decoding: header, as: UTF8.self), "SQLite format 3\0")
         let export = d.appendingPathComponent("Exports/library.json")
         try await reopened.export(to: export)
         XCTAssertTrue(FileManager.default.fileExists(atPath: export.path))
         try await reopened.close()
     }
-    func testLegacyMigrationPreservesArchiveAssetsAndDoesNotDuplicateOnRelaunch() async throws {
+    func testMirroredModelMeetsCloudKitRequirementsAndKeepsMetadataLocal() {
+        let model = ManagedStoreModel.make()
+        let mirrored = model.entities(forConfigurationName: "Library")!
+        XCTAssertEqual(mirrored.count, RecordKind.allCases.count)
+        XCTAssertFalse(mirrored.contains { $0.name == "LocalMetadata" })
+        XCTAssertEqual(model.entities(forConfigurationName: "Device")?.map(\.name), ["LocalMetadata"])
+        for entity in mirrored {
+            XCTAssertTrue(entity.uniquenessConstraints.isEmpty)
+            XCTAssertTrue(entity.attributesByName.values.allSatisfy { $0.isOptional || $0.defaultValue != nil })
+            XCTAssertNil(entity.attributesByName["clocks"])
+            XCTAssertNil(entity.attributesByName["dirty"])
+        }
+        XCTAssertEqual(mirrored.first { $0.name == "RR_asset" }?.attributesByName["bytes"]?.allowsExternalBinaryDataStorage, true)
+    }
+    func testLegacyJSONMigrationPreservesArchiveAssetsAndIsIdempotent() async throws {
         let d = try directory(); var original = try library()
         let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
         let bytes = Data([1, 2, 3, 4]); try bytes.write(to: media.appendingPathComponent("photo.jpg"))
-        original.state.trips[0].photos = [TripPhoto(filename: "photo.jpg", createdAt: Date(timeIntervalSince1970: 1_750_000_000))]
-        let legacy = FileAppStore(directory: d); try await legacy.save(original.state)
+        original.state.trips[0].photos = [TripPhoto(filename: "photo.jpg", createdAt: original.state.trips[0].arrival)]
+        try await FileAppStore(directory: d).save(original.state)
         let source = d.appendingPathComponent("camp-state.json"), oldBytes = try Data(contentsOf: source)
         let store = try await SQLiteStore.open(directory: d)
         let imported = try await store.migrateLegacy(archiveURL: source, favorites: original.favorites)
@@ -56,38 +72,23 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertNil(marker); XCTAssertEqual(try String(contentsOf: source, encoding: .utf8), "invalid")
         try await store.close()
     }
-    func testStaleSnapshotDoesNotEraseDownloadedFieldAndNotesHaveRevisions() async throws {
-        let d = try directory(), baseline = try library()
-        let store = try await SQLiteStore.open(directory: d)
-        try await store.save(from: LibrarySnapshot(), to: baseline)
-        let pending = try await store.pending(limit: 1000)
-        var remote = try XCTUnwrap(pending.first { $0.record.kind == .trip }?.record)
-        remote.fields["notes"] = .string("Remote notes"); remote.versions["notes"] = .init(counter: 900, writer: "second-device")
-        try await store.receive([(remote, nil)])
-        var desired = baseline; desired.state.trips[0].siteNumber = "42"
-        try await store.save(from: baseline, to: desired)
+    func testStaleSnapshotPreservesUnrelatedChangesAndNoteHistory() async throws {
+        let store = try await SQLiteStore.open(directory: directory()), base = try library()
+        try await store.save(from: LibrarySnapshot(), to: base)
+        var other = base; other.state.trips[0].notes = "Other device notes"
+        try await store.save(from: base, to: other)
+        var desired = base; desired.state.trips[0].siteNumber = "42"
+        try await store.save(from: base, to: desired)
         var result = try await store.snapshot()
-        XCTAssertEqual(result.state.trips[0].notes, "Remote notes")
+        XCTAssertEqual(result.state.trips[0].notes, "Other device notes")
         XCTAssertEqual(result.state.trips[0].siteNumber, "42")
         let previous = result; result.state.trips[0].notes = "Local notes"
         try await store.save(from: previous, to: result)
         let history = try await store.noteRevisions(tripID: result.state.trips[0].id)
-        XCTAssertTrue(history.contains { $0.text == "Remote notes" }); XCTAssertTrue(history.contains { $0.text == "Local notes" })
+        XCTAssertTrue(history.contains { $0.text == "Other device notes" }); XCTAssertTrue(history.contains { $0.text == "Local notes" })
         try await store.close()
     }
-    func testUploadAcknowledgementCannotClearNewerEdit() async throws {
-        let store = try await SQLiteStore.open(directory: directory()), base = try library()
-        try await store.save(from: LibrarySnapshot(), to: base)
-        let originalPending = try await store.pending(limit: 1000)
-        let old = try XCTUnwrap(originalPending.first { $0.record.kind == .trip })
-        var edited = base; edited.state.trips[0].siteNumber = "new"
-        try await store.save(from: base, to: edited)
-        try await store.acknowledge(key: old.record.key, kind: .trip, revision: old.revision)
-        let pending = try await store.pending(limit: 1000)
-        XCTAssertTrue(pending.contains { $0.record.key == old.record.key })
-        try await store.close()
-    }
-    func testDeleteWinsAndFavoriteCanBeSavedAgain() async throws {
+    func testSoftDeleteWinsOverStaleEditAndFavoriteCanBeSavedAgain() async throws {
         let store = try await SQLiteStore.open(directory: directory()), base = try library()
         try await store.save(from: LibrarySnapshot(), to: base)
         var deleted = base; deleted.state.trips = []; deleted.favorites = []
@@ -100,70 +101,64 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         let after = try await store.snapshot(); XCTAssertEqual(after.favorites, base.favorites)
         try await store.close()
     }
-    func testInterruptedFirstDownloadDoesNotBlockExistingLibraryAfterReopen() async throws {
-        let d = try directory(), base = try library()
+    func testManagedAssetSurvivesMissingMediaCacheAndRelaunch() async throws {
+        let d = try directory(); var base = try library()
+        let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
+        let bytes = Data(repeating: 37, count: 2_000_000)
+        try bytes.write(to: media.appendingPathComponent("photo.jpg"))
+        base.state.trips[0].photos = [TripPhoto(filename: "photo.jpg", createdAt: base.state.trips[0].arrival)]
         let store = try await SQLiteStore.open(directory: d)
         try await store.save(from: LibrarySnapshot(), to: base)
-        let sender = try await SQLiteStore.open(directory: directory())
-        var new = try library(); new.state.trips[0].campgroundName = "New remote trip"
-        try await sender.save(from: LibrarySnapshot(), to: new)
-        let outgoing = try await sender.pending(limit: 1000)
-        let parent = try XCTUnwrap(outgoing.first { $0.record.kind == .trip })
-        try await store.receive([(parent.record, nil)], token: Data("page-one".utf8))
-        let initial = try await store.snapshot(); XCTAssertEqual(initial, base)
+        try await store.close(); try FileManager.default.removeItem(at: media)
+        let reopened = try await SQLiteStore.open(directory: d)
+        let restored = try await reopened.asset(filename: "photo.jpg")
+        XCTAssertEqual(restored, bytes)
+        let snapshot = try await reopened.snapshot(); XCTAssertEqual(snapshot, base)
+        try await reopened.close()
+    }
+    func testPartialManagedImportUsesDurableCoherentProjectionAfterRelaunch() async throws {
+        let d = try directory(), base = try library(), remote = try library()
+        let store = try await SQLiteStore.open(directory: d)
+        try await store.save(from: LibrarySnapshot(), to: base)
+        let docs = try RecordProjection.documents(remote)
+        let trip = try XCTUnwrap(docs.values.first { $0.kind == .trip })
+        var parent = trip
+        let required = docs.values.filter { $0.kind == .checklistItem && $0.fields["owner"]?.string == trip.key }.map { RecordValue.string($0.key) }
+        parent.fields["initialChecklistKeys"] = .array(required)
+        try await insertManaged([parent], into: store)
+        let partial = try await store.snapshot(); XCTAssertEqual(partial, base)
         try await store.close()
         let reopened = try await SQLiteStore.open(directory: d)
         let offline = try await reopened.snapshot(); XCTAssertEqual(offline, base)
-        let staged = try await reopened.hasStagedDownloads(); XCTAssertTrue(staged)
-        let token = try await reopened.metadata("cloudToken"); XCTAssertEqual(token, Data("page-one".utf8))
-        let children = outgoing.filter { $0.record.key != parent.record.key && $0.record.kind != .profile && $0.record.kind != .templates }
-        try await reopened.receive(children.map { ($0.record, $0.asset) })
-        let complete = try await reopened.snapshot()
-        XCTAssertEqual(Set(complete.state.trips.map(\.id)), Set(base.state.trips.map(\.id) + new.state.trips.map(\.id)))
-        let stillStaged = try await reopened.hasStagedDownloads(); XCTAssertFalse(stillStaged)
-        try await reopened.close(); try await sender.close()
+        try await insertManaged(docs.values.filter { $0.key != trip.key && $0.kind != .profile && $0.kind != .templates }, into: reopened)
+        let completed = try await reopened.snapshot()
+        XCTAssertEqual(Set(completed.state.trips.map(\.id)), Set(base.state.trips.map(\.id) + remote.state.trips.map(\.id)))
+        try await reopened.close()
     }
-    func testInvalidRemotePageRollsBackTokenAndRecords() async throws {
-        let store = try await SQLiteStore.open(directory: directory()), base = try library()
+    func testLocalEditsAndNewTripRemainVisibleDuringUnrelatedPartialImport() async throws {
+        let d = try directory(), base = try library(), remote = try library()
+        let store = try await SQLiteStore.open(directory: d)
         try await store.save(from: LibrarySnapshot(), to: base)
-        try await store.setMetadata("cloudToken", value: Data("before".utf8))
-        let fields: [String: RecordValue] = ["filename": .string("wrong.jpg"), "checksum": .string("bad-checksum")]
-        let asset = ReplicaRecord(key: "asset:wrong.jpg", kind: .asset, fields: fields, versions: fields.mapValues { _ in .init(counter: 100, writer: "remote") })
-        do { try await store.receive([(asset, Data([1, 2]))], token: Data("after".utf8)); XCTFail("Expected invalid asset") } catch { }
-        let token = try await store.metadata("cloudToken"); XCTAssertEqual(token, Data("before".utf8))
-        let snapshot = try await store.snapshot(); XCTAssertEqual(snapshot, base)
-        try await store.close()
-    }
-
-    func testRigDeletionBeforeTripDeletionStagesWithoutBlockingTheNextPage() async throws {
-        let store = try await SQLiteStore.open(directory: directory()), base = try library()
-        try await store.save(from: LibrarySnapshot(), to: base)
-        let pending = try await store.pending(limit: 1000)
-        let trip = try XCTUnwrap(pending.first { $0.record.kind == .trip }?.record)
-        let rigKey = try XCTUnwrap(trip.fields["rigKey"]?.string)
-        var rig = try XCTUnwrap(pending.first { $0.record.key == rigKey }?.record)
-        rig.deletion = .init(counter: 100, writer: "remote")
-        try await store.receive([(rig, nil)], token: Data("rig-page".utf8))
-        let retained = try await store.snapshot(); XCTAssertEqual(retained, base)
-        let token = try await store.metadata("cloudToken"); XCTAssertEqual(token, Data("rig-page".utf8))
-        var removed = trip; removed.deletion = .init(counter: 101, writer: "remote")
-        try await store.receive([(removed, nil)], token: Data("trip-page".utf8))
-        let after = try await store.snapshot(); XCTAssertTrue(after.state.trips.isEmpty)
-        let staged = try await store.hasStagedDownloads(); XCTAssertFalse(staged)
-        try await store.close()
-    }
-
-    func testCheckingOneStepQueuesOnlyThatRecord() async throws {
-        let store = try await SQLiteStore.open(directory: directory()), base = try library()
-        try await store.save(from: LibrarySnapshot(), to: base)
-        let initial = try await store.pending(limit: 1000)
-        for item in initial { try await store.acknowledge(key: item.record.key, kind: item.record.kind, revision: item.revision) }
-        var edited = base; edited.state.trips[0].setup[0].status = .completed
+        var parent = try XCTUnwrap(RecordProjection.documents(remote).values.first { $0.kind == .trip })
+        parent.fields["initialChecklistKeys"] = .array([.string("checklistItem:not-arrived")])
+        try await insertManaged([parent], into: store)
+        var edited = base; edited.state.trips[0].notes = "Saved while another trip downloads"
+        edited.state.trips.append(try library().state.trips[0])
         try await store.save(from: base, to: edited)
-        let pending = try await store.pending(limit: 1000)
-        XCTAssertEqual(pending.count, 1)
-        XCTAssertEqual(pending.first?.record.kind, .checklistItem)
-        XCTAssertEqual(pending.first?.record.fields["status"], .string("completed"))
+        let visible = try await store.snapshot(); XCTAssertEqual(visible, edited)
+        try await store.close()
+        let reopened = try await SQLiteStore.open(directory: d)
+        let offline = try await reopened.snapshot(); XCTAssertEqual(offline, edited)
+        try await reopened.close()
+    }
+    func testDuplicateLogicalRowsReconcileWithoutUniqueConstraints() async throws {
+        let store = try await SQLiteStore.open(directory: directory()), base = try library()
+        try await store.save(from: LibrarySnapshot(), to: base)
+        let trip = try XCTUnwrap(RecordProjection.documents(base).values.first { $0.kind == .trip })
+        var duplicate = trip; duplicate.fields["siteNumber"] = .string("Chosen duplicate")
+        try await insertManaged([duplicate], into: store, rowID: "000-first")
+        let result = try await store.snapshot()
+        XCTAssertEqual(result.state.trips.count, 1); XCTAssertEqual(result.state.trips[0].siteNumber, "Chosen duplicate")
         try await store.close()
     }
     func testMissingLegacyPhotoDoesNotDiscardTrip() async throws {
@@ -176,52 +171,82 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         let bytes = try await store.asset(filename: "missing.jpg"); XCTAssertNil(bytes)
         try await store.close()
     }
-
-    func testTemplateReplacementDoesNotExposeAnEmptyDefaultBetweenPages() async throws {
-        let receiver = try await SQLiteStore.open(directory: directory()), base = try library()
-        let sender = try await SQLiteStore.open(directory: directory())
-        try await receiver.save(from: LibrarySnapshot(), to: base)
-        try await sender.save(from: LibrarySnapshot(), to: base)
-        let initial = try await sender.pending(limit: 1000)
-        for record in initial { try await sender.acknowledge(key: record.record.key, kind: record.record.kind, revision: record.revision) }
-        var replacement = base
-        replacement.state.templates = ChecklistFactory.templates(for: Rig(type: .tent, equipment: .none))
-        try await sender.save(from: base, to: replacement)
-        let pending = try await sender.pending(limit: 1000)
-        let deleted = pending.filter { $0.record.deletion != nil }
-        XCTAssertFalse(deleted.isEmpty)
-        try await receiver.receive(deleted.map { ($0.record, $0.asset) }, token: Data("old-deletions".utf8))
-        let retained = try await receiver.snapshot(); XCTAssertEqual(retained.state.templates, base.state.templates)
-        let remaining = pending.filter { $0.record.deletion == nil }
-        try await receiver.receive(remaining.map { ($0.record, $0.asset) }, token: Data("new-generation".utf8))
-        let final = try await receiver.snapshot(); XCTAssertEqual(final.state.templates, replacement.state.templates)
-        let staged = try await receiver.hasStagedDownloads(); XCTAssertFalse(staged)
-        try await receiver.close(); try await sender.close()
-    }
-
-    func testBackupRestoreDoesNotCloneTheOriginalDevicesClockWriter() async throws {
+    func testPreviousSQLiteMigrationRetainsAssetsNotesAndSource() async throws {
         let d = try directory(), base = try library()
-        let source = try await SQLiteStore.open(directory: d)
-        try await source.save(from: LibrarySnapshot(), to: base)
-        try await source.close()
-        let destination = try directory().appendingPathComponent("Restored")
-        try FileManager.default.copyItem(at: d, to: destination)
-        // Simulate system backup semantics: this installation-only folder is excluded.
-        try FileManager.default.removeItem(at: destination.appendingPathComponent("Installation"))
-        let original = try await SQLiteStore.open(directory: d)
-        let restored = try await SQLiteStore.open(directory: destination)
-        var a = base; a.state.trips[0].siteNumber = "original device"
-        var b = base; b.state.trips[0].siteNumber = "restored device"
-        try await original.save(from: base, to: a)
-        try await restored.save(from: base, to: b)
-        let first = try await original.pending(limit: 1000)
-        let second = try await restored.pending(limit: 1000)
-        let left = try XCTUnwrap(first.first { $0.record.kind == .trip }?.record)
-        let right = try XCTUnwrap(second.first { $0.record.kind == .trip }?.record)
-        XCTAssertNotEqual(left.versions["siteNumber"]?.writer, right.versions["siteNumber"]?.writer)
-        XCTAssertNoThrow(try left.merging(right))
-        try await original.close(); try await restored.close()
+        try await makePreviousStore(directory: d, base: base)
+        let store = try await SQLiteStore.open(directory: d)
+        let imported = try await store.snapshot(); XCTAssertEqual(imported, base)
+        let asset = try await store.asset(filename: "old.jpg"); XCTAssertEqual(asset, Data([7, 8, 9]))
+        let notes = try await store.noteRevisions(tripID: base.state.trips[0].id); XCTAssertEqual(notes.first?.text, "Retained revision")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: d.appendingPathComponent("RoamReady.sqlite").path))
+        try await store.close()
+        let reopened = try await SQLiteStore.open(directory: d)
+        let second = try await reopened.snapshot(); XCTAssertEqual(second, base)
+        try await reopened.close()
+    }
+    func testIncompletePreviousSyncPreservesUsableLibraryAndSource() async throws {
+        let d = try directory(), base = try library()
+        try await makePreviousStore(directory: d, base: base, staged: true)
+        let store = try await SQLiteStore.open(directory: d)
+        let imported = try await store.snapshot(); XCTAssertEqual(imported, base)
+        let notice = try await store.metadata("migrationNotice"); XCTAssertNotNil(notice)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: d.appendingPathComponent("RoamReady.sqlite").path))
+        try await store.close()
     }
 
+    private func insertManaged(_ docs: [ReplicaRecord], into store: SQLiteStore, rowID: String = UUID().uuidString) async throws {
+        let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        context.persistentStoreCoordinator = store.coordinator
+        try await context.perform {
+            for doc in docs {
+                let row = NSEntityDescription.insertNewObject(forEntityName: LegacyStoreModel.name(doc.kind), into: context)
+                row.setValue(doc.key, forKey: "key"); row.setValue(rowID, forKey: "rowID")
+                for (field, value) in doc.fields {
+                    switch value {
+                    case .string(let v): row.setValue(v, forKey: field)
+                    case .number(let v): row.setValue(v, forKey: field)
+                    case .bool(let v): row.setValue(v, forKey: field)
+                    case .null: break
+                    default: row.setValue(try JSONEncoder().encode(value), forKey: field)
+                    }
+                }
+            }
+            try context.save()
+        }
+    }
+    private func makePreviousStore(directory: URL, base: LibrarySnapshot, staged: Bool = false) async throws {
+        let container = NSPersistentContainer(name: "Previous", managedObjectModel: LegacyStoreModel.v1())
+        container.persistentStoreDescriptions = [NSPersistentStoreDescription(url: directory.appendingPathComponent("RoamReady.sqlite"))]
+        try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
+            container.loadPersistentStores { _, error in if let error { c.resume(throwing: error) } else { c.resume() } }
+        }
+        let context = container.newBackgroundContext()
+        try await context.perform {
+            var docs = Array(try RecordProjection.documents(base).values)
+            docs.append(ReplicaRecord(key: "asset:old.jpg", kind: .asset, fields: ["filename": .string("old.jpg")]))
+            docs.append(ReplicaRecord(key: "noteRevision:old", kind: .noteRevision, fields: ["owner": .string("trip:\(base.state.trips[0].id)"), "body": .string("Retained revision"), "createdAt": .number(10)]))
+            struct Clocks: Encodable { let versions: [String: FieldVersion]; let deletion: FieldVersion? = nil }
+            for doc in docs {
+                let row = NSEntityDescription.insertNewObject(forEntityName: LegacyStoreModel.name(doc.kind), into: context)
+                row.setValue(doc.key, forKey: "key")
+                row.setValue(try JSONEncoder().encode(Clocks(versions: doc.fields.mapValues { _ in .init(counter: 1, writer: "previous") })), forKey: "clocks")
+                for (field, value) in doc.fields {
+                    switch value {
+                    case .string(let v): row.setValue(v, forKey: field)
+                    case .number(let v): row.setValue(v, forKey: field)
+                    case .bool(let v): row.setValue(v, forKey: field)
+                    default: row.setValue(try JSONEncoder().encode(value), forKey: field)
+                    }
+                }
+                if doc.kind == .asset { row.setValue(Data([7, 8, 9]), forKey: "bytes") }
+            }
+            if staged {
+                let row = NSEntityDescription.insertNewObject(forEntityName: "IncomingRecord", into: context)
+                row.setValue("trip:incomplete", forKey: "key"); row.setValue(Data(), forKey: "payload")
+            }
+            try context.save()
+        }
+        for store in container.persistentStoreCoordinator.persistentStores { try container.persistentStoreCoordinator.remove(store) }
+    }
 }
 #endif

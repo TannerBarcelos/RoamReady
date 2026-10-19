@@ -1,13 +1,10 @@
 import Foundation
 
-/// Lamport ordering avoids relying on campsite devices having accurate wall clocks.
-public struct FieldVersion: Codable, Equatable, Comparable, Sendable {
+/// Compatibility value for decoding the previous development store only.
+public struct FieldVersion: Codable, Equatable, Sendable {
     public let counter: Int64
     public let writer: String
     public init(counter: Int64, writer: String) { self.counter = counter; self.writer = writer }
-    public static func < (lhs: Self, rhs: Self) -> Bool {
-        lhs.counter == rhs.counter ? lhs.writer < rhs.writer : lhs.counter < rhs.counter
-    }
 }
 
 public enum RecordValue: Codable, Equatable, Sendable {
@@ -40,43 +37,18 @@ public enum RecordKind: String, Codable, CaseIterable, Sendable {
     case profile, rig, trip, checklistItem, templates, photo, asset, favorite, noteRevision
 }
 
-/// A document maps to ONE database row / CloudKit record, never the entire library.
+/// Value projection of one managed record. Versions are retained only for legacy decoding.
 public struct ReplicaRecord: Codable, Equatable, Sendable {
     public var schemaVersion = 1
     public let key: String
     public let kind: RecordKind
     public var fields: [String: RecordValue]
     public var versions: [String: FieldVersion]
-    /// Tombstones are permanent for this identity. Restoring creates a new identity.
+    /// Non-nil marks a removed record in the domain projection.
     public var deletion: FieldVersion?
     public init(key: String, kind: RecordKind, fields: [String: RecordValue] = [:],
                 versions: [String: FieldVersion] = [:], deletion: FieldVersion? = nil) {
         self.key = key; self.kind = kind; self.fields = fields; self.versions = versions; self.deletion = deletion
-    }
-    public var maximumCounter: Int64 { max(versions.values.map(\.counter).max() ?? 0, deletion?.counter ?? 0) }
-    public func validated() throws -> Self {
-        guard schemaVersion == 1, !key.isEmpty, key.utf8.count < 240,
-              key.hasPrefix(kind.rawValue + ":"), maximumCounter >= 0, maximumCounter < Int64.max - 2,
-              Set(fields.keys) == Set(versions.keys),
-              versions.values.allSatisfy({ $0.counter > 0 && !$0.writer.isEmpty }),
-              deletion.map({ $0.counter > 0 && !$0.writer.isEmpty }) ?? true else {
-            throw ReplicationError.invalidRecord
-        }
-        return self
-    }
-    public func merging(_ other: Self) throws -> Self {
-        _ = try validated(); _ = try other.validated()
-        guard key == other.key, kind == other.kind else { throw ReplicationError.invalidRecord }
-        var result = self
-        for (field, version) in other.versions {
-            if let current = result.versions[field], current == version,
-               result.fields[field] != other.fields[field] { throw ReplicationError.invalidRecord }
-            if result.versions[field].map({ $0 < version }) ?? true {
-                result.fields[field] = other.fields[field]; result.versions[field] = version
-            }
-        }
-        if let deleted = other.deletion, result.deletion.map({ $0 < deleted }) ?? true { result.deletion = deleted }
-        return result
     }
 }
 

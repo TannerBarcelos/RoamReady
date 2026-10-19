@@ -25,7 +25,7 @@ There are no third-party app dependencies. The Xcode project references the loca
 | Profile | Edit profile/rig, manage templates, restore curated defaults, view storage status, and export metadata JSON. Cosmetic rig changes preserve customized defaults. |
 | Weather | WeatherKit request and local forecast cache, download timestamp, partial-window handling, and provider attribution. Can appear during planning or inside a trip. Live access requires a provisioned WeatherKit capability. |
 | Camping help | Bundled checklist guidance always works offline. On-device Foundation Models explains relevant saved guidance when available. Runtime availability checks and non-generative fallback are included. No model picker. |
-| Durability | Core Data SQLite/WAL transactions; individual records and field changes; recoverable legacy import; durable upload queue; permanent deletion tombstones; note history; explicit JSON export. |
+| Durability | Core Data SQLite/WAL transactions; individual records and field changes; recoverable legacy import; Apple-managed CloudKit mirroring; retained soft deletions; note history; explicit JSON export. |
 
 Each new trip preserves its original rig context. Planning dates retain their original time zone; forecast matching uses the campground's time zone, including daylight-saving transitions.
 
@@ -41,7 +41,7 @@ Checklist wording is original, with the [Camping World setup and teardown articl
 
 ## Remaining integrations
 
-- **iCloud/CloudKit provisioning and acceptance:** optional private CloudKit sync is implemented behind configuration and explicit opt-in. The default build is local-only. Register/provision the Apple container, deploy its schema, and pass two-device, account-change, interrupted-transfer, and quota tests before shipping cloud sync. See [storage architecture and setup](docs/offline-storage.md).
+- **iCloud/CloudKit provisioning and acceptance:** automatic private CloudKit mirroring is implemented behind configuration and explicit opt-in (applied on next launch). The default build is local-only. Register/provision a new dedicated Apple container, deploy its schema, and pass two-device, account-change, interrupted-transfer, and quota tests before shipping cloud sync. See [storage architecture and setup](docs/offline-storage.md).
 - **Sign in with Apple:** not implemented. Initial online sign-in, verified backend identity exchange, secure session storage, account deletion, and recovery must be added without gating local trip access. Sign in with Apple and the device's iCloud account are separate identities.
 - **Online AI:** not implemented. Add one automatically selected hosted-model route through an authenticated, rate-limited backend. No provider secret may ship in the app. Measure quality, latency, and cost before selecting the provider. Disclose when a question leaves the device.
 - **Production campground finder:** licensed structured coverage, updates, regional downloads, and any live booking availability are outstanding. Offline map regions require their own supported implementation and rights.
@@ -64,7 +64,7 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The portable core suite currently has **26 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
+The portable core suite currently has **22 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 
