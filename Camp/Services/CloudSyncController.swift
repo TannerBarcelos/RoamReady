@@ -16,6 +16,8 @@ final class CloudSyncController {
     @ObservationIgnored private let worker: CloudKitReplicator?
     @ObservationIgnored private var disk: SQLiteStore?
     @ObservationIgnored private var task: Task<Void, Never>?
+    @ObservationIgnored private var scheduleToken = UUID()
+    @ObservationIgnored private var resyncRequested = false
     @ObservationIgnored private var observer: NSObjectProtocol?
     @ObservationIgnored private var refresh: (@MainActor () async -> Void)?
     @ObservationIgnored private let monitor = NWPathMonitor()
@@ -36,10 +38,10 @@ final class CloudSyncController {
         observer = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.task?.cancel()
-                await self.worker?.cancel()
                 self.accountNeedsReview = true
                 self.status = "iCloud account changed. Sync is paused; your local library is available."
+                self.task?.cancel()
+                await self.worker?.cancel()
             }
         }
         monitor.pathUpdateHandler = { [weak self] path in
@@ -60,24 +62,40 @@ final class CloudSyncController {
     }
     func disable() async {
         guard let worker, let disk else { return }
+        enabled = false
         task?.cancel()
-        do { try await worker.disable(store: disk); enabled = false; status = "iCloud sync is off. Your local library is available." }
+        do { try await worker.disable(store: disk); status = "iCloud sync is off. Your local library is available." }
         catch { status = error.localizedDescription }
     }
     func setActive(_ value: Bool) {
         active = value
-        if value { schedule() }
-        else { task?.cancel(); Task { await worker?.cancel() } }
+        if value { syncNow() }
+        else {
+            task?.cancel()
+            if !busy { scheduleToken = UUID(); task = nil }
+            Task { await worker?.cancel() }
+        }
     }
     func schedule(after delay: Double = 2) {
-        guard configured, enabled, active, !accountNeedsReview, task == nil else { return }
+        guard configured, enabled, active, !accountNeedsReview, !busy, task == nil else { return }
+        let token = UUID(); scheduleToken = token
         task = Task { [weak self] in
-            do { try await Task.sleep(for: .seconds(delay)) } catch { self?.task = nil; return }
-            guard let self else { return }
+            do { try await Task.sleep(for: .seconds(delay)) }
+            catch {
+                guard let self, self.scheduleToken == token else { return }
+                self.task = nil
+                self.schedule(after: 0)
+                return
+            }
+            guard let self, self.scheduleToken == token else { return }
             await self.performSync()
         }
     }
-    func syncNow() { schedule(after: 0) }
+    func syncNow() {
+        if busy { resyncRequested = true; return }
+        scheduleToken = UUID(); task?.cancel(); task = nil
+        schedule(after: 0)
+    }
     private func performSync() async {
         guard let worker, let disk, enabled, active, !accountNeedsReview else { task = nil; return }
         busy = true; status = "Syncing with iCloud…"
@@ -107,6 +125,7 @@ final class CloudSyncController {
             await refresh?()
         }
         busy = false; task = nil
-        schedule(after: next)
+        let immediate = resyncRequested; resyncRequested = false
+        schedule(after: immediate ? 0 : next)
     }
 }
