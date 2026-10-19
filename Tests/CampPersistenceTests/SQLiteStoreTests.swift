@@ -153,5 +153,51 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await store.close()
     }
 
+    func testCheckingOneStepQueuesOnlyThatRecord() async throws {
+        let store = try await SQLiteStore.open(directory: directory()), base = try library()
+        try await store.save(from: LibrarySnapshot(), to: base)
+        let initial = try await store.pending(limit: 1000)
+        for item in initial { try await store.acknowledge(key: item.record.key, kind: item.record.kind, revision: item.revision) }
+        var edited = base; edited.state.trips[0].setup[0].status = .completed
+        try await store.save(from: base, to: edited)
+        let pending = try await store.pending(limit: 1000)
+        XCTAssertEqual(pending.count, 1)
+        XCTAssertEqual(pending.first?.record.kind, .checklistItem)
+        XCTAssertEqual(pending.first?.record.fields["status"], .string("completed"))
+        try await store.close()
+    }
+    func testMissingLegacyPhotoDoesNotDiscardTrip() async throws {
+        let d = try directory(); var base = try library()
+        base.state.trips[0].photos = [TripPhoto(filename: "missing.jpg", createdAt: base.state.trips[0].arrival)]
+        try await FileAppStore(directory: d).save(base.state)
+        let store = try await SQLiteStore.open(directory: d)
+        let migrated = try await store.migrateLegacy(archiveURL: d.appendingPathComponent("camp-state.json"), favorites: base.favorites)
+        XCTAssertEqual(migrated, base)
+        let bytes = try await store.asset(filename: "missing.jpg"); XCTAssertNil(bytes)
+        try await store.close()
+    }
+
+    func testTemplateReplacementDoesNotExposeAnEmptyDefaultBetweenPages() async throws {
+        let receiver = try await SQLiteStore.open(directory: directory()), base = try library()
+        let sender = try await SQLiteStore.open(directory: directory())
+        try await receiver.save(from: LibrarySnapshot(), to: base)
+        try await sender.save(from: LibrarySnapshot(), to: base)
+        let initial = try await sender.pending(limit: 1000)
+        for record in initial { try await sender.acknowledge(key: record.record.key, kind: record.record.kind, revision: record.revision) }
+        var replacement = base
+        replacement.state.templates = ChecklistFactory.templates(for: Rig(type: .tent, equipment: .none))
+        try await sender.save(from: base, to: replacement)
+        let pending = try await sender.pending(limit: 1000)
+        let deleted = pending.filter { $0.record.deletion != nil }
+        XCTAssertFalse(deleted.isEmpty)
+        try await receiver.receive(deleted.map { ($0.record, $0.asset) }, token: Data("old-deletions".utf8))
+        let retained = try await receiver.snapshot(); XCTAssertEqual(retained.state.templates, base.state.templates)
+        let remaining = pending.filter { $0.record.deletion == nil }
+        try await receiver.receive(remaining.map { ($0.record, $0.asset) }, token: Data("new-generation".utf8))
+        let final = try await receiver.snapshot(); XCTAssertEqual(final.state.templates, replacement.state.templates)
+        let staged = try await receiver.hasStagedDownloads(); XCTAssertFalse(staged)
+        try await receiver.close(); try await sender.close()
+    }
+
 }
 #endif

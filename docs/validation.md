@@ -31,9 +31,9 @@ This also lints the project with Apple's `plutil` and runs an unsigned simulator
 
 ## Validation completed in the development environment
 
-The Foundation-only package compiled under Swift 6.0.3 on Linux, and all 17 XCTest cases passed. They verify persistence across a fresh store instance, profile/trip/photo metadata retention, independent checklist snapshots, completed/skipped state, rig filtering, invalid dates and coordinates, migration of the version-zero archive, rejection of future schemas, preservation of corrupt archives, failed-save preservation, invalid media references, filesystem error propagation, catalog decoding, unknown campground attributes, separate trailer/motorhome length limits, rig context snapshots, and destination forecast dates across time zones and daylight-saving transitions.
+The portable Swift suite runs in Swift 6 on Linux. Apple CI also compiles the actual Core Data/CloudKit package and runs SQLite integration tests on macOS. The expanded suite contains 26 portable tests and 12 Apple-only database tests, including interrupted-download/reopen, migration preservation, one-step incremental writes, immutable note recovery, and upload acknowledgement races.
 
-Native simulator/device compilation and runtime behavior have **not** been validated in this Linux environment. An iOS 27 SDK was not available here. The project intentionally retains the requested iOS 27 deployment target rather than presenting a lower-target build as an iOS 27 result.
+Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 and the available iOS 26.5 SDK, using a temporary deployment override. This verifies native API compilation, not iOS 27 acceptance or physical-device runtime behavior. The product project retains its requested iOS 27 deployment target. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
@@ -46,13 +46,13 @@ Native simulator/device compilation and runtime behavior have **not** been valid
 7. Check large text, VoiceOver, reduced motion/transparency, light/dark mode, rotation, and iPad split view. Check list controls remain usable outdoors and with long campground names.
 8. Check supported and unsupported on-device AI states, and cached weather timestamps when offline. A network request must never block checklist editing.
 
-Cloud sync is not established by local persistence tests. Validate multi-device conflicts, account changes, asset upload interruption, and background delivery only after the sync integration is implemented and configured.
+Cloud sync is not established by local persistence tests. Validate multi-device conflicts, account changes, asset upload interruption, and background delivery using a provisioned CloudKit container. The current transport runs while the app is active; background pushes are not implemented.
 
 ## Apple capability configuration
 
 The default `Camp.entitlements` is an empty dictionary, and no permissions are requested unnecessarily. System `PhotosPicker` grants access to selected items without requesting unrestricted Photo Library access. There is no camera or user-location permission because this scaffold does not use either.
 
-`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for saved campground IDs (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures when backend identity, online AI, telemetry, or other collection is introduced.
+`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for legacy saved-campground import (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures when backend identity, online AI, telemetry, or other collection is introduced.
 
 Add capabilities through Xcode only when their corresponding integration is ready and your Apple Developer identifiers/profiles are configured. Entitlement examples below describe the eventual additions; they are **not** enabled in the development target:
 
@@ -67,7 +67,7 @@ Add capabilities through Xcode only when their corresponding integration is read
 
 <!-- CloudKit: replace the example container with your provisioned container. -->
 <key>com.apple.developer.icloud-container-identifiers</key>
-<array><string>iCloud.com.yourcompany.Camp</string></array>
+<array><string>iCloud.com.yourcompany.RoamReady</string></array>
 <key>com.apple.developer.icloud-services</key>
 <array><string>CloudKit</string></array>
 ```

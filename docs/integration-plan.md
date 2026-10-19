@@ -4,7 +4,7 @@
 
 Local onboarding, trip creation, both checklist snapshots, progress, edits, notes, ratings, and locally imported photos must work without an account or connection. Remote calls must not sit in those write paths. Always acknowledge durable local writes separately from cloud delivery.
 
-The current actor-isolated archive store implements that local foundation. SwiftUI reads the in-memory local state; saves are serialized and coalesced, and the previous archive survives failed encoding, validation, or atomic writes. Failed changes stay in memory with an honest save status. No automatic reset occurs after corrupt/newer-format data is encountered.
+The app now uses Core Data SQLite with incremental field writes and a transactional upload queue. SwiftUI observes a local library projection; failed changes stay in memory with a surfaced save error. Legacy JSON is imported once and retained for recovery. See [storage architecture](offline-storage.md) for the implemented behavior and release gates.
 
 ## Identity and iCloud
 
@@ -12,9 +12,9 @@ Implement Sign in with Apple for backend identity and CloudKit private storage f
 
 An already signed-in person must be able to use locally available trips without refreshing their remote session. Initial sign-in and recovery require connectivity. People without iCloud keep local use. Changing either identity must isolate its associated remote state; never silently merge another account's trips into the active local library. Offer explicit, reviewed local-data migration where necessary.
 
-Before writing CloudKit adapter code, settle the record contract: separate profile/template/trip/checklist-item/photo records with stable IDs, modification versions, deletion tombstones, and CKAssets for photos. Keep a durable local outbox. Network reachability is a scheduling hint, not proof a request can succeed. Back off on failures and retry on foreground/network changes; iOS background delivery remains opportunistic.
+The explicit CloudKit transport mirrors individual records and CKAssets using stable IDs, per-field logical versions, tombstones, persistent incoming staging, and a transactional local outbox. It retries while active using exponential backoff and reachability hints. Background push delivery is not implemented.
 
-Merge distinct item/photo edits by stable IDs. Preserve conflicting edits to the same field as a recoverable alternate instead of silently overwriting. Delete tombstones must prevent stale offline devices resurrecting deleted trips. Test partial asset uploads, concurrent checklist edits, account sign-out/switch, revoked access, full iCloud storage, and long disconnections. Do not adopt whole-archive last-writer-wins syncing.
+Independent item/photo fields merge by stable IDs. Simultaneous edits to the same scalar field resolve deterministically; competing note text remains recoverable in immutable note revisions. Delete tombstones must prevent stale offline devices resurrecting deleted trips. Test partial asset uploads, concurrent checklist edits, account sign-out/switch, revoked access, full iCloud storage, and long disconnections. Do not adopt whole-archive last-writer-wins syncing.
 
 ## Hosted AI
 
@@ -31,7 +31,3 @@ Obtain actual offline distribution terms and sample coverage matrices before sel
 ## Native release gate
 
 Run the checked-in native build script with Xcode and the iOS 27 SDK, then the airplane-mode acceptance pass in `validation.md`. Validate genuine Liquid Glass behavior, light/dark appearance, large text, VoiceOver, Reduce Transparency/Motion, photo-library edge cases, time zones, low storage, and unsupported Foundation Models states. WeatherKit needs App ID provisioning and provider attribution review. A passing portable Swift test suite cannot substitute for this gate.
-
-## Storage implementation update
-
-The live app store has now moved to Core Data SQLite with an explicit CloudKit transport and durable per-row outbox. This supersedes the archive-store paragraph and automatic-mirroring assumptions above. See [offline-storage.md](offline-storage.md) for actual conflict semantics, account policy, configuration, photo retention, and remaining physical-device gates. The native prototype and two-device acceptance must still be completed before calling this production-ready.

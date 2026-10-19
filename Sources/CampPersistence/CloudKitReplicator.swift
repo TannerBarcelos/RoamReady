@@ -33,6 +33,7 @@ public actor CloudKitReplicator {
         // Binding is permanent for this local library. No automatic account rebinding.
         try await store.setMetadata("cloudAccount", value: Data(identity.utf8))
         _ = try await verifiedIdentity(store: store)
+        if try await store.metadata("cloudZoneReady") == nil { try await store.markAllForUpload() }
         try await store.setMetadata("cloudEnabled", value: Data([1]))
     }
     public func disable(store: SQLiteStore) async throws {
@@ -59,15 +60,18 @@ public actor CloudKitReplicator {
                 try await store.receive(page.changes, deletedKeys: page.deletedKeys, token: tokenData)
                 downloaded += page.changes.count
                 if !page.more { break }
-            } catch let error as CKError where !restarted && (error.code == .changeTokenExpired || error.code == .zoneNotFound || error.code == .userDeletedZone) {
+            } catch let error as CKError where !restarted && error.code == .changeTokenExpired {
                 restarted = true
                 try await store.setMetadata("cloudToken", value: nil)
-                if error.code != .changeTokenExpired {
-                    try await createZone(store: store, epoch: epoch)
-                    try await store.markAllForUpload()
-                }
+            } catch let error as CKError where error.code == .zoneNotFound || error.code == .userDeletedZone {
+                // Cloud-library removal is not consent to reupload a local copy.
+                try await store.setMetadata("cloudEnabled", value: nil)
+                try await store.setMetadata("cloudZoneReady", value: nil)
+                try await store.setMetadata("cloudToken", value: nil)
+                throw ReplicationError.cloudLibraryRemoved
             }
         }
+
         // Bound foreground work; further batches resume on the next scheduled pass.
         for _ in 0..<8 {
             try check(epoch)

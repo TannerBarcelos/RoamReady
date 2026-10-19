@@ -2,7 +2,7 @@
 
 A native SwiftUI iOS app following the approved **A · System-first** design: system lists, clear checklist progress, four native tabs, semantic colors, and automatic light/dark appearance. The app deployment target is **iOS 27.0**. Standard SwiftUI navigation and tab controls provide the system's Liquid Glass styling.
 
-**Current milestone: SQLite persistence, recoverable archive migration, and optional CloudKit synchronization are implemented in source.** Core behavior is compiled and tested on Linux. Native Apple SDK compilation, simulator use, and device acceptance testing still require a Mac with Xcode and the iOS 27 SDK. This repository is an initial development build; production services and data acquisition remain outstanding.
+**Current milestone: SQLite persistence, recoverable archive migration, and optional CloudKit synchronization are implemented in source.** Portable behavior is tested on Linux; Apple CI compiles Core Data/CloudKit, runs SQLite integration tests, and builds the native app with its installed SDK. The current runner uses iOS 26.5 with a temporary deployment override; iOS 27 and physical-device acceptance remain outstanding. This repository is an initial development build; production services and data acquisition remain outstanding.
 
 ## Run
 
@@ -46,7 +46,7 @@ Checklist wording is original, with the [Camping World setup and teardown articl
 - **Online AI:** not implemented. Add one automatically selected hosted-model route through an authenticated, rate-limited backend. No provider secret may ship in the app. Measure quality, latency, and cost before selecting the provider. Disclose when a question leaves the device.
 - **Production campground finder:** licensed structured coverage, updates, regional downloads, and any live booking availability are outstanding. Offline map regions require their own supported implementation and rights.
 - **Comprehensive rigs and official images:** acquisition/licensing, normalized year/model/floorplan coverage, independent review, and update ownership are required. The sourcing report prepares this work; no vendor has been contacted or contracted.
-- **Release validation:** native Apple SDK type-check/build, real-device Foundation Models behavior, WeatherKit entitlement/attribution verification, accessibility and large-text checks, photos/iCloud Photos edge cases, and full airplane-mode acceptance pass.
+- **Release validation:** iOS 27 build/runtime acceptance, real-device Foundation Models behavior, WeatherKit entitlement/attribution verification, accessibility and large-text checks, photos/iCloud Photos edge cases, and full airplane-mode acceptance pass.
 
 The default entitlements request no unconfigured account, cloud, or weather services. [Validation notes](docs/validation.md#apple-capability-configuration) explain the future Apple capability setup. Enabling an entitlement alone does not implement its service.
 
@@ -64,7 +64,7 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The portable core suite currently has **24 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
+The portable core suite currently has **26 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 

@@ -92,7 +92,13 @@ final class CloudSyncController {
         } catch is CancellationError {
             status = accountNeedsReview ? "iCloud account changed. Sync is paused." : "Saved locally; sync will resume when the app is active"
         } catch {
-            if let failure = error as? ReplicationError, case .accountChanged = failure { accountNeedsReview = true }
+            if let failure = error as? ReplicationError {
+                switch failure {
+                case .accountChanged: accountNeedsReview = true
+                case .cloudLibraryRemoved: enabled = false
+                default: break
+                }
+            }
             if let ck = error as? CKError, ck.code == .quotaExceeded { status = "iCloud storage is full. Your changes are saved on this iPhone." }
             else { status = "Saved on this iPhone. \(error.localizedDescription)" }
             retrySeconds = min(300, retrySeconds * 2)

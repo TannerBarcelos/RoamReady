@@ -81,13 +81,14 @@ public struct ReplicaRecord: Codable, Equatable, Sendable {
 }
 
 public enum ReplicationError: Error, LocalizedError {
-    case invalidRecord, incompleteLibrary, accountChanged, missingAsset
+    case invalidRecord, incompleteLibrary, accountChanged, missingAsset, cloudLibraryRemoved
     public var errorDescription: String? {
         switch self {
         case .invalidRecord: "A saved or synced record has an unsupported or invalid format. Update RoamReady before trying again."
         case .incompleteLibrary: "Some related records have not arrived yet. Your saved records are preserved."
         case .accountChanged: "The iCloud account changed. Sync is paused to keep accounts separate. Your local library remains available."
         case .missingAsset: "The photo has not downloaded to this device yet."
+        case .cloudLibraryRemoved: "Your iCloud library was removed. Sync is off; your local library remains available. Enable sync explicitly to upload it again."
         }
     }
 }
@@ -119,15 +120,23 @@ public enum RecordProjection {
             add("profile:current", .profile, f); try rig(profile.rig, key: "rig:profile")
         }
         if let templates = snapshot.state.templates {
-            var f = try fields(templates); f.removeValue(forKey: "setup"); f.removeValue(forKey: "teardown")
+            let f: [String: RecordValue] = ["id": .string(templates.id.uuidString), "version": .number(Double(templates.version)), "sourceURL": .string(templates.sourceURL)]
             add("templates:current", .templates, f)
             try items(templates.setup, owner: "templates:\(templates.id)", phase: "setup")
             try items(templates.teardown, owner: "templates:\(templates.id)", phase: "teardown")
         }
         for (tripPosition, trip) in snapshot.state.trips.enumerated() {
             let key = "trip:\(trip.id)"
-            var f = try fields(trip)
-            for key in ["setup", "teardown", "photos", "rigSnapshot"] { f.removeValue(forKey: key) }
+            var f: [String: RecordValue] = [
+                "id": .string(trip.id.uuidString), "campgroundName": .string(trip.campgroundName),
+                "arrival": .number(trip.arrival.timeIntervalSinceReferenceDate), "departure": .number(trip.departure.timeIntervalSinceReferenceDate),
+                "siteNumber": .string(trip.siteNumber), "notes": .string(trip.notes), "rating": .string(trip.rating.rawValue)
+            ]
+            if let latitude = trip.latitude { f["latitude"] = .number(latitude) }
+            if let longitude = trip.longitude { f["longitude"] = .number(longitude) }
+            if let id = trip.campgroundID { f["campgroundID"] = .string(id) }
+            if let zone = trip.planningTimeZoneIdentifier { f["planningTimeZoneIdentifier"] = .string(zone) }
+            if let zone = trip.campgroundTimeZoneIdentifier { f["campgroundTimeZoneIdentifier"] = .string(zone) }
             if let value = trip.rigSnapshot { let rigKey = "rig:\(trip.id)"; try rig(value, key: rigKey); f["rigKey"] = .string(rigKey) }
             f["position"] = .number(Double(tripPosition))
             add(key, .trip, f)
@@ -149,8 +158,12 @@ public enum RecordProjection {
                 guard required.allSatisfy({ $0.string.map(allKeys.contains) ?? false }) else { throw ReplicationError.incompleteLibrary }
             }
         }
+        let itemGroups = Dictionary(grouping: active.filter { $0.kind == .checklistItem }) {
+            ($0.fields["owner"]?.string ?? "") + "|" + ($0.fields["phase"]?.string ?? "")
+        }
+        let photoGroups = Dictionary(grouping: active.filter { $0.kind == .photo }) { $0.fields["owner"]?.string ?? "" }
         func items(_ owner: String, _ phase: String) throws -> [ChecklistItem] {
-            try active.filter { $0.kind == .checklistItem && $0.fields["owner"]?.string == owner && $0.fields["phase"]?.string == phase }
+            try (itemGroups[owner + "|" + phase] ?? [])
                 .sorted { a, b in
                     let x = a.fields["position"]?.number ?? 0, y = b.fields["position"]?.number ?? 0
                     return x == y ? a.key < b.key : x < y
@@ -176,7 +189,7 @@ public enum RecordProjection {
             }
             f["setup"] = .array(try items(record.key, "setup").map { .object(try fields($0)) })
             f["teardown"] = .array(try items(record.key, "teardown").map { .object(try fields($0)) })
-            f["photos"] = .array(active.filter { $0.kind == .photo && $0.fields["owner"]?.string == record.key }
+            f["photos"] = .array((photoGroups[record.key] ?? [])
                 .sorted { ($0.fields["position"]?.number ?? 0) == ($1.fields["position"]?.number ?? 0) ? $0.key < $1.key : ($0.fields["position"]?.number ?? 0) < ($1.fields["position"]?.number ?? 0) }.map { .object($0.fields) })
             state.trips.append(try decode(Trip.self, f))
         }

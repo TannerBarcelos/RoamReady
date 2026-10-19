@@ -55,7 +55,7 @@ public final class SQLiteStore: @unchecked Sendable {
         }
     }
     public func snapshot() async throws -> LibrarySnapshot {
-        try await context.perform { [self] in try RecordProjection.snapshot(allRecords()) }
+        try await context.perform { [self] in try RecordProjection.snapshot(allRecords(projectionOnly: true)) }
     }
     public func migrateLegacy(archiveURL: URL, favorites: Set<String>) async throws -> LibrarySnapshot {
         if try await metadata("legacyMigrationV1") != nil { return try await snapshot() }
@@ -187,6 +187,13 @@ public final class SQLiteStore: @unchecked Sendable {
                     blocked.insert(doc.key); candidate[doc.key] = original[doc.key]; changed = true
                     continue
                 }
+                if doc.kind == .templates, case .array(let initial) = doc.fields["initialChecklistKeys"] {
+                    for value in initial {
+                        guard let key = value.string, candidate[key]?.deletion != nil,
+                              let previous = original[key], previous.deletion == nil, !blocked.contains(key) else { continue }
+                        blocked.insert(key); candidate[key] = previous; changed = true
+                    }
+                }
                 if let rigKey = doc.fields["rigKey"]?.string,
                    candidate[rigKey] == nil || candidate[rigKey]?.deletion != nil {
                     if let oldRig = original[rigKey], oldRig.deletion == nil, !blocked.contains(rigKey) {
@@ -296,8 +303,8 @@ public final class SQLiteStore: @unchecked Sendable {
     private static func checksum(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
     private func counter() throws -> Int64 { try meta("counter").flatMap { String(data: $0, encoding: .utf8).flatMap(Int64.init) } ?? 0 }
     private func putCounter(_ value: Int64) throws { try putMeta("counter", Data(String(value).utf8)) }
-    private func allRecords() throws -> [ReplicaRecord] {
-        try RecordKind.allCases.flatMap { kind in
+    private func allRecords(projectionOnly: Bool = false) throws -> [ReplicaRecord] {
+        try RecordKind.allCases.filter { !projectionOnly || ($0 != .asset && $0 != .noteRevision) }.flatMap { kind in
             try context.fetch(NSFetchRequest<NSManagedObject>(entityName: StoreModel.name(kind))).map { try read($0, kind) }
         }
     }
@@ -393,6 +400,10 @@ enum StoreModel {
             properties += fields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
             if kind == .asset { let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true; properties.append(bytes) }
             entity.properties = properties; entity.uniquenessConstraints = [["key"]]
+            entity.indexes = [NSFetchIndexDescription(name: name(kind) + "_outbox", elements: [
+                NSFetchIndexElementDescription(property: dirty, collationType: .binary),
+                NSFetchIndexElementDescription(property: properties[0], collationType: .binary)
+            ])]
             return entity
         }
         let meta = NSEntityDescription(); meta.name = "LocalMetadata"; meta.managedObjectClassName = "NSManagedObject"

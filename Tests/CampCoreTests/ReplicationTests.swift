@@ -54,4 +54,30 @@ final class ReplicationTests: XCTestCase {
         let r = ReplicaRecord(key: "profile:current", kind: .profile, fields: f, versions: f.mapValues { _ in .init(counter: 1, writer: "A") })
         XCTAssertThrowsError(try RecordProjection.snapshot([r]))
     }
+    func testConcurrentTemplateGenerationsDoNotUnionTwoSetsOfDefaultSteps() throws {
+        let a = ChecklistFactory.templates(for: Rig())
+        let b = ChecklistFactory.templates(for: Rig())
+        let left = try RecordProjection.documents(LibrarySnapshot(state: AppState(templates: a)))
+        let right = try RecordProjection.documents(LibrarySnapshot(state: AppState(templates: b)))
+        var all: [String: ReplicaRecord] = [:]
+        for (documents, writer) in [(left, "A"), (right, "B")] {
+            for (key, value) in documents {
+                var document = value
+                document.versions = value.fields.mapValues { _ in .init(counter: 1, writer: writer) }
+                all[key] = try all[key].map { try $0.merging(document) } ?? document
+            }
+        }
+        let restored = try RecordProjection.snapshot(Array(all.values))
+        XCTAssertEqual(restored.state.templates, b)
+        XCTAssertEqual(restored.state.templates?.setup.count, b.setup.count)
+    }
+    func testMissingInitialChecklistMemberRejectsPartialProjection() throws {
+        let rig = Rig()
+        let trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 0), departure: Date(timeIntervalSince1970: 1), rig: rig)
+        var documents = try RecordProjection.documents(LibrarySnapshot(state: AppState(trips: [trip])))
+        let key = "trip:\(trip.id)"
+        documents[key]?.fields["initialChecklistKeys"] = .array([.string("checklistItem:missing")])
+        XCTAssertThrowsError(try RecordProjection.snapshot(Array(documents.values)))
+    }
+
 }
