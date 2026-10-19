@@ -10,7 +10,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		CA0000000000000000000002 /* Roam Ready.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Roam Ready.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA0000000000000000000002 /* RoamReady.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RoamReady.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -52,7 +52,7 @@
 		};
 		CA0000000000000000000007 /* Products */ = {
 			isa = PBXGroup;
-			children = (CA0000000000000000000002 /* Roam Ready.app */,);
+			children = (CA0000000000000000000002 /* RoamReady.app */,);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -68,8 +68,8 @@
 			fileSystemSynchronizedGroups = (CA0000000000000000000004 /* Camp */,);
 			name = Camp;
 			packageProductDependencies = (CA0000000000000000000012 /* CampCore */,);
-			productName = "Roam Ready";
-			productReference = CA0000000000000000000002 /* Roam Ready.app */;
+			productName = "RoamReady";
+			productReference = CA0000000000000000000002 /* RoamReady.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -88,7 +88,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (en, Base,);
 			mainGroup = CA0000000000000000000006;
-			name = "Roam Ready";
+			name = "RoamReady";
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (CA0000000000000000000013 /* XCLocalSwiftPackageReference . */,);
 			preferredProjectObjectVersion = 77;
@@ -166,7 +166,7 @@
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReady;
-				PRODUCT_NAME = "Roam Ready";
+				PRODUCT_NAME = "RoamReady";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -187,7 +187,7 @@
 				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks",);
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReady;
-				PRODUCT_NAME = "Roam Ready";
+				PRODUCT_NAME = "RoamReady";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;

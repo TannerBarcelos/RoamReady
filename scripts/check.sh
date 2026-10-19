@@ -86,10 +86,10 @@ assert "relativePath = .;" in project
 assert "IPHONEOS_DEPLOYMENT_TARGET = 27.0;" in project
 assert "SWIFT_DEFAULT_ACTOR_ISOLATION" not in project, "Do not implicitly isolate all app declarations"
 assert (root / "Package.swift").is_file()
-scheme = ET.parse(root / "RoamReady.xcodeproj/xcshareddata/xcschemes/Roam Ready.xcscheme")
+scheme = ET.parse(root / "RoamReady.xcodeproj/xcshareddata/xcschemes/RoamReady.xcscheme")
 for reference in scheme.iter("BuildableReference"):
     assert reference.attrib["BlueprintIdentifier"] in definitions
-    assert reference.attrib["BuildableName"] == "Roam Ready.app"
+    assert reference.attrib["BuildableName"] == "RoamReady.app"
     assert reference.attrib["ReferencedContainer"] == "container:RoamReady.xcodeproj"
 
 sources = sorted((root / "Camp").rglob("*.swift"))
@@ -111,7 +111,7 @@ if [[ "${1:-}" == "--native" ]]; then
     exit 1
   fi
   plutil -lint RoamReady.xcodeproj/project.pbxproj Camp/Info.plist Camp/Camp.entitlements
-  xcodebuild -project RoamReady.xcodeproj -scheme "Roam Ready" -configuration Debug \
+  xcodebuild -project RoamReady.xcodeproj -scheme "RoamReady" -configuration Debug \
     -destination 'generic/platform=iOS Simulator' \
     -derivedDataPath "$TASK_ROOT/.derivedData" \
     CODE_SIGNING_ALLOWED=NO build

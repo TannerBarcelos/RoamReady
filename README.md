@@ -1,4 +1,4 @@
-# Roam Ready
+# RoamReady
 
 A native SwiftUI iOS app following the approved **A · System-first** design: system lists, clear checklist progress, four native tabs, semantic colors, and automatic light/dark appearance. The app deployment target is **iOS 27.0**. Standard SwiftUI navigation and tab controls provide the system's Liquid Glass styling.
 
@@ -7,7 +7,7 @@ A native SwiftUI iOS app following the approved **A · System-first** design: sy
 ## Run
 
 1. Open `RoamReady.xcodeproj` on a Mac with the iOS 27 SDK.
-2. Select the shared **Roam Ready** scheme and an iOS 27 simulator.
+2. Select the shared **RoamReady** scheme and an iOS 27 simulator.
 3. Build and run. On a physical device, choose your development team and replace `com.example.RoamReady` with your registered bundle identifier.
 
 There are no third-party app dependencies. The Xcode project references the local `CampCore` Swift package. XcodeGen is optional; the checked-in project opens directly. See [build and validation instructions](docs/validation.md).

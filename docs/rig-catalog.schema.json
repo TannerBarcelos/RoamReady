@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Roam Ready rig catalog v1",
+  "title": "RoamReady rig catalog v1",
   "type": "object",
   "required": [
     "schemaVersion",

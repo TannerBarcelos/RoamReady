@@ -50,7 +50,7 @@ struct AppRoot: View {
             Button("Retry") { store.retrySave() }
             Button("Keep editing", role: .cancel) { }
         } message: {
-            Text(store.saveFailure ?? "Your changes are still in memory. Try saving again before closing Roam Ready.")
+            Text(store.saveFailure ?? "Your changes are still in memory. Try saving again before closing RoamReady.")
         }
     }
 }

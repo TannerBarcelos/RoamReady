@@ -29,7 +29,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.RoamReady
-        PRODUCT_NAME: Roam Ready
+        PRODUCT_NAME: RoamReady
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
         CODE_SIGN_STYLE: Automatic
@@ -42,7 +42,7 @@ targets:
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
 schemes:
-  Roam Ready:
+  RoamReady:
     build:
       targets:
         Camp: all
