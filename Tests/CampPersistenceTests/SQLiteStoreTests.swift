@@ -13,7 +13,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
     }
     private func library() throws -> LibrarySnapshot {
         let rig = Rig(make: "Test", model: "Trailer")
-        let trip = try Trip.create(campgroundName: "Pines", arrival: .now, departure: .now.addingTimeInterval(86_400), rig: rig)
+        let trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000), departure: Date(timeIntervalSince1970: 1_750_086_400), rig: rig)
         return LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig), trips: [trip], templates: ChecklistFactory.templates(for: rig)), favorites: ["ridb-232447"])
     }
     func testSQLiteSaveCloseReopenAndExport() async throws {
@@ -35,7 +35,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         let d = try directory(); var original = try library()
         let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
         let bytes = Data([1, 2, 3, 4]); try bytes.write(to: media.appendingPathComponent("photo.jpg"))
-        original.state.trips[0].photos = [TripPhoto(filename: "photo.jpg")]
+        original.state.trips[0].photos = [TripPhoto(filename: "photo.jpg", createdAt: Date(timeIntervalSince1970: 1_750_000_000))]
         let legacy = FileAppStore(directory: d); try await legacy.save(original.state)
         let source = d.appendingPathComponent("camp-state.json"), oldBytes = try Data(contentsOf: source)
         let store = try await SQLiteStore.open(directory: d)

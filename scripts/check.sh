@@ -94,8 +94,7 @@ for reference in scheme.iter("BuildableReference"):
 
 sources = sorted((root / "Camp").rglob("*.swift"))
 assert sources, "No native app source files found"
-for source in sources:
-    subprocess.run([os.environ["SWIFTC_BIN"], "-frontend", "-parse", str(source)], check=True)
+subprocess.run([os.environ["SWIFTC_BIN"], "-frontend", "-parse"] + [str(source) for source in sources], check=True)
 print(f"Validated plists, {len(json_files)} JSON files, {len(record_ids)} catalog records, project references, shared scheme.")
 print(f"Parsed syntax of {len(sources)} native Swift source files. Apple SDK APIs were NOT type-checked.")
 PY
