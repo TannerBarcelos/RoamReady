@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "coverageNote": "Starter directory: 3 sourced US campgrounds. These campground records work offline; map tiles and booking sites need connectivity. Check the specific site's current restrictions before booking.",
+  "campgrounds": [
+    {
+      "id": "ridb-232447",
+      "name": "Upper Pines Campground",
+      "region": "Yosemite National Park · California",
+      "latitude": 37.7361111,
+      "longitude": -119.5625,
+      "amenities": {
+        "electricHookup": false,
+        "amp30": false,
+        "amp50": false,
+        "waterHookup": false,
+        "sewerHookup": false,
+        "dumpStation": true,
+        "showers": false
+      },
+      "supportedRigTypes": [
+        "travelTrailer",
+        "fifthWheel",
+        "motorhome",
+        "camperVan",
+        "truckCamper",
+        "popUp",
+        "carCamping",
+        "tent"
+      ],
+      "maximumMotorhomeFeet": 35,
+      "maximumTrailerFeet": 24,
+      "nightlyPriceUSD": null,
+      "notes": "Length limits vary by individual site. Drinking water and restrooms are shared; no utility hookups at sites. Showers are available outside the campground. Confirm your equipment fits your reserved site.",
+      "sourceURL": "https://www.nps.gov/yose/planyourvisit/pinescampgrounds.htm",
+      "checkedAt": "2026-10-19",
+      "timeZoneIdentifier": "America/Los_Angeles"
+    },
+    {
+      "id": "ridb-232445",
+      "name": "Watchman Campground",
+      "region": "Zion National Park · Utah",
+      "latitude": 37.1986111,
+      "longitude": -112.9863889,
+      "amenities": {
+        "electricHookup": true,
+        "amp30": true,
+        "amp50": true,
+        "waterHookup": false,
+        "sewerHookup": false,
+        "dumpStation": true
+      },
+      "supportedRigTypes": [
+        "travelTrailer",
+        "fifthWheel",
+        "motorhome",
+        "camperVan",
+        "truckCamper",
+        "popUp",
+        "carCamping",
+        "tent"
+      ],
+      "maximumMotorhomeFeet": null,
+      "maximumTrailerFeet": null,
+      "nightlyPriceUSD": null,
+      "notes": "Electric hookups are available at selected sites; only a handful provide 50 amp. No full-hookup sites. Potable water and a dump station are shared. Some loops are tent-only; verify the individual site's equipment and length limits.",
+      "sourceURL": "https://www.recreation.gov/camping/campgrounds/232445",
+      "checkedAt": "2026-10-19",
+      "timeZoneIdentifier": "America/Denver"
+    },
+    {
+      "id": "ridb-232508",
+      "name": "Blackwoods Campground",
+      "region": "Acadia National Park · Maine",
+      "latitude": 44.3097222,
+      "longitude": -68.2080556,
+      "amenities": {
+        "electricHookup": false,
+        "amp30": false,
+        "amp50": false,
+        "waterHookup": false,
+        "sewerHookup": false,
+        "dumpStation": true,
+        "showers": false
+      },
+      "supportedRigTypes": [
+        "travelTrailer",
+        "fifthWheel",
+        "motorhome",
+        "camperVan",
+        "truckCamper",
+        "popUp",
+        "carCamping",
+        "tent"
+      ],
+      "maximumMotorhomeFeet": null,
+      "maximumTrailerFeet": null,
+      "nightlyPriceUSD": null,
+      "notes": "Most sites serve tents; some accommodate RVs. Flush toilets, shared drinking water, and a dump station are provided. No showers or hookups. Reservations and seasonal opening dates must be checked with the operator.",
+      "sourceURL": "https://www.recreation.gov/camping/campgrounds/232508",
+      "checkedAt": "2026-10-19",
+      "timeZoneIdentifier": "America/New_York"
+    }
+  ]
+}

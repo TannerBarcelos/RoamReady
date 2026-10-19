@@ -1,0 +1,17 @@
+# Camp Finder starter directory
+
+Checked 2026-10-19. This is a small development dataset of three real US campgrounds, not comprehensive finder coverage. No photos, live availability, prices, reviews, booking inventory, or inferred accessibility/pet/pull-through attributes are included. Unknown attributes remain absent/null and fail positive filters.
+
+| Record | Official information | Coordinate source | Notes |
+| --- | --- | --- | --- |
+| Upper Pines | [NPS Pines campgrounds](https://www.nps.gov/yose/planyourvisit/pinescampgrounds.htm), [NPS campground table](https://www.nps.gov/yose/planyourvisit/campgrounds.htm), [Recreation.gov](https://www.recreation.gov/camping/campgrounds/232447) | Recreation.gov public campground response, facility 232447: 37.7361111, -119.5625 | Campground maxima 35 ft motorhome / 24 ft trailer; individual sites can be shorter. No utility hookups; shared drinking water and dump station. Showers outside campground do not satisfy an on-site shower filter. |
+| Watchman | [NPS Watchman](https://www.nps.gov/zion/planyourvisit/watchman-campground.htm), [Recreation.gov](https://www.recreation.gov/camping/campgrounds/232445) | Recreation.gov public campground response, facility 232445: 37.1986111, -112.9863889 | Standard electric sites in A/B loops; 30 amp and a limited number of 50 amp sites. No full hookups. Shared dump station and potable water. Other loops and individual sites have different equipment restrictions. |
+| Blackwoods | [NPS Blackwoods](https://www.nps.gov/acad/planyourvisit/blackwoods-campground.htm), [Recreation.gov](https://www.recreation.gov/camping/campgrounds/232508) | Recreation.gov public campground response, facility 232508: 44.3097222, -68.2080556 | Shared drinking water, restrooms, dump station; no hookups or on-site showers. Nearby fee showers do not satisfy on-site shower filters. Overall RV length limits were left unknown rather than generalizing from one site's maximum. |
+
+The public responses used for research were `https://www.recreation.gov/api/camps/campgrounds/{facilityID}`. These are not used as the app's production API or scraped on launch. Source text has been summarized in original notes. No service credentials or access controls were bypassed.
+
+Time zone identifiers are geographic interpretations for these three known locations: America/Los_Angeles, America/Denver, and America/New_York. They are used to match destination forecasts to the user's chosen civil dates. Map pins describe campground locations, not driving directions or individual sites.
+
+Supported rig categories mean the campground offers some sites in those broad categories; they do not guarantee that any chosen site accepts that equipment. Unknown size limits are excluded when a minimum length is specified. Attributes marked available mean available somewhere in the campground. Confirm the reservation's exact site details before booking.
+
+Production work: choose/contract a structured campground provider (including government/private coverage), agree caching and offline redistribution rights, retain field-level provenance and timestamps, ingest records and site-level distinctions, provide signed/versioned regional updates, and separately implement supported offline mapping. Do not assume that map regions downloaded in Apple Maps are usable inside this app. The current native map is online; the offline directory works independently of it.

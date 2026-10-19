@@ -1,0 +1,54 @@
+# Optional XcodeGen regeneration specification. The checked-in .xcodeproj opens directly.
+name: RoamReady
+options:
+  minimumXcodeGenVersion: 2.42.0
+  deploymentTarget:
+    iOS: "27.0"
+packages:
+  CampCore:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    CLANG_ENABLE_MODULES: YES
+    CLANG_ENABLE_OBJC_ARC: YES
+targets:
+  Camp:
+    type: application
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: Camp
+        excludes:
+          - Info.plist
+          - Camp.entitlements
+    dependencies:
+      - package: CampCore
+        product: CampCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.RoamReady
+        PRODUCT_NAME: Roam Ready
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_ENTITLEMENTS: Camp/Camp.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Camp/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+schemes:
+  Roam Ready:
+    build:
+      targets:
+        Camp: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    archive:
+      config: Release
