@@ -145,8 +145,10 @@ struct RigFormSections: View {
                 HStack(spacing: 16) {
                     RigImage(rig: rig, size: 72)
                     VStack(alignment: .leading, spacing: 10) {
+                        // The picker's label closure is Sendable; capture a value, not the binding.
+                        let photoTitle = rig.photoFilename == nil ? "Add a photo" : "Change photo"
                         PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label(rig.photoFilename == nil ? "Add a photo" : "Change photo", systemImage: "photo")
+                            Label(photoTitle, systemImage: "photo")
                         }.disabled(importing)
                         if importing { ProgressView("Saving photo…") }
                         if rig.photoFilename != nil {
