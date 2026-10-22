@@ -11,6 +11,8 @@ final class CampStore {
     private(set) var savedCampgroundIDs: Set<String> = []
     private(set) var libraryNotice: String?
     private(set) var mediaRevision = 0
+    /// Metadata for every active document. Bytes stay in the store until a document is opened.
+    private(set) var documents: [ManagedDocument] = []
     let sync = CloudSyncController()
     private(set) var isLoading = true
     private(set) var loadFailure: String?
@@ -20,6 +22,7 @@ final class CampStore {
     private(set) var lastSavedAt: Date?
     let directory: URL
     let media: MediaStore
+    let documentFiles: DocumentFileCache
     let catalog: [RigCatalogRecord]
     let catalogNotice: String
     @ObservationIgnored private var disk: SQLiteStore?
@@ -42,6 +45,7 @@ final class CampStore {
     init() {
         directory = URL.applicationSupportDirectory.appendingPathComponent("Camp", isDirectory: true)
         media = MediaStore(directory: directory.appendingPathComponent("Media", isDirectory: true))
+        documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appendingPathComponent("RoamReadyDocuments", isDirectory: true))
         if let url = Bundle.main.url(forResource: "rig-catalog", withExtension: "json"),
            let data = try? Data(contentsOf: url),
            let decoded = try? RigCatalog.decode(data) {
@@ -100,7 +104,10 @@ final class CampStore {
                 restored = try await database.snapshot()
             }
             let notice = try await database.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
+            // A document listing problem must not block access to trips.
+            let loadedDocuments = (try? await database.documents(ownedBy: nil)) ?? []
             guard generation == libraryGeneration else { return }
+            documents = loadedDocuments
             suspendedUnsaved = nil; saveFailure = nil; presentsSaveFailure = false
             baseline = restored; state = restored.state; savedCampgroundIDs = restored.favorites
             libraryNotice = notice
@@ -122,6 +129,7 @@ final class CampStore {
             if let disk { try? await disk.close() }
             disk = nil; didLoad = false; baseline = LibrarySnapshot()
             state = AppState(); savedCampgroundIDs = []; mediaRevision += 1
+            documents = []; documentFiles.removeAll()
             loadFailure = nil; presentsSaveFailure = false; isLoading = false
             isTransitioning = false
         }
@@ -189,6 +197,7 @@ final class CampStore {
         do {
             let fresh = try await disk.snapshot()
             let notice = try await disk.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
+            if let latest = try? await disk.documents(ownedBy: nil), generation == libraryGeneration { documents = latest }
             guard revision == saveRevision, generation == libraryGeneration, wantsLibraryAccess, !isTransitioning, saveTask == nil else { return }
             baseline = fresh; state = fresh.state; savedCampgroundIDs = fresh.favorites
             libraryNotice = notice; mediaRevision += 1
@@ -196,6 +205,64 @@ final class CampStore {
             guard generation == libraryGeneration, wantsLibraryAccess else { return }
             libraryNotice = "Waiting for related records. Your current library is preserved. \(error.localizedDescription)"
         }
+    }
+
+    // MARK: Documents
+
+    func documents(for owner: DocumentOwner) -> [ManagedDocument] { documents.filter { $0.owner == owner } }
+    func document(_ id: UUID) -> ManagedDocument? { documents.first { $0.id == id } }
+
+    /// Documents whose trip was deleted or whose rig was replaced. They stay until deleted deliberately.
+    var unattachedDocuments: [ManagedDocument] {
+        documents.filter { document in
+            document.owner.kind == .trip ? trip(document.owner.id) == nil : document.owner.id != state.profile?.rig.id
+        }
+    }
+
+    private func documentRepository() throws -> SQLiteStore {
+        guard didLoad, !isTransitioning, wantsLibraryAccess, let disk else { throw CampUIError.libraryBusy }
+        return disk
+    }
+
+    @discardableResult
+    func addDocument(_ draft: DocumentDraft) async throws -> ManagedDocument {
+        let added = try await documentRepository().addDocument(draft)
+        await reloadDocuments()
+        return added
+    }
+
+    func updateDocument(_ id: UUID, metadata: DocumentMetadata) async throws {
+        try await documentRepository().updateDocument(id: id, metadata: metadata)
+        await reloadDocuments()
+    }
+
+    /// Explicit user action: download a link's contents so it opens offline.
+    func saveLinkedContentsOffline(_ id: UUID) async throws {
+        guard let link = document(id)?.link else { throw DocumentError.notALink }
+        let repository = try documentRepository()
+        let download = try await DocumentImport.download(link)
+        try await repository.attachContent(toDocument: id, bytes: download.data, filename: download.filename)
+        await reloadDocuments()
+    }
+
+    func deleteDocument(_ id: UUID) async throws {
+        try await documentRepository().deleteDocument(id: id)
+        await reloadDocuments()
+    }
+
+    /// A readable file containing the verified original bytes, rebuilt from the store if needed.
+    func documentFileURL(_ id: UUID) async throws -> URL {
+        guard let file = document(id)?.file else { throw DocumentError.linkOnly }
+        if let cached = documentFiles.cachedURL(for: file) { return cached }
+        let contents = try await documentRepository().contents(ofDocument: id)
+        return try await documentFiles.write(contents)
+    }
+
+    private func reloadDocuments() async {
+        guard let disk else { return }
+        let generation = libraryGeneration
+        guard let latest = try? await disk.documents(ownedBy: nil), generation == libraryGeneration, wantsLibraryAccess else { return }
+        documents = latest
     }
 
     func finishOnboarding(_ profile: CamperProfile) {

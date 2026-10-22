@@ -187,6 +187,13 @@ struct TripDetailView: View {
                         NavigationLink { MemoriesView(tripID: tripID) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
                         if trip.rating != .unrated { Label(trip.rating.title, systemImage: trip.rating == .wouldReturn ? "heart" : "hand.thumbsdown") }
                     }
+                    Section("Paperwork") {
+                        NavigationLink { DocumentsView(owner: .trip(tripID), title: "Trip documents") } label: {
+                            LabeledContent { Text(String(store.documents(for: .trip(tripID)).count)) } label: {
+                                Label("Reservations & documents", systemImage: "doc.on.doc")
+                            }
+                        }
+                    }
                     Section { Button("Ask for camping help", systemImage: "sparkles") { showAssistant = true } }
                 }
                 .navigationTitle(trip.campgroundName)
@@ -204,6 +211,10 @@ struct TripDetailView: View {
         }
         .confirmationDialog("Delete this trip and its checklist history?", isPresented: $showDelete, titleVisibility: .visible) {
             Button("Delete trip", role: .destructive) { store.deleteTrip(tripID); dismiss() }
+        } message: {
+            if !store.documents(for: .trip(tripID)).isEmpty {
+                Text("Its documents move to Profile › Unattached documents until you delete them.")
+            }
         }
     }
 }

@@ -36,7 +36,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
     func testMirroredModelMeetsCloudKitRequirementsAndKeepsMetadataLocal() {
         let model = ManagedStoreModel.make()
         let mirrored = model.entities(forConfigurationName: "Library")!
-        XCTAssertEqual(mirrored.count, RecordKind.allCases.count)
+        XCTAssertEqual(mirrored.count, ManagedStoreModel.v2RecordKinds.count + 2)
         XCTAssertFalse(mirrored.contains { $0.name == "LocalMetadata" })
         XCTAssertEqual(model.entities(forConfigurationName: "Device")?.map(\.name), ["LocalMetadata"])
         for entity in mirrored {
@@ -44,6 +44,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
             XCTAssertTrue(entity.attributesByName.values.allSatisfy { $0.isOptional || $0.defaultValue != nil })
             XCTAssertNil(entity.attributesByName["clocks"])
             XCTAssertNil(entity.attributesByName["dirty"])
+            XCTAssertTrue(entity.relationshipsByName.isEmpty)
         }
         XCTAssertEqual(mirrored.first { $0.name == "RR_asset" }?.attributesByName["bytes"]?.allowsExternalBinaryDataStorage, true)
     }

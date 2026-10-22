@@ -20,6 +20,7 @@ There are no third-party app dependencies. The Xcode project references the loca
 | Home | Featured trip, checklist progress, trip memories, local save status, and quick trip creation. |
 | Plan | Create, edit, and delete trips; date validation; optional site number; known destination location; upcoming and past lists. |
 | Checklists | Every trip receives independent setup/teardown snapshots. Complete, uncheck, skip, add, rename, annotate, delete, and reorder steps. Save a trip's lists as reusable defaults or edit defaults from Profile. |
+| Documents | Rig manuals, registration, insurance, warranties, and trip reservations as PDF/image uploads or HTTPS links, from onboarding or later. Titles, categories, notes, issue/expiration dates; Quick Look preview, sharing, and confirmed deletion. Uploaded originals are preserved byte-for-byte and open offline; links stay online-only until a copy is saved. One shared API for future features. See [document vault](docs/document-vault.md). |
 | Memories | Offline native camera capture and local photo import, bounded image resizing, captions, sharing, site number, site notes, and a return/avoid rating. Previous memories appear in the matching campground detail. |
 | Camp Finder | Online-gated native MapKit map and federal campground/site snapshot downloads; saved campgrounds; combined equipment, hookup, amenity, length, and budget filters. Unknown data never silently satisfies a requirement. |
 | Profile | Edit profile/rig, manage templates, restore curated defaults, view storage status, and export metadata JSON. Cosmetic rig changes preserve customized defaults. |
@@ -63,13 +64,13 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The portable core suite currently has **30 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
+The portable core suite currently has **38 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, document type detection/validation/link rules, photo path safety, campground unknown-value and length filtering, rig snapshots, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 
 - `Camp/`: native SwiftUI screens, photo storage, WeatherKit and Foundation Models adapters, and bundled data.
-- `Sources/CampCore/`: portable Foundation-only domain, original checklist templates, filters, date rules, and atomic archive store.
-- `Sources/CampPersistence/`: native SQLite transactions, legacy migration, media assets, durable sync queue, and private CloudKit transport.
+- `Sources/CampCore/`: portable Foundation-only domain, original checklist templates, filters, date rules, atomic archive store, and the shared `DocumentRepository` contract.
+- `Sources/CampPersistence/`: Core Data store, frozen model versions and explicit migration, media assets, and the document vault.
 - `Tests/CampCoreTests/` and `Tests/CampPersistenceTests/`: domain/merge tests and Apple-only persistence integration tests.
 - `docs/`: acquisition research, build instructions, source coverage, and integration plan.
 - `scripts/`: repeatable validation.
