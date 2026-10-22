@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import CloudKit
 import CoreData
+import CampCore
 import CampPersistence
 
 /// Observes Apple's mirroring events. No polling, upload queue, tokens, or retry scheduler.
@@ -16,7 +17,6 @@ final class CloudSyncController {
     private(set) var waitingForConnection = false
     let containerIdentifier: String?
     var configured: Bool { containerIdentifier != nil }
-    var requiresRestart: Bool { requested != enabled && !waitingForConnection && !accountNeedsReview }
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private var activeEvents: Set<UUID> = []
     @ObservationIgnored private var refresh: (@MainActor () async -> Void)?
@@ -31,7 +31,8 @@ final class CloudSyncController {
         // A new container is required: managed mirroring cannot adopt the old custom schema.
         let id = (Bundle.main.object(forInfoDictionaryKey: "RoamReadyMirroringContainerIdentifier") as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         containerIdentifier = id.hasPrefix("iCloud.") && !id.contains("$(") ? id : nil
-        requested = configured && UserDefaults.standard.bool(forKey: Self.preference)
+        requested = CloudSyncPolicy.isRequested(configured: configured,
+                                                storedPreference: UserDefaults.standard.object(forKey: Self.preference) as? Bool)
         if !configured { status = "iCloud sync isn’t available in this build" }
     }
     func configure(store: SQLiteStore, suspendMirroring: @escaping @MainActor () async -> Void, refresh: @escaping @MainActor () async -> Void) async {
@@ -70,52 +71,62 @@ final class CloudSyncController {
         })
         await checkAccount()
     }
-    /// Verify the separately approved iCloud identity before opening a mirrored coordinator.
-    /// Failure only pauses cloud access; it must never prevent offline trip access.
+    /// Sync is on by default. The first sync binds this library to the signed-in iCloud account,
+    /// and later launches sync only for that account. Failure only pauses cloud access; it must
+    /// never prevent offline trip access.
     func containerForLaunch(store: SQLiteStore, online: Bool) async -> String? {
-        waitingForConnection = false
-        guard requested, let containerIdentifier else { return nil }
-        guard online else {
-            waitingForConnection = true
-            status = "Saved on this iPhone. iCloud will resume when connected."
+        waitingForConnection = false; accountNeedsReview = false
+        guard let containerIdentifier else { return nil }
+        let pinned: String?
+        do { pinned = try await store.metadata("approvedCloudUser").flatMap { String(data: $0, encoding: .utf8) } }
+        catch { pinned = nil }
+        // Skip the CloudKit account lookup entirely when sync is off.
+        let identity: CloudSyncPolicy.Identity
+        if requested && online { identity = await Self.identity(containerIdentifier) } else { identity = .unavailable }
+        switch CloudSyncPolicy.launchDecision(requested: requested, pinnedUser: pinned, identity: identity) {
+        case .localOnly:
+            status = "iCloud sync is off"
             return nil
-        }
-        do {
-            guard let bytes = try await store.metadata("approvedCloudUser"), let approved = String(data: bytes, encoding: .utf8) else {
-                accountNeedsReview = true
-                status = "Approve your iCloud account to enable synchronization."
+        case .waitForConnection:
+            waitingForConnection = true
+            status = "Saved on this iPhone. iCloud sync will start when you’re connected."
+            return nil
+        case .noAccount:
+            accountNeedsReview = true
+            status = "Sign in to iCloud in Settings, and allow RoamReady to use iCloud, to sync. Your trips stay on this iPhone."
+            return nil
+        case .accountMismatch:
+            accountNeedsReview = true
+            status = "This library belongs to a different iCloud account. Sign in to that account to sync; your trips stay on this iPhone."
+            return nil
+        case .pinAndSync(let current):
+            do { try await store.setMetadata("approvedCloudUser", value: Data(current.utf8)) }
+            catch {
+                status = "Saved on this iPhone. iCloud sync will try again next time."
                 return nil
             }
-            let current = try await CKContainer(identifier: containerIdentifier).userRecordID().recordName
-            guard approved == current else {
-                accountNeedsReview = true
-                status = "This library uses a different iCloud account. Sign in to its original iCloud account to sync."
-                return nil
-            }
-            accountNeedsReview = false
             return containerIdentifier
-        } catch {
-            waitingForConnection = true
-            status = "Saved on this iPhone. iCloud identity will be checked when connected."
-            return nil
+        case .sync:
+            return containerIdentifier
         }
     }
-    func enable() async {
-        guard let containerIdentifier, let disk, !busy else { return }
-        busy = true
-        defer { busy = false }
+    private static func identity(_ containerIdentifier: String) async -> CloudSyncPolicy.Identity {
+        let container = CKContainer(identifier: containerIdentifier)
         do {
-            let current = try await CKContainer(identifier: containerIdentifier).userRecordID().recordName
-            if let bytes = try await disk.metadata("approvedCloudUser"), String(data: bytes, encoding: .utf8) != current {
-                accountNeedsReview = true
-                status = "This library belongs to another iCloud account. Sync remains paused; your local trips are available."
-                return
+            let status = try await container.accountStatus()
+            switch status {
+            case .available: return .signedIn(try await container.userRecordID().recordName)
+            case .noAccount, .restricted: return .noAccount
+            default: return .unavailable
             }
-            try await disk.setMetadata("approvedCloudUser", value: Data(current.utf8))
-            requested = true; accountNeedsReview = false
-            UserDefaults.standard.set(true, forKey: Self.preference)
-            status = enabled ? "iCloud manages synchronization automatically" : "iCloud sync will turn on after restarting RoamReady."
-        } catch { status = "Connect to iCloud to enable sync. Your trips remain saved locally." }
+        } catch { return .unavailable }
+    }
+    /// Stores the preference. `CampStore.setCloudSync` reopens the library so it applies immediately.
+    func setRequested(_ value: Bool) {
+        guard configured else { return }
+        requested = value
+        UserDefaults.standard.set(value, forKey: Self.preference)
+        status = value ? "Turning on iCloud sync…" : "iCloud sync is off"
     }
     func tearDown() {
         observationGeneration = UUID()
@@ -123,10 +134,6 @@ final class CloudSyncController {
         observers.removeAll(); accountTask?.cancel(); accountTask = nil
         activeEvents.removeAll(); busy = false; enabled = false
         disk = nil; refresh = nil; suspendMirroring = nil; configuredStore = false
-    }
-    func disable() async {
-        requested = false; UserDefaults.standard.set(false, forKey: Self.preference)
-        status = enabled ? "iCloud sync will turn off next time you open the app after closing it. Sync remains on until then." : "iCloud sync is off"
     }
     func setActive(_ value: Bool) {
         guard value else { return }

@@ -3,7 +3,7 @@ import XCTest
 
 final class StorageProjectionTests: XCTestCase {
     func testProjectionRoundTripPreservesTripItemAndPhotoOrdering() throws {
-        let rig = Rig(make: "Airstream", model: "Classic", year: 2025)
+        let rig = Rig(make: "Airstream", model: "Classic", year: 2025, lengthFeet: 30.5, slideCount: 1, axleCount: 2, hasBunkhouse: false)
         var a = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_000), departure: Date(timeIntervalSince1970: 2_000), rig: rig)
         a.photos = [TripPhoto(filename: "b.jpg", caption: "First"), TripPhoto(filename: "a.jpg", caption: "Second")]
         let b = try Trip.create(campgroundName: "Watchman", arrival: a.arrival, departure: a.departure, rig: rig)

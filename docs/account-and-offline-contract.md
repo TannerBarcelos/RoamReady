@@ -24,7 +24,7 @@ Account deletion, Apple token revocation through a backend, server-side account 
 
 A Sign in with Apple subject is not a CloudKit user record ID. Core Data mirroring uses the device's iCloud account, independently approved for this library. The approved container-specific record name is device-only metadata; it is never compared to the Sign in with Apple subject.
 
-Before opening a mirrored store, the controller verifies that the current iCloud identity matches the approved one. If unavailable, the app opens locally and retries approval when connectivity returns; it never blocks the pinned user's offline trips. An identity mismatch leaves sync paused and cannot automatically rebind the library. A CKAccountChanged notification schedules mirroring teardown and local-only reopen. Existing app data is not deliberately deleted by this transition.
+Sync is on by default. On the first sync the current iCloud identity is pinned without a prompt. Before opening a mirrored store, the controller verifies that the current iCloud identity matches the pinned one. If unavailable, the app opens locally and retries when connectivity returns; it never blocks the pinned user's offline trips. An identity mismatch leaves sync paused and cannot automatically rebind the library. A CKAccountChanged notification schedules mirroring teardown and local-only reopen. Existing app data is not deliberately deleted by this transition.
 
 This is best-effort coordination around Apple's managed lifecycle, not a guarantee that a previously in-flight transfer can be undone. Signout/switch behavior, cache retention, and account separation still require signed, two-device acceptance. Do not claim production account isolation based on source review or simulator compilation alone.
 

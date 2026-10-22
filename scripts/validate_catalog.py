@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Validate Camp's offline rig export using Python's standard library.
+"""Validate the research rig-identity export using Python's standard library.
+
+The v1 app does not ship this catalog; rigs are entered by their owners.
 
 This checks the export contract, not factual source accuracy or legal clearance.
 Run from any directory: python3 scripts/validate_catalog.py [catalog.json]
@@ -140,7 +142,7 @@ def validate(data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('catalog', nargs='?', type=Path,
-                        default=ROOT / 'Camp/Resources/rig-catalog.json')
+                        default=ROOT / 'data/catalog/nhtsa-products/combined-catalog.json')
     args = parser.parse_args()
     try:
         data = json.loads(args.catalog.read_text(encoding='utf-8'))

@@ -48,4 +48,15 @@ final class CampgroundFilterTests: XCTestCase {
                    maximumMotorhomeFeet: motorhomeLimit, maximumTrailerFeet: trailerLimit,
                    nightlyPriceUSD: price, sourceURL: "https://www.nps.gov/", checkedAt: "2026-10-19")
     }
+
+    func testUseMyRigMatchesTypeAndKnownLength() {
+        var filter = CampgroundFilter()
+        filter.use(Rig(type: .travelTrailer, lengthFeet: 19.5))
+        XCTAssertEqual(filter.rigType, .travelTrailer); XCTAssertEqual(filter.minimumRigLengthFeet, 19.5)
+        filter.minimumRigLengthFeet = 30
+        filter.use(Rig(type: .motorhome))
+        XCTAssertEqual(filter.rigType, .motorhome); XCTAssertEqual(filter.minimumRigLengthFeet, 30, "An unknown length keeps the typed filter")
+        filter.use(Rig(type: .tent, lengthFeet: 10))
+        XCTAssertEqual(filter.rigType, .tent); XCTAssertNil(filter.minimumRigLengthFeet)
+    }
 }
