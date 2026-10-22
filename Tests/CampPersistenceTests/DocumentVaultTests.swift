@@ -82,6 +82,11 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         }
         XCTAssertEqual(model.entitiesByName[ManagedStoreModel.documentContentEntity]?.attributesByName["bytes"]?.allowsExternalBinaryDataStorage, true)
         XCTAssertNil(model.entitiesByName[ManagedStoreModel.documentEntity]?.attributesByName["bytes"], "Listings must not fault document bytes")
+        let metadata = try XCTUnwrap(model.entitiesByName[ManagedStoreModel.documentEntity])
+        let encrypted = Set(metadata.attributesByName.values.filter(\.allowsCloudEncryption).map(\.name))
+        XCTAssertEqual(encrypted, ["title", "notes", "linkURL", "filename"])
+        // Frozen v2 entities are untouched by document encryption settings.
+        XCTAssertTrue(ManagedStoreModel.v2().entities.allSatisfy { $0.attributesByName.values.allSatisfy { !$0.allowsCloudEncryption } })
     }
 
     // MARK: Persistence

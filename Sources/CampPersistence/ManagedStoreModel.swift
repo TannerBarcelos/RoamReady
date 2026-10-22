@@ -39,6 +39,10 @@ enum ManagedStoreModel {
         "issuedOn": .doubleAttributeType, "expiresOn": .doubleAttributeType,
         "createdAt": .doubleAttributeType, "updatedAt": .doubleAttributeType
     ]
+    /// Personal metadata stored in CloudKit `encryptedValues`, keyed by the user's iCloud Keychain,
+    /// so it is end-to-end encrypted even without Advanced Data Protection. CloudKit cannot change
+    /// a field's encryption after the schema is deployed to production, so this set is fixed for v3.
+    static let cloudEncryptedDocumentFields: Set<String> = ["title", "notes", "linkURL", "filename"]
     static let documentContentFields: [String: NSAttributeType] = [
         "documentID": .stringAttributeType, "checksum": .stringAttributeType, "byteCount": .integer64AttributeType
     ]
@@ -49,11 +53,16 @@ enum ManagedStoreModel {
 
     /// CloudKit-compatible entity: optional attributes or defaults, no uniqueness constraints,
     /// no relationships. Logical identity is the `key` attribute, reconciled by `rowID`.
-    private static func entity(_ name: String, fields: [String: NSAttributeType], externalBytes: Bool) -> NSEntityDescription {
+    private static func entity(_ name: String, fields: [String: NSAttributeType], externalBytes: Bool,
+                               cloudEncrypted: Set<String> = []) -> NSEntityDescription {
         let entity = NSEntityDescription(); entity.name = name; entity.managedObjectClassName = "NSManagedObject"
         let deleted = attribute("removed", .booleanAttributeType); deleted.defaultValue = false
         var properties = [attribute("key", .stringAttributeType), attribute("rowID", .stringAttributeType), deleted]
-        properties += fields.sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
+        properties += fields.sorted { $0.key < $1.key }.map { field in
+            let value = attribute(field.key, field.value)
+            if cloudEncrypted.contains(field.key) { value.allowsCloudEncryption = true }
+            return value
+        }
         if externalBytes {
             // Core Data decides whether bytes stay inline in SQLite or move to its external files.
             let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true
@@ -69,7 +78,7 @@ enum ManagedStoreModel {
             entity(LegacyStoreModel.name(kind), fields: LegacyStoreModel.fields(kind), externalBytes: kind == .asset)
         }
         if includesDocuments {
-            library.append(entity(documentEntity, fields: documentFields, externalBytes: false))
+            library.append(entity(documentEntity, fields: documentFields, externalBytes: false, cloudEncrypted: cloudEncryptedDocumentFields))
             library.append(entity(documentContentEntity, fields: documentContentFields, externalBytes: true))
         }
         let metadata = NSEntityDescription(); metadata.name = "LocalMetadata"; metadata.managedObjectClassName = "NSManagedObject"

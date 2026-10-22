@@ -15,7 +15,10 @@ Sources:
 
 - **Files** from the system document picker (`.fileImporter`, PDF or image types). Files from a file provider are read through `NSFileCoordinator`, so they download first.
 - **Photos** from the system photo picker with `preferredItemEncoding: .current`, so the stored encoding (for example HEIC) is kept instead of being transcoded.
-- **HTTPS links**. A link stays **online-only** until the user picks **Save a copy for offline use**. That explicitly downloads the contents (HTTPS responses only; must be a PDF or image) and stores them as the document's file. The link is kept.
+- **HTTPS links**. A link stays **online-only** until the user picks **Save a copy for offline use**. That explicitly downloads the contents and stores them as the document's file. The link is kept.
+  - The download is streamed through `BoundedDocumentBuffer`, which applies the size limit and checks the file signature as bytes arrive. It accepts HTTPS responses only.
+  - A response that declares more than 50 MB is refused before any body is read. Anything that grows past the limit, or whose first bytes aren't a PDF or image (for example an HTML page), is abandoned early, so it can't fill the device's storage.
+  - The download continues under a UIKit background task if the user leaves the app. If iOS ends that time, the download is cancelled and nothing partial is saved.
 
 Each document has a title, a category (`manual`, `registration`, `insurance`, `warranty`, `maintenance`, `reservation`, `other`, plus unknown future values, which are preserved), notes, an optional issue/effective date, and an optional expiration/renewal date.
 
@@ -39,6 +42,12 @@ Document data lives in the existing `NSPersistentCloudKitContainer` **Library** 
 | `RR_documentContent` | `documentID`, `checksum`, `byteCount`, and `bytes` (Binary Data, **Allows External Storage**). |
 
 Core Data decides whether a given `bytes` value stays inline in SQLite or moves to its private external-storage directory, and CloudKit mirroring decides how it transfers (typically as a `CKAsset`). **Do not assume any particular binary is outside SQLite**, and never read or modify Core Data's external files directly.
+
+**End-to-end encrypted metadata.** `title`, `notes`, `linkURL`, and `filename` set `allowsCloudEncryption`. CloudKit stores them in `encryptedValues`, encrypted with keys in the user's iCloud Keychain, so they are end-to-end encrypted even without Advanced Data Protection. CloudKit can't change a field's encryption after the schema is deployed to production, so this set is part of v3's frozen contract; changing it later means new fields in a new model version.
+
+These metadata fields are not readable in the CloudKit Console, and they can't be queried server-side; mirroring doesn't need that. If the user's iCloud Keychain is reset, CloudKit can't decrypt the existing encrypted values; on-device copies are unaffected. Validate that recovery path on devices.
+
+The file bytes (`RR_documentContent.bytes`) are not marked for cloud encryption. They are encrypted at rest by Apple, and end to end only when the user has Advanced Data Protection on. Encrypting the file bytes inside the app (for example AES-GCM with a key kept in the Keychain) is a separate decision: if that key is lost, the documents can't be recovered.
 
 Both entities follow the mirrored-model rules: every attribute is optional or has a default, with no uniqueness constraints and no relationships. Ownership is a string pair, not a relationship. Duplicate logical rows, which are possible without unique constraints, resolve as they do elsewhere in the library: any tombstone wins; otherwise the lowest `rowID` wins.
 
@@ -135,8 +144,8 @@ A deleted document's identifier is tombstoned, so restoring it returns `duplicat
 
 ## Tests
 
-- Portable (`Tests/CampCoreTests/ManagedDocumentTests.swift`, Linux and macOS): SHA-256 vectors, signature detection, invalid imports (empty, oversized, renamed non-documents), filename sanitizing, HTTPS link rules, metadata validation, unknown categories, and the in-memory repository contract (including missing content).
-- Core Data (`Tests/CampPersistenceTests/DocumentVaultTests.swift`, macOS CI): frozen v2 shape and v3 additive hashes, CloudKit model rules, 3 MB original-byte round trip across close/reopen with no network, metadata edits and owner separation, link-only until import and re-import replacement, invalid imports leaving the store unchanged, metadata without downloaded content, tamper detection, deletion and tombstones, duplicate-row reconciliation, explicit v2→v3 migration preserving photos and assets with a backup, interrupted-migration re-verification and fail-closed behavior, refusal of unknown store versions, and the new-store marker.
+- Portable (`Tests/CampCoreTests/ManagedDocumentTests.swift`, Linux and macOS): SHA-256 vectors, signature detection, invalid imports (empty, oversized, renamed non-documents), filename sanitizing, HTTPS link rules, the bounded download buffer (declared or actual size over the limit, early rejection of web pages, chunked bytes kept intact), metadata validation, unknown categories, and the in-memory repository contract (including missing content).
+- Core Data (`Tests/CampPersistenceTests/DocumentVaultTests.swift`, macOS CI): frozen v2 shape and v3 additive hashes, stable checksums for the frozen models, CloudKit model rules and the encrypted-field set, 3 MB original-byte round trip across close/reopen with no network, metadata edits and owner separation, link-only until import and re-import replacement, invalid imports leaving the store unchanged, metadata without downloaded content, tamper detection, deletion and tombstones, duplicate-row reconciliation, explicit v2→v3 migration preserving photos and assets with a backup, interrupted-migration re-verification and fail-closed behavior, refusal of unknown store versions, and the new-store marker.
 
 ## Not yet validated
 

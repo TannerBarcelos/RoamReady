@@ -273,3 +273,34 @@ public enum DocumentPolicy {
         return String((title.isEmpty ? "Document" : title).prefix(maximumTitleLength))
     }
 }
+
+/// Accumulates a streamed download while enforcing the document rules as bytes arrive, so an
+/// oversized file or a non-document (for example an HTML page) is abandoned early.
+public struct BoundedDocumentBuffer: Sendable {
+    public let limit: Int
+    public private(set) var data = Data()
+    private var checkedSignature = false
+    /// Enough leading bytes to identify every supported signature.
+    static let signatureLength = 16
+
+    public init(limit: Int = DocumentPolicy.maximumByteCount, expectedLength: Int64 = -1) throws {
+        guard expectedLength <= Int64(limit) else { throw DocumentError.fileTooLarge(limit: limit) }
+        self.limit = limit
+        if expectedLength > 0 { data.reserveCapacity(Int(expectedLength)) }
+    }
+
+    public mutating func append<Bytes: Collection>(_ bytes: Bytes) throws where Bytes.Element == UInt8 {
+        guard data.count + bytes.count <= limit else { throw DocumentError.fileTooLarge(limit: limit) }
+        data.append(contentsOf: bytes)
+        if !checkedSignature, data.count >= Self.signatureLength {
+            guard DocumentContentType.detect(data) != nil else { throw DocumentError.unsupportedFileType }
+            checkedSignature = true
+        }
+    }
+
+    public func finish() throws -> Data {
+        guard !data.isEmpty else { throw DocumentError.emptyFile }
+        guard DocumentContentType.detect(data) != nil else { throw DocumentError.unsupportedFileType }
+        return data
+    }
+}

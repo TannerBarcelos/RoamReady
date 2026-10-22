@@ -240,8 +240,16 @@ final class CampStore {
     func saveLinkedContentsOffline(_ id: UUID) async throws {
         guard let link = document(id)?.link else { throw DocumentError.notALink }
         let repository = try documentRepository()
-        let download = try await DocumentImport.download(link)
-        try await repository.attachContent(toDocument: id, bytes: download.data, filename: download.filename)
+        // Leaving the app mid-download should not lose a copy the user asked for. If iOS ends the
+        // extra time, the download is cancelled and nothing partial is saved.
+        let work = Task { () throws -> Void in
+            let download = try await DocumentImport.download(link)
+            try Task.checkCancellation()
+            try await repository.attachContent(toDocument: id, bytes: download.data, filename: download.filename)
+        }
+        let activity = BackgroundActivity(name: "Save document for offline use") { work.cancel() }
+        defer { activity.end() }
+        try await work.value
         await reloadDocuments()
     }
 
@@ -387,6 +395,26 @@ final class CampStore {
         let token = UIApplication.shared.beginBackgroundTask(withName: "Save camping changes")
         defer { if token != .invalid { UIApplication.shared.endBackgroundTask(token) } }
         await saveTask?.value
+    }
+}
+
+/// Extra execution time while a user-requested operation finishes after the app leaves the
+/// foreground. The expiration handler ends the activity synchronously, as UIKit requires.
+@MainActor
+final class BackgroundActivity {
+    private var identifier = UIBackgroundTaskIdentifier.invalid
+    init(name: String, onExpiration: @escaping @MainActor @Sendable () -> Void) {
+        identifier = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in
+            MainActor.assumeIsolated {
+                onExpiration()
+                self?.end()
+            }
+        }
+    }
+    func end() {
+        guard identifier != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(identifier)
+        identifier = .invalid
     }
 }
 

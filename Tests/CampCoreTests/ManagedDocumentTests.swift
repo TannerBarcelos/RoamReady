@@ -105,4 +105,28 @@ final class ManagedDocumentTests: XCTestCase {
         let deleted = await repository.document(id: file.id)
         XCTAssertNil(deleted)
     }
+
+    func testBoundedDownloadBufferRejectsEarlyAndPreservesBytes() throws {
+        XCTAssertThrowsError(try BoundedDocumentBuffer(limit: 100, expectedLength: 101)) {
+            XCTAssertEqual($0 as? DocumentError, .fileTooLarge(limit: 100))
+        }
+        var tooBig = try BoundedDocumentBuffer(limit: 100)
+        try tooBig.append([UInt8](Self.pdf.prefix(20)))
+        XCTAssertThrowsError(try tooBig.append([UInt8](repeating: 0, count: 81))) { XCTAssertEqual($0 as? DocumentError, .fileTooLarge(limit: 100)) }
+
+        // A web page is abandoned as soon as its first bytes arrive.
+        var page = try BoundedDocumentBuffer()
+        XCTAssertThrowsError(try page.append(Array("<!doctype html><html>".utf8))) { XCTAssertEqual($0 as? DocumentError, .unsupportedFileType) }
+
+        var chunked = try BoundedDocumentBuffer(expectedLength: Int64(Self.pdf.count))
+        for start in stride(from: 0, to: Self.pdf.count, by: 7) {
+            try chunked.append([UInt8](Self.pdf[start..<min(start + 7, Self.pdf.count)]))
+        }
+        XCTAssertEqual(try chunked.finish(), Self.pdf)
+
+        var tiny = try BoundedDocumentBuffer()
+        try tiny.append(Array("GIF8".utf8))
+        XCTAssertThrowsError(try tiny.finish()) { XCTAssertEqual($0 as? DocumentError, .unsupportedFileType) }
+        XCTAssertThrowsError(try BoundedDocumentBuffer().finish()) { XCTAssertEqual($0 as? DocumentError, .emptyFile) }
+    }
 }
