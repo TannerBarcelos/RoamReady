@@ -7,6 +7,8 @@ struct OnboardingView: View {
     @Environment(Connectivity.self) private var connectivity
     @State private var step = 0
     @State private var profile = CamperProfile()
+    @State private var rig = Rig()
+    @State private var failure: String?
     var body: some View {
         OnlineFeatureGate(feature: "Initial onboarding") { onboardingContent }
     }
@@ -26,22 +28,22 @@ struct OnboardingView: View {
                     Section("What do you camp in?") {
                         ForEach(RigType.allCases) { type in
                             Button {
-                                profile.rig.type = type
-                                profile.rig.emoji = type.defaultEmoji
-                                profile.rig.equipment = type.isRV ? Equipment() : .none
+                                rig.type = type
+                                rig.emoji = type.defaultEmoji
+                                rig.equipment = type.isRV ? Equipment() : .none
                             } label: {
                                 HStack {
                                     Text(type.defaultEmoji)
                                     Text(type.title).foregroundStyle(.primary)
                                     Spacer()
-                                    if profile.rig.type == type { Image(systemName: "checkmark").foregroundStyle(.blue) }
+                                    if rig.type == type { Image(systemName: "checkmark").foregroundStyle(.blue) }
                                 }.padding(.vertical, 4)
                             }
                         }
                     }
                 } else if step == 1 {
-                    RigFormSections(rig: $profile.rig)
-                    DocumentVaultSection(owner: .rig(profile.rig.id), header: "Manuals & paperwork (optional)",
+                    RigFormSections(rig: $rig)
+                    DocumentVaultSection(owner: .rig(rig.id), header: "Manuals & paperwork (optional)",
                                          footer: "Add owner’s manuals, registration, insurance, or anything else now or later from Profile. Files open offline; links need a connection.")
                 } else {
                     Section("A little about you") {
@@ -55,8 +57,9 @@ struct OnboardingView: View {
                         Text("Once setup is complete, your planned trips, checklists, photos, and notes work without an internet connection.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("You’re signed in with Apple. Onboarding, profile and account changes, and Camp Finder require a connection. Optional iCloud sync can be managed from Profile.")
+                        Text("You’re signed in with Apple. Onboarding, account changes, and Camp Finder need a connection; everything else, including profile and rig edits, works offline. Optional iCloud sync can be managed from Profile.")
                     }
+                    if let failure { Section { Text(failure).foregroundStyle(.red) } }
                 }
             }
             .navigationTitle(step == 0 ? "Welcome to RoamReady" : step == 1 ? "Your rig" : "Make it yours")
@@ -67,10 +70,12 @@ struct OnboardingView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button(step < 2 ? "Continue" : "Start camping") {
-                    guard connectivity.isOnline, step != 1 || profile.rig.hasRequiredDetails else { return }
-                    if step < 2 { step += 1 } else { store.finishOnboarding(profile) }
+                    guard connectivity.isOnline, step != 1 || rig.hasRequiredDetails else { return }
+                    if step < 2 { step += 1 } else {
+                        do { try store.finishOnboarding(profile, rig: rig) } catch { failure = error.localizedDescription }
+                    }
                 }
-                .disabled(step == 1 && !profile.rig.hasRequiredDetails)
+                .disabled(step == 1 && !rig.hasRequiredDetails)
                 .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
                 .padding().background(.bar)
             }

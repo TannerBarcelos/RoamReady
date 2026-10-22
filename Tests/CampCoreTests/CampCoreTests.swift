@@ -13,9 +13,9 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         return url
     }
 
-    private func trip(rig: Rig = Rig(), templates: ChecklistTemplates? = nil) throws -> Trip {
+    private func trip(rig: Rig = Rig(), defaults: ChecklistTemplates? = nil) throws -> Trip {
         try Trip.create(campgroundName: "Pine Creek", arrival: arrival,
-                        departure: arrival.addingTimeInterval(172_800), rig: rig, templates: templates)
+                        departure: arrival.addingTimeInterval(172_800), rig: rig, defaults: defaults)
     }
 
     func testReopenRetainsProfileTripChecklistsMemoriesAndPhotoReferences() async throws {
@@ -32,8 +32,9 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         journey.notes = "Quiet, shaded; bring a longer water hose."
         journey.rating = .wouldReturn
         journey.photos = [TripPhoto(filename: "memory.jpg", caption: "Our site", createdAt: arrival)]
-        let state = AppState(profile: CamperProfile(name: "Sam", experience: .comfortable, rig: rig),
-                             trips: [journey], templates: ChecklistFactory.templates(for: rig))
+        var defaults = ChecklistFactory.templates(for: rig); defaults.rigID = rig.id
+        let state = AppState(profile: CamperProfile(name: "Sam", experience: .comfortable), rigs: [rig],
+                             trips: [journey], rigDefaults: [defaults])
         try await store.save(state)
         let reopened = try await FileAppStore(directory: location).load()
         XCTAssertEqual(reopened, state)
@@ -43,15 +44,15 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
     func testEachTripGetsFreshChecklistIDsAndStatusesAndIndependentText() throws {
         var templates = ChecklistFactory.templates(for: Rig())
         templates.setup[0].status = .completed
-        var first = try trip(templates: templates)
-        let second = try trip(templates: templates)
+        var first = try trip(defaults: templates)
+        let second = try trip(defaults: templates)
         XCTAssertNotEqual(first.setup[0].id, second.setup[0].id)
         XCTAssertNotEqual(first.setup[0].id, templates.setup[0].id)
         XCTAssertEqual(first.setup[0].status, .pending)
         first.setup[0].title = "My trip-only step"
         first.setup[0].status = .skipped
         templates.setup[0].title = "My new reusable instruction"
-        let third = try trip(templates: templates)
+        let third = try trip(defaults: templates)
         XCTAssertNotEqual(second.setup[0].title, first.setup[0].title)
         XCTAssertNotEqual(second.setup[0].title, third.setup[0].title)
         XCTAssertEqual(third.setup[0].title, templates.setup[0].title)
@@ -186,7 +187,7 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         let rig = try JSONDecoder().decode(Rig.self, from: legacy)
         XCTAssertNil(rig.lengthFeet); XCTAssertNil(rig.slideCount); XCTAssertNil(rig.axleCount); XCTAssertNil(rig.hasBunkhouse)
         XCTAssertFalse(rig.hasRequiredDetails, "Older profiles load, then prompt for length on the next edit")
-        XCTAssertNoThrow(try AppState(profile: CamperProfile(rig: rig)).validated())
+        XCTAssertNoThrow(try AppState(profile: CamperProfile(), rigs: [rig]).validated())
     }
 
     func testDetailSummaryListsOnlyEnteredFacts() {
@@ -260,12 +261,40 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(Rig().yearText, ""); XCTAssertEqual(Rig().lengthText, "")
     }
 
-    func testRigSnapshotOnTripsKeepsDetailsAfterProfileEdits() throws {
-        var rig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024,
+    func testTripsReadTheRigThroughTheirReferenceSoEditsShowEverywhere() throws {
+        var state = AppState(profile: CamperProfile())
+        let rig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024,
                       lengthFeet: 19.5, slideCount: 0, axleCount: 1, hasBunkhouse: false)
-        let trip = try Trip.create(campgroundName: "Pines", arrival: arrival, departure: arrival, rig: rig)
-        rig.lengthFeet = 24; rig.setSlideCount(1)
-        XCTAssertEqual(trip.rigSnapshot?.lengthFeet, 19.5)
-        XCTAssertEqual(trip.rigSnapshot?.slideCount, 0)
+        try state.addRig(rig)
+        let trip = try state.createTrip(campgroundName: "Pines", arrival: arrival, departure: arrival, rigID: rig.id)
+        var edited = rig; edited.lengthFeet = 24; edited.setSlideCount(1)
+        try state.updateRig(edited)
+        XCTAssertEqual(state.rig(for: trip)?.lengthFeet, 24)
+        XCTAssertEqual(state.rig(for: trip)?.slideCount, 1)
+    }
+
+    func testOldJSONArchiveWithEmbeddedRigTemplatesAndTripCopiesMigrates() async throws {
+        let rigID = "6F9619FF-8B86-D011-B42D-00C04FC964FF", tripID = "11111111-2222-3333-4444-555555555555"
+        let rig = #"{"id":"\#(rigID)","type":"travelTrailer","make":"Jayco","model":"Jay Flight","year":2021,"floorplan":"","emoji":"🚐","equipment":{"shorePower":true,"freshWater":true,"sewer":true,"slideOuts":false,"propane":true}}"#
+        let edited = rig.replacingOccurrences(of: "Jay Flight", with: "Jay Feather")
+        let json = #"""
+        {"schemaVersion":1,"state":{"profile":{"name":"Sam","experience":"new","rig":\#(edited)},
+        "templates":{"id":"00000000-0000-0000-0000-0000000000AA","version":1,"sourceURL":"https://example.com","setup":[{"id":"00000000-0000-0000-0000-0000000000B1","title":"Level","detail":"","section":"Arrival","status":"pending"}],"teardown":[]},
+        "trips":[{"id":"\#(tripID)","campgroundName":"Pines","arrival":0,"departure":86400000,"siteNumber":"","notes":"","rating":"unrated","setup":[],"teardown":[],"photos":[],"rigSnapshot":\#(rig)}]}}
+        """#
+        let location = try directory()
+        try Data(json.utf8).write(to: location.appendingPathComponent("camp-state.json"))
+        let state = try await FileAppStore(directory: location).load()
+        XCTAssertEqual(state.activeRigs.map(\.model), ["Jay Feather"], "The profile's rig becomes the active rig")
+        XCTAssertEqual(state.activeRigs.first?.id.uuidString, rigID)
+        XCTAssertEqual(state.rigDefaults.first?.rigID?.uuidString, rigID, "Library templates become that rig's defaults")
+        XCTAssertEqual(state.rigDefaults.first?.setup.map(\.title), ["Level"])
+        // The trip's copy differs from the edited profile rig, so it becomes an archived rig.
+        let tripRig = try XCTUnwrap(state.rig(for: state.trips[0]))
+        XCTAssertTrue(tripRig.isArchived)
+        XCTAssertEqual(tripRig.model, "Jay Flight")
+        XCTAssertNotEqual(tripRig.id.uuidString, rigID)
+        // Saved again in the current shape, it reads back unchanged.
+        XCTAssertEqual(try JSONDecoder().decode(AppState.self, from: JSONEncoder().encode(state)), state)
     }
 }
