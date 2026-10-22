@@ -48,6 +48,22 @@ Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 
 
 Cloud sync is not established by local persistence tests. Validate multi-device conflicts, account changes, asset upload interruption, and background delivery using a provisioned CloudKit container. Apple manages mirroring scheduling; background push delivery still requires signed-device provisioning and acceptance.
 
+## Appearance acceptance pass
+
+Profile › Appearance offers **System** (the default), **Light**, and **Dark**. The selection is saved on this device, works offline, and applies at the window root so navigation, sheets, alerts, onboarding, and loading/error screens share it. Native semantic colors provide dark grouped backgrounds, elevated rows, readable primary/secondary text, and adaptive blue accents without changing the light layout. Photos and documents retain their original colors; Apple's camera and document viewers keep their system-provided presentation.
+
+On an iOS simulator or device:
+
+1. With no saved preference, switch the device between Light and Dark and verify all four tabs follow it, including Camp Finder's map.
+2. Select **Dark** while the device is in Light. Check Home, Plan, a trip's booking/checklists/memories/weather, Camp Finder's listings and details, and Profile. Open an editor sheet, photo/document preview, and a delete confirmation; check text, fields, separators, blue actions, and destructive actions remain readable. Weather attribution must use the dark mark.
+3. Select **Light** while the device is in Dark. Confirm the existing light interface returns throughout the app, including sheets and the map, and weather attribution uses the light mark.
+4. Select **System** again. Change the device appearance while RoamReady is open and confirm it follows immediately; repeat with a sheet open. Explicit Light and Dark choices must stay fixed when the device setting changes.
+5. Force-quit and relaunch in each mode, including in airplane mode; the selection must persist. Selecting a mode must preserve the current tab, navigation, and in-progress edits.
+6. Check the picker with VoiceOver and the largest Dynamic Type sizes, and review each mode with Increase Contrast, Reduce Transparency, and Reduce Motion enabled.
+7. On a disposable test library, use Erase all data. The appearance preference resets to System with the other device settings, and onboarding follows the device appearance.
+
+These visual checks require Apple SDKs and are not covered by the portable package tests.
+
 ## Apple capability configuration
 
 The default `Camp.entitlements` declares no capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. User location is not requested.

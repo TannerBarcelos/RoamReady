@@ -20,6 +20,7 @@ struct ProfileView: View {
                 }
             }
             RigsSection()
+            AppearanceSection()
             if !store.unattachedDocuments.isEmpty {
                 Section {
                     NavigationLink { UnattachedDocumentsView() } label: {
@@ -60,7 +61,7 @@ struct ProfileView: View {
                 Text("Camp Finder downloads a dated federal campground and campsite snapshot from RIDB. It does not show live booking availability.").font(.footnote).foregroundStyle(.secondary)
                 if let url = URL(string: ChecklistFactory.sourceURL) { Link("Checklist reference: Camping World", destination: url) }
             } header: { Text("Sources & coverage") } footer: {
-                Text("RoamReady · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")
+                Text("RoamReady · Development build 0.1 · Design A")
             }
         }
         .navigationTitle("Profile")

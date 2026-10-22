@@ -3,6 +3,7 @@ import CampCore
 
 @main
 struct CampApp: App {
+    @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
     @State private var store = CampStore()
     @State private var connectivity = Connectivity()
     @State private var libraryTransition: Task<Void, Never>?
@@ -14,6 +15,7 @@ struct CampApp: App {
                 .environment(store)
                 .environment(connectivity)
                 .tint(.blue)
+                .preferredColorScheme(appearance.colorScheme)
                 // No accounts: the library belongs to this device and its iCloud account, and opens offline.
                 .task {
                     try? LegacyAccount.remove()
