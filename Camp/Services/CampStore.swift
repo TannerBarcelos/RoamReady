@@ -11,6 +11,8 @@ final class CampStore {
     private(set) var savedCampgroundIDs: Set<String> = []
     private(set) var libraryNotice: String?
     private(set) var mediaRevision = 0
+    /// Metadata for every active document. Bytes stay in the store until a document is opened.
+    private(set) var documents: [ManagedDocument] = []
     let sync = CloudSyncController()
     private(set) var isLoading = true
     private(set) var loadFailure: String?
@@ -20,6 +22,7 @@ final class CampStore {
     private(set) var lastSavedAt: Date?
     let directory: URL
     let media: MediaStore
+    let documentFiles: DocumentFileCache
     @ObservationIgnored private var disk: SQLiteStore?
     @ObservationIgnored private var baseline = LibrarySnapshot()
     @ObservationIgnored private var loadInProgress = false
@@ -40,6 +43,7 @@ final class CampStore {
     init() {
         directory = URL.applicationSupportDirectory.appendingPathComponent("Camp", isDirectory: true)
         media = MediaStore(directory: directory.appendingPathComponent("Media", isDirectory: true))
+        documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appendingPathComponent("RoamReadyDocuments", isDirectory: true))
     }
 
     private func serializeLifecycle(_ operation: @escaping @MainActor () async -> Void) async {
@@ -89,7 +93,10 @@ final class CampStore {
                 restored = try await database.snapshot()
             }
             let notice = try await database.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
+            // A document listing problem must not block access to trips.
+            let loadedDocuments = (try? await database.documents(ownedBy: nil)) ?? []
             guard generation == libraryGeneration else { return }
+            documents = loadedDocuments
             suspendedUnsaved = nil; saveFailure = nil; presentsSaveFailure = false
             baseline = restored; state = restored.state; savedCampgroundIDs = restored.favorites
             libraryNotice = notice
@@ -111,6 +118,7 @@ final class CampStore {
             if let disk { try? await disk.close() }
             disk = nil; didLoad = false; baseline = LibrarySnapshot()
             state = AppState(); savedCampgroundIDs = []; mediaRevision += 1
+            documents = []; documentFiles.removeAll()
             loadFailure = nil; presentsSaveFailure = false; isLoading = false
             isTransitioning = false
         }
@@ -172,8 +180,12 @@ final class CampStore {
     func exportLibrary() async throws -> URL {
         await saveTask?.value
         guard let disk, saveFailure == nil else { throw CocoaError(.fileWriteUnknown) }
-        let url = directory.appendingPathComponent("Exports/RoamReady.json")
-        try await disk.export(to: url)
+        // Includes readable copies of every document, so it is protected like the store and
+        // replaced on each export rather than accumulating.
+        let url = directory.appendingPathComponent("Exports/RoamReady Export.zip")
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent("Exports/RoamReady.json"))
+        try await disk.exportArchive(to: url)
+        documentFiles.protect(url)
         return url
     }
     func revisions(for tripID: UUID) async throws -> [NoteRevision] {
@@ -193,6 +205,7 @@ final class CampStore {
         do {
             let fresh = try await disk.snapshot()
             let notice = try await disk.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
+            if let latest = try? await disk.documents(ownedBy: nil), generation == libraryGeneration { documents = latest }
             guard revision == saveRevision, generation == libraryGeneration, wantsLibraryAccess, !isTransitioning, saveTask == nil else { return }
             baseline = fresh; state = fresh.state; savedCampgroundIDs = fresh.favorites
             libraryNotice = notice; mediaRevision += 1
@@ -200,6 +213,82 @@ final class CampStore {
             guard generation == libraryGeneration, wantsLibraryAccess else { return }
             libraryNotice = "Waiting for related records. Your current library is preserved. \(error.localizedDescription)"
         }
+    }
+
+    // MARK: Documents
+
+    func documents(for owner: DocumentOwner) -> [ManagedDocument] { documents.filter { $0.owner == owner } }
+    func document(_ id: UUID) -> ManagedDocument? { documents.first { $0.id == id } }
+
+    /// Documents whose trip was deleted or whose rig was replaced. They stay until deleted deliberately.
+    var unattachedDocuments: [ManagedDocument] {
+        documents.filter { document in
+            document.owner.kind == .trip ? trip(document.owner.id) == nil : document.owner.id != state.profile?.rig.id
+        }
+    }
+
+    private func documentRepository() throws -> SQLiteStore {
+        guard didLoad, !isTransitioning, wantsLibraryAccess, let disk else { throw CampUIError.libraryBusy }
+        return disk
+    }
+
+    @discardableResult
+    func addDocument(_ draft: DocumentDraft) async throws -> ManagedDocument {
+        let added = try await documentRepository().addDocument(draft)
+        await reloadDocuments()
+        return added
+    }
+
+    func updateDocument(_ id: UUID, metadata: DocumentMetadata) async throws {
+        try await documentRepository().updateDocument(id: id, metadata: metadata)
+        await reloadDocuments()
+    }
+
+    /// Explicit user action: download a link's contents so it opens offline.
+    func saveLinkedContentsOffline(_ id: UUID) async throws {
+        guard let link = document(id)?.link else { throw DocumentError.notALink }
+        let repository = try documentRepository()
+        // Leaving the app mid-download should not lose a copy the user asked for. If iOS ends the
+        // extra time, the download is cancelled and nothing partial is saved.
+        let work = Task { () throws -> Void in
+            let download = try await DocumentImport.download(link)
+            defer { DocumentImport.discard(download.url) }
+            try Task.checkCancellation()
+            try await repository.attachContent(toDocument: id, source: .file(download.url), filename: download.filename)
+        }
+        let activity = BackgroundActivity(name: "Save document for offline use") { work.cancel() }
+        defer { activity.end() }
+        try await work.value
+        await reloadDocuments()
+    }
+
+    func deleteDocument(_ id: UUID) async throws {
+        try await documentRepository().deleteDocument(id: id)
+        await reloadDocuments()
+    }
+
+    /// A readable file containing the verified original bytes, rebuilt from the store if needed.
+    func documentFileURL(_ id: UUID) async throws -> URL {
+        guard let file = document(id)?.file else { throw DocumentError.linkOnly }
+        if let cached = documentFiles.cachedURL(for: file) { return cached }
+        // Decrypted and verified chunk by chunk straight into the cache file.
+        let destination = documentFiles.url(for: file)
+        try await documentRepository().exportContents(ofDocument: id, to: destination)
+        documentFiles.protect(destination)
+        return destination
+    }
+
+    /// From this device's mirroring records; refreshed by sync events through `mediaRevision`.
+    func cloudStatus(ofDocument id: UUID) async -> DocumentCloudStatus? {
+        guard let disk = try? documentRepository() else { return nil }
+        return try? await disk.cloudStatus(ofDocument: id)
+    }
+
+    private func reloadDocuments() async {
+        guard let disk else { return }
+        let generation = libraryGeneration
+        guard let latest = try? await disk.documents(ownedBy: nil), generation == libraryGeneration, wantsLibraryAccess else { return }
+        documents = latest
     }
 
     func finishOnboarding(_ profile: CamperProfile) {
@@ -324,6 +413,26 @@ final class CampStore {
         let token = UIApplication.shared.beginBackgroundTask(withName: "Save camping changes")
         defer { if token != .invalid { UIApplication.shared.endBackgroundTask(token) } }
         await saveTask?.value
+    }
+}
+
+/// Extra execution time while a user-requested operation finishes after the app leaves the
+/// foreground. The expiration handler ends the activity synchronously, as UIKit requires.
+@MainActor
+final class BackgroundActivity {
+    private var identifier = UIBackgroundTaskIdentifier.invalid
+    init(name: String, onExpiration: @escaping @MainActor @Sendable () -> Void) {
+        identifier = UIApplication.shared.beginBackgroundTask(withName: name) { [weak self] in
+            MainActor.assumeIsolated {
+                onExpiration()
+                self?.end()
+            }
+        }
+    }
+    func end() {
+        guard identifier != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(identifier)
+        identifier = .invalid
     }
 }
 

@@ -39,7 +39,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
     func testMirroredModelMeetsCloudKitRequirementsAndKeepsMetadataLocal() {
         let model = ManagedStoreModel.make()
         let mirrored = model.entities(forConfigurationName: "Library")!
-        XCTAssertEqual(mirrored.count, RecordKind.allCases.count)
+        XCTAssertEqual(mirrored.count, ManagedStoreModel.v2RecordKinds.count + 2)
         XCTAssertFalse(mirrored.contains { $0.name == "LocalMetadata" })
         XCTAssertEqual(model.entities(forConfigurationName: "Device")?.map(\.name), ["LocalMetadata"])
         for entity in mirrored {
@@ -47,6 +47,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
             XCTAssertTrue(entity.attributesByName.values.allSatisfy { $0.isOptional || $0.defaultValue != nil })
             XCTAssertNil(entity.attributesByName["clocks"])
             XCTAssertNil(entity.attributesByName["dirty"])
+            XCTAssertTrue(entity.relationshipsByName.isEmpty)
         }
         XCTAssertEqual(mirrored.first { $0.name == "RR_asset" }?.attributesByName["bytes"]?.allowsExternalBinaryDataStorage, true)
     }
@@ -202,7 +203,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         let oldRig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024, photoFilename: "rig.jpg")
         let old = LibrarySnapshot(state: AppState(profile: CamperProfile(name: "Camper", rig: oldRig)))
         // Build the previous managed (v2) model, without the rig detail attributes, and write rows with it.
-        let v2 = ManagedStoreModel.make(fields: LegacyStoreModel.fields)
+        let v2 = ManagedStoreModel.v2()
         XCTAssertNil(v2.entitiesByName[LegacyStoreModel.name(.rig)]?.attributesByName["lengthFeet"])
         let container = NSPersistentContainer(name: "RoamReadyV2", managedObjectModel: v2)
         let library = NSPersistentStoreDescription(url: d.appendingPathComponent("RoamReadyManaged.sqlite"))

@@ -29,6 +29,22 @@ struct ProfileView: View {
                     if !connectivity.isOnline { Text("Connect to edit your profile or rig.").font(.caption).foregroundStyle(.secondary) }
                 }
             }
+            if let rig = store.state.profile?.rig {
+                Section {
+                    NavigationLink { DocumentsView(owner: .rig(rig.id), title: "Rig documents") } label: {
+                        LabeledContent { Text(String(store.documents(for: .rig(rig.id)).count)) } label: {
+                            Label("Manuals & paperwork", systemImage: "folder")
+                        }
+                    }
+                    if !store.unattachedDocuments.isEmpty {
+                        NavigationLink { UnattachedDocumentsView() } label: {
+                            LabeledContent { Text(String(store.unattachedDocuments.count)) } label: { Label("Unattached documents", systemImage: "tray") }
+                        }
+                    }
+                } header: { Text("Rig documents") } footer: {
+                    Text("Manuals, registration, insurance, and more. Saved files open without a connection.")
+                }
+            }
             Section {
                 Button("Edit my default checklists", systemImage: "checklist") { editingTemplates = true }
                 Button("Restore defaults for my rig", systemImage: "arrow.counterclockwise") { resetConfirmation = true }
@@ -39,7 +55,8 @@ struct ProfileView: View {
                 SaveStatus()
                 LabeledContent("Trips on this iPhone", value: String(store.state.trips.count))
                 LabeledContent("Trip photos", value: String(store.state.trips.reduce(0) { $0 + $1.photos.count }))
-                Button(preparingExport ? "Preparing export…" : "Prepare trip data export", systemImage: "square.and.arrow.up") {
+                LabeledContent("Documents", value: String(store.documents.count))
+                Button(preparingExport ? "Preparing export…" : "Prepare export", systemImage: "square.and.arrow.up") {
                     Task {
                         preparingExport = true; exportFailure = nil
                         defer { preparingExport = false }
@@ -47,11 +64,11 @@ struct ProfileView: View {
                         catch { exportFailure = error.localizedDescription }
                     }
                 }.disabled(preparingExport || store.isSaving || store.saveFailure != nil)
-                if let exportURL { ShareLink("Share JSON export", item: exportURL) }
+                if let exportURL { ShareLink("Share export (.zip)", item: exportURL) }
                 if let exportFailure { Text(exportFailure).font(.caption).foregroundStyle(.red) }
                 if store.saveFailure != nil { Button("Retry saving", systemImage: "arrow.clockwise") { store.retrySave() } }
             } header: { Text("On this iPhone") } footer: {
-                Text("JSON exports include your profile, checklists, notes, and saved campgrounds. Share photos individually from each trip.")
+                Text("The export includes your profile, checklists, notes, saved campgrounds, and readable copies of your documents, including end-to-end encrypted ones. Keep it somewhere private. Share trip photos individually.")
             }
             Section("Account") {
                 NavigationLink { AccountSettingsView() } label: { Label("Apple Account", systemImage: "person.crop.circle") }

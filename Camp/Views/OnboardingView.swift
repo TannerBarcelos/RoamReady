@@ -41,6 +41,8 @@ struct OnboardingView: View {
                     }
                 } else if step == 1 {
                     RigFormSections(rig: $profile.rig)
+                    DocumentVaultSection(owner: .rig(profile.rig.id), header: "Manuals & paperwork (optional)",
+                                         footer: "Add owner’s manuals, registration, insurance, or anything else now or later from Profile. Files open offline; links need a connection.")
                 } else {
                     Section("A little about you") {
                         TextField("First name (optional)", text: $profile.name).textContentType(.givenName)

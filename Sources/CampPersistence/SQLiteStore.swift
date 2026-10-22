@@ -13,8 +13,9 @@ public struct NoteRevision: Identifiable, Sendable {
 /// Core Data owns SQLite, external binary files, persistent history, and CloudKit mirroring.
 /// Only value types leave the private managed-object context.
 public final class SQLiteStore: @unchecked Sendable {
-    private let container: NSPersistentCloudKitContainer
-    private let context: NSManagedObjectContext
+    let container: NSPersistentCloudKitContainer
+    /// Serializes every read and write. Document APIs share it with library snapshots.
+    let context: NSManagedObjectContext
     public let directory: URL
     public let cloudEnabled: Bool
     public var coordinator: NSPersistentStoreCoordinator { container.persistentStoreCoordinator }
@@ -30,10 +31,13 @@ public final class SQLiteStore: @unchecked Sendable {
 
     public static func open(directory: URL, cloudContainerIdentifier: String? = nil) async throws -> SQLiteStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Staging holds only transient copies from an interrupted document import.
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(stagingDirectoryName, isDirectory: true))
         // Bootstrap locally so a v1 import is verified before mirroring can upload anything.
         let local = try await load(directory: directory, cloudContainerIdentifier: nil)
         do {
             try await local.importPreviousDatabase()
+            try await local.cleanUpInterruptedDocumentWrites()
             _ = try await local.snapshot()
         } catch {
             try? await local.close()
@@ -46,7 +50,10 @@ public final class SQLiteStore: @unchecked Sendable {
 
     private static func load(directory: URL, cloudContainerIdentifier: String?) async throws -> SQLiteStore {
         let container = NSPersistentCloudKitContainer(name: "RoamReady", managedObjectModel: ManagedStoreModel.make())
-        let library = NSPersistentStoreDescription(url: directory.appendingPathComponent("RoamReadyManaged.sqlite"))
+        let libraryURL = directory.appendingPathComponent("RoamReadyManaged.sqlite")
+        // Explicit, verified migration from a frozen model, before mirroring can start.
+        let migration = try await ManagedStoreMigration.prepare(libraryURL: libraryURL, directory: directory)
+        let library = NSPersistentStoreDescription(url: libraryURL)
         library.configuration = "Library"
         library.type = NSSQLiteStoreType
         library.shouldMigrateStoreAutomatically = true
@@ -62,6 +69,10 @@ public final class SQLiteStore: @unchecked Sendable {
         for description in [library, local] {
             description.shouldMigrateStoreAutomatically = true
             description.shouldInferMappingModelAutomatically = true
+            description.setOption(ManagedStoreMigration.stagedMigrationManager(), forKey: NSPersistentStoreStagedMigrationManagerOptionKey)
+            // Zero deleted content so replaced plaintext (for example after a document is
+            // re-encrypted) doesn't linger in free database pages. A Core Data store option.
+            description.setOption(["secure_delete": "1"] as NSDictionary, forKey: NSSQLitePragmasOption)
             #if os(iOS)
             description.setOption(FileProtectionType.completeUntilFirstUserAuthentication.rawValue as NSString, forKey: NSPersistentStoreFileProtectionKey)
             #endif
@@ -71,10 +82,48 @@ public final class SQLiteStore: @unchecked Sendable {
         try await loadStores(container)
         container.persistentStoreDescriptions = [library]
         try await loadStores(container)
-        return SQLiteStore(container: container, directory: directory, cloudEnabled: cloudContainerIdentifier != nil)
+        let store = SQLiteStore(container: container, directory: directory, cloudEnabled: cloudContainerIdentifier != nil)
+        do { try await store.recordSchemaVersion(migration) } catch { try? await store.close(); throw error }
+        return store
     }
 
-    private static func loadStores(_ container: NSPersistentContainer) async throws {
+    /// Verify a migration against its pre-migration fingerprint, then record the version.
+    /// A failed verification fails closed on every launch so a damaged library never mirrors;
+    /// the preserved copy in `Backups/` remains the recovery source.
+    private func recordSchemaVersion(_ migration: ManagedStoreMigration.Pending?) async throws {
+        var pending = migration
+        if pending == nil, try await metadata(Self.schemaMarker) == nil, let backup = ManagedStoreMigration.existingBackup(in: directory) {
+            // Core Data converted the store but the app stopped before verifying it. Verify
+            // against the preserved copy instead of trusting the conversion.
+            pending = ManagedStoreMigration.Pending(sourceVersion: backup.version,
+                                                    fingerprint: try await ManagedStoreMigration.fingerprint(ofStoreAt: backup.url, version: backup.version),
+                                                    backupURL: backup.url)
+        }
+        let resolved = pending
+        try await context.perform { [self] in
+            let marker = try meta(Self.schemaMarker).map { String(decoding: $0, as: UTF8.self) }
+            if let resolved {
+                guard let source = ManagedStoreModel.model(resolved.sourceVersion) else { throw ManagedStoreMigrationError.unrecognizedStoreVersion }
+                let migrated = try ManagedStoreMigration.fingerprint(context: context, model: source)
+                context.reset()
+                guard migrated == resolved.fingerprint else {
+                    try putMeta(Self.schemaMarker, Data("verification-failed".utf8)); try context.save()
+                    throw ManagedStoreMigrationError.verificationFailed
+                }
+                try putMeta(Self.schemaMarker, Data("migrated-from-\(resolved.sourceVersion)".utf8))
+                try putMeta(Self.schemaMarker + "Backup", Data(resolved.backupURL.lastPathComponent.utf8))
+            } else if marker == nil {
+                try putMeta(Self.schemaMarker, Data("created".utf8))
+            } else if marker == "verification-failed" {
+                throw ManagedStoreMigrationError.verificationFailed
+            } else { return }
+            do { try context.save() } catch { context.rollback(); throw error }
+        }
+    }
+    /// Device-only record of how this store reached the current model version.
+    static let schemaMarker = "managedSchemaVersion"
+
+    static func loadStores(_ container: NSPersistentContainer) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             container.loadPersistentStores { _, error in
                 if let error { continuation.resume(throwing: error) } else { continuation.resume() }
@@ -306,12 +355,13 @@ public final class SQLiteStore: @unchecked Sendable {
         guard try meta("coherentProjection") != bytes else { return }
         try putMeta("coherentProjection", bytes); try context.save()
     }
-    private func meta(_ key: String) throws -> Data? {
+    func meta(_ key: String) throws -> Data? {
         let request = NSFetchRequest<NSManagedObject>(entityName: "LocalMetadata")
         request.predicate = NSPredicate(format: "key == %@", key); request.fetchLimit = 1
         return try context.fetch(request).first?.value(forKey: "value") as? Data
     }
-    private func putMeta(_ key: String, _ value: Data?) throws {
+    /// Device-only metadata. Call inside `context.perform`.
+    func putMeta(_ key: String, _ value: Data?) throws {
         let request = NSFetchRequest<NSManagedObject>(entityName: "LocalMetadata")
         request.predicate = NSPredicate(format: "key == %@", key); request.fetchLimit = 1
         let row = try context.fetch(request).first ?? NSEntityDescription.insertNewObject(forEntityName: "LocalMetadata", into: context)
@@ -380,28 +430,4 @@ public final class SQLiteStore: @unchecked Sendable {
     }
 }
 
-enum ManagedStoreModel {
-    /// `fields` is injectable so tests can build the previous (v2) model and verify migration.
-    static func make(fields: (RecordKind) -> [String: NSAttributeType] = LegacyStoreModel.managedFields) -> NSManagedObjectModel {
-        func attribute(_ name: String, _ type: NSAttributeType) -> NSAttributeDescription {
-            let value = NSAttributeDescription(); value.name = name; value.attributeType = type; value.isOptional = true; return value
-        }
-        let model = NSManagedObjectModel(); model.versionIdentifiers = ["RoamReady.Managed.v3"]
-        let library = RecordKind.allCases.map { kind in
-            let entity = NSEntityDescription(); entity.name = LegacyStoreModel.name(kind); entity.managedObjectClassName = "NSManagedObject"
-            let deleted = attribute("removed", .booleanAttributeType); deleted.defaultValue = false
-            var properties = [attribute("key", .stringAttributeType), attribute("rowID", .stringAttributeType), deleted]
-            properties += fields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
-            if kind == .asset { let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true; properties.append(bytes) }
-            entity.properties = properties
-            return entity
-        }
-        let device = NSEntityDescription(); device.name = "LocalMetadata"; device.managedObjectClassName = "NSManagedObject"
-        device.properties = [attribute("key", .stringAttributeType), attribute("value", .binaryDataAttributeType)]
-        model.entities = library + [device]
-        model.setEntities(library, forConfigurationName: "Library")
-        model.setEntities([device], forConfigurationName: "Device")
-        return model
-    }
-}
 #endif
