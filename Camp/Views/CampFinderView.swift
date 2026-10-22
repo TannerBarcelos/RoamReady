@@ -103,7 +103,7 @@ struct CampgroundFiltersView: View {
                     }.onChange(of: filter.rigType) { _, type in
                         if type == nil || type == .tent || type == .carCamping { filter.minimumRigLengthFeet = nil }
                     }
-                    if let rig = store.state.profile?.rig {
+                    if let rig = store.activeRig {
                         Button("Use my \(rig.type.title.lowercased())") { filter.use(rig) }
                     }
                     if let type = filter.rigType, type.isRV {

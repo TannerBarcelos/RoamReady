@@ -3,16 +3,17 @@ import Foundation
 import CoreData
 import CampCore
 
-/// Versioned managed models. Shipped versions are frozen: never edit `v2()`, `v3()`, or anything
+/// Versioned managed models. Shipped versions are frozen: never edit `v2()`, `v3()`, `v4()`, or anything
 /// they read. Add a new version, keep every previous one buildable, and migrate explicitly
 /// (see `ManagedStoreMigration`). `DocumentVaultTests` pins each frozen shape.
 enum ManagedStoreModel {
     static let library = "Library", device = "Device"
     static let v2Identifier = "RoamReady.Managed.v2", v3Identifier = "RoamReady.Managed.v3", v4Identifier = "RoamReady.Managed.v4"
+    static let v5Identifier = "RoamReady.Managed.v5"
     static let documentEntity = "RR_document", documentContentEntity = "RR_documentContent"
 
     /// The model new and migrated stores open with.
-    static func make() -> NSManagedObjectModel { v4() }
+    static func make() -> NSManagedObjectModel { v5() }
 
     /// FROZEN: first managed CloudKit mirroring model.
     static func v2() -> NSManagedObjectModel { build(version: v2Identifier, fields: v2Fields, includesDocuments: false) }
@@ -20,12 +21,17 @@ enum ManagedStoreModel {
     /// FROZEN: v2 plus optional rig details (length, slides, axles, bunkhouse).
     static func v3() -> NSManagedObjectModel { build(version: v3Identifier, fields: v3Fields, includesDocuments: false) }
 
-    /// v3 plus the shared document vault. Purely additive, so a lightweight mapping exists.
+    /// FROZEN: v3 plus the shared document vault. Purely additive, so a lightweight mapping exists.
     static func v4() -> NSManagedObjectModel { build(version: v4Identifier, fields: v3Fields, includesDocuments: true) }
+
+    /// v4 plus separate rigs with an archive date, per-rig default checklists, the trip's rig reference,
+    /// and booking details. Purely additive optional attributes; the record layout change itself is a
+    /// data migration (`SQLiteStore.migrateRigReferences`). Land before the CloudKit schema goes to Production.
+    static func v5() -> NSManagedObjectModel { build(version: v5Identifier, fields: v5Fields, includesDocuments: true) }
 
     /// Every version, oldest first. Migration stages connect neighbours.
     static let versions: [(identifier: String, make: @Sendable () -> NSManagedObjectModel)] = [
-        (v2Identifier, { v2() }), (v3Identifier, { v3() }), (v4Identifier, { v4() })
+        (v2Identifier, { v2() }), (v3Identifier, { v3() }), (v4Identifier, { v4() }), (v5Identifier, { v5() })
     ]
     static func model(_ identifier: String) -> NSManagedObjectModel? { versions.first { $0.identifier == identifier }?.make() }
 
@@ -36,6 +42,19 @@ enum ManagedStoreModel {
         if kind == .rig {
             for name in ["lengthFeet", "slideCount", "axleCount"] { result[name] = .doubleAttributeType }
             result["hasBunkhouse"] = .booleanAttributeType
+        }
+        return result
+    }
+
+    static func v5Fields(_ kind: RecordKind) -> [String: NSAttributeType] {
+        var result = v3Fields(kind)
+        switch kind {
+        case .rig: result["archivedAt"] = .doubleAttributeType
+        case .templates: result["rigID"] = .stringAttributeType
+        case .trip:
+            for name in ["rigID", "loop", "confirmationNumber", "bookingProvider", "bookingURL"] { result[name] = .stringAttributeType }
+            for name in ["checkInMinutes", "checkOutMinutes", "totalCost", "amountPaid", "cancellationDeadline"] { result[name] = .doubleAttributeType }
+        default: break
         }
         return result
     }

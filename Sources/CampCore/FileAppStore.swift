@@ -22,8 +22,8 @@ public actor FileAppStore {
         case 0:
             // Prototype v0 stored the state fields at the top level. Migration is
             // in-memory; the existing file is only replaced on an explicit save.
-            let legacy = try decoder.decode(LegacyEnvelope.self, from: data)
-            return try AppState(profile: legacy.profile, trips: legacy.trips, templates: legacy.templates).validated()
+            // `AppState` decodes that shape, including the embedded rig and library-wide templates.
+            return try decoder.decode(AppState.self, from: data).validated()
         default:
             throw CampError.unsupportedSchema(header.schemaVersion)
         }
@@ -46,10 +46,4 @@ public actor FileAppStore {
 
     private struct Header: Decodable { let schemaVersion: Int }
     private struct Envelope: Codable { let schemaVersion: Int; let state: AppState }
-    private struct LegacyEnvelope: Decodable {
-        let schemaVersion: Int
-        let profile: CamperProfile?
-        let trips: [Trip]
-        let templates: ChecklistTemplates?
-    }
 }

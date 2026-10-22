@@ -72,14 +72,28 @@ public struct LibrarySnapshot: Equatable, Sendable {
 }
 
 /// Codable domain types remain independent of Core Data / CloudKit.
+///
+/// Record layout: `profile:current`; `rig:<rig id>` per rig (archived ones included);
+/// `templates:rig:<rig id>` per rig's default lists, whose items are owned by `templates:<templates id>`;
+/// `trip:<trip id>` with a `rigID` reference. Libraries saved before #28 used `rigKey` references to a
+/// profile rig (`rig:profile`) and per-trip rig copies, plus one `templates:current`; `snapshot`
+/// converts them with `RigMigration` and `legacyRigLayoutKeys` names what a persisted migration replaces.
 public enum RecordProjection {
+    public static func rigKey(_ id: UUID) -> String { "rig:\(id)" }
+    public static func defaultsKey(rigID: UUID) -> String { "templates:rig:\(rigID)" }
+    public static let legacyTemplatesKey = "templates:current"
+
+    /// Trip fields that are optional values on `Trip` and stored as-is.
+    static let optionalTripStrings = ["campgroundID", "planningTimeZoneIdentifier", "campgroundTimeZoneIdentifier",
+                                      "loop", "confirmationNumber", "bookingProvider", "bookingURL"]
+    static let optionalTripNumbers = ["latitude", "longitude", "checkInMinutes", "checkOutMinutes", "totalCost", "amountPaid"]
+
     public static func documents(_ snapshot: LibrarySnapshot) throws -> [String: ReplicaRecord] {
         _ = try snapshot.state.validated()
         var result: [String: ReplicaRecord] = [:]
         func add(_ key: String, _ kind: RecordKind, _ fields: [String: RecordValue]) {
             result[key] = ReplicaRecord(key: key, kind: kind, fields: fields)
         }
-        func rig(_ value: Rig, key: String) throws { add(key, .rig, try fields(value)) }
         func items(_ values: [ChecklistItem], owner: String, phase: String) throws {
             for (position, item) in values.enumerated() {
                 var f = try fields(item)
@@ -87,29 +101,27 @@ public enum RecordProjection {
                 add("checklistItem:\(owner):\(phase):\(item.id)", .checklistItem, f)
             }
         }
-        if let profile = snapshot.state.profile {
-            var f = try fields(profile); f.removeValue(forKey: "rig"); f["rigKey"] = .string("rig:profile")
-            add("profile:current", .profile, f); try rig(profile.rig, key: "rig:profile")
-        }
-        if let templates = snapshot.state.templates {
-            let f: [String: RecordValue] = ["id": .string(templates.id.uuidString), "version": .number(Double(templates.version)), "sourceURL": .string(templates.sourceURL)]
-            add("templates:current", .templates, f)
+        if let profile = snapshot.state.profile { add("profile:current", .profile, try fields(profile)) }
+        // `archivedAt` encodes as reference-date seconds, Date's default Codable form.
+        for rig in snapshot.state.rigs { add(rigKey(rig.id), .rig, try fields(rig)) }
+        for templates in snapshot.state.rigDefaults {
+            guard let rigID = templates.rigID else { throw ReplicationError.invalidRecord }
+            add(defaultsKey(rigID: rigID), .templates, ["id": .string(templates.id.uuidString), "version": .number(Double(templates.version)),
+                                                        "sourceURL": .string(templates.sourceURL), "rigID": .string(rigID.uuidString)])
             try items(templates.setup, owner: "templates:\(templates.id)", phase: "setup")
             try items(templates.teardown, owner: "templates:\(templates.id)", phase: "teardown")
         }
         for (tripPosition, trip) in snapshot.state.trips.enumerated() {
             let key = "trip:\(trip.id)"
+            let all = try fields(trip)
             var f: [String: RecordValue] = [
                 "id": .string(trip.id.uuidString), "campgroundName": .string(trip.campgroundName),
                 "arrival": .number(trip.arrival.timeIntervalSinceReferenceDate), "departure": .number(trip.departure.timeIntervalSinceReferenceDate),
                 "siteNumber": .string(trip.siteNumber), "notes": .string(trip.notes), "rating": .string(trip.rating.rawValue)
             ]
-            if let latitude = trip.latitude { f["latitude"] = .number(latitude) }
-            if let longitude = trip.longitude { f["longitude"] = .number(longitude) }
-            if let id = trip.campgroundID { f["campgroundID"] = .string(id) }
-            if let zone = trip.planningTimeZoneIdentifier { f["planningTimeZoneIdentifier"] = .string(zone) }
-            if let zone = trip.campgroundTimeZoneIdentifier { f["campgroundTimeZoneIdentifier"] = .string(zone) }
-            if let value = trip.rigSnapshot { let rigKey = "rig:\(trip.id)"; try rig(value, key: rigKey); f["rigKey"] = .string(rigKey) }
+            for name in optionalTripStrings + optionalTripNumbers { if let value = all[name], value != .null { f[name] = value } }
+            if let rigID = trip.rigID { f["rigID"] = .string(rigID.uuidString) }
+            if let deadline = trip.cancellationDeadline { f["cancellationDeadline"] = .number(deadline.timeIntervalSinceReferenceDate) }
             f["position"] = .number(Double(tripPosition))
             add(key, .trip, f)
             try items(trip.setup, owner: key, phase: "setup"); try items(trip.teardown, owner: key, phase: "teardown")
@@ -121,6 +133,20 @@ public enum RecordProjection {
         for id in snapshot.favorites { add("favorite:\(id)", .favorite, ["campgroundID": .string(id), "saved": .bool(true)]) }
         return result
     }
+
+    /// Keys of active records in the pre-#28 layout: `rigKey` references and their rigs, and the
+    /// library-wide templates. Empty once a library has been migrated.
+    public static func legacyRigLayoutKeys(_ records: [ReplicaRecord]) -> Set<String> {
+        var keys = Set<String>()
+        for record in records where record.deletion == nil {
+            if let rigKey = record.fields["rigKey"]?.string, record.kind == .profile || record.kind == .trip {
+                keys.insert(record.key); keys.insert(rigKey)
+            }
+            if record.kind == .templates && record.fields["rigID"]?.string == nil { keys.insert(record.key) }
+        }
+        return keys
+    }
+
     public static func snapshot(_ records: [ReplicaRecord]) throws -> LibrarySnapshot {
         let active = records.filter { $0.deletion == nil }
         let byKey = Dictionary(uniqueKeysWithValues: active.map { ($0.key, $0) })
@@ -141,29 +167,55 @@ public enum RecordProjection {
                     return x == y ? a.key < b.key : x < y
                 }.map { try decode(ChecklistItem.self, $0.fields) }
         }
-        var state = AppState()
-        if var f = byKey["profile:current"]?.fields {
-            guard let key = f.removeValue(forKey: "rigKey")?.string, let rig = byKey[key] else { throw ReplicationError.incompleteLibrary }
-            f["rig"] = .object(rig.fields); state.profile = try decode(CamperProfile.self, f)
-        }
-        if var f = byKey["templates:current"]?.fields {
+        func templates(_ record: ReplicaRecord) throws -> ChecklistTemplates {
+            var f = record.fields
+            f.removeValue(forKey: "initialChecklistKeys")
             guard let templateID = f["id"]?.string else { throw ReplicationError.incompleteLibrary }
-            let templateOwner = "templates:\(templateID)"
-            f["setup"] = .array(try items(templateOwner, "setup").map { .object(try fields($0)) })
-            f["teardown"] = .array(try items(templateOwner, "teardown").map { .object(try fields($0)) })
-            state.templates = try decode(ChecklistTemplates.self, f)
+            f["setup"] = .array(try items("templates:\(templateID)", "setup").map { .object(try fields($0)) })
+            f["teardown"] = .array(try items("templates:\(templateID)", "teardown").map { .object(try fields($0)) })
+            return try decode(ChecklistTemplates.self, f)
+        }
+        func rig(_ record: ReplicaRecord) throws -> Rig { try decode(Rig.self, record.fields) }
+
+        var state = AppState()
+        var profileRig: Rig?
+        var snapshots: [UUID: Rig] = [:]
+        let legacyRigKeys = Set(active.compactMap { $0.kind == .profile || $0.kind == .trip ? $0.fields["rigKey"]?.string : nil })
+        if var f = byKey["profile:current"]?.fields {
+            if let key = f.removeValue(forKey: "rigKey")?.string {
+                guard let record = byKey[key] else { throw ReplicationError.incompleteLibrary }
+                profileRig = try rig(record)
+            }
+            state.profile = try decode(CamperProfile.self, f)
+        }
+        state.rigs = try active.filter { $0.kind == .rig && !legacyRigKeys.contains($0.key) }
+            .map(rig)
+            .sorted { ($0.isArchived ? 1 : 0, $0.id.uuidString) < ($1.isArchived ? 1 : 0, $1.id.uuidString) }
+        var legacyTemplates: ChecklistTemplates?
+        for record in active.filter({ $0.kind == .templates }).sorted(by: { $0.key < $1.key }) {
+            if record.fields["rigID"]?.string == nil {
+                if record.key == legacyTemplatesKey { legacyTemplates = try templates(record) }
+            } else {
+                state.rigDefaults.append(try templates(record))
+            }
         }
         for record in active.filter({ $0.kind == .trip }).sorted(by: { ($0.fields["position"]?.number ?? 0) == ($1.fields["position"]?.number ?? 0) ? $0.key < $1.key : ($0.fields["position"]?.number ?? 0) < ($1.fields["position"]?.number ?? 0) }) {
             var f = record.fields
-            if let key = f.removeValue(forKey: "rigKey")?.string {
-                guard let rig = byKey[key] else { throw ReplicationError.incompleteLibrary }
-                f["rigSnapshot"] = .object(rig.fields)
+            f.removeValue(forKey: "initialChecklistKeys")
+            let legacyRig = try f.removeValue(forKey: "rigKey")?.string.map { key -> Rig in
+                guard let record = byKey[key] else { throw ReplicationError.incompleteLibrary }
+                return try rig(record)
             }
             f["setup"] = .array(try items(record.key, "setup").map { .object(try fields($0)) })
             f["teardown"] = .array(try items(record.key, "teardown").map { .object(try fields($0)) })
             f["photos"] = .array((photoGroups[record.key] ?? [])
                 .sorted { ($0.fields["position"]?.number ?? 0) == ($1.fields["position"]?.number ?? 0) ? $0.key < $1.key : ($0.fields["position"]?.number ?? 0) < ($1.fields["position"]?.number ?? 0) }.map { .object($0.fields) })
-            state.trips.append(try decode(Trip.self, f))
+            let trip = try decode(Trip.self, f)
+            if let legacyRig, trip.rigID == nil { snapshots[trip.id] = legacyRig }
+            state.trips.append(trip)
+        }
+        if profileRig != nil || legacyTemplates != nil || !snapshots.isEmpty {
+            RigMigration.migrate(&state, profileRig: profileRig, legacyTemplates: legacyTemplates, snapshots: snapshots)
         }
         return LibrarySnapshot(state: try state.validated(), favorites: Set(active.filter { $0.kind == .favorite && $0.fields["saved"] == .bool(true) }.compactMap { $0.fields["campgroundID"]?.string }))
     }
@@ -173,9 +225,8 @@ public enum RecordProjection {
     public static func decode<T: Decodable>(_ type: T.Type, _ fields: [String: RecordValue]) throws -> T {
         try JSONDecoder().decode(type, from: JSONEncoder().encode(fields))
     }
+    /// Trip photos and every rig's photo, archived rigs included.
     public static func referencedPhotos(_ state: AppState) -> Set<String> {
-        var names = state.trips.flatMap { $0.photos.map(\.filename) + [$0.rigSnapshot?.photoFilename].compactMap { $0 } }
-        if let name = state.profile?.rig.photoFilename { names.append(name) }
-        return Set(names)
+        Set(state.trips.flatMap { $0.photos.map(\.filename) } + state.rigs.compactMap(\.photoFilename))
     }
 }

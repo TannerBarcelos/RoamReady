@@ -55,14 +55,25 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
     public var slideCount: Int?
     public var axleCount: Int?
     public var hasBunkhouse: Bool?
+    /// Set when the owner replaces this rig. Archived rigs leave the trip picker, don't count toward
+    /// `RigPolicy.maxActiveRigs`, and stay readable on the trips that used them.
+    public var archivedAt: Date?
     public init(id: UUID = UUID(), type: RigType = .travelTrailer, make: String = "", model: String = "",
                 year: Int? = nil, floorplan: String = "", emoji: String = "🚐",
                 photoFilename: String? = nil, equipment: Equipment = Equipment(),
-                lengthFeet: Double? = nil, slideCount: Int? = nil, axleCount: Int? = nil, hasBunkhouse: Bool? = nil) {
+                lengthFeet: Double? = nil, slideCount: Int? = nil, axleCount: Int? = nil, hasBunkhouse: Bool? = nil,
+                archivedAt: Date? = nil) {
         self.id = id; self.type = type; self.make = make; self.model = model; self.year = year
         self.floorplan = floorplan; self.emoji = emoji; self.photoFilename = photoFilename
         self.equipment = equipment; self.lengthFeet = lengthFeet; self.slideCount = slideCount
-        self.axleCount = axleCount; self.hasBunkhouse = hasBunkhouse
+        self.axleCount = axleCount; self.hasBunkhouse = hasBunkhouse; self.archivedAt = archivedAt
+    }
+    public var isArchived: Bool { archivedAt != nil }
+    /// Same owner-entered details, ignoring identity and archive state.
+    public func hasSameDetails(as other: Rig) -> Bool {
+        var copy = other
+        copy.id = id; copy.archivedAt = archivedAt
+        return copy == self
     }
     public var displayName: String {
         let name = [make, model, floorplan].filter { !$0.isEmpty }.joined(separator: " ")
@@ -154,12 +165,13 @@ public enum Experience: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// The owner's details. Rigs are separate records in `AppState.rigs`; older profiles that embedded
+/// a rig are converted by `RigMigration`.
 public struct CamperProfile: Codable, Equatable, Sendable {
     public var name: String
     public var experience: Experience
-    public var rig: Rig
-    public init(name: String = "", experience: Experience = .new, rig: Rig = Rig()) {
-        self.name = name; self.experience = experience; self.rig = rig
+    public init(name: String = "", experience: Experience = .new) {
+        self.name = name; self.experience = experience
     }
 }
 
@@ -191,11 +203,14 @@ public struct ChecklistTemplates: Codable, Equatable, Sendable {
     public var sourceURL: String
     public var setup: [ChecklistItem]
     public var teardown: [ChecklistItem]
+    /// The rig these are the default lists for. Nil only in libraries saved before per-rig defaults.
+    public var rigID: UUID?
     public init(id: UUID = UUID(), version: Int = 1, sourceURL: String = ChecklistFactory.sourceURL,
-                setup: [ChecklistItem] = [], teardown: [ChecklistItem] = []) {
+                setup: [ChecklistItem] = [], teardown: [ChecklistItem] = [], rigID: UUID? = nil) {
         self.id = id; self.version = version; self.sourceURL = sourceURL; self.setup = setup; self.teardown = teardown
+        self.rigID = rigID
     }
-    private enum CodingKeys: String, CodingKey { case id, version, sourceURL, setup, teardown }
+    private enum CodingKeys: String, CodingKey { case id, version, sourceURL, setup, teardown, rigID }
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
@@ -203,6 +218,12 @@ public struct ChecklistTemplates: Codable, Equatable, Sendable {
         sourceURL = try c.decode(String.self, forKey: .sourceURL)
         setup = try c.decode([ChecklistItem].self, forKey: .setup)
         teardown = try c.decode([ChecklistItem].self, forKey: .teardown)
+        rigID = try c.decodeIfPresent(UUID.self, forKey: .rigID)
+    }
+    /// Pending copies with fresh identities, so a copy never shares items with its source.
+    public func freshCopy(rigID: UUID?) -> ChecklistTemplates {
+        ChecklistTemplates(version: version, sourceURL: sourceURL, setup: setup.map { $0.freshCopy() },
+                           teardown: teardown.map { $0.freshCopy() }, rigID: rigID)
     }
 }
 
@@ -241,32 +262,54 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
     public var setup: [ChecklistItem]
     public var teardown: [ChecklistItem]
     public var photos: [TripPhoto]
-    /// Immutable context at creation; older archives may not have these fields.
-    public var rigSnapshot: Rig?
+    /// A reference to the rig in `AppState.rigs`. The UI reads the rig's current details through it;
+    /// a missing rig shows as "Rig unavailable". Nil only for trips saved without a rig.
+    public var rigID: UUID?
     public var campgroundID: String?
     public var planningTimeZoneIdentifier: String?
     public var campgroundTimeZoneIdentifier: String?
+
+    // Booking details, all optional and entered by the user. A trip is one booking at one campground.
+    public var loop: String?
+    public var confirmationNumber: String?
+    /// Who it was booked through, e.g. Recreation.gov or the campground directly.
+    public var bookingProvider: String?
+    /// The manage-booking page. `https` only.
+    public var bookingURL: String?
+    /// Minutes after midnight in the campground's time zone, on the arrival and departure days.
+    public var checkInMinutes: Int?
+    public var checkOutMinutes: Int?
+    public var totalCost: Double?
+    public var amountPaid: Double?
+    /// Display only; the app never sends reminders.
+    public var cancellationDeadline: Date?
+
     public init(id: UUID = UUID(), campgroundName: String, latitude: Double? = nil, longitude: Double? = nil,
                 arrival: Date, departure: Date, siteNumber: String = "", notes: String = "",
                 rating: SiteRating = .unrated, setup: [ChecklistItem] = [],
-                teardown: [ChecklistItem] = [], photos: [TripPhoto] = [], rigSnapshot: Rig? = nil,
+                teardown: [ChecklistItem] = [], photos: [TripPhoto] = [], rigID: UUID? = nil,
                 campgroundID: String? = nil, planningTimeZoneIdentifier: String? = nil,
                 campgroundTimeZoneIdentifier: String? = nil) {
         self.id = id; self.campgroundName = campgroundName; self.latitude = latitude; self.longitude = longitude
         self.arrival = arrival; self.departure = departure; self.siteNumber = siteNumber; self.notes = notes
         self.rating = rating; self.setup = setup; self.teardown = teardown; self.photos = photos
-        self.rigSnapshot = rigSnapshot; self.campgroundID = campgroundID
+        self.rigID = rigID; self.campgroundID = campgroundID
         self.planningTimeZoneIdentifier = planningTimeZoneIdentifier
         self.campgroundTimeZoneIdentifier = campgroundTimeZoneIdentifier
     }
+    /// Creating a trip is the only way it gets checklists: fresh copies of the rig's defaults
+    /// (or, when the rig has none yet, the lists generated from its type). After this the trip's
+    /// lists are independent of the rig's defaults.
     public static func create(campgroundName: String, arrival: Date, departure: Date, rig: Rig,
-                              templates: ChecklistTemplates? = nil, latitude: Double? = nil,
-                              longitude: Double? = nil) throws -> Trip {
-        let source = templates ?? ChecklistFactory.templates(for: rig)
+                              defaults: ChecklistTemplates? = nil, latitude: Double? = nil,
+                              longitude: Double? = nil, campgroundID: String? = nil,
+                              campgroundTimeZoneIdentifier: String? = nil) throws -> Trip {
+        let source = defaults ?? ChecklistFactory.templates(for: rig)
         let trip = Trip(campgroundName: campgroundName.trimmingCharacters(in: .whitespacesAndNewlines),
                         latitude: latitude, longitude: longitude, arrival: arrival, departure: departure,
                         setup: source.setup.map { $0.freshCopy() }, teardown: source.teardown.map { $0.freshCopy() },
-                        rigSnapshot: rig, planningTimeZoneIdentifier: TimeZone.current.identifier)
+                        rigID: rig.id, campgroundID: campgroundID, planningTimeZoneIdentifier: TimeZone.current.identifier,
+                        campgroundTimeZoneIdentifier: campgroundTimeZoneIdentifier)
         try trip.validate()
         return trip
     }
@@ -289,29 +332,95 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
         try validateChecklist(setup + teardown)
         guard Set(photos.map(\.id)).count == photos.count else { throw CampError.duplicateIdentifiers }
         for photo in photos { try validateFilename(photo.filename) }
-        if let filename = rigSnapshot?.photoFilename { try validateFilename(filename) }
+        try validateBookingValues()
+    }
+
+    public static let minutesPerDay = 24 * 60
+
+    /// Everything the booking form checks, including that check-out comes after check-in. Called when
+    /// the owner creates or edits a trip, not on load: two devices editing dates and times separately
+    /// could merge into an order that must not make the library unreadable.
+    public func validateBooking() throws {
+        try validateBookingValues()
+        if let checkIn = checkInDate, let checkOut = checkOutDate, checkOut <= checkIn { throw CampError.invalidCheckTimes }
+    }
+
+    /// Per-field checks that a sync merge can't violate.
+    func validateBookingValues() throws {
+        if let bookingURL, !bookingURL.isEmpty {
+            guard let url = URL(string: bookingURL), url.scheme?.lowercased() == "https", url.host?.isEmpty == false else {
+                throw CampError.invalidBookingLink
+            }
+        }
+        for minutes in [checkInMinutes, checkOutMinutes].compactMap({ $0 }) {
+            guard (0..<Self.minutesPerDay).contains(minutes) else { throw CampError.invalidCheckTimes }
+        }
+        for amount in [totalCost, amountPaid].compactMap({ $0 }) {
+            guard amount.isFinite, amount >= 0 else { throw CampError.invalidBookingAmount }
+        }
+        if let cancellationDeadline, !cancellationDeadline.timeIntervalSinceReferenceDate.isFinite { throw CampError.invalidDates }
     }
 }
 
-public struct AppState: Codable, Equatable, Sendable {
+public struct AppState: Equatable, Sendable {
     public var profile: CamperProfile?
+    /// Every rig, archived ones included. See `RigPolicy` for the active-rig limit.
+    public var rigs: [Rig]
     public var trips: [Trip]
-    public var templates: ChecklistTemplates?
-    public init(profile: CamperProfile? = nil, trips: [Trip] = [], templates: ChecklistTemplates? = nil) {
-        self.profile = profile; self.trips = trips; self.templates = templates
+    /// Default setup and teardown lists, at most one per rig (`ChecklistTemplates.rigID`).
+    public var rigDefaults: [ChecklistTemplates]
+    public init(profile: CamperProfile? = nil, rigs: [Rig] = [], trips: [Trip] = [], rigDefaults: [ChecklistTemplates] = []) {
+        self.profile = profile; self.rigs = rigs; self.trips = trips; self.rigDefaults = rigDefaults
     }
+    /// Never fails because of more than one active rig: sync can produce that, and the library must
+    /// stay readable while the owner resolves it (`needsRigResolution`). Mutations enforce the limit.
     public func validated() throws -> AppState {
-        guard Set(trips.map(\.id)).count == trips.count else { throw CampError.duplicateIdentifiers }
+        guard Set(trips.map(\.id)).count == trips.count, Set(rigs.map(\.id)).count == rigs.count else { throw CampError.duplicateIdentifiers }
         for trip in trips { try trip.validate() }
-        if let filename = profile?.rig.photoFilename { try validateFilename(filename) }
-        if let templates { try validateChecklist(templates.setup + templates.teardown) }
+        for filename in rigs.compactMap(\.photoFilename) { try validateFilename(filename) }
+        let owners = rigDefaults.map(\.rigID)
+        guard owners.allSatisfy({ $0 != nil }), Set(owners).count == owners.count else { throw CampError.duplicateIdentifiers }
+        for defaults in rigDefaults { try validateChecklist(defaults.setup + defaults.teardown) }
         return self
+    }
+}
+
+extension AppState: Codable {
+    private enum CodingKeys: String, CodingKey { case profile, rigs, trips, rigDefaults }
+    /// Keys of libraries saved before rigs became separate records (#28).
+    private enum LegacyKeys: String, CodingKey { case profile, trips, templates }
+    private struct LegacyProfile: Decodable { let rig: Rig? }
+    private struct LegacyTrip: Decodable { let id: UUID; let rigSnapshot: Rig? }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        profile = try c.decodeIfPresent(CamperProfile.self, forKey: .profile)
+        trips = try c.decodeIfPresent([Trip].self, forKey: .trips) ?? []
+        rigs = try c.decodeIfPresent([Rig].self, forKey: .rigs) ?? []
+        rigDefaults = try c.decodeIfPresent([ChecklistTemplates].self, forKey: .rigDefaults) ?? []
+        guard !c.contains(.rigs) else { return }
+        let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+        let profileRig = try legacy.decodeIfPresent(LegacyProfile.self, forKey: .profile)?.rig
+        let snapshots = try legacy.decodeIfPresent([LegacyTrip].self, forKey: .trips) ?? []
+        let templates = try legacy.decodeIfPresent(ChecklistTemplates.self, forKey: .templates)
+        RigMigration.migrate(&self, profileRig: profileRig, legacyTemplates: templates,
+                             snapshots: Dictionary(snapshots.compactMap { trip in trip.rigSnapshot.map { (trip.id, $0) } },
+                                                   uniquingKeysWith: { first, _ in first }))
+    }
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(profile, forKey: .profile)
+        try c.encode(rigs, forKey: .rigs)
+        try c.encode(trips, forKey: .trips)
+        try c.encode(rigDefaults, forKey: .rigDefaults)
     }
 }
 
 public enum CampError: Error, LocalizedError, Equatable, Sendable {
     case missingCampground, invalidDates, invalidCoordinates, duplicateIdentifiers, emptyChecklistTitle
     case invalidPhotoFilename, unsupportedSchema(Int), incompleteRig, invalidRigDetails
+    case invalidBookingLink, invalidCheckTimes, invalidBookingAmount
+    case rigLimitReached, rigInUse, rigNotFound, rigArchived
     public var errorDescription: String? {
         switch self {
         case .missingCampground: "Enter a campground or destination name."
@@ -323,18 +432,27 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
         case .unsupportedSchema(let version): "This data uses an unsupported format (version \(version)). Update the app before opening it."
         case .incompleteRig: "Enter your rig’s year, make, model, and length."
         case .invalidRigDetails: "Check your rig details. Year, length, slides, or axles are outside the supported range."
+        case .invalidBookingLink: "The booking link must be a secure web address starting with https://."
+        case .invalidCheckTimes: "Check-out must be after check-in."
+        case .invalidBookingAmount: "Costs must be zero or more."
+        case .rigLimitReached: RigPolicy.maxActiveRigs == 1
+            ? "You already have an active rig. Replace or archive it first."
+            : "You already have \(RigPolicy.maxActiveRigs) active rigs. Archive one first."
+        case .rigInUse: "Trips use this rig, so it can't be deleted. Archive it instead; past trips keep showing it."
+        case .rigNotFound: "That rig is no longer available."
+        case .rigArchived: "Archived rigs can't be used for new trips."
         }
     }
 }
 
-private func validateChecklist(_ items: [ChecklistItem]) throws {
+func validateChecklist(_ items: [ChecklistItem]) throws {
     guard Set(items.map(\.id)).count == items.count else { throw CampError.duplicateIdentifiers }
     guard items.allSatisfy({ !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
         throw CampError.emptyChecklistTitle
     }
 }
 
-private func validateFilename(_ filename: String) throws {
+func validateFilename(_ filename: String) throws {
     guard !filename.isEmpty, filename != ".", filename != "..", !filename.contains("/"),
           !filename.contains("\\"), !filename.contains("\0") else { throw CampError.invalidPhotoFilename }
 }

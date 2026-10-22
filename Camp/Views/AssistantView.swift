@@ -21,7 +21,7 @@ struct AssistantView: View {
                     Button {
                         answering = true
                         task = Task {
-                            let answer = await CampingAssistant.answer(question: question, trip: trip, rig: trip.rigSnapshot, step: step)
+                            let answer = await CampingAssistant.answer(question: question, trip: trip, rig: store.rig(for: trip), step: step)
                             if !Task.isCancelled { response = answer; answering = false }
                         }
                     } label: {

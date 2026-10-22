@@ -37,6 +37,7 @@ public final class SQLiteStore: @unchecked Sendable {
         let local = try await load(directory: directory, cloudContainerIdentifier: nil)
         do {
             try await local.importPreviousDatabase()
+            try await local.migrateRigReferences()
             try await local.cleanUpInterruptedDocumentWrites()
             _ = try await local.snapshot()
         } catch {
@@ -190,6 +191,8 @@ public final class SQLiteStore: @unchecked Sendable {
     }
 
     public func save(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) async throws {
+        // The active-rig limit is enforced here too, so no caller can exceed it silently.
+        try desired.state.validateRigLimit(comparedTo: baseline.state)
         let purged: Set<String> = try await context.perform { [self] () throws -> Set<String> in
             do {
                 let purged = try apply(from: baseline, to: desired)
@@ -228,7 +231,7 @@ public final class SQLiteStore: @unchecked Sendable {
     public func noteRevisions(tripID: UUID) async throws -> [NoteRevision] {
         try await context.perform { [self] in
             context.refreshAllObjects()
-            return try records(kinds: [.noteRevision]).filter { $0.fields["owner"]?.string == "trip:\(tripID)" }.map {
+            return try records(kinds: [.noteRevision]).filter { $0.deletion == nil && $0.fields["owner"]?.string == "trip:\(tripID)" }.map {
                 NoteRevision(id: $0.key, text: $0.fields["body"]?.string ?? "", date: Date(timeIntervalSinceReferenceDate: $0.fields["createdAt"]?.number ?? 0))
             }.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date > $1.date }
         }
@@ -247,6 +250,10 @@ public final class SQLiteStore: @unchecked Sendable {
             let row = matches.first ?? insert(key, kind)
             if next == nil && kind != .favorite {
                 for match in matches { match.setValue(true, forKey: "removed") }
+                if kind == .trip {
+                    for match in matches { match.setValue(nil, forKey: "notes") }
+                    try removeNoteRevisions(owner: key)
+                }
                 continue
             }
             let target = next?.fields ?? ["campgroundID": previous!.fields["campgroundID"]!, "saved": .bool(false)]
@@ -297,6 +304,16 @@ public final class SQLiteStore: @unchecked Sendable {
             purged.insert(filename)
         }
         return purged
+    }
+
+    /// A deleted trip's note history goes with it. The text is cleared so it doesn't linger
+    /// in the store or in iCloud; the tombstone keeps the deletion syncing.
+    private func removeNoteRevisions(owner: String) throws {
+        let request = NSFetchRequest<NSManagedObject>(entityName: LegacyStoreModel.name(.noteRevision))
+        request.predicate = NSPredicate(format: "owner == %@", owner)
+        for row in try context.fetch(request) {
+            row.setValue(true, forKey: "removed"); row.setValue(nil, forKey: "body")
+        }
     }
 
     private static func checksum(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
@@ -366,6 +383,50 @@ public final class SQLiteStore: @unchecked Sendable {
         request.predicate = NSPredicate(format: "key == %@", key); request.fetchLimit = 1
         let row = try context.fetch(request).first ?? NSEntityDescription.insertNewObject(forEntityName: "LocalMetadata", into: context)
         row.setValue(key, forKey: "key"); row.setValue(value, forKey: "value")
+    }
+
+    /// Rewrites a library saved before rigs were separate records (#28) into the current layout, once,
+    /// before mirroring starts: the profile's rig, the library-wide templates, and each trip's rig copy
+    /// become rig and per-rig default records (see `RigMigration`), and the old records are removed.
+    /// Deterministic, so devices that migrate the same synced library write identical records. Runs on
+    /// every open, so legacy records that arrive later from an older app version are converted too.
+    func migrateRigReferences() async throws {
+        try await context.perform { [self] in
+            let current = try records()
+            let legacyKeys = RecordProjection.legacyRigLayoutKeys(current)
+            guard !legacyKeys.isEmpty else { return }
+            do {
+                let desired = try RecordProjection.documents(RecordProjection.snapshot(current))
+                let existing = Dictionary(uniqueKeysWithValues: current.map { ($0.key, $0) })
+                for (key, next) in desired.sorted(by: { $0.key < $1.key }) {
+                    let previous = existing[key]
+                    guard previous?.deletion == nil else { continue }
+                    // Keep fields the projection doesn't own, such as `initialChecklistKeys`.
+                    var target = previous?.fields ?? [:]
+                    target.removeValue(forKey: "rigKey")
+                    target.merge(next.fields) { _, new in new }
+                    if next.kind == .templates && previous == nil {
+                        let owner = "templates:\(next.fields["id"]?.string ?? "")"
+                        let items = desired.values.filter { $0.kind == .checklistItem && $0.fields["owner"]?.string == owner }
+                        target["initialChecklistKeys"] = .array(items.map(\.key).sorted().map(RecordValue.string))
+                    }
+                    guard target != previous?.fields else { continue }
+                    let row = try rows(key, next.kind).first ?? insert(key, next.kind)
+                    for field in Set(previous?.fields.keys.map { $0 } ?? []).union(target.keys) where previous?.fields[field] != target[field] {
+                        try set(target[field] ?? .null, field: field, kind: next.kind, row: row)
+                    }
+                }
+                // The old rig copies and library-wide templates are now represented by new records.
+                for key in legacyKeys where desired[key] == nil {
+                    guard let kind = existing[key]?.kind, kind == .rig || kind == .templates else { continue }
+                    for row in try rows(key, kind) { row.setValue(true, forKey: "removed") }
+                }
+                if context.hasChanges { try context.save() }
+            } catch ReplicationError.incompleteLibrary {
+                // Related records haven't all arrived; try again on the next open.
+                context.rollback()
+            } catch { context.rollback(); throw error }
+        }
     }
 
     private func importPreviousDatabase() async throws {

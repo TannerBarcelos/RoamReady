@@ -19,4 +19,20 @@ public extension Trip {
               start <= end else { return nil }
         return start...end
     }
+
+    /// Check-in on the arrival day, at the campground's local time.
+    var checkInDate: Date? { checkInMinutes.flatMap { campgroundInstant(onDayOf: arrival, minutes: $0) } }
+    /// Check-out on the departure day, at the campground's local time.
+    var checkOutDate: Date? { checkOutMinutes.flatMap { campgroundInstant(onDayOf: departure, minutes: $0) } }
+
+    /// The chosen civil day (as planned) at a local time in the campground's time zone. A time that
+    /// doesn't exist on a daylight-saving change day resolves forward, as the calendar does.
+    private func campgroundInstant(onDayOf day: Date, minutes: Int) -> Date? {
+        guard (0..<Trip.minutesPerDay).contains(minutes) else { return nil }
+        var planning = Calendar(identifier: .gregorian)
+        planning.timeZone = planningTimeZoneIdentifier.flatMap(TimeZone.init(identifier:)) ?? .current
+        var components = planning.dateComponents([.year, .month, .day], from: day)
+        components.hour = minutes / 60; components.minute = minutes % 60
+        return campgroundCalendar.date(from: components)
+    }
 }

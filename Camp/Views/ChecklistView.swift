@@ -15,6 +15,8 @@ struct ChecklistView: View {
     @State private var adding = false
     @State private var templateConfirmation = false
     @State private var templateSaved = false
+    @State private var templateFailure: String?
+    private var rigName: String { store.trip(tripID).flatMap(store.rig(for:))?.displayName ?? "this rig" }
     @State private var showAssistant = false
     @State private var helpItem: ChecklistItem?
     @State private var helpAfterDismiss = false
@@ -84,8 +86,10 @@ struct ChecklistView: View {
             }
             Section {
                 Button("Ask about this checklist", systemImage: "sparkles") { helpItem = nil; showAssistant = true }
-                Button("Use these lists for future trips", systemImage: "square.on.square") { templateConfirmation = true }
-                if templateSaved { Label("Template updated", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
+                Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { templateConfirmation = true }
+                    .disabled(store.trip(tripID).flatMap(store.rig(for:)) == nil)
+                if templateSaved { Label("Defaults updated for \(rigName)", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
+                if let templateFailure { Text(templateFailure).font(.caption).foregroundStyle(.red) }
                 if let url = URL(string: ChecklistFactory.sourceURL) {
                     Link("Reference: Camping World", destination: url).font(.footnote)
                 }
@@ -108,9 +112,12 @@ struct ChecklistView: View {
         .sheet(isPresented: $showAssistant) {
             if let trip = store.trip(tripID) { AssistantView(trip: trip, step: helpItem) }
         }
-        .confirmationDialog("Use both of this trip’s checklists as your template?", isPresented: $templateConfirmation, titleVisibility: .visible) {
-            Button("Update template") { store.saveAsTemplate(tripID); templateSaved = true }
-        } message: { Text("Future trips start with these steps unchecked. Existing trips keep their own lists.") }
+        .confirmationDialog("Save as defaults for \(rigName)?", isPresented: $templateConfirmation, titleVisibility: .visible) {
+            Button("Save as defaults") {
+                do { try store.saveAsDefaults(tripID); templateSaved = true; templateFailure = nil }
+                catch { templateFailure = error.localizedDescription }
+            }
+        } message: { Text("Both of this trip’s checklists become the default lists for \(rigName), with every step unchecked. Only future trips with this rig use them; other trips keep their own lists.") }
     }
 }
 

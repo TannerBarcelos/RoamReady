@@ -223,7 +223,7 @@ final class CampStore {
     /// Documents whose trip was deleted or whose rig was replaced. They stay until deleted deliberately.
     var unattachedDocuments: [ManagedDocument] {
         documents.filter { document in
-            document.owner.kind == .trip ? trip(document.owner.id) == nil : document.owner.id != state.profile?.rig.id
+            document.owner.kind == .trip ? trip(document.owner.id) == nil : state.rig(document.owner.id) == nil
         }
     }
 
@@ -291,51 +291,84 @@ final class CampStore {
         documents = latest
     }
 
-    func finishOnboarding(_ profile: CamperProfile) {
-        guard !isTransitioning, wantsLibraryAccess else { return }
-        state.profile = profile
-        state.templates = ChecklistFactory.templates(for: profile.rig)
-        persist()
-    }
+    // MARK: Profile, rigs, and default checklists. All of these work offline.
 
-    func updateProfile(_ profile: CamperProfile, rebuildTemplates: Bool = false) {
-        guard !isTransitioning, wantsLibraryAccess else { return }
-        state.profile = profile
-        if rebuildTemplates { state.templates = ChecklistFactory.templates(for: profile.rig) }
-        persist()
-    }
+    /// The rig new trips use in v1, where each owner has one active rig.
+    var activeRig: Rig? { state.activeRigs.first }
+    func rig(for trip: Trip) -> Rig? { state.rig(for: trip) }
 
-    func updateTemplates(_ templates: ChecklistTemplates) {
-        guard !isTransitioning, wantsLibraryAccess else { return }
-        var fresh = templates
-        fresh.id = UUID()
-        fresh.setup = templates.setup.map { $0.freshCopy() }
-        fresh.teardown = templates.teardown.map { $0.freshCopy() }
-        state.templates = fresh
-        persist()
-    }
-
-    func resetTemplatesForRig() {
-        guard !isTransitioning, wantsLibraryAccess else { return }
-        guard let rig = state.profile?.rig else { return }
-        state.templates = ChecklistFactory.templates(for: rig)
-        persist()
-    }
-
-    @discardableResult
-    func createTrip(name: String, arrival: Date, departure: Date, site: String,
-                    campground: Campground?) throws -> UUID {
+    /// Applies a change through CampCore's rules, then saves. Nothing changes if a rule refuses it.
+    private func mutate(_ change: (inout AppState) throws -> Void) throws {
         guard !isTransitioning, wantsLibraryAccess else { throw CampUIError.libraryBusy }
-        guard let rig = state.profile?.rig else { throw CampUIError.missingRig }
-        var trip = try Trip.create(campgroundName: name, arrival: arrival, departure: departure,
-                                   rig: rig, templates: state.templates,
-                                   latitude: campground?.latitude, longitude: campground?.longitude)
-        trip.siteNumber = site
-        trip.campgroundID = campground?.id
-        trip.campgroundTimeZoneIdentifier = campground?.timeZoneIdentifier
-        state.trips.append(trip)
+        var next = state
+        try change(&next)
+        _ = try next.validated()
+        state = next
         persist()
-        return trip.id
+    }
+
+    /// Onboarding creates the profile, the first rig, and that rig's default checklists.
+    func finishOnboarding(_ profile: CamperProfile, rig: Rig) throws {
+        try mutate { state in
+            state.profile = profile
+            if state.rig(rig.id) == nil { try state.addRig(rig) }
+        }
+    }
+
+    func updateProfile(_ profile: CamperProfile) throws {
+        try mutate { $0.profile = profile }
+    }
+
+    /// Editing a rig changes what every trip using it shows. Defaults are regenerated only on request.
+    func updateRig(_ rig: Rig, regenerateDefaults: Bool = false) throws {
+        try mutate { state in
+            try state.updateRig(rig)
+            if regenerateDefaults { try state.resetDefaults(for: rig.id) }
+        }
+    }
+
+    /// Archive the current rig and add its replacement. Past trips keep showing the old one.
+    func replaceRig(_ id: UUID, with replacement: Rig) throws {
+        try mutate { try $0.replaceRig(id, with: replacement) }
+    }
+    func addRig(_ rig: Rig) throws { try mutate { try $0.addRig(rig) } }
+    func archiveRig(_ id: UUID) throws { try mutate { try $0.archiveRig(id) } }
+    func unarchiveRig(_ id: UUID) throws { try mutate { try $0.unarchiveRig(id) } }
+    func deleteRig(_ id: UUID) throws { try mutate { try $0.deleteRig(id) } }
+
+    /// Replaces the rig's defaults. Existing trips are never touched.
+    func updateDefaults(_ templates: ChecklistTemplates, for rigID: UUID) throws {
+        try mutate { state in
+            guard state.rig(rigID) != nil else { throw CampError.rigNotFound }
+            state.setDefaults(templates, for: rigID)
+        }
+    }
+
+    func resetDefaults(for rigID: UUID) throws {
+        try mutate { try $0.resetDefaults(for: rigID) }
+    }
+
+    /// The rig's defaults, or the lists its type generates if it has none yet.
+    func defaults(for rig: Rig) -> ChecklistTemplates {
+        state.defaults(for: rig.id) ?? ChecklistFactory.templates(for: rig)
+    }
+
+    // MARK: Trips
+
+    /// Creating a trip is entering the booking. `draft` carries the campground and booking fields;
+    /// the trip's checklists are fresh copies of the chosen rig's defaults.
+    @discardableResult
+    func createTrip(from draft: Trip, rigID: UUID) throws -> UUID {
+        var created: Trip?
+        try mutate { state in
+            created = try state.createTrip(campgroundName: draft.campgroundName, arrival: draft.arrival, departure: draft.departure,
+                                           rigID: rigID, latitude: draft.latitude, longitude: draft.longitude,
+                                           campgroundID: draft.campgroundID,
+                                           campgroundTimeZoneIdentifier: draft.campgroundTimeZoneIdentifier) { trip in
+                trip.copyBookingDetails(from: draft)
+            }
+        }
+        return created!.id
     }
 
     func trip(_ id: UUID) -> Trip? { state.trips.first { $0.id == id } }
@@ -347,6 +380,8 @@ final class CampStore {
         persist()
     }
 
+    /// Cancelling a trip deletes it with its checklists, notes and note history, photos, and rating,
+    /// on every device after sync. Its documents move to Unattached documents.
     func deleteTrip(_ id: UUID) {
         guard !isTransitioning, wantsLibraryAccess else { return }
         state.trips.removeAll { $0.id == id }
@@ -354,18 +389,9 @@ final class CampStore {
         persist()
     }
 
-    func saveAsTemplate(_ id: UUID) {
-        guard !isTransitioning, wantsLibraryAccess else { return }
-        guard let trip = trip(id), var templates = state.templates else { return }
-        templates.id = UUID()
-        templates.setup = trip.setup.map { item in
-            var copy = item; copy.id = UUID(); copy.status = .pending; return copy
-        }
-        templates.teardown = trip.teardown.map { item in
-            var copy = item; copy.id = UUID(); copy.status = .pending; return copy
-        }
-        state.templates = templates
-        persist()
+    /// "Save as defaults for <rig>": writes only to the trip's own rig.
+    func saveAsDefaults(_ tripID: UUID) throws {
+        try mutate { try $0.saveTripChecklistsAsDefaults(tripID) }
     }
 
     func dismissSaveFailure() { presentsSaveFailure = false }
@@ -441,7 +467,7 @@ enum CampUIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .libraryBusy: "Your library is reopening. Please try again in a moment."
-        case .missingRig: "Add your rig before planning a trip."
+        case .missingRig: "Add a rig in Profile before adding a trip."
         case .unreadablePhoto: "This photo couldn’t be opened. If it’s stored in iCloud Photos, download it while online and try again."
         }
     }

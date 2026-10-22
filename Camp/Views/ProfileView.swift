@@ -5,8 +5,6 @@ struct ProfileView: View {
     @Environment(CampStore.self) private var store
     @Environment(Connectivity.self) private var connectivity
     @State private var editing = false
-    @State private var editingTemplates = false
-    @State private var resetConfirmation = false
     @State private var exportURL: URL?
     @State private var exportFailure: String?
     @State private var preparingExport = false
@@ -14,42 +12,20 @@ struct ProfileView: View {
         List {
             if let profile = store.state.profile {
                 Section {
-                    HStack(spacing: 16) {
-                        RigImage(rig: profile.rig, size: 72)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(profile.name.isEmpty ? "Your camping profile" : profile.name).font(.title3.bold())
-                            Text(profile.rig.displayName).foregroundStyle(.secondary)
-                            if !profile.rig.detailSummary.isEmpty {
-                                Text(profile.rig.detailSummary).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Text(profile.experience.title).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }.padding(.vertical, 6)
-                    Button("Edit profile & rig", systemImage: "pencil") { editing = true }.disabled(!connectivity.isOnline)
-                    if !connectivity.isOnline { Text("Connect to edit your profile or rig.").font(.caption).foregroundStyle(.secondary) }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(profile.name.isEmpty ? "Your camping profile" : profile.name).font(.title3.bold())
+                        Text(profile.experience.title).font(.caption).foregroundStyle(.secondary)
+                    }.padding(.vertical, 4)
+                    Button("Edit profile", systemImage: "pencil") { editing = true }
                 }
             }
-            if let rig = store.state.profile?.rig {
+            RigsSection()
+            if !store.unattachedDocuments.isEmpty {
                 Section {
-                    NavigationLink { DocumentsView(owner: .rig(rig.id), title: "Rig documents") } label: {
-                        LabeledContent { Text(String(store.documents(for: .rig(rig.id)).count)) } label: {
-                            Label("Manuals & paperwork", systemImage: "folder")
-                        }
+                    NavigationLink { UnattachedDocumentsView() } label: {
+                        LabeledContent { Text(String(store.unattachedDocuments.count)) } label: { Label("Unattached documents", systemImage: "tray") }
                     }
-                    if !store.unattachedDocuments.isEmpty {
-                        NavigationLink { UnattachedDocumentsView() } label: {
-                            LabeledContent { Text(String(store.unattachedDocuments.count)) } label: { Label("Unattached documents", systemImage: "tray") }
-                        }
-                    }
-                } header: { Text("Rig documents") } footer: {
-                    Text("Manuals, registration, insurance, and more. Saved files open without a connection.")
-                }
-            }
-            Section {
-                Button("Edit my default checklists", systemImage: "checklist") { editingTemplates = true }
-                Button("Restore defaults for my rig", systemImage: "arrow.counterclockwise") { resetConfirmation = true }
-            } header: { Text("Your camping flow") } footer: {
-                Text("New trips start with these lists. Each existing trip keeps its own steps and progress.")
+                } footer: { Text("Documents from deleted trips and deleted rigs stay here until you delete them.") }
             }
             Section {
                 SaveStatus()
@@ -68,7 +44,7 @@ struct ProfileView: View {
                 if let exportFailure { Text(exportFailure).font(.caption).foregroundStyle(.red) }
                 if store.saveFailure != nil { Button("Retry saving", systemImage: "arrow.clockwise") { store.retrySave() } }
             } header: { Text("On this iPhone") } footer: {
-                Text("The export includes your profile, checklists, notes, saved campgrounds, and readable copies of your documents, including end-to-end encrypted ones. Keep it somewhere private. Share trip photos individually.")
+                Text("The export includes your profile, rigs, checklists, bookings, notes, saved campgrounds, and readable copies of your documents, including end-to-end encrypted ones. Keep it somewhere private. Share trip photos individually.")
             }
             Section("Account") {
                 NavigationLink { AccountSettingsView() } label: { Label("Apple Account", systemImage: "person.crop.circle") }
@@ -91,52 +67,214 @@ struct ProfileView: View {
         .sheet(isPresented: $editing) {
             if let profile = store.state.profile { EditProfileView(profile: profile) }
         }
-        .sheet(isPresented: $editingTemplates) {
-            if let templates = store.state.templates { TemplateEditorView(templates: templates) }
+    }
+}
+
+/// Profile › Rig. Editing, replacing, archiving, and default checklists all work offline.
+struct RigsSection: View {
+    @Environment(CampStore.self) private var store
+    @State private var editor: RigEditorView.Mode?
+    @State private var editingDefaults: Rig?
+    @State private var resetting: Rig?
+    @State private var failure: String?
+    var body: some View {
+        if store.state.needsRigResolution {
+            Section {
+                Label("You have \(store.state.activeRigs.count) active rigs", systemImage: "exclamationmark.triangle")
+                Text("This can happen when two devices change rigs before syncing. Archive the one you no longer use; its trips keep showing it.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
         }
-        .confirmationDialog("Restore the original checklists for your current rig?", isPresented: $resetConfirmation, titleVisibility: .visible) {
-            Button("Restore defaults", role: .destructive) { store.resetTemplatesForRig() }
-        } message: { Text("This replaces your reusable templates. Existing trips retain their custom lists.") }
+        ForEach(store.state.activeRigs) { rig in
+            Section {
+                HStack(spacing: 16) {
+                    RigImage(rig: rig, size: 72)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(rig.displayName).font(.headline)
+                        if !rig.detailSummary.isEmpty { Text(rig.detailSummary).font(.caption).foregroundStyle(.secondary) }
+                        Text("Used by \(store.state.trips(usingRig: rig.id).count) trips").font(.caption).foregroundStyle(.secondary)
+                    }
+                }.padding(.vertical, 6)
+                Button("Edit rig", systemImage: "pencil") { editor = .edit(rig) }
+                Button("Default checklists", systemImage: "checklist") { editingDefaults = rig }
+                Button("Reset default checklists", systemImage: "arrow.counterclockwise") { resetting = rig }
+                NavigationLink { DocumentsView(owner: .rig(rig.id), title: "Rig documents") } label: {
+                    LabeledContent { Text(String(store.documents(for: .rig(rig.id)).count)) } label: {
+                        Label("Manuals & paperwork", systemImage: "folder")
+                    }
+                }
+                Button("Replace rig", systemImage: "arrow.triangle.2.circlepath") { editor = .replace(rig) }
+                if store.state.needsRigResolution {
+                    Button("Archive this rig", systemImage: "archivebox") { perform { try store.archiveRig(rig.id) } }
+                }
+            } header: { Text("Your rig") } footer: {
+                Text("Editing updates every trip that uses this rig, past trips included. Sold it or got a new one? Use Replace rig: the current rig is archived and stays on past trips.")
+            }
+        }
+        Section {
+            if store.state.canAddActiveRig {
+                Button("Add a rig", systemImage: "plus") { editor = .add }
+            }
+            if !store.state.archivedRigs.isEmpty {
+                NavigationLink { ArchivedRigsView() } label: {
+                    LabeledContent { Text(String(store.state.archivedRigs.count)) } label: { Label("Archived rigs", systemImage: "archivebox") }
+                }
+            }
+            if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
+        } footer: {
+            Text(RigPolicy.maxActiveRigs == 1 ? "You can have one active rig at a time." : "You can have up to \(RigPolicy.maxActiveRigs) active rigs.")
+        }
+        .sheet(item: $editor) { mode in RigEditorView(mode: mode) }
+        .sheet(item: $editingDefaults) { rig in TemplateEditorView(rig: rig, templates: store.defaults(for: rig)) }
+        .confirmationDialog("Reset default checklists?", isPresented: Binding(get: { resetting != nil }, set: { if !$0 { resetting = nil } }),
+                            titleVisibility: .visible, presenting: resetting) { rig in
+            Button("Reset defaults for \(rig.displayName)", role: .destructive) { perform { try store.resetDefaults(for: rig.id) } }
+        } message: { _ in Text("Your default lists are regenerated from the rig type. Existing trips keep their own lists.") }
+    }
+    private func perform(_ action: () throws -> Void) {
+        do { try action(); failure = nil } catch { failure = error.localizedDescription }
+    }
+}
+
+struct ArchivedRigsView: View {
+    @Environment(CampStore.self) private var store
+    @State private var failure: String?
+    @State private var deleting: Rig?
+    var body: some View {
+        List {
+            ForEach(store.state.archivedRigs) { rig in
+                Section {
+                    HStack(spacing: 16) {
+                        RigImage(rig: rig, size: 56)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(rig.displayName).font(.headline)
+                            let count = store.state.trips(usingRig: rig.id).count
+                            Text(count == 0 ? "No trips use this rig" : "Shown on \(count) past trips").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    NavigationLink { DocumentsView(owner: .rig(rig.id), title: "Rig documents") } label: {
+                        Label("Manuals & paperwork", systemImage: "folder")
+                    }
+                    Button("Make active again", systemImage: "arrow.uturn.backward") { perform { try store.unarchiveRig(rig.id) } }
+                        .disabled(!store.state.canAddActiveRig)
+                    if store.state.trips(usingRig: rig.id).isEmpty {
+                        Button("Delete rig", systemImage: "trash", role: .destructive) { deleting = rig }
+                    }
+                }
+            }
+            if let failure { Text(failure).foregroundStyle(.red) }
+        }
+        .navigationTitle("Archived rigs")
+        .confirmationDialog("Delete this rig?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+                            titleVisibility: .visible, presenting: deleting) { rig in
+            Button("Delete \(rig.displayName)", role: .destructive) { perform { try store.deleteRig(rig.id) } }
+        } message: { _ in Text("Its default checklists are deleted. Its documents move to Unattached documents.") }
+    }
+    private func perform(_ action: () throws -> Void) {
+        do { try action(); failure = nil } catch { failure = error.localizedDescription }
     }
 }
 
 struct EditProfileView: View {
     @Environment(CampStore.self) private var store
-    @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
     @State var profile: CamperProfile
-    @State private var rebuildTemplates = true
-    var rigChanged: Bool {
-        guard let previous = store.state.profile?.rig else { return true }
-        return previous.type != profile.rig.type || previous.equipment != profile.rig.equipment
-    }
+    @State private var failure: String?
     var body: some View {
-        OnlineFeatureGate(feature: "Profile changes") { onlineContent }
-    }
-    private var onlineContent: some View {
         NavigationStack {
             Form {
                 Section("About you") {
                     TextField("First name", text: $profile.name).textContentType(.givenName)
                     Picker("Experience", selection: $profile.experience) { ForEach(Experience.allCases) { Text($0.title).tag($0) } }
                 }
-                RigFormSections(rig: $profile.rig)
-                if rigChanged {
-                    Section {
-                        Toggle("Create fresh checklist defaults", isOn: $rebuildTemplates)
-                    } footer: { Text("Tailor future trips to your updated rig. Turn this off to keep your custom templates. Existing trips stay as they are.") }
-                }
+                if let failure { Text(failure).foregroundStyle(.red) }
             }
-            .navigationTitle("Profile & rig").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Profile").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        guard connectivity.isOnline, profile.rig.hasRequiredDetails else { return }
-                        store.updateProfile(profile, rebuildTemplates: rigChanged && rebuildTemplates); dismiss()
-                    }.disabled(!profile.rig.hasRequiredDetails)
+                        do { try store.updateProfile(profile); dismiss() } catch { failure = error.localizedDescription }
+                    }
                 }
             }
+        }
+    }
+}
+
+/// Add, edit, or replace a rig. Replacing archives the current rig and adds this one.
+struct RigEditorView: View {
+    enum Mode: Identifiable {
+        case add, edit(Rig), replace(Rig)
+        var id: String {
+            switch self {
+            case .add: "add"
+            case .edit(let rig): "edit-\(rig.id)"
+            case .replace(let rig): "replace-\(rig.id)"
+            }
+        }
+    }
+    @Environment(CampStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let mode: Mode
+    @State private var rig = Rig()
+    @State private var regenerateDefaults = false
+    @State private var failure: String?
+    init(mode: Mode) {
+        self.mode = mode
+        if case .edit(let existing) = mode { _rig = State(initialValue: existing) }
+    }
+    private var original: Rig? {
+        switch mode {
+        case .edit(let existing): existing
+        case .add, .replace: nil
+        }
+    }
+    private var checklistInputsChanged: Bool {
+        guard let original else { return false }
+        return original.type != rig.type || original.equipment != rig.equipment
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                if case .replace(let old) = mode {
+                    Section {
+                        Text("\(old.displayName) will be archived. Past trips keep showing it, and its documents stay with it. Enter your new rig below.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                RigFormSections(rig: $rig)
+                if checklistInputsChanged {
+                    Section {
+                        Toggle("Regenerate default checklists", isOn: $regenerateDefaults)
+                    } footer: { Text("Rebuild this rig’s default lists for its new type or equipment. Off keeps your custom defaults. Existing trips stay as they are.") }
+                }
+                if let failure { Section { Text(failure).foregroundStyle(.red) } }
+            }
+            .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        do {
+                            try rig.validateDetails()
+                            switch mode {
+                            case .add: try store.addRig(rig)
+                            case .edit: try store.updateRig(rig, regenerateDefaults: checklistInputsChanged && regenerateDefaults)
+                            case .replace(let old): try store.replaceRig(old.id, with: rig)
+                            }
+                            dismiss()
+                        } catch { failure = error.localizedDescription }
+                    }.disabled(!rig.hasRequiredDetails)
+                }
+            }
+        }
+    }
+    private var title: String {
+        switch mode {
+        case .add: "Add rig"
+        case .edit: "Edit rig"
+        case .replace: "Replace rig"
         }
     }
 }
@@ -144,7 +282,9 @@ struct EditProfileView: View {
 struct TemplateEditorView: View {
     @Environment(CampStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    let rig: Rig
     @State var templates: ChecklistTemplates
+    @State private var failure: String?
     @State private var phase = ChecklistPhase.setup
     @State private var editedItem: ChecklistItem?
     @State private var adding = false
@@ -159,7 +299,8 @@ struct TemplateEditorView: View {
                     Picker("Checklist", selection: $phase) {
                         ForEach(ChecklistPhase.allCases) { Text($0.rawValue).tag($0) }
                     }.pickerStyle(.segmented)
-                } footer: { Text("These are the starting steps for future trips. Progress always starts fresh.") }
+                } footer: { Text("New trips with \(rig.displayName) start with these steps. Editing them never changes existing trips.") }
+                if let failure { Text(failure).foregroundStyle(.red) }
                 Section {
                     ForEach(items) { item in
                         Button { editedItem = item } label: {
@@ -174,11 +315,15 @@ struct TemplateEditorView: View {
                     Button("Add a step", systemImage: "plus") { adding = true }
                 }
             }
-            .navigationTitle("My default checklists").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Default checklists").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { store.updateTemplates(templates); dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        do { try store.updateDefaults(templates, for: rig.id); dismiss() } catch { failure = error.localizedDescription }
+                    }
+                }
             }
             .sheet(item: $editedItem) { item in
                 ChecklistItemEditor(item: item) { updated in change { list in if let index = list.firstIndex(where: { $0.id == updated.id }) { list[index] = updated } } }
