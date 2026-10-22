@@ -270,6 +270,75 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertNil(frozen.attributesByName["lengthFeet"], "The frozen v1 import model must not change")
     }
 
+    func testUnreferencedPhotosArePurgedOnlyAfterTheLastReferenceGoes() async throws {
+        let d = try directory()
+        let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
+        let oldBytes = Data([1, 1, 1]), newBytes = Data([2, 2, 2]), tripBytes = Data([3, 3, 3])
+        try oldBytes.write(to: media.appendingPathComponent("old.jpg"))
+        try newBytes.write(to: media.appendingPathComponent("new.jpg"))
+        try tripBytes.write(to: media.appendingPathComponent("trip.jpg"))
+        func exists(_ name: String) -> Bool { FileManager.default.fileExists(atPath: media.appendingPathComponent(name).path) }
+        let rig = Rig(make: "Forest River", model: "No Boundaries NB19.5", year: 2024, photoFilename: "old.jpg", lengthFeet: 19.5)
+        let first = LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig)))
+        let store = try await SQLiteStore.open(directory: d)
+        try await store.save(from: LibrarySnapshot(), to: first)
+        let stored = try await store.asset(filename: "old.jpg"); XCTAssertEqual(stored, oldBytes)
+
+        // Replacing the rig photo purges the old bytes and local copy.
+        var replaced = first; replaced.state.profile?.rig.photoFilename = "new.jpg"
+        try await store.save(from: first, to: replaced)
+        let purgedOld = try await store.asset(filename: "old.jpg"); XCTAssertNil(purgedOld)
+        XCTAssertFalse(exists("old.jpg"))
+        let keptNew = try await store.asset(filename: "new.jpg"); XCTAssertEqual(keptNew, newBytes)
+
+        // A trip's rig snapshot keeps the photo after the profile switches to emoji.
+        var withTrip = replaced
+        var trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000),
+                                   departure: Date(timeIntervalSince1970: 1_750_086_400), rig: replaced.state.profile!.rig)
+        trip.photos = [TripPhoto(filename: "trip.jpg", createdAt: trip.arrival)]
+        withTrip.state.trips = [trip]
+        try await store.save(from: replaced, to: withTrip)
+        var emoji = withTrip; emoji.state.profile?.rig.photoFilename = nil
+        try await store.save(from: withTrip, to: emoji)
+        let snapshotPhoto = try await store.asset(filename: "new.jpg"); XCTAssertEqual(snapshotPhoto, newBytes)
+        XCTAssertTrue(exists("new.jpg"))
+
+        // Removing a trip photo purges it; the trip and its rig photo stay.
+        var noTripPhoto = emoji; noTripPhoto.state.trips[0].photos = []
+        try await store.save(from: emoji, to: noTripPhoto)
+        let purgedTripPhoto = try await store.asset(filename: "trip.jpg"); XCTAssertNil(purgedTripPhoto)
+        XCTAssertFalse(exists("trip.jpg"))
+        let stillNew = try await store.asset(filename: "new.jpg"); XCTAssertEqual(stillNew, newBytes)
+
+        // Deleting the trip releases the last reference to the rig photo.
+        var noTrip = noTripPhoto; noTrip.state.trips = []
+        try await store.save(from: noTripPhoto, to: noTrip)
+        let purgedNew = try await store.asset(filename: "new.jpg"); XCTAssertNil(purgedNew)
+        XCTAssertFalse(exists("new.jpg"))
+        try await store.close()
+
+        let reopened = try await SQLiteStore.open(directory: d)
+        let restored = try await reopened.snapshot(); XCTAssertEqual(restored, noTrip)
+        try await reopened.close()
+    }
+    func testPurgedPhotoReferencedAgainIsRevivedFromTheLocalCopy() async throws {
+        let d = try directory()
+        let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
+        let bytes = Data([4, 5, 6])
+        let rig = Rig(make: "Jayco", model: "Eagle", year: 2025, photoFilename: "rig.jpg", lengthFeet: 38)
+        try bytes.write(to: media.appendingPathComponent("rig.jpg"))
+        let withPhoto = LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig)))
+        var withoutPhoto = withPhoto; withoutPhoto.state.profile?.rig.photoFilename = nil
+        let store = try await SQLiteStore.open(directory: d)
+        try await store.save(from: LibrarySnapshot(), to: withPhoto)
+        try await store.save(from: withPhoto, to: withoutPhoto)
+        let purged = try await store.asset(filename: "rig.jpg"); XCTAssertNil(purged)
+        try bytes.write(to: media.appendingPathComponent("rig.jpg"))
+        try await store.save(from: withoutPhoto, to: withPhoto)
+        let revived = try await store.asset(filename: "rig.jpg"); XCTAssertEqual(revived, bytes)
+        try await store.close()
+    }
+
     private func insertManaged(_ docs: [ReplicaRecord], into store: SQLiteStore, rowID: String = UUID().uuidString) async throws {
         let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
         context.persistentStoreCoordinator = store.coordinator

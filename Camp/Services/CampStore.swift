@@ -120,8 +120,23 @@ final class CampStore {
             suspendedUnsaved = (baseline, LibrarySnapshot(state: state, favorites: savedCampgroundIDs))
         }
     }
+    /// After an iCloud account change, reopen local-only until the person retries or relaunches.
     private func suspendCloudMirroring() async {
         cloudSuppressed = true
+        await reopenLibrary()
+    }
+    /// Applies the iCloud setting now. Reopening never deletes local data or the iCloud copy.
+    func setCloudSync(_ enabled: Bool) async {
+        sync.setRequested(enabled)
+        cloudSuppressed = false
+        await reopenLibrary()
+    }
+    /// Re-checks the iCloud account, e.g. after signing in to iCloud in Settings.
+    func retryCloudSync() async {
+        cloudSuppressed = false
+        await reopenLibrary()
+    }
+    private func reopenLibrary() async {
         await serializeLifecycle { [self] in
             guard wantsLibraryAccess else { return }
             isTransitioning = true; isLoading = true
@@ -246,7 +261,7 @@ final class CampStore {
     func deleteTrip(_ id: UUID) {
         guard !isTransitioning, wantsLibraryAccess else { return }
         state.trips.removeAll { $0.id == id }
-        // Retain media until a later successful garbage-collection pass, never delete before commit.
+        // Photo bytes no longer referenced are purged in the same commit that removes the trip.
         persist()
     }
 

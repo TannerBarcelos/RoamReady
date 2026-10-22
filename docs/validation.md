@@ -78,7 +78,7 @@ CloudKit subscription delivery also needs the appropriate Push Notifications cap
 
 Core Data manages the local SQLite store; no raw SQL or SQLite driver is used. `NSPersistentCloudKitContainer` manages cloud transfers and external binary assets. The former custom CloudKit transport has been removed.
 
-See [offline-storage.md](offline-storage.md) for new-container provisioning, next-launch opt-in, migration, asset behavior, and physical-device acceptance. Default entitlements include mandatory Sign in with Apple only. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of Core Data's generated schema.
+See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the immediate toggle, migration, asset behavior, and physical-device acceptance. Default entitlements include mandatory Sign in with Apple only. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of Core Data's generated schema.
 
 ## Dataset and account checks
 

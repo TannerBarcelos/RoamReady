@@ -141,12 +141,16 @@ public final class SQLiteStore: @unchecked Sendable {
     }
 
     public func save(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) async throws {
-        try await context.perform { [self] in
+        let purged: Set<String> = try await context.perform { [self] () throws -> Set<String> in
             do {
-                try apply(from: baseline, to: desired)
+                let purged = try apply(from: baseline, to: desired)
                 if context.hasChanges { try context.save() }
+                return purged
             } catch { context.rollback(); throw error }
         }
+        // Local copies go only after the commit that released them succeeded.
+        let media = directory.appendingPathComponent("Media", isDirectory: true)
+        for filename in purged { try? FileManager.default.removeItem(at: media.appendingPathComponent(filename)) }
         _ = try await snapshot()
     }
 
@@ -181,7 +185,8 @@ public final class SQLiteStore: @unchecked Sendable {
         }
     }
 
-    private func apply(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) throws {
+    /// Returns photo filenames whose bytes were purged because nothing references them any more.
+    private func apply(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) throws -> Set<String> {
         let before = try RecordProjection.documents(baseline), after = try RecordProjection.documents(desired)
         for key in Set(before.keys).union(after.keys).sorted() {
             let previous = before[key], next = after[key]
@@ -213,14 +218,36 @@ public final class SQLiteStore: @unchecked Sendable {
             }
         }
         for filename in RecordProjection.referencedPhotos(desired.state).subtracting(RecordProjection.referencedPhotos(baseline.state)) {
-            guard try rows("asset:\(filename)", .asset).isEmpty else { continue }
             guard filename == (filename as NSString).lastPathComponent, !filename.contains("..") else { throw ReplicationError.invalidRecord }
             let path = directory.appendingPathComponent("Media", isDirectory: true).appendingPathComponent(filename)
+            let existing = try rows("asset:\(filename)", .asset)
+            if !existing.isEmpty {
+                // A purged asset that is referenced again is revived from the local copy when present.
+                guard existing.allSatisfy({ $0.value(forKey: "removed") as? Bool == true }),
+                      let bytes = try? Data(contentsOf: path) else { continue }
+                existing[0].setValue(false, forKey: "removed"); existing[0].setValue(bytes, forKey: "bytes")
+                existing[0].setValue(Self.checksum(bytes), forKey: "checksum")
+                continue
+            }
             guard FileManager.default.fileExists(atPath: path.path) else { continue }
             let bytes = try Data(contentsOf: path), row = insert("asset:\(filename)", .asset)
             row.setValue(filename, forKey: "filename"); row.setValue(Self.checksum(bytes), forKey: "checksum")
             row.setValue(bytes, forKey: "bytes")
         }
+        // Purge photos this change released, unless a live row (including one synced from another
+        // device) still references them. Removing the bytes also frees the user's iCloud storage.
+        let released = RecordProjection.referencedPhotos(baseline.state).subtracting(RecordProjection.referencedPhotos(desired.state))
+        guard !released.isEmpty else { return [] }
+        let live = try records(kinds: [.rig, .photo]).filter { $0.deletion == nil }
+        let stillReferenced = Set(live.compactMap { ($0.fields["photoFilename"] ?? $0.fields["filename"])?.string })
+        var purged = Set<String>()
+        for filename in released.subtracting(stillReferenced) {
+            for row in try rows("asset:\(filename)", .asset) {
+                row.setValue(true, forKey: "removed"); row.setValue(nil, forKey: "bytes")
+            }
+            purged.insert(filename)
+        }
+        return purged
     }
 
     private static func checksum(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
