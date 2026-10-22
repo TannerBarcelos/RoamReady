@@ -107,8 +107,9 @@ struct RigFormSections: View {
                     RigImage(rig: rig, size: 72)
                     VStack(alignment: .leading, spacing: 10) {
                         PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label(importing ? "Saving photo…" : "Choose a photo", systemImage: "photo")
+                            Label("Choose a photo", systemImage: "photo")
                         }.disabled(importing)
+                        if importing { ProgressView("Saving photo…") }
                         if rig.photoFilename != nil {
                             Button("Use emoji instead") { rig.photoFilename = nil }
                         }

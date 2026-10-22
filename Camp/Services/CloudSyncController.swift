@@ -16,8 +16,7 @@ final class CloudSyncController {
     private(set) var waitingForConnection = false
     let containerIdentifier: String?
     var configured: Bool { containerIdentifier != nil }
-    var requiresRestart: Bool { requested != enabled }
-    var launchContainerIdentifier: String? { requested ? containerIdentifier : nil }
+    var requiresRestart: Bool { requested != enabled && !waitingForConnection && !accountNeedsReview }
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private var activeEvents: Set<UUID> = []
     @ObservationIgnored private var refresh: (@MainActor () async -> Void)?

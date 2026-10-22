@@ -47,7 +47,7 @@ struct MemoriesView: View {
                         } label: { Label("Take a photo", systemImage: "camera") }
                         .disabled(importing || requestingCamera)
                         PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images) {
-                            Label(importing ? "Saving photos…" : "Add trip photos", systemImage: "photo.badge.plus")
+                            Label("Add trip photos", systemImage: "photo.badge.plus")
                         }.disabled(importing || requestingCamera)
                         if importing { ProgressView("Saving on this iPhone") }
                         if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
