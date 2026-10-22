@@ -4,7 +4,7 @@
 
 There are no accounts; first launch and onboarding work offline, and local Core Data writes never wait for cloud delivery. Camp Finder and fresh weather need connectivity. Camera capture, imported photos, checklist edits, site notes, ratings, and manual trip creation from known details remain local. See [account/offline contract](account-and-offline-contract.md).
 
-Native Apple credential authentication, Keychain storage, pinned local ownership, online revocation checks, and signout persistence teardown are implemented. There is no server account/session service. Account deletion and complete local/cloud erase remain release work; no fake server validation/deletion is claimed. Multiple app-account libraries are not implemented.
+There is no sign-in and no server account/session service. Profile › Erase all data deletes the CloudKit zone and everything on the device (see [erasing data](erase-data.md)). Multiple libraries per device are not planned.
 
 ## Managed iCloud
 
@@ -28,4 +28,4 @@ Deferred. v1 uses owner-entered rig details (required year, make, model, and len
 
 ## Native release gate
 
-Provision real Apple identifiers and test on iPhone. Run iOS 27 build/runtime, airplane-mode return access, multi-device cloud transfers, signup/revocation/recovery, camera permissions, large datasets, VoiceOver, Dynamic Type, reduced transparency/motion, WeatherKit attribution, storage exhaustion, and Foundation Models eligibility. Portable tests and SDK 26.5 simulator builds do not establish iOS 27 or production readiness.
+Provision real Apple identifiers and test on iPhone. Run iOS 27 build/runtime, airplane-mode return access, multi-device cloud transfers, iCloud account changes and Erase all data, camera permissions, large datasets, VoiceOver, Dynamic Type, reduced transparency/motion, WeatherKit attribution, storage exhaustion, and Foundation Models eligibility. Portable tests and SDK 26.5 simulator builds do not establish iOS 27 or production readiness.

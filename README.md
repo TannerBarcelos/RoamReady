@@ -10,7 +10,7 @@ A native SwiftUI iOS app following the approved **A · System-first** design: sy
 2. Select the shared **RoamReady** scheme and an iOS 27 simulator.
 3. Build and run. On a physical device, choose your development team and replace `com.example.RoamReady` with your registered bundle identifier.
 
-There are no third-party app dependencies. The Xcode project references the local `CampCore` Swift package. XcodeGen is optional; the checked-in project opens directly. See [build and validation instructions](docs/validation.md).
+There are no third-party dependencies. The Xcode project references the local `CampCore` Swift package; its only external package is Apple's [swift-crypto](https://github.com/apple/swift-crypto), linked on Linux only so CryptoKit-based code is tested there too. XcodeGen is optional; the checked-in project opens directly. See [build and validation instructions](docs/validation.md).
 
 ## Implemented in this iteration
 
@@ -26,7 +26,7 @@ There are no third-party app dependencies. The Xcode project references the loca
 | Profile | Edit profile and rig offline. One active rig per owner (`RigPolicy.maxActiveRigs`); Replace rig archives the current one, which stays on past trips; archived rigs can be reactivated (within the limit) or deleted when unused. Per-rig default checklists and reset. Storage status and export. |
 | Weather | WeatherKit request and local forecast cache, download timestamp, partial-window handling, and provider attribution. Can appear during planning or inside a trip. Live access requires a provisioned WeatherKit capability. |
 | Camping help | Bundled checklist guidance always works offline. Apple Foundation Models explains relevant saved guidance on iPhone 15 or newer, on device only, offline and online. Apple Intelligence itself requires iPhone 15 Pro or later, so the base iPhone 15 and 15 Plus get saved guidance with an explanation. Every runtime unavailability reason is explained and falls back to saved guidance. No hosted AI or model picker in v1; remote models are planned for v2 (#34). |
-| Durability | Core Data SQLite/WAL transactions; individual records and field changes; recoverable legacy import; Apple-managed CloudKit mirroring; retained soft deletions; note history; explicit zip export including documents. |
+| Durability | Core Data SQLite/WAL transactions; individual records and field changes; Apple-managed CloudKit mirroring; retained soft deletions; note history; explicit zip export including documents. |
 
 Each trip references its rig, so rig edits show on every trip that uses it; replacing a rig archives the old one so past trips keep it. Planning dates retain their original time zone; forecast matching uses the campground's time zone, including daylight-saving transitions.
 
@@ -66,17 +66,28 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The portable core suite currently has **57 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, document type detection/validation/link rules, photo path safety, campground unknown-value and length filtering, rig snapshots, required rig details, form parsing, slide-out and type-change rules, legacy rig decoding, default-on iCloud sync and account pinning decisions, and cross-time-zone/DST forecast dates.
+The portable suites (`CampCore`, `Campgrounds`, `DocumentVault`, and the record projection in `CampPersistence`) currently have **79 tests** and run on Linux and macOS; Apple-only Core Data persistence tests additionally run on macOS. They cover trip snapshot isolation, rig policy and required details, checklist generation, invalid dates/coordinates, booking validation, completed trips and saved-campground lists, campground unknown-value and length filtering, site shards, the provider-proxy contract, document type detection/validation/link rules, SHA-256 and AES-GCM chunk sealing, the record projection round trip and partial-import detection, default-on iCloud sync and account pinning decisions, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 
-- `Camp/`: native SwiftUI screens, photo storage, WeatherKit and Foundation Models adapters, and bundled data.
-- `Sources/CampCore/`: portable Foundation-only domain, original checklist templates, filters, date rules, atomic archive store, and the shared `DocumentRepository` contract.
-- `Sources/CampPersistence/`: Core Data store, frozen model versions and explicit migration, media assets, and the document vault.
-- `Tests/CampCoreTests/` and `Tests/CampPersistenceTests/`: domain/merge tests and Apple-only persistence integration tests.
-- `docs/`: acquisition research, build instructions, source coverage, and integration plan.
-- `scripts/`: repeatable validation.
+Swift package modules (`Package.swift`), each with its own test target:
 
-The app now uses Core Data with SQLite. The original `camp-state.json` is an import/recovery format, not the live store. A one-time, verified transaction imports it and leaves the source file intact. SQLite holds individual trips, checklist steps, photos, rigs, favorites, note versions, and sync metadata. Local saves never require a network or account. See [offline storage and sync](docs/offline-storage.md) for conflict rules, setup, limitations, and release gates.
+| Module | Depends on | Contents |
+| --- | --- | --- |
+| `CampCore` | Foundation | Rigs, trips and bookings, checklists and templates, profile, saved-campground lists, the library value type, trip dates, AI device policy, iCloud sync policy. |
+| `Campgrounds` | `CampCore` | Federal campground snapshot, campsite shards, filters, and the future provider-proxy client. |
+| `DocumentVault` | CryptoKit (swift-crypto on Linux) | Document types and policy, the `DocumentRepository` contract and in-memory implementation, SHA-256 digests, and the chunk cipher. |
+| `CampPersistence` | `CampCore`, `DocumentVault` | `RecordProjection` (portable) and the Core Data/CloudKit `LibraryStore`, its model, the document vault store, and the zip export (Apple-only). |
+
+The app (`Camp/`) is organized by feature:
+
+- `App/`: entry point, root view and tabs, and `CampStore`, the observable library the screens read and write.
+- `Features/<Feature>/`: `Home`, `Trips`, `Checklists`, `CampFinder`, `Documents`, `Memories`, `Profile`, `Onboarding`, `Weather`, `Assistant`, and `Sync`, each holding its views and its service (WeatherKit, Foundation Models, MapKit directory, camera and photos, CloudKit sync and erase).
+- `Shared/`: connectivity gate and small shared views.
+- `Resources/`: the bundled starter campground directory.
+
+Other folders: `docs/` (acquisition research, build instructions, source coverage, integration plan), `scripts/` (repeatable validation and the RIDB importer), `data/` (the published campground snapshot and the deferred rig-catalog research).
+
+The app uses Core Data with SQLite. SQLite holds individual trips, checklist steps, photos, rigs, favorites, note versions, and sync metadata. Local saves never require a network or account. See [offline storage and sync](docs/offline-storage.md) for conflict rules, setup, limitations, and release gates.
 
 Photos are resized on import (maximum 2560 pixels), stored as local JPEGs, and displayed using bounded thumbnails. Photo bytes also enter an externally stored database asset in the same transaction as the trip reference, allowing optional CKAsset transfer and local cache repair. JSON export includes metadata and photo references, not image bytes. Removing photos/trips records permanent tombstones. When a save leaves a photo unreferenced (a replaced or removed rig photo, a removed trip photo, or a deleted trip), its database bytes are purged in the same commit and its local copy is deleted afterwards, which also frees the user's iCloud storage. A photo still used by any live row, including an archived rig or a row synced from another device, is kept. Original photos remain in the user's photo library.

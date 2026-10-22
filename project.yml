@@ -27,6 +27,10 @@ targets:
       - package: CampCore
         product: CampCore
       - package: CampCore
+        product: Campgrounds
+      - package: CampCore
+        product: DocumentVault
+      - package: CampCore
         product: CampPersistence
     settings:
       base:

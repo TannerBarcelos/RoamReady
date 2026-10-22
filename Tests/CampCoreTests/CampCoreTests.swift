@@ -6,23 +6,12 @@ import XCTest
 final class CampCoreTests: XCTestCase, @unchecked Sendable {
     private let arrival = Date(timeIntervalSince1970: 1_800_000_000)
 
-    private func directory() throws -> URL {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        addTeardownBlock { try? FileManager.default.removeItem(at: url) }
-        return url
-    }
-
     private func trip(rig: Rig = Rig(), defaults: ChecklistTemplates? = nil) throws -> Trip {
         try Trip.create(campgroundName: "Pine Creek", arrival: arrival,
                         departure: arrival.addingTimeInterval(172_800), rig: rig, defaults: defaults)
     }
 
-    func testReopenRetainsProfileTripChecklistsMemoriesAndPhotoReferences() async throws {
-        let location = try directory()
-        let store = FileAppStore(directory: location)
-        let initial = try await store.load()
-        XCTAssertEqual(initial, AppState())
+    func testLibraryJSONRoundTripRetainsProfileTripChecklistsMemoriesAndPhotoReferences() throws {
         let rig = Rig(type: .travelTrailer, make: "Example", model: "Trail", year: 2025)
         var journey = try trip(rig: rig)
         journey.setup[0].status = .completed
@@ -35,8 +24,7 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         var defaults = ChecklistFactory.templates(for: rig); defaults.rigID = rig.id
         let state = AppState(profile: CamperProfile(name: "Sam", experience: .comfortable), rigs: [rig],
                              trips: [journey], rigDefaults: [defaults])
-        try await store.save(state)
-        let reopened = try await FileAppStore(directory: location).load()
+        let reopened = try JSONDecoder().decode(AppState.self, from: JSONEncoder().encode(state))
         XCTAssertEqual(reopened, state)
         XCTAssertEqual(reopened.trips[0].setupProgress, 2.0 / Double(journey.setup.count), accuracy: 0.00001)
     }
@@ -97,66 +85,10 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertNoThrow(try Trip.create(campgroundName: "Day visit", arrival: arrival, departure: arrival, rig: Rig()))
     }
 
-    func testFutureSchemaRejectedWithoutChangingArchiveEvenOnSave() async throws {
-        let store = FileAppStore(directory: try directory())
-        let original = Data(#"{"schemaVersion":999,"state":{"trips":[]}}"#.utf8)
-        try original.write(to: store.fileURL)
-        do {
-            _ = try await store.load()
-            XCTFail("Future schema unexpectedly opened")
-        } catch { XCTAssertEqual(error as? CampError, .unsupportedSchema(999)) }
-        do {
-            try await store.save(AppState())
-            XCTFail("Future schema unexpectedly overwritten")
-        } catch { XCTAssertEqual(error as? CampError, .unsupportedSchema(999)) }
-        XCTAssertEqual(try Data(contentsOf: store.fileURL), original)
-    }
-
-    func testCorruptionDoesNotBecomeAnEmptyStore() async throws {
-        let store = FileAppStore(directory: try directory())
-        let original = Data("not valid JSON".utf8)
-        try original.write(to: store.fileURL)
-        do { _ = try await store.load(); XCTFail("Corrupt file unexpectedly opened") } catch {}
-        do { try await store.save(AppState()); XCTFail("Corrupt file unexpectedly overwritten") } catch {}
-        XCTAssertEqual(try Data(contentsOf: store.fileURL), original)
-    }
-
-    func testVersionZeroMigratesInMemoryThenWritesCurrentEnvelope() async throws {
-        let store = FileAppStore(directory: try directory())
-        let original = Data(#"{"schemaVersion":0,"trips":[]}"#.utf8)
-        try original.write(to: store.fileURL)
-        let state = try await store.load()
-        XCTAssertEqual(state, AppState())
-        XCTAssertEqual(try Data(contentsOf: store.fileURL), original)
-        try await store.save(state)
-        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: store.fileURL)) as? [String: Any])
-        XCTAssertEqual(object["schemaVersion"] as? Int, 1)
-        XCTAssertNotNil(object["state"])
-    }
-
-    func testValidationFailurePreservesPreviouslySavedState() async throws {
-        let store = FileAppStore(directory: try directory())
-        let original = AppState(trips: [try trip()])
-        try await store.save(original)
-        var invalid = original
-        invalid.trips[0].departure = arrival.addingTimeInterval(-100)
-        do { try await store.save(invalid); XCTFail("Invalid date saved") }
-        catch { XCTAssertEqual(error as? CampError, .invalidDates) }
-        let reopened = try await store.load()
-        XCTAssertEqual(reopened, original)
-    }
-
     func testPhotoReferencesCannotEscapeLocalMediaDirectory() throws {
         var state = AppState(trips: [try trip()])
         state.trips[0].photos = [TripPhoto(filename: "../outside.jpg")]
         XCTAssertThrowsError(try state.validated()) { XCTAssertEqual($0 as? CampError, .invalidPhotoFilename) }
-    }
-
-    func testDiskErrorsPropagate() async throws {
-        let location = try directory().appendingPathComponent("occupied")
-        try Data("file instead of folder".utf8).write(to: location)
-        let store = FileAppStore(directory: location)
-        do { try await store.save(AppState()); XCTFail("Expected filesystem failure") } catch {}
     }
 
     func testRVsRequireYearMakeModelAndLengthButTentsDoNot() throws {
@@ -182,11 +114,11 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         }
     }
 
-    func testRigsSavedBeforeDetailFieldsStillDecode() throws {
-        let legacy = Data(#"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","type":"travelTrailer","make":"Jayco","model":"Jay Flight","year":2021,"floorplan":"","emoji":"🚐","equipment":{"shorePower":true,"freshWater":true,"sewer":true,"slideOuts":false,"propane":true}}"#.utf8)
-        let rig = try JSONDecoder().decode(Rig.self, from: legacy)
+    func testRigWithoutOptionalDetailsDecodesAndAsksForThemOnEdit() throws {
+        let partial = Data(#"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","type":"travelTrailer","make":"Jayco","model":"Jay Flight","year":2021,"floorplan":"","emoji":"🚐","equipment":{"shorePower":true,"freshWater":true,"sewer":true,"slideOuts":false,"propane":true}}"#.utf8)
+        let rig = try JSONDecoder().decode(Rig.self, from: partial)
         XCTAssertNil(rig.lengthFeet); XCTAssertNil(rig.slideCount); XCTAssertNil(rig.axleCount); XCTAssertNil(rig.hasBunkhouse)
-        XCTAssertFalse(rig.hasRequiredDetails, "Older profiles load, then prompt for length on the next edit")
+        XCTAssertFalse(rig.hasRequiredDetails, "A synced rig without length loads, then prompts on the next edit")
         XCTAssertNoThrow(try AppState(profile: CamperProfile(), rigs: [rig]).validated())
     }
 
@@ -273,28 +205,4 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(state.rig(for: trip)?.slideCount, 1)
     }
 
-    func testOldJSONArchiveWithEmbeddedRigTemplatesAndTripCopiesMigrates() async throws {
-        let rigID = "6F9619FF-8B86-D011-B42D-00C04FC964FF", tripID = "11111111-2222-3333-4444-555555555555"
-        let rig = #"{"id":"\#(rigID)","type":"travelTrailer","make":"Jayco","model":"Jay Flight","year":2021,"floorplan":"","emoji":"🚐","equipment":{"shorePower":true,"freshWater":true,"sewer":true,"slideOuts":false,"propane":true}}"#
-        let edited = rig.replacingOccurrences(of: "Jay Flight", with: "Jay Feather")
-        let json = #"""
-        {"schemaVersion":1,"state":{"profile":{"name":"Sam","experience":"new","rig":\#(edited)},
-        "templates":{"id":"00000000-0000-0000-0000-0000000000AA","version":1,"sourceURL":"https://example.com","setup":[{"id":"00000000-0000-0000-0000-0000000000B1","title":"Level","detail":"","section":"Arrival","status":"pending"}],"teardown":[]},
-        "trips":[{"id":"\#(tripID)","campgroundName":"Pines","arrival":0,"departure":86400000,"siteNumber":"","notes":"","rating":"unrated","setup":[],"teardown":[],"photos":[],"rigSnapshot":\#(rig)}]}}
-        """#
-        let location = try directory()
-        try Data(json.utf8).write(to: location.appendingPathComponent("camp-state.json"))
-        let state = try await FileAppStore(directory: location).load()
-        XCTAssertEqual(state.activeRigs.map(\.model), ["Jay Feather"], "The profile's rig becomes the active rig")
-        XCTAssertEqual(state.activeRigs.first?.id.uuidString, rigID)
-        XCTAssertEqual(state.rigDefaults.first?.rigID?.uuidString, rigID, "Library templates become that rig's defaults")
-        XCTAssertEqual(state.rigDefaults.first?.setup.map(\.title), ["Level"])
-        // The trip's copy differs from the edited profile rig, so it becomes an archived rig.
-        let tripRig = try XCTUnwrap(state.rig(for: state.trips[0]))
-        XCTAssertTrue(tripRig.isArchived)
-        XCTAssertEqual(tripRig.model, "Jay Flight")
-        XCTAssertNotEqual(tripRig.id.uuidString, rigID)
-        // Saved again in the current shape, it reads back unchanged.
-        XCTAssertEqual(try JSONDecoder().decode(AppState.self, from: JSONEncoder().encode(state)), state)
-    }
 }
