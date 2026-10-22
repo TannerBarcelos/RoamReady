@@ -194,6 +194,82 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await store.close()
     }
 
+    func testStoreCreatedBeforeRigDetailsMigratesAndThenPersistsThem() async throws {
+        let d = try directory()
+        let oldRig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024, photoFilename: "rig.jpg")
+        let old = LibrarySnapshot(state: AppState(profile: CamperProfile(name: "Camper", rig: oldRig)))
+        // Build the previous managed (v2) model, without the rig detail attributes, and write rows with it.
+        let v2 = ManagedStoreModel.make(fields: LegacyStoreModel.fields)
+        XCTAssertNil(v2.entitiesByName[LegacyStoreModel.name(.rig)]?.attributesByName["lengthFeet"])
+        let container = NSPersistentContainer(name: "RoamReadyV2", managedObjectModel: v2)
+        let library = NSPersistentStoreDescription(url: d.appendingPathComponent("RoamReadyManaged.sqlite"))
+        library.configuration = "Library"
+        library.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        let device = NSPersistentStoreDescription(url: d.appendingPathComponent("RoamReadyDevice.sqlite"))
+        device.configuration = "Device"
+        for description in [device, library] {
+            container.persistentStoreDescriptions = [description]
+            try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
+                container.loadPersistentStores { _, error in if let error { c.resume(throwing: error) } else { c.resume() } }
+            }
+        }
+        let context = container.newBackgroundContext()
+        try await context.perform {
+            for doc in try RecordProjection.documents(old).values {
+                let row = NSEntityDescription.insertNewObject(forEntityName: LegacyStoreModel.name(doc.kind), into: context)
+                row.setValue(doc.key, forKey: "key"); row.setValue(UUID().uuidString, forKey: "rowID")
+                for (field, value) in doc.fields {
+                    switch value {
+                    case .string(let v): row.setValue(v, forKey: field)
+                    case .number(let v): row.setValue(v, forKey: field)
+                    case .bool(let v): row.setValue(v, forKey: field)
+                    case .null: break
+                    default: row.setValue(try JSONEncoder().encode(value), forKey: field)
+                    }
+                }
+            }
+            try context.save()
+        }
+        for store in container.persistentStoreCoordinator.persistentStores { try container.persistentStoreCoordinator.remove(store) }
+
+        // Opening with the current model migrates in place; the existing rig, photo reference, and emoji survive.
+        let store = try await SQLiteStore.open(directory: d)
+        let migrated = try await store.snapshot()
+        XCTAssertEqual(migrated, old)
+        XCTAssertNil(migrated.state.profile?.rig.lengthFeet)
+        XCTAssertEqual(migrated.state.profile?.rig.photoFilename, "rig.jpg")
+        XCTAssertEqual(migrated.state.profile?.rig.emoji, oldRig.emoji)
+
+        var completed = migrated
+        completed.state.profile?.rig.lengthFeet = 19.5
+        completed.state.profile?.rig.setSlideCount(0)
+        completed.state.profile?.rig.axleCount = 1
+        completed.state.profile?.rig.hasBunkhouse = false
+        try await store.save(from: migrated, to: completed)
+        try await store.close()
+        let reopened = try await SQLiteStore.open(directory: d)
+        let restored = try await reopened.snapshot()
+        XCTAssertEqual(restored, completed)
+        XCTAssertEqual(restored.state.profile?.rig.slideCount, 0)
+        XCTAssertEqual(restored.state.profile?.rig.hasBunkhouse, false)
+
+        // Clearing an optional detail removes it rather than leaving a stale value.
+        var cleared = restored
+        cleared.state.profile?.rig.axleCount = nil
+        try await reopened.save(from: restored, to: cleared)
+        let afterClear = try await reopened.snapshot()
+        XCTAssertNil(afterClear.state.profile?.rig.axleCount)
+        try await reopened.close()
+    }
+    func testRigDetailAttributesAreOptionalInTheMirroredModelOnly() {
+        let rig = ManagedStoreModel.make().entitiesByName[LegacyStoreModel.name(.rig)]!
+        for name in ["lengthFeet", "slideCount", "axleCount", "hasBunkhouse"] {
+            XCTAssertEqual(rig.attributesByName[name]?.isOptional, true, name)
+        }
+        let frozen = LegacyStoreModel.v1().entitiesByName[LegacyStoreModel.name(.rig)]!
+        XCTAssertNil(frozen.attributesByName["lengthFeet"], "The frozen v1 import model must not change")
+    }
+
     private func insertManaged(_ docs: [ReplicaRecord], into store: SQLiteStore, rowID: String = UUID().uuidString) async throws {
         let context = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
         context.persistentStoreCoordinator = store.coordinator

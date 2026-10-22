@@ -88,30 +88,44 @@ struct RigFormSections: View {
             Section {
                 Picker("Type", selection: $rig.type) {
                     ForEach(RigType.allCases) { Text($0.title).tag($0) }
-                }.onChange(of: rig.type) { _, type in
-                    rig.equipment = type.isRV ? Equipment() : .none
-                    rig.emoji = type.defaultEmoji
-                    rig.make = ""; rig.model = ""; rig.floorplan = ""; rig.year = nil
-                    rig.lengthFeet = nil; rig.slideCount = nil; rig.axleCount = nil; rig.hasBunkhouse = nil
-                }
+                }.onChange(of: rig.type) { _, _ in rig.resetDetailsForType() }
                 if rig.type.isRV {
-                    TextField("Year", text: yearBinding).keyboardType(.numberPad)
-                    TextField("Make, e.g. Forest River", text: $rig.make).textInputAutocapitalization(.words)
-                    TextField("Model, e.g. No Boundaries NB19.5", text: $rig.model).textInputAutocapitalization(.words)
-                    TextField("Length (ft)", text: lengthBinding).keyboardType(.decimalPad)
+                    LabeledContent("Year") {
+                        TextField("2024", text: Binding(get: { rig.yearText }, set: { rig.year = Rig.parseYear($0) }))
+                            .keyboardType(.numberPad).multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Make") {
+                        TextField("Forest River", text: $rig.make)
+                            .textInputAutocapitalization(.words).multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Model") {
+                        TextField("No Boundaries NB19.5", text: $rig.model)
+                            .textInputAutocapitalization(.words).multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Length (ft)") {
+                        TextField("19.5", text: Binding(get: { rig.lengthText }, set: { rig.lengthFeet = Rig.parseLength($0) }))
+                            .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                    }
                 } else {
-                    TextField("Name or description (optional)", text: $rig.model)
+                    LabeledContent("Name") {
+                        TextField("Optional", text: $rig.model).multilineTextAlignment(.trailing)
+                    }
                 }
             } header: { Text("Rig details") } footer: {
                 if rig.type.isRV {
-                    Text(detailsProblem ?? "Use the overall length from your owner’s documents. Camp Finder can match it against site length limits.")
+                    if let problem = rig.visibleDetailsProblem {
+                        Text(problem).foregroundStyle(.red)
+                    } else {
+                        Text("Year, make, model, and length are required. Use the overall length from your owner’s documents; Camp Finder can match it against site limits.")
+                    }
                 }
             }
             if rig.type.isRV {
                 Section {
-                    Picker("Slide-outs", selection: slideBinding) {
-                        Text("None or not sure").tag(Int?.none)
-                        ForEach(Array(Rig.slideRange), id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                    Picker("Slide-outs", selection: Binding(get: { rig.slideCount }, set: { rig.setSlideCount($0) })) {
+                        Text("Not specified").tag(Int?.none)
+                        Text("None").tag(Int?.some(0))
+                        ForEach(1...Rig.slideRange.upperBound, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
                     }
                     if rig.type.isTowable {
                         Picker("Axles", selection: $rig.axleCount) {
@@ -120,8 +134,12 @@ struct RigFormSections: View {
                         }
                     }
                     Toggle("Bunkhouse", isOn: Binding(get: { rig.hasBunkhouse ?? false }, set: { rig.hasBunkhouse = $0 }))
-                    TextField("Floorplan or trim (optional)", text: $rig.floorplan)
-                } header: { Text("Optional details") }
+                    LabeledContent("Floorplan or trim") {
+                        TextField("Optional", text: $rig.floorplan).multilineTextAlignment(.trailing)
+                    }
+                } header: { Text("Optional details") } footer: {
+                    Text("Choosing a slide-out count adds or removes slide-out steps in your starting checklists.")
+                }
             }
             Section {
                 HStack(spacing: 16) {
@@ -136,8 +154,12 @@ struct RigFormSections: View {
                         }
                     }
                 }
-                TextField("Emoji", text: $rig.emoji)
-                    .onChange(of: rig.emoji) { _, value in if value.count > 2 { rig.emoji = String(value.prefix(2)) } }
+                if rig.photoFilename == nil {
+                    LabeledContent("Emoji") {
+                        TextField("🚐", text: $rig.emoji).multilineTextAlignment(.trailing)
+                            .onChange(of: rig.emoji) { _, value in if value.count > 2 { rig.emoji = String(value.prefix(2)) } }
+                    }
+                }
                 if let photoError { Text(photoError).font(.caption).foregroundStyle(.red) }
             } header: { Text("Make it recognizable") } footer: {
                 Text("Your rig photo is saved on this iPhone and included in iCloud sync when you turn it on.")
@@ -165,26 +187,5 @@ struct RigFormSections: View {
                 } catch { photoError = error.localizedDescription }
             }
         }
-    }
-
-    private var detailsProblem: String? {
-        do { try rig.validateDetails(); return nil } catch { return error.localizedDescription }
-    }
-    private var yearBinding: Binding<String> {
-        Binding(get: { rig.year.map(String.init) ?? "" },
-                set: { value in rig.year = Int(value.filter(\.isNumber).prefix(4)) })
-    }
-    /// Accepts "23.5" or "23,5"; anything else clears the value so validation reports it.
-    private var lengthBinding: Binding<String> {
-        Binding(get: { rig.lengthFeet.map { String(format: "%g", $0) } ?? "" },
-                set: { value in
-                    let number = Double(value.replacingOccurrences(of: ",", with: "."))
-                    rig.lengthFeet = number.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
-                })
-    }
-    /// The slide count also drives the slide-out checklist steps.
-    private var slideBinding: Binding<Int?> {
-        Binding(get: { rig.slideCount },
-                set: { value in rig.slideCount = value; rig.equipment.slideOuts = (value ?? 0) > 0 })
     }
 }

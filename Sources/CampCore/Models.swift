@@ -81,7 +81,8 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
 
     public static let yearRange = 1950...2100
     public static let lengthRange = 5.0...65.0
-    public static let slideRange = 1...8
+    /// 0 means the owner said there are no slide-outs; nil means not specified.
+    public static let slideRange = 0...8
     public static let axleRange = 1...4
 
     /// RVs need year, make, model, and length; tents and car camping need none of them.
@@ -102,6 +103,43 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
         if let axleCount, !Self.axleRange.contains(axleCount) { throw CampError.invalidRigDetails }
     }
     public var hasRequiredDetails: Bool { (try? validateDetails()) != nil }
+    public var detailsProblem: String? {
+        do { try validateDetails(); return nil } catch { return (error as? CampError)?.errorDescription }
+    }
+    /// True once any required field has a value, so a blank form doesn't open with an error.
+    public var hasStartedDetails: Bool {
+        year != nil || lengthFeet != nil || !make.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    /// The form's error message: hidden on a blank form, shown as soon as the owner starts.
+    public var visibleDetailsProblem: String? { hasStartedDetails ? detailsProblem : nil }
+
+    /// A specified count also sets the slide-out checklist steps; "not specified" leaves them alone.
+    public mutating func setSlideCount(_ value: Int?) {
+        slideCount = value
+        if let value { equipment.slideOuts = value > 0 }
+    }
+    /// Clears type-specific details after the owner picks a different rig type.
+    public mutating func resetDetailsForType() {
+        equipment = type.isRV ? Equipment() : .none
+        emoji = type.defaultEmoji
+        make = ""; model = ""; floorplan = ""; year = nil
+        lengthFeet = nil; slideCount = nil; axleCount = nil; hasBunkhouse = nil
+    }
+
+    /// ASCII digits only, at most four; anything else yields nil.
+    public static func parseYear(_ text: String) -> Int? {
+        let digits = text.filter { $0.isASCII && $0.isNumber }.prefix(4)
+        return digits.isEmpty ? nil : Int(digits)
+    }
+    /// Accepts "23.5" or "23,5". Non-numeric, non-finite, or non-positive input yields nil.
+    public static func parseLength(_ text: String) -> Double? {
+        let normalized = text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value.isFinite, value > 0 else { return nil }
+        return value
+    }
+    public var yearText: String { year.map(String.init) ?? "" }
+    public var lengthText: String { lengthFeet.map { String(format: "%g", $0) } ?? "" }
 }
 
 public enum Experience: String, Codable, CaseIterable, Identifiable, Sendable {

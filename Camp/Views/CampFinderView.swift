@@ -104,13 +104,13 @@ struct CampgroundFiltersView: View {
                         if type == nil || type == .tent || type == .carCamping { filter.minimumRigLengthFeet = nil }
                     }
                     if let rig = store.state.profile?.rig {
-                        Button("Use my \(rig.type.title.lowercased())") {
-                            filter.rigType = rig.type
-                            if rig.type.isRV, let length = rig.lengthFeet { filter.minimumRigLengthFeet = length }
-                        }
+                        Button("Use my \(rig.type.title.lowercased())") { filter.use(rig) }
                     }
                     if let type = filter.rigType, type.isRV {
-                        TextField("Minimum supported length (ft)", text: numberBinding(\.minimumRigLengthFeet)).keyboardType(.decimalPad)
+                        LabeledContent("Minimum length (ft)") {
+                            TextField("Any", text: numberBinding(\.minimumRigLengthFeet))
+                                .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                        }
                     }
                 }
                 Section("Hookups & amenities") {

@@ -354,7 +354,8 @@ public final class SQLiteStore: @unchecked Sendable {
 }
 
 enum ManagedStoreModel {
-    static func make() -> NSManagedObjectModel {
+    /// `fields` is injectable so tests can build the previous (v2) model and verify migration.
+    static func make(fields: (RecordKind) -> [String: NSAttributeType] = LegacyStoreModel.managedFields) -> NSManagedObjectModel {
         func attribute(_ name: String, _ type: NSAttributeType) -> NSAttributeDescription {
             let value = NSAttributeDescription(); value.name = name; value.attributeType = type; value.isOptional = true; return value
         }
@@ -363,7 +364,7 @@ enum ManagedStoreModel {
             let entity = NSEntityDescription(); entity.name = LegacyStoreModel.name(kind); entity.managedObjectClassName = "NSManagedObject"
             let deleted = attribute("removed", .booleanAttributeType); deleted.defaultValue = false
             var properties = [attribute("key", .stringAttributeType), attribute("rowID", .stringAttributeType), deleted]
-            properties += LegacyStoreModel.managedFields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
+            properties += fields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
             if kind == .asset { let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true; properties.append(bytes) }
             entity.properties = properties
             return entity

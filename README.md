@@ -16,7 +16,7 @@ There are no third-party app dependencies. The Xcode project references the loca
 
 | Area | Behavior |
 | --- | --- |
-| Onboarding | Rig category; for RVs, required year, make, model, and length, plus optional slide-outs, axles (towables), bunkhouse, and floorplan; equipment confirmation; rig photo or emoji; optional name and experience. Initial Sign in with Apple and online onboarding required. |
+| Onboarding | Rig category; for RVs, required year, make, model, and length, plus optional slide-out count (Not specified / None / 1–8), axles (towables), bunkhouse, and floorplan; equipment confirmation; rig photo or emoji; optional name and experience. Initial Sign in with Apple and online onboarding required. |
 | Home | Featured trip, checklist progress, trip memories, local save status, and quick trip creation. |
 | Plan | Create, edit, and delete trips; date validation; optional site number; known destination location; upcoming and past lists. |
 | Checklists | Every trip receives independent setup/teardown snapshots. Complete, uncheck, skip, add, rename, annotate, delete, and reorder steps. Save a trip's lists as reusable defaults or edit defaults from Profile. |
@@ -65,7 +65,7 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The portable core suite currently has **33 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, required rig details and legacy rig decoding, and cross-time-zone/DST forecast dates.
+The portable core suite currently has **39 tests**; Apple-only SQLite persistence tests additionally run on macOS. The core tests cover save/reopen, trip snapshot isolation, rig filtering, invalid dates/coordinates, archive corruption/future versions/migration, photo path safety, campground unknown-value and length filtering, rig snapshots, required rig details, form parsing, slide-out and type-change rules, legacy rig decoding, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 

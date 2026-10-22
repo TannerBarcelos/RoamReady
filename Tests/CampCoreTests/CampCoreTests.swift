@@ -172,9 +172,11 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
     func testRigDetailRangesAreEnforcedOnSave() {
         let valid = Rig(type: .fifthWheel, make: "Jayco", model: "Eagle", year: 2025, lengthFeet: 38, slideCount: 4, axleCount: 2, hasBunkhouse: true)
         XCTAssertNoThrow(try valid.validateDetails())
+        var none = valid; none.slideCount = 0
+        XCTAssertNoThrow(try none.validateDetails(), "0 records an explicit 'no slide-outs'")
         func changed(_ change: (inout Rig) -> Void) -> Rig { var rig = valid; change(&rig); return rig }
         for broken in [changed { $0.year = 1800 }, changed { $0.lengthFeet = 0 }, changed { $0.lengthFeet = .infinity },
-                       changed { $0.slideCount = 0 }, changed { $0.axleCount = 9 }] {
+                       changed { $0.slideCount = -1 }, changed { $0.slideCount = 9 }, changed { $0.axleCount = 0 }, changed { $0.axleCount = 9 }] {
             XCTAssertThrowsError(try broken.validateDetails()) { XCTAssertEqual($0 as? CampError, .invalidRigDetails) }
         }
     }
@@ -192,5 +194,78 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
                        "2024 · 19.5 ft · 1 slide · 1 axle · Bunkhouse")
         XCTAssertEqual(Rig(lengthFeet: 38, slideCount: 3, axleCount: 2, hasBunkhouse: false).detailSummary, "38 ft · 3 slides · 2 axles")
         XCTAssertEqual(Rig().detailSummary, "")
+    }
+
+    func testBlankFormHidesTheErrorUntilTheOwnerStartsTyping() {
+        var rig = Rig(type: .fifthWheel)
+        XCTAssertNil(rig.visibleDetailsProblem)
+        XCTAssertEqual(rig.detailsProblem, CampError.incompleteRig.errorDescription)
+        rig.make = "Jayco"
+        XCTAssertEqual(rig.visibleDetailsProblem, CampError.incompleteRig.errorDescription)
+        rig.model = "Eagle"; rig.year = 1800; rig.lengthFeet = 38
+        XCTAssertEqual(rig.visibleDetailsProblem, CampError.invalidRigDetails.errorDescription)
+        rig.year = 2025
+        XCTAssertNil(rig.visibleDetailsProblem)
+        var legacy = Rig(type: .travelTrailer, make: "Jayco", model: "Jay Flight", year: 2021)
+        XCTAssertNotNil(legacy.visibleDetailsProblem, "An older profile missing length shows the prompt immediately")
+        legacy.make = "   "; legacy.model = ""; legacy.year = nil
+        XCTAssertNil(legacy.visibleDetailsProblem)
+    }
+
+    func testSlideCountDrivesSlideOutStepsOnlyWhenSpecified() {
+        var rig = Rig(type: .travelTrailer, equipment: Equipment(slideOuts: true))
+        rig.setSlideCount(nil)
+        XCTAssertTrue(rig.equipment.slideOuts, "Not specified leaves an existing answer alone")
+        rig.setSlideCount(0)
+        XCTAssertFalse(rig.equipment.slideOuts)
+        XCTAssertFalse(ChecklistFactory.templates(for: rig).setup.contains { $0.title == "Prepare and extend slides" })
+        rig.setSlideCount(2)
+        XCTAssertEqual(rig.slideCount, 2); XCTAssertTrue(rig.equipment.slideOuts)
+        XCTAssertTrue(ChecklistFactory.templates(for: rig).setup.contains { $0.title == "Prepare and extend slides" })
+        rig.setSlideCount(nil)
+        XCTAssertNil(rig.slideCount); XCTAssertTrue(rig.equipment.slideOuts)
+    }
+
+    func testChangingRigTypeClearsTypeSpecificDetails() {
+        var rig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries", year: 2024, floorplan: "NB19.5",
+                      emoji: "🏕️", photoFilename: "rig.jpg", equipment: Equipment(slideOuts: true),
+                      lengthFeet: 19.5, slideCount: 1, axleCount: 1, hasBunkhouse: true)
+        rig.type = .tent
+        rig.resetDetailsForType()
+        XCTAssertEqual(rig.make, ""); XCTAssertEqual(rig.model, ""); XCTAssertEqual(rig.floorplan, "")
+        XCTAssertNil(rig.year); XCTAssertNil(rig.lengthFeet); XCTAssertNil(rig.slideCount)
+        XCTAssertNil(rig.axleCount); XCTAssertNil(rig.hasBunkhouse)
+        XCTAssertEqual(rig.equipment, .none); XCTAssertEqual(rig.emoji, RigType.tent.defaultEmoji)
+        XCTAssertEqual(rig.photoFilename, "rig.jpg", "The owner's photo is kept")
+        rig.type = .motorhome
+        rig.resetDetailsForType()
+        XCTAssertEqual(rig.equipment, Equipment())
+    }
+
+    func testYearAndLengthTextParsing() {
+        XCTAssertEqual(Rig.parseYear("2024"), 2024)
+        XCTAssertEqual(Rig.parseYear(" 20a24 "), 2024)
+        XCTAssertEqual(Rig.parseYear("202456"), 2024)
+        XCTAssertNil(Rig.parseYear(""))
+        XCTAssertNil(Rig.parseYear("abc"))
+        XCTAssertNil(Rig.parseYear("٢٠٢٤"), "Non-ASCII digits are rejected")
+        XCTAssertEqual(Rig.parseLength("19.5"), 19.5)
+        XCTAssertEqual(Rig.parseLength(" 23,5 "), 23.5)
+        XCTAssertEqual(Rig.parseLength("38"), 38)
+        for bad in ["", "abc", "0", "-3", "inf", "nan", "1e999"] { XCTAssertNil(Rig.parseLength(bad), bad) }
+        let rig = Rig(year: 2024, lengthFeet: 19.5)
+        XCTAssertEqual(rig.yearText, "2024"); XCTAssertEqual(rig.lengthText, "19.5")
+        XCTAssertEqual(Rig(lengthFeet: 38).lengthText, "38")
+        XCTAssertEqual(Rig.parseLength(rig.lengthText), rig.lengthFeet, "Displayed text parses back to the stored value")
+        XCTAssertEqual(Rig().yearText, ""); XCTAssertEqual(Rig().lengthText, "")
+    }
+
+    func testRigSnapshotOnTripsKeepsDetailsAfterProfileEdits() throws {
+        var rig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024,
+                      lengthFeet: 19.5, slideCount: 0, axleCount: 1, hasBunkhouse: false)
+        let trip = try Trip.create(campgroundName: "Pines", arrival: arrival, departure: arrival, rig: rig)
+        rig.lengthFeet = 24; rig.setSlideCount(1)
+        XCTAssertEqual(trip.rigSnapshot?.lengthFeet, 19.5)
+        XCTAssertEqual(trip.rigSnapshot?.slideCount, 0)
     }
 }
