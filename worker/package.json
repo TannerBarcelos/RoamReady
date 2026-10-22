@@ -2,7 +2,7 @@
   "name": "roamready-worker",
   "private": true,
   "type": "module",
-  "description": "RoamReady's Cloudflare Worker. v1: Sign in with Apple token revocation for account deletion (#12).",
+  "description": "RoamReady's Cloudflare Worker. Not deployed in v1; starting point for v2 server work (#34).",
   "scripts": {
     "dev": "wrangler dev",
     "test": "node --test --experimental-strip-types 'test/**/*.test.ts'",

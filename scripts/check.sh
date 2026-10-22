@@ -49,7 +49,7 @@ for path in list((root / "Camp").rglob("*.plist")) + list((root / "Camp").rglob(
         plistlib.load(stream)
 with (root / "Camp/Camp.entitlements").open("rb") as stream:
     entitlements = plistlib.load(stream)
-assert entitlements == {"com.apple.developer.applesignin": ["Default"]}, "Sign in with Apple is required; optional cloud/weather capabilities stay unconfigured"
+assert entitlements == {}, "The default build declares no capabilities (no accounts in v1); cloud/weather are configured separately"
 
 json_files = list((root / "Camp").rglob("*.json"))
 for path in json_files:

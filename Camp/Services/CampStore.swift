@@ -124,9 +124,9 @@ final class CampStore {
             isTransitioning = false
         }
     }
-    /// Account deletion: close the library and delete everything RoamReady keeps on this device:
+    /// Erase all data: close the library and delete everything RoamReady keeps on this device:
     /// the Core Data stores and backups, Media, the forecast cache, document caches and imports,
-    /// and stored preferences. The caller has already revoked the account and deleted iCloud data.
+    /// and stored preferences. The caller has already deleted the iCloud data.
     func eraseLibrary() async throws {
         await suspendLibrary()
         let fileManager = FileManager.default

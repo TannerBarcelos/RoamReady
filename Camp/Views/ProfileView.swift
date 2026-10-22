@@ -46,11 +46,11 @@ struct ProfileView: View {
             } header: { Text("On this iPhone") } footer: {
                 Text("The export includes your profile, rigs, checklists, bookings, notes, saved campgrounds, and readable copies of your documents, including end-to-end encrypted ones. Keep it somewhere private. Share trip photos individually.")
             }
-            Section("Account") {
-                NavigationLink { AccountSettingsView() } label: { Label("Apple Account", systemImage: "person.crop.circle") }
-                    .disabled(!connectivity.isOnline)
-                if !connectivity.isOnline { Text("Account changes need a connection.").font(.caption).foregroundStyle(.secondary) }
-            }
+            Section {
+                NavigationLink { EraseDataView() } label: {
+                    Label("Erase all data", systemImage: "trash").foregroundStyle(.red)
+                }
+            } footer: { Text("RoamReady has no accounts. Your library lives on this iPhone and, if sync is on, in your own iCloud.") }
             CloudSyncSection().disabled(!connectivity.isOnline)
             Section("Camping help") {
                 Label(CampingAssistant.availability, systemImage: "iphone").font(.subheadline)

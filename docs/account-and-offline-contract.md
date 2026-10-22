@@ -1,12 +1,12 @@
-# Account, connectivity, and AI contract
+# Identity, connectivity, and AI contract
 
 ## Product behavior
 
-First use requires internet, native Sign in with Apple authorization, and completion of rig/profile onboarding. Downloading from the App Store does not establish a session or prove a connection will exist when the app is opened. There is no guest bypass.
+RoamReady has **no accounts** in v1: no sign-up, no Sign in with Apple, and no server holding user data. The library belongs to the device and, when sync is on, to the person's own iCloud. First launch goes straight to rig/profile onboarding, which works offline.
 
-After successful setup, the persisted device session opens the pinned user's local library without a remote token refresh. Trips (each one a booking: create from manual campground entry, edit any field, attach confirmation files, delete), setup/teardown checklists, progress, edits, notes, ratings, imported photos, camera capture, profile edits, rig edits/replacement/archiving, and per-rig default checklists all save through Core Data offline and sync later. Photo capture/import remains available even if no iCloud connection is possible. Cached forecasts retain their retrieval time; fresh weather needs connectivity. Creating a trip offline means entering the campground by name; choosing it from Camp Finder requires online access.
+Trips (each one a booking: create from manual campground entry, edit any field, attach confirmation files, delete), setup/teardown checklists, progress, edits, notes, ratings, imported photos, camera capture, profile edits, rig edits/replacement/archiving, and per-rig default checklists all save through Core Data offline and sync later. Photo capture/import remains available even if no iCloud connection is possible. Cached forecasts retain their retrieval time; fresh weather needs connectivity. Creating a trip offline means entering the campground by name; choosing it from Camp Finder requires online access.
 
-Only Camp Finder and individual-site browsing, initial onboarding, and account actions (sign out, delete account, and the iCloud sync preference) require an available network path. A satisfied NWPathMonitor path is a prerequisite, not proof the service is reachable; actual authorization/download errors are surfaced. Profile and rig editing are ordinary local writes and work offline.
+Only Camp Finder and individual-site browsing, fresh weather, the iCloud sync preference, and erasing iCloud data require an available network path. A satisfied NWPathMonitor path is a prerequisite, not proof the service is reachable; actual authorization/download errors are surfaced. Profile and rig editing are ordinary local writes and work offline.
 
 ## Trips, rigs, and deletion (#28)
 
@@ -16,25 +16,21 @@ Each rig has its own default setup and teardown lists. Creating a trip copies th
 
 Cancelling a trip deletes it. The confirmation names the trip and dates and states that its checklists and progress, notes and all note versions, photos and captions, and site notes and rating are permanently deleted on every device signed in to the iCloud account; confirmation and paperwork files move to Unattached documents; the rig, its defaults, and original photos in the photo library are untouched. Deleting a trip also tombstones its note revisions and clears the deleted trip's note text.
 
-## Native identity and library ownership
+## No accounts in v1
 
-`AccountSession` uses AuthenticationServices, validates the returned authorization state and credential presence, and stores the Apple subject/name/email/sign-in marker in a device-only Keychain item. It does not save identity/authorization tokens. Apple's native result authenticates access to this device's app library; there is no deployed account backend or server-verified app session. That distinction matters before adding protected hosted services.
+Sign in with Apple was removed. With no server holding user data, no Android or web app, and no sharing between people, an account added sign-up friction, a required connection on first launch, a token-revocation backend, and App Store account-deletion obligations (Guideline 5.1.1(v)), and protected nothing that the device passcode and iCloud don't already. Builds before this change kept the Apple user ID, name, and email in the Keychain and a pinned-owner file; both are deleted at launch.
 
-The library owner is pinned separately in Application Support, so signing out does not let a different Apple identity adopt the saved library. A pre-account development library requires explicit ownership confirmation during first adoption. Multiple account libraries/account switching are not implemented. Keychain errors fail closed without altering camping data.
+**Erase all data** (Profile) is the deletion path: it deletes the app's CloudKit zone (when sync is configured; needs a connection and a signed-in iCloud account), then the local stores, Media, caches, documents, and preferences, stopping and naming the step if one fails. Other devices using the same iCloud account stop syncing and keep their local copy until erased.
 
-Credential state is checked when online. Revoked/not-found/transferred authorization locks access; transient failures retain established local access. An auth generation check discards stale asynchronous verification results. Returning users can reopen offline while an established session remains valid locally, but signing out or revoking access requires signing in again online with the same identity.
+Revisit accounts when a feature needs a server-side identity: sharing trips between people, Android or web, or paid server features. v2's remote AI (#34) can identify a paying install by its StoreKit transaction and App Attest instead of a user account.
 
-Voluntary signout drains local writes and refuses to complete if saving failed. Forced revocation immediately hides library UI, then serialized persistence teardown drains writes, removes observers, and closes the managed coordinator. Failed pending changes are retained in memory for same-owner recovery rather than silently cleared; they are still unsaved and cannot survive process termination if the device cannot write. A retained lifecycle queue, transition mutation guards, and generation checks prevent an old load/refresh from repopulating signed-out UI.
+## iCloud identity
 
-Account deletion, Apple token revocation through a backend, server-side account lifecycle, and a full user-requested local/cloud erase workflow are not implemented. The preview says so instead of reporting false deletion success. These remain App Store release requirements where applicable.
-
-## iCloud identity is separate
-
-A Sign in with Apple subject is not a CloudKit user record ID. Core Data mirroring uses the device's iCloud account, independently approved for this library. The approved container-specific record name is device-only metadata; it is never compared to the Sign in with Apple subject.
+Core Data mirroring uses the device's iCloud account. The approved container-specific record name is device-only metadata.
 
 Sync is on by default. On the first sync the current iCloud identity is pinned without a prompt. Before opening a mirrored store, the controller verifies that the current iCloud identity matches the pinned one. If unavailable, the app opens locally and retries when connectivity returns; it never blocks the pinned user's offline trips. An identity mismatch leaves sync paused and cannot automatically rebind the library. A CKAccountChanged notification schedules mirroring teardown and local-only reopen. Existing app data is not deliberately deleted by this transition.
 
-This is best-effort coordination around Apple's managed lifecycle, not a guarantee that a previously in-flight transfer can be undone. Signout/switch behavior, cache retention, and account separation still require signed, two-device acceptance. Do not claim production account isolation based on source review or simulator compilation alone.
+This is best-effort coordination around Apple's managed lifecycle, not a guarantee that a previously in-flight transfer can be undone. iCloud sign-out/switch behavior, cache retention, and account separation still require signed, two-device acceptance. Do not claim production account isolation based on source review or simulator compilation alone.
 
 ## Apple-only AI
 
@@ -46,6 +42,6 @@ Answers use relevant saved checklist guidance and decline unsupported specificat
 
 ## Provisioning and acceptance
 
-Enable Sign in with Apple for the real App ID/team; the default app entitlement now includes it. Unsigned simulator compilation cannot demonstrate successful authentication. Separately provision the new managed CloudKit container and push delivery as documented in offline-storage.md.
+The default build declares no capabilities. Provision the new managed CloudKit container and push delivery as documented in offline-storage.md.
 
-Required device acceptance includes first-time online auth, cancellation, offline returning launch, revocation, signout with a failed local write, same-owner reauthentication, rejected different-owner login, restoration to a new device, iCloud changes during imports/exports, real camera permission/capture, and all Foundation Models availability states. No backend or provider account was created automatically during this work.
+Required device acceptance includes an offline first launch and onboarding, Erase all data (online and offline, sync on and off), restoration to a new device through iCloud, iCloud changes during imports/exports, real camera permission/capture, and all Foundation Models availability states. No backend or provider account was created automatically during this work.

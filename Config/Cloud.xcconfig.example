@@ -4,7 +4,7 @@ PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.RoamReady
 DEVELOPMENT_TEAM = YOURTEAMID
 ROAMREADY_MIRRORING_CONTAINER = iCloud.com.yourcompany.RoamReadyManaged
 CODE_SIGN_ENTITLEMENTS = Config/Cloud.entitlements
-// CloudKit uses its own account; Sign in with Apple is not required for this capability.
+// CloudKit uses the device's iCloud account; the app has no accounts of its own.
 
 // Use a NEW container for Core Data mirroring; do not reuse the former custom-sync container.
 // Enable Push Notifications for this App ID; Xcode signing supplies aps-environment.
