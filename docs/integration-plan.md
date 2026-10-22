@@ -2,7 +2,7 @@
 
 ## Established account, then offline trips
 
-Initial Sign in with Apple and rig/profile onboarding require internet. Existing device sessions reopen planned trips offline; local Core Data writes never wait for cloud delivery. Camp Finder, profile/rig changes, account changes, and fresh weather need connectivity. Camera capture, imported photos, checklist edits, site notes, ratings, and manual trip creation from known details remain local. See [account/offline contract](account-and-offline-contract.md).
+There are no accounts; first launch and onboarding work offline, and local Core Data writes never wait for cloud delivery. Camp Finder and fresh weather need connectivity. Camera capture, imported photos, checklist edits, site notes, ratings, and manual trip creation from known details remain local. See [account/offline contract](account-and-offline-contract.md).
 
 Native Apple credential authentication, Keychain storage, pinned local ownership, online revocation checks, and signout persistence teardown are implemented. There is no server account/session service. Account deletion and complete local/cloud erase remain release work; no fake server validation/deletion is claimed. Multiple app-account libraries are not implemented.
 

@@ -4,15 +4,11 @@ import CampCore
 
 struct OnboardingView: View {
     @Environment(CampStore.self) private var store
-    @Environment(Connectivity.self) private var connectivity
     @State private var step = 0
     @State private var profile = CamperProfile()
     @State private var rig = Rig()
     @State private var failure: String?
     var body: some View {
-        OnlineFeatureGate(feature: "Initial onboarding") { onboardingContent }
-    }
-    private var onboardingContent: some View {
         NavigationStack {
             Form {
                 if step == 0 {
@@ -57,7 +53,7 @@ struct OnboardingView: View {
                         Text("Once setup is complete, your planned trips, checklists, photos, and notes work without an internet connection.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("You’re signed in with Apple. Onboarding, account changes, and Camp Finder need a connection; everything else, including profile and rig edits, works offline. Optional iCloud sync can be managed from Profile.")
+                        Text("No account needed. Everything works offline except Camp Finder and fresh weather. Optional iCloud sync keeps a private copy in your iCloud and can be managed from Profile.")
                     }
                     if let failure { Section { Text(failure).foregroundStyle(.red) } }
                 }
@@ -70,7 +66,7 @@ struct OnboardingView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button(step < 2 ? "Continue" : "Start camping") {
-                    guard connectivity.isOnline, step != 1 || rig.hasRequiredDetails else { return }
+                    guard step != 1 || rig.hasRequiredDetails else { return }
                     if step < 2 { step += 1 } else {
                         do { try store.finishOnboarding(profile, rig: rig) } catch { failure = error.localizedDescription }
                     }

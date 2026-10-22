@@ -18,6 +18,8 @@ Keep everything RoamReady does today **free forever**: trips and bookings, check
 
 ## Paid: RoamReady Plus (subscription)
 
+> "The Worker" below means a v2 server (e.g. a Cloudflare Worker) that doesn't exist yet. v1 has no backend and no accounts; a paying install is identified by its StoreKit transaction and App Attest, not a user account.
+
 | Included | Our cost per user |
 |---|---|
 | Remote AI models with the model selector (#34) | Real, per question (below) |
