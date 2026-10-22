@@ -36,25 +36,72 @@ public struct Campground: Codable, Identifiable, Equatable, Sendable {
     public let sourceURL: String
     public let checkedAt: String
     public let timeZoneIdentifier: String?
+    /// Contact details as the source publishes them (schema 2). Older snapshots omit them.
+    public let phone: String?
+    public let email: String?
+    public let reservationURL: String?
+    public let websiteURL: String?
 
     public init(id: String, name: String, region: String, latitude: Double, longitude: Double,
                 amenities: [String: Bool] = [:], supportedRigTypes: [RigType]? = nil,
                 maximumMotorhomeFeet: Double? = nil, maximumTrailerFeet: Double? = nil,
                 nightlyPriceUSD: Double? = nil, notes: String = "", sourceURL: String, checkedAt: String,
-                timeZoneIdentifier: String? = nil) {
+                timeZoneIdentifier: String? = nil, phone: String? = nil, email: String? = nil,
+                reservationURL: String? = nil, websiteURL: String? = nil) {
         self.id = id; self.name = name; self.region = region; self.latitude = latitude; self.longitude = longitude
         self.amenities = amenities; self.supportedRigTypes = supportedRigTypes
         self.maximumMotorhomeFeet = maximumMotorhomeFeet; self.maximumTrailerFeet = maximumTrailerFeet
         self.nightlyPriceUSD = nightlyPriceUSD; self.notes = notes; self.sourceURL = sourceURL; self.checkedAt = checkedAt
         self.timeZoneIdentifier = timeZoneIdentifier
+        self.phone = phone; self.email = email; self.reservationURL = reservationURL; self.websiteURL = websiteURL
     }
     public func availability(of amenity: CampAmenity) -> Bool? { amenities[amenity.rawValue] }
+
+    /// Where to reserve: the published reservation page, falling back to the source page. `https` only.
+    public var reserveLink: URL? { Self.httpsURL(reservationURL) ?? Self.httpsURL(sourceURL) }
+    public var websiteLink: URL? { Self.httpsURL(websiteURL) }
+    public var sourceLink: URL? { Self.httpsURL(sourceURL) }
+    /// A dialable `tel:` URL, or nil when the published number has too few digits to call.
+    public var phoneLink: URL? {
+        guard let phone else { return nil }
+        // Drop extensions ("x2", "ext. 2") so the main line is dialed.
+        let main = phone.lowercased().components(separatedBy: CharacterSet(charactersIn: "x")).first ?? phone
+        let digits = main.filter { $0.isASCII && $0.isNumber }
+        guard (7...15).contains(digits.count) else { return nil }
+        return URL(string: "tel:" + (main.trimmingCharacters(in: .whitespaces).hasPrefix("+") ? "+" : "") + digits)
+    }
+    public var emailLink: URL? {
+        guard let email = email?.trimmingCharacters(in: .whitespacesAndNewlines), Self.isPlausibleEmail(email) else { return nil }
+        var components = URLComponents()
+        components.scheme = "mailto"; components.path = email
+        return components.url
+    }
+
+    static func httpsURL(_ value: String?) -> URL? {
+        guard let value, let url = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+              url.scheme?.lowercased() == "https", let host = url.host, !host.isEmpty else { return nil }
+        return url
+    }
+    static func isPlausibleEmail(_ value: String) -> Bool {
+        let parts = value.split(separator: "@", omittingEmptySubsequences: false)
+        guard parts.count == 2, !parts[0].isEmpty, parts[1].contains("."), !parts[1].hasPrefix("."), !parts[1].hasSuffix("."),
+              !value.contains(where: { $0.isWhitespace || $0 == "<" || $0 == ">" || $0 == "," }) else { return false }
+        return true
+    }
 }
 
 public struct CampgroundDirectory: Codable, Sendable {
+    /// 1: facts only. 2: adds optional contact fields; every schema-1 field is unchanged.
+    public static let supportedSchemaVersions = 1...2
     public let schemaVersion: Int
     public let coverageNote: String
     public let campgrounds: [Campground]
+
+    public static func decode(_ data: Data) throws -> CampgroundDirectory {
+        let result = try JSONDecoder().decode(CampgroundDirectory.self, from: data)
+        guard supportedSchemaVersions.contains(result.schemaVersion) else { throw CampError.unsupportedSchema(result.schemaVersion) }
+        return result
+    }
 }
 
 public struct CampgroundFilter: Equatable, Sendable {

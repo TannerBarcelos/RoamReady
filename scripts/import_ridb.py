@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build text/factual campground + site snapshots from the official daily RIDB ZIP.
 
-No media, authored descriptions, or reservation/availability data are copied.
+No media, authored descriptions, prices, or availability data are copied. Published contact details
+(phone, email, reservation page, official website) are copied as published; only https links are kept.
 Usage: python3 scripts/import_ridb.py --archive /path/RIDBFullExport_V1_JSON.zip
 """
 import argparse
@@ -59,6 +60,36 @@ def records(stream):
         buffer = buffer[end:]
 
 
+SCHEMA_VERSION = 2
+EMAIL = re.compile(r'^[^@\s<>,]+@[^@\s<>,]+\.[^@\s<>,.]+$')
+
+
+def https_url(value):
+    """The URL as published if it is an absolute https link; anything else is dropped."""
+    value = str(value or '').strip()
+    if not value.lower().startswith('https://') or len(value) <= len('https://') or any(c.isspace() for c in value):
+        return None
+    return value
+
+
+def phone_number(value):
+    """The number as published if it has enough digits to dial (7 to 15, ignoring an extension)."""
+    value = ' '.join(str(value or '').split())
+    main = re.split(r'(?i)\s*(?:x|ext)', value)[0]
+    return value if 7 <= sum(c.isdigit() for c in main) <= 15 else None
+
+
+def email_address(value):
+    value = str(value or '').strip()
+    return value if EMAIL.match(value) else None
+
+
+def contact(row, website):
+    fields = {'phone': phone_number(row.get('FacilityPhone')), 'email': email_address(row.get('FacilityEmail')),
+              'reservationURL': https_url(row.get('FacilityReservationURL')), 'websiteURL': website}
+    return {key: value for key, value in fields.items() if value}
+
+
 def shard_for(facility_id):
     return sum(facility_id.encode('utf-8')) % SHARDS
 
@@ -78,6 +109,13 @@ def build(archive, output):
         read = lambda name: records(source.open(name + '_API_v1.json'))
         facilities = {r['FacilityID']: r for r in read('Facilities')
                       if r.get('Enabled') is True and r.get('FacilityTypeDescription') == 'Campground' and coordinates(r, 'Facility')}
+        websites = {}
+        if 'Links_API_v1.json' in source.namelist():
+            for row in read('Links'):
+                if row.get('EntityType') == 'Facility' and row.get('EntityID') in facilities \
+                        and str(row.get('LinkType', '')).strip().casefold() == 'official web site':
+                    url = https_url(row.get('URL'))
+                    if url: websites.setdefault(row['EntityID'], url)
         regions = {}
         for row in read('FacilityAddresses'):
             if row['FacilityID'] in facilities:
@@ -128,11 +166,12 @@ def build(archive, output):
                           'notes': 'Federal directory snapshot. Site-specific restrictions apply; verify with the operator. ' + str(len(by_facility[fid])) + ' overnight site records in this snapshot.',
                           'sourceURL': 'https://www.recreation.gov/camping/campgrounds/' + fid,
                           'checkedAt': today}
+            campground.update(contact(row, websites.get(fid)))
             if rig_types: campground['supportedRigTypes'] = sorted(rig_types)
             if limits['motorhome']: campground['maximumMotorhomeFeet'] = max(limits['motorhome'])
             if limits['travelTrailer']: campground['maximumTrailerFeet'] = max(limits['travelTrailer'])
             campgrounds.append(campground)
-        index = {'schemaVersion': 1, 'coverageNote': str(len(campgrounds)) + ' federal campground records from the RIDB daily export, retrieved ' + today + '. Not all US campgrounds. Snapshot facts, not live booking availability. Unknown facts remain unknown.', 'campgrounds': campgrounds}
+        index = {'schemaVersion': SCHEMA_VERSION, 'coverageNote': str(len(campgrounds)) + ' federal campground records from the RIDB daily export, retrieved ' + today + '. Not all US campgrounds. Snapshot facts, not live booking availability. Unknown facts remain unknown.', 'campgrounds': campgrounds}
         dump = lambda path, obj: path.write_text(json.dumps(obj, separators=(',', ':'), ensure_ascii=False) + '\n')
         dump(output / 'index.json', index)
         for shard in range(SHARDS):
@@ -142,7 +181,7 @@ def build(archive, output):
             source_hash = hashlib.file_digest(source_file, 'sha256').hexdigest()
         manifest = {'retrievedAt': today, 'sourceURL': SOURCE, 'sourceSHA256': source_hash,
                     'campgrounds': len(campgrounds), 'rawSiteRecords': raw_count, 'includedOvernightSites': len(sites), 'facilitiesWithSites': sum(bool(by_facility[fid]) for fid in facilities),
-                    'excluded': 'Disabled/non-Campground facilities, invalid/zero facility coordinates, management and non-overnight inventory. No images, narratives, prices or live availability.',
+                    'excluded': 'Disabled/non-Campground facilities, invalid/zero facility coordinates, management and non-overnight inventory, non-https links, undialable phone numbers and malformed emails. No images, narratives, prices or live availability.',
                     'shardCount': SHARDS, 'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(output.glob('*.json')) if p.name != 'manifest.json'}}
         dump(output / 'manifest.json', manifest)
         print(json.dumps({k: v for k, v in manifest.items() if k != 'files'}, indent=2))

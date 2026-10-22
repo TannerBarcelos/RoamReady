@@ -166,11 +166,33 @@ struct CampgroundDetailView: View {
             Section {
                 Text(campground.region).foregroundStyle(.secondary)
                 Text(campground.notes)
-                Button("Plan a trip here", systemImage: "calendar.badge.plus") { planning = true }
                 Button(saved ? "Remove from saved" : "Save campground", systemImage: saved ? "bookmark.fill" : "bookmark") {
                     store.toggleSavedCampground(campground.id)
                 }
             }
+            Section {
+                // The app never books: reserving happens on the provider's own site.
+                if let url = campground.reserveLink {
+                    Link(destination: url) { Label("Reserve on provider site", systemImage: "safari") }
+                        .accessibilityHint("Opens the campground's reservation page in Safari")
+                }
+                Button("Add trip", systemImage: "calendar.badge.plus") { planning = true }
+                    .accessibilityHint("Enter a booking you've already made at this campground")
+                if let url = campground.websiteLink {
+                    Link(destination: url) { Label("Website", systemImage: "globe") }
+                        .accessibilityHint("Opens the official website in Safari")
+                }
+                if let url = campground.phoneLink, let phone = campground.phone {
+                    Link(destination: url) { Label("Call \(phone)", systemImage: "phone") }
+                        .accessibilityLabel("Call campground, \(phone)")
+                }
+                if let url = campground.emailLink, let email = campground.email {
+                    Link(destination: url) { Label(email, systemImage: "envelope") }
+                        .accessibilityLabel("Email campground, \(email)")
+                }
+                Button("Directions", systemImage: "car") { openDirections() }
+                    .accessibilityHint("Opens Apple Maps with driving directions")
+            } footer: { Text("Reservations are made with the campground or its provider. RoamReady doesn't book or show availability. After you reserve, tap Add trip to save the booking.") }
             Section {
                 NavigationLink { CampsiteListView(campground: campground) } label: {
                     Label("Explore individual campsites", systemImage: "number.square")
@@ -197,12 +219,23 @@ struct CampgroundDetailView: View {
                 }
             }
             Section {
-                if let url = URL(string: campground.sourceURL) { Link("Official campground information", destination: url) }
-                Text("Checked \(campground.checkedAt). Booking availability, prices, and restrictions can change. Confirm the exact site with the operator.").font(.caption).foregroundStyle(.secondary)
+                if let url = campground.sourceLink { Link("Official campground information", destination: url) }
+                Text(attribution).font(.caption).foregroundStyle(.secondary)
             }
         }
         .navigationTitle(campground.name)
         .sheet(isPresented: $planning) { NewTripView(initialCampground: campground) }
+    }
+    private var attribution: String {
+        let facts = campground.id.hasPrefix("ridb-")
+            ? "Facts from Recreation.gov, as of \(campground.checkedAt). Data: Recreation Information Database (RIDB)."
+            : "Checked \(campground.checkedAt)."
+        return facts + " Prices and restrictions can change. Confirm the exact site with the operator."
+    }
+    private func openDirections() {
+        let item = MKMapItem(location: CLLocation(latitude: campground.latitude, longitude: campground.longitude), address: nil)
+        item.name = campground.name
+        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
     }
 }
 
