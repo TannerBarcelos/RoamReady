@@ -28,7 +28,7 @@ struct AssistantView: View {
                         if answering { ProgressView("Looking at your saved guidance…") }
                         else { Label("Ask", systemImage: "sparkles") }
                     }.disabled(answering || question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                } footer: { Text("Questions stay on this iPhone in this build. Online AI is not yet enabled.") }
+                } footer: { Text("AI uses Apple’s on-device model only and requires iPhone 16 or newer with Apple Intelligence enabled and its model downloaded. Questions aren’t sent to an online AI service. Saved guidance works without AI.") }
                 if let response {
                     Section {
                         Text(response.text).textSelection(.enabled)

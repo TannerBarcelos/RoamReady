@@ -1,0 +1,41 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2020&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:54.376516+00:00",
+  "payloadSHA256": "8c14f69b4c233161747facde91a34e5e2c134595abaf2253ce82f3ee3794f80c",
+  "response": {
+    "count": 6,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2020",
+        "make": "TIFFIN",
+        "model": "ALLEGRO RED"
+      },
+      {
+        "modelYear": "2020",
+        "make": "TIFFIN",
+        "model": "ALLEGRO BUS"
+      },
+      {
+        "modelYear": "2020",
+        "make": "TIFFIN",
+        "model": "BUS"
+      },
+      {
+        "modelYear": "2020",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      },
+      {
+        "modelYear": "2020",
+        "make": "TIFFIN",
+        "model": "ALLEGRO"
+      },
+      {
+        "modelYear": "2020",
+        "make": "TIFFIN",
+        "model": "WAYFARER"
+      }
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=PHAETON&modelYear=2025",
+  "retrievedAt": "2026-10-19T20:01:12.378499+00:00",
+  "payloadSHA256": "4be47e89ef4052c0c23ed850f561b7ce45994c33741fc051c9d90160e19ac339",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "24V566000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "30/07/2024",
+        "Component": "ELECTRICAL SYSTEM:IGNITION",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2022-2025 Phaeton, Allegro Bus, and Zephyr motorhomes.  The PowerGlide chassis controller may have insufficient circuit protection, which can result in a blown fuse and cause an engine shutdown.",
+        "Consequence": "An engine shutdown increases the risk of a crash.",
+        "Remedy": "Dealers will install circuit protection, free of charge.  Owner notification letters were mailed September 13, 2024.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-141.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2025",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "26V662000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "08/10/2026",
+        "Component": "FUEL SYSTEM, DIESEL:DELIVERY:HOSES, LINES/PIPING, AND FITTINGS",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2022-2025 Allegro Bus, and Phaeton motorhomes, equipped with certain L9 diesel engines, part number D563027BX03. The remote fuel filter hoses may separate from the fitting, causing a fuel leak and an engine stall.",
+        "Consequence": "A fuel leak in the presence of an ignition source increases the risk of a fire. An engine stall increases the risk of a crash.",
+        "Remedy": "Cummins dealers will replace the fuel hoses, free of charge. Owner notification letters are expected to be mailed November 20, 2026. Owners may contact Tiffin customer service at 1-256-356-8661. Tiffin's number for this recall is TIF-150",
+        "Notes": null,
+        "ModelYear": "2025",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      }
+    ]
+  }
+}

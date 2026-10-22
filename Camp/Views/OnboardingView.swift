@@ -4,9 +4,13 @@ import CampCore
 
 struct OnboardingView: View {
     @Environment(CampStore.self) private var store
+    @Environment(Connectivity.self) private var connectivity
     @State private var step = 0
     @State private var profile = CamperProfile()
     var body: some View {
+        OnlineFeatureGate(feature: "Initial onboarding") { onboardingContent }
+    }
+    private var onboardingContent: some View {
         NavigationStack {
             Form {
                 if step == 0 {
@@ -46,10 +50,10 @@ struct OnboardingView: View {
                     }
                     Section {
                         Label("Your trips stay on this iPhone", systemImage: "iphone")
-                        Text("You can plan, check off steps, and save photos without an account or internet connection.")
+                        Text("Once setup is complete, your planned trips, checklists, photos, and notes work without an internet connection.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("Your local library is available without an account. Optional iCloud sync can be managed from Profile.")
+                        Text("You’re signed in with Apple. Onboarding, profile and account changes, and Camp Finder require a connection. Optional iCloud sync can be managed from Profile.")
                     }
                 }
             }
@@ -61,6 +65,7 @@ struct OnboardingView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button(step < 2 ? "Continue" : "Start camping") {
+                    guard connectivity.isOnline else { return }
                     if step < 2 { step += 1 } else { store.finishOnboarding(profile) }
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)

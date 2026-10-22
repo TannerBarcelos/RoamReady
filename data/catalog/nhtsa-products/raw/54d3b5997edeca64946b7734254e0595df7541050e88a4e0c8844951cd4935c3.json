@@ -1,0 +1,36 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2019&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:54.721720+00:00",
+  "payloadSHA256": "3d217235550278ff87097e4b4898075e2819477035a0b334df33a8aa2279ca1f",
+  "response": {
+    "count": 5,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2019",
+        "make": "TIFFIN",
+        "model": "BREEZE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "TIFFIN",
+        "model": "BUS"
+      },
+      {
+        "modelYear": "2019",
+        "make": "TIFFIN",
+        "model": "ALLEGRO RED"
+      },
+      {
+        "modelYear": "2019",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      },
+      {
+        "modelYear": "2019",
+        "make": "TIFFIN",
+        "model": "ALLEGRO"
+      }
+    ]
+  }
+}

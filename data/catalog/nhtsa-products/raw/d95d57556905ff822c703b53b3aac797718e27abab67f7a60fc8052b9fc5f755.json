@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=GRAND+DESIGN&model=SOLITUDE&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:01:05.286115+00:00",
+  "payloadSHA256": "285ce8c465d6febd3611d4a366cbaa5d04e63bc9dcb95cfdd49cc9ba932295b3",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "20V523000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "28/08/2020",
+        "Component": "EQUIPMENT:APPLIANCE:REFRIGERATOR",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2017-2021 Solitude recreational trailers.  The liquid propane (LP) supply line that runs through the exterior lower refrigerator compartment may contact the burner tube of the refrigerator, possibly damaging the line and causing an LP gas leak.",
+        "Consequence": "An LP gas leak increases the risk of a fire.",
+        "Remedy": "Grand Design will notify owners, and dealers will inspect the LP supply line for damage, replacing it as necessary.  All lines in the vicinity of the burner tube will be wrapped in a thermal foil heat barrier material, then secured away from the burner tube of the refrigerator with additional P-clamps, free of charge.  The recall began September 17, 2020.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910021.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "GRAND DESIGN",
+        "Model": "SOLITUDE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "22V038000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "28/01/2022",
+        "Component": "EQUIPMENT:APPLIANCE:REFRIGERATOR",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2013-2021 Momentum, Solitude, and Reflection recreational vehicles.  A 110-volt wire in the refrigerator cabinet may be improperly secured, which could result in the wire contacting the refrigerator cooling unit, causing an electrical arc.",
+        "Consequence": "An electrical arc increases the risk of a fire.",
+        "Remedy": "Dealers will inspect and replace any damaged wiring, and properly secure the wires, free of charge.  Owner notification letters were mailed on February 21, 2022.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910026.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "GRAND DESIGN",
+        "Model": "SOLITUDE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "25V061000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "07/02/2025",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:MATERIALS:FLOORING",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2019-2024 Grand Design Solitude fifth wheel trailers.  The step tread joints may be unsupported, causing the tread to break.",
+        "Consequence": "A broken step increases the risk of injury.",
+        "Remedy": "Dealers will reinforce the current step tread with a metal bracket, free of charge.  Owner notification letters were mailed May 22, 2025.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910048.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153) or go to nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "GRAND DESIGN",
+        "Model": "SOLITUDE"
+      }
+    ]
+  }
+}

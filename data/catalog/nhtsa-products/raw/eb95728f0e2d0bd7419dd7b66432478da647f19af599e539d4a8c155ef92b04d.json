@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2024&make=GRAND+DESIGN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:52.964533+00:00",
+  "payloadSHA256": "7643f1ced34c0c2d51a270eaaae4823424aa73fabd2bf1bca16caf99c5167b40",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2024",
+        "make": "GRAND DESIGN",
+        "model": "MOMENTUM"
+      },
+      {
+        "modelYear": "2024",
+        "make": "GRAND DESIGN",
+        "model": "SOLITUDE"
+      },
+      {
+        "modelYear": "2024",
+        "make": "GRAND DESIGN",
+        "model": "REFLECTION"
+      },
+      {
+        "modelYear": "2024",
+        "make": "GRAND DESIGN",
+        "model": "IMAGINE"
+      }
+    ]
+  }
+}

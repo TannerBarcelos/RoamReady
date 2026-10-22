@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=PRECEPT&modelYear=2015",
+  "retrievedAt": "2026-10-19T20:00:57.921014+00:00",
+  "payloadSHA256": "f9d6562a9e1c21e0fb429e7a3ef9ff364582c990f9ce63a46feec875e842bfef",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "19V705000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "03/10/2019",
+        "Component": "SERVICE BRAKES, HYDRAULIC:POWER ASSIST:HYDRAULIC:HOSES, LINES/PIPING, AND FITTINGS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2014-2018 Precept motorhomes built on Ford F53 chassis.  The hydraulic lines may have been incorrectly routed too close to the exhaust without a heat shield.",
+        "Consequence": "Incorrect routing of the hydraulic line can cause the line to melt from the exhaust heat, resulting in a loss of braking, increasing the risk of a crash or fire.",
+        "Remedy": "Jayco will notify owners, and dealers will inspect and correct the hydraulic line routing as necessary and install a heat shield, free of charge.  The recall began November 14, 2019.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903440.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "19V270000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/04/2019",
+        "Component": "ELECTRICAL SYSTEM:WIRING:FUSES AND CIRCUIT BREAKERS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2014-2019 Precept, 2016-2019 Alante and 2019 Precept Prestige motorhomes built on a Ford F53 chassis.  The blower motor electrical circuit may be missing the 25amp fuse, possibly resulting in overheating of the wiring.",
+        "Consequence": "If the wiring in the circuit overheats, it can increase the risk of fire.",
+        "Remedy": "Jayco has notified owners, and dealers will install a 25amp fuse, free of charge.  The recall began April 16, 2019.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903432.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "17V746000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "21/11/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Jayco, Inc. (Jayco) is recalling various 2002-2016 recreational vehicles equipped with Kidde Plastic-Handle or Push Button 'Pindicator' Fire Extinguishers.  A list of the affected trailer models is available at: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17V746-9524.pdf.  These extinguishers may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Jayco will notify owners, instructing them to contact Kidde for a replacement fire extinguisher, free of charge.  The recall began on January 15, 2018.  Owners may contact Jayco customer service at 1-800-283-8267, or Kidde customer service toll-free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "14V502000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "14/08/2014",
+        "Component": "SEATS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain model year 2014-2015 Precept motorhomes manufactured January 3, 2013, to July 14, 2014.  Due to the routing and inadequate protection of the wiring for the driver's and passenger's electric seats, the wires may get damaged by the seats moving up and down, and back and forth.",
+        "Consequence": "Damaged wires may short, increasing the risk of a fire.",
+        "Remedy": "Jayco will notify owners, and dealers will reroute the electric seat wires and install an additional 10 amp circuit breaker, free of charge.  The recall began in September 2014.  Owners may contact Jayco customer service at 1-800-283-8267.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      }
+    ]
+  }
+}

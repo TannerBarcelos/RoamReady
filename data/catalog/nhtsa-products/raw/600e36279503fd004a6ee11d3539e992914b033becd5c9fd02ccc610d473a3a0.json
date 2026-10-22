@@ -1,0 +1,91 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2025&make=FOREST+RIVER&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:55.980100+00:00",
+  "payloadSHA256": "3fe28102bc97a34d13c6e25cb7903743e12c2f97d2eb3a1a761b2669b0264377",
+  "response": {
+    "count": 16,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "FORESTER"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "SALEM"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "WILDWOOD"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "PUMA"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "GEORGETOWN"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "V-TOUR"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "AURORA"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "PALOMINO"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "CEDAR CREEK"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "IMPRESSION"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "ROCKPORT"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "CAMPSITE RESERVE"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "SANDPIPER"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "RIVERSTONE"
+      },
+      {
+        "modelYear": "2025",
+        "make": "FOREST RIVER",
+        "model": "ROCKWOOD"
+      }
+    ]
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2017&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:50.102000+00:00",
+  "payloadSHA256": "3176932f8f7f9879e96f1c6fc4ef526c4fab6c8b8ec73dfeb06888d4f8720a36",
+  "response": {
+    "count": 8,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "GREYHAWK"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "ALANTE"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "REDHAWK"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "EMBARK"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "SENECA"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "MELBOURNE CLASS C"
+      },
+      {
+        "modelYear": "2017",
+        "make": "JAYCO",
+        "model": "JAY FLIGHT BUNGALOW"
+      }
+    ]
+  }
+}

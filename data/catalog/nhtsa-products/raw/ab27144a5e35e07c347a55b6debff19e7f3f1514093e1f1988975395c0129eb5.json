@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=SUNSEEKER&modelYear=2018",
+  "retrievedAt": "2026-10-19T20:01:13.794139+00:00",
+  "payloadSHA256": "f8cc0caa4e1a7f51f68027ccb8e1ef587cb63d5800be5e2a14e1020a513c5e8f",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "17V513000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "18/08/2017",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2018 Forest River Dynamax, Forester, Sunseeker, and Coachmen Prism vehicles built on Mercedes-Benz Sprinter vans.  The affected vehicles have tire labels on the B-pillar that list a tire pressure that is too low.  As such, these vehicles fail to comply with the requirements of 49 CFR Part 567, \"Certification.\"",
+        "Consequence": "Operating the vehicle with low front tire pressures may result in tire damage, increasing the risk of a crash.",
+        "Remedy": "Forest River will notify owners, and authorized Mercedes-Benz or Freightliner Sprinter dealers will inspect and replace the tire pressure label with correct tire inflation pressure, free of charge.  The recall began on September 5, 2017.  Owners may contact Forest River customer service at 1-854-888-3214.  Forest River's number for this recall is 35.55.215-0491.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "FOREST RIVER",
+        "Model": "SUNSEEKER"
+      }
+    ]
+  }
+}

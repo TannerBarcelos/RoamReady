@@ -37,7 +37,7 @@ Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 
 
 ## Airplane-mode acceptance pass
 
-1. Complete onboarding without an account, including an emoji or a photo already stored on the device.
+1. While online, complete native Sign in with Apple and rig/profile onboarding, including an emoji or photo. Plan the initial trip, then enable airplane mode. Verify a fresh unauthenticated install cannot bypass online account/onboarding.
 2. Plan a trip, inspect both checklists, change their order, complete a step, skip a step, and add a custom step.
 3. Create a second trip; confirm it has fresh progress and that editing it does not change the first trip.
 4. Save a site number, rating, notes, and locally available photos. Force-quit and relaunch in airplane mode, then check everything again.
@@ -50,18 +50,18 @@ Cloud sync is not established by local persistence tests. Validate multi-device 
 
 ## Apple capability configuration
 
-The default `Camp.entitlements` is an empty dictionary, and no permissions are requested unnecessarily. System `PhotosPicker` grants access to selected items without requesting unrestricted Photo Library access. There is no camera or user-location permission because this scaffold does not use either.
+The default `Camp.entitlements` includes Sign in with Apple, required for the revised initial account flow. Enable it for the registered App ID/team before testing real authorization. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. User location is not requested.
 
-`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for legacy saved-campground import (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures when backend identity, online AI, telemetry, or other collection is introduced.
+`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for legacy saved-campground import (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures for Sign in with Apple, the public campground snapshot host, optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
 
-Add capabilities through Xcode only when their corresponding integration is ready and your Apple Developer identifiers/profiles are configured. Entitlement examples below describe the eventual additions; they are **not** enabled in the development target:
+Add capabilities through Xcode only when their corresponding integration is ready and your Apple Developer identifiers/profiles are configured. Sign in with Apple is already declared; optional weather/cloud examples still require provisioning:
 
 ```xml
 <!-- WeatherKit: enable for the registered App ID. -->
 <key>com.apple.developer.weatherkit</key>
 <true/>
 
-<!-- Sign in with Apple: enable after implementing identity/session handling. -->
+<!-- Sign in with Apple: already declared; provision for your real App ID. -->
 <key>com.apple.developer.applesignin</key>
 <array><string>Default</string></array>
 
@@ -72,10 +72,14 @@ Add capabilities through Xcode only when their corresponding integration is read
 <array><string>CloudKit</string></array>
 ```
 
-CloudKit subscription delivery also needs the appropriate Push Notifications capability and the `remote-notification` background mode if your sync design uses silent pushes; allow Xcode to generate the environment-specific push entitlement. Enabling CloudKit alone does not implement syncing or conflict handling. Sign in with Apple and iCloud are separate identities and must not gate access to local trips. Foundation Models availability must be checked at runtime; an empty entitlements file cannot make an unsupported device eligible.
+CloudKit subscription delivery also needs the appropriate Push Notifications capability and the `remote-notification` background mode if your sync design uses silent pushes; allow Xcode to generate the environment-specific push entitlement. Enabling CloudKit alone does not implement syncing or conflict handling. Sign in with Apple and iCloud are separate identities. Initial signup/onboarding requires online access; an established local session must reopen trips offline. Foundation Models availability must be checked at runtime; an empty entitlements file cannot make an unsupported device eligible.
 
 ## Core Data and automatic CloudKit mirroring
 
 Core Data manages the local SQLite store; no raw SQL or SQLite driver is used. `NSPersistentCloudKitContainer` manages cloud transfers and external binary assets. The former custom CloudKit transport has been removed.
 
-See [offline-storage.md](offline-storage.md) for new-container provisioning, next-launch opt-in, migration, asset behavior, and physical-device acceptance. Default entitlements remain empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of Core Data's generated schema.
+See [offline-storage.md](offline-storage.md) for new-container provisioning, next-launch opt-in, migration, asset behavior, and physical-device acceptance. Default entitlements include mandatory Sign in with Apple only. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of Core Data's generated schema.
+
+## Dataset and account checks
+
+`check.sh` also verifies the public campground snapshot hashes/counts/shards and runs importer fixture tests. CampCore covers AI hardware policy, site unknown-length semantics, sharding, and the future provider-proxy contract. Device acceptance must cover account teardown races, unsaved edits during revocation, same-owner recovery, iCloud identity changes, offline trip camera capture, and public directory/site downloads. See account-and-offline-contract.md for limits.

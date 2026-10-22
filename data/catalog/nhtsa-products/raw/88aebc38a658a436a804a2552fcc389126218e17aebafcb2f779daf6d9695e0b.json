@@ -1,0 +1,51 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2019&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.524588+00:00",
+  "payloadSHA256": "b575bf654fe87d1ad31e9ce4641bbd7301aede0ad31d9a033e141aec0419476d",
+  "response": {
+    "count": 8,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "DUTCH STAR"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "BAY STAR"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "LONDON AIRE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "MOUNTAIN AIRE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "ESSEX"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "KING AIRE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "NEW AIRE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "NEWMAR",
+        "model": "VENTANA"
+      }
+    ]
+  }
+}

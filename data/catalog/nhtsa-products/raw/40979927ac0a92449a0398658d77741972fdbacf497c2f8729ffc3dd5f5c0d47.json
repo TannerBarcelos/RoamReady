@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=VITA&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:01:02.779116+00:00",
+  "payloadSHA256": "92cccdaedbadb9252b5fec9a84bab2d74fe8e04ce90e28ad10d83a5495b38b84",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "23V637000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "15/09/2023",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2022 Ekko, 2020-2022 Minnie Winnie, Spirit, 2020-2022 View, Navion, and 2020-2021 Vita, and Porto motorhomes.  An incorrect hitch label was installed, which can lead to overloading of the vehicle.",
+        "Consequence": "An overloaded vehicle can cause a loss of control, increasing the risk of a crash.",
+        "Remedy": "Dealers will install the correct labels, free of charge.  Owner notification letters were Mailed May 6/2024.  Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885.  Winnebago's number for this recall is 177.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "WINNEBAGO",
+        "Model": "VITA"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "24V318000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "07/05/2024",
+        "Component": "ELECTRICAL SYSTEM:WIRING",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2017-2025 Revel, 2020-2025 Navion, Porto, View, Vita, 2022-2023 Adventure Van, and 2024-2025 Ekko motorhomes.  Supplemental Restraint System (SRS) wires can be caught in the seat mechanism when the driver or passenger seats are adjusted.",
+        "Consequence": "Damaged wires can prevent air bags from deploying in a crash, increasing the risk of injury.",
+        "Remedy": "Dealers will inspect and re-route the wiring, free of charge.  Owner notification letters were mailed June 26, 2024.  Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885.  Winnebago's number for this recall is 185.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "WINNEBAGO",
+        "Model": "VITA"
+      }
+    ]
+  }
+}

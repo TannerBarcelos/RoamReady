@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=ADVENTURER&modelYear=2021",
+  "retrievedAt": "2026-10-19T20:01:03.432028+00:00",
+  "payloadSHA256": "7b92e91b05752aceab0dd5814e1b23bc412ac625c8e9cc3f6c562c9cc2265219",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "20V703000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "13/11/2020",
+        "Component": "EQUIPMENT",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2021 Revel, Vista, Sunstar, and Adventurer Motorhomes.  The power bed motor may experience an internal gear failure, causing the bed to extend prior to the safety strap engaging.",
+        "Consequence": "A bed that falls unexpectedly increases the risk of injury or death.",
+        "Remedy": "Winnebago will notify owners, and dealers will replace the power bed motor, free of charge.  The recall began December 16, 2020.  Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885.  Winnebago's number for this recall is 164.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2021",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "24V826000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/11/2024",
+        "Component": "LATCHES/LOCKS/LINKAGES:HOOD:LATCH",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2014-2018 Sightseer, Itasca Sunova, 2016-2025 Forza, Vista, and Itasca/Winnebago Sunstar, 2015-2025 Adventurer, 2015-2024 Commercial Vehicle, 2015-2028 Itasca Suncruiser, and 2016-2017 Itasca Solei recreational vehicles.  The hood bracket adhesive may have been incorrectly applied which can allow the bracket to detach.",
+        "Consequence": "A detached hood bracket may become a road hazard and increase the risk of a crash.",
+        "Remedy": "Dealers will inspect and repair as necessary, free of charge.  Owner notification letters began being mailed January 31, 2025.  Owners may contact Winnebago at 1-800-537-1885.  Winnebago's number for this recall is 192.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153) or go to nhtsa.gov.",
+        "ModelYear": "2021",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "26V177000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "23/03/2026",
+        "Component": "EXTERIOR LIGHTING:TURN SIGNAL",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2017 Brave, 2019 Itasca Sunova, 2019-2022 Adventurer, and 2022 Sunstar motorhomes. The front turn signals may have a smaller than required luminous lens area. As such these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) Number 108, \"Lamps, Reflective Devices, and Associated Equipment.\"",
+        "Consequence": "A small lens can make it difficult for other drivers to see the turn signal, increasing the risk of a crash.",
+        "Remedy": "Dealers will replace the turn signals, free of charge. Owner notification letters were mailed May 8, 2026. Owners may contact Winnebago Customer Care at 1-800-537-1885. Winnebago's number for this recall is 203.",
+        "Notes": null,
+        "ModelYear": "2021",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      }
+    ]
+  }
+}

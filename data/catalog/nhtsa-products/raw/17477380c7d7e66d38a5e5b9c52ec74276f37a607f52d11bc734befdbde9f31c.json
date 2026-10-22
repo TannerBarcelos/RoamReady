@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=FR3&modelYear=2018",
+  "retrievedAt": "2026-10-19T20:01:13.983447+00:00",
+  "payloadSHA256": "d0a48bf02d0ecbffd3f933244c70bc056aefd4a40dac377cb70728491388877a",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "18V234000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "12/04/2018",
+        "Component": "STRUCTURE:BODY:DOOR",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2018-2019 Forest River FR3 and Georgetown recreational vehicles.  The entry door latch may not engage fully, allowing the door to open unexpectedly while moving.",
+        "Consequence": "If the entry door opens unexpectedly, it can increase the risk of injury.",
+        "Remedy": "Forest River will notify owners and dealers will install shims between the entry door frame and the wall frame, two additional screws will be added through the entry door frame to secure the door frame to the sidewall frame and will verify that the entry door latch pawl is properly contacting the striker bolt, if required the dealer will adjust the striker bolt, at no charge to the owner. The recall began on May 9, 2018.  Owners may contact Forest River customer service at 1-574-206-7600.  Forest River's number for this recall is 68-0700.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "FOREST RIVER",
+        "Model": "FR3"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "18V768000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "31/10/2018",
+        "Component": "VISIBILITY",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2017-2019 Forest River Georgetown and FR3 motorhomes, 2018-2019 Berkshire motorhomes and 2018 Charleston motorhomes.  The motorized windshield roller shade at the driver's seating position may unroll without warning while driving.",
+        "Consequence": "If the windshield roller shade unrolls while driving, it could block the driver's visibility, increasing the risk of a crash.",
+        "Remedy": "Forest River will notify owners, and dealers will install a fastener to ensure the motor will not allow the shade to roll down during while driving. The recall began November 28, 2018.  Owners may contact Forest River customer service at 1-574-206-7605.  Forest River's number for the recall is 68-0822.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "FOREST RIVER",
+        "Model": "FR3"
+      }
+    ]
+  }
+}

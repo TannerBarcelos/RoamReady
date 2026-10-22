@@ -1,0 +1,26 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2016&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:54.210296+00:00",
+  "payloadSHA256": "cd0333fd95e13d0afb36aff71b54cffd4b40b0ca07d0af1f49541eb024838ed1",
+  "response": {
+    "count": 3,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2016",
+        "make": "TIFFIN",
+        "model": "ALLEGRO"
+      },
+      {
+        "modelYear": "2016",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      },
+      {
+        "modelYear": "2016",
+        "make": "TIFFIN",
+        "model": "ALLEGRO OPEN ROAD"
+      }
+    ]
+  }
+}

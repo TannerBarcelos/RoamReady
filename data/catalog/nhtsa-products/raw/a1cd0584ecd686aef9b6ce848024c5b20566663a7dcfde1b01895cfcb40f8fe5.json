@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=VIEW&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:01:02.665370+00:00",
+  "payloadSHA256": "c93188dcda5b521dd373ce9bc0717449069db2f74845c571963828aec68dc501",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "18V546000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/08/2018",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Winnebago Industries, Inc (Winnebago) is recalling certain 2016-2019 Winnebago Era, Travato, Fuse, View, Trend, Aspect, Paseo, Via, Adventurer, Journey, Tour, and Grand Tour motorhomes.  These vehicles have an auxiliary solar charging port circuit that is not fused.",
+        "Consequence": "If solar panels are connected and they exceed the amperage capacity of the circuit, the unprotected circuit can increase the risk of a fire.",
+        "Remedy": "Winnebago will notify owners, and dealers will install an inline 15 amp fuse into the auxiliary solar charging port circuit, free of charge.  Winnebago issued interim notifications to owners on December 4, 2018.  The recall began June 5, 2019. Owners may contact Winnebago customer service 1-641-585-6939 or 1-800-537-1885.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      }
+    ]
+  }
+}

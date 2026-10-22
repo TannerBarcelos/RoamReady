@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=AIRSTREAM&model=SPORT&modelYear=2016",
+  "retrievedAt": "2026-10-19T20:00:56.424781+00:00",
+  "payloadSHA256": "375ace6d1692409274e084623f88162ab94236640646d9e825f44d649f478665",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "15V761000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/11/2015",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS:LINES AND FITTINGS",
+        "Summary": "Airstream, Inc. (Airstream) is recalling certain model year 2016 Classic, Flying Cloud, International, Sport, Eddie Bauer, and Land Yacht recreational trailers manufactured August 3, 2015, to November 13, 2015, and equipped with Auto Changeover Propane Gas Regulators.  Propane gas may leak into the plastic gas level indicator window of the regulator causing it to degrade and crack.",
+        "Consequence": "If the indicator window cracks, propane gas may leak out, increasing the risk of a fire.",
+        "Remedy": "Airstream will notify owners, and dealers will replace the propane regulator and the required hoses, free of charge.  The recall began on December 16, 2015.  Owners may contact Airstream customer service at 1-937-596-6111 extension 7401 or 7411.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "AIRSTREAM",
+        "Model": "SPORT"
+      }
+    ]
+  }
+}

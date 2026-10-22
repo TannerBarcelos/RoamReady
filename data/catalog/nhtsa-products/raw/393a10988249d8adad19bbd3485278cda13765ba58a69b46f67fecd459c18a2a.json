@@ -1,0 +1,91 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=ALLEGRO&modelYear=2022",
+  "retrievedAt": "2026-10-19T20:01:11.906721+00:00",
+  "payloadSHA256": "4265c9d3b738ff612b6d068f750d926c9b5b49b95bc62e4352e4d6c42518a9b1",
+  "response": {
+    "Count": 5,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V680000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/11/2021",
+        "Component": "SEAT BELTS:REAR/OTHER:ANCHORAGE",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2022 Allegro Breeze, Allegro Red, Allegro, Allegro Bus, Phaeton, and 2018-2021 Zephyr recreational vehicles.  The sofa seat belts may not have been installed correctly, which could result in unsecured passengers.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 210, \"Seat Belt Assembly Anchorages.\"",
+        "Consequence": "Unsecured passengers have an increased risk of injury in the event of a crash.",
+        "Remedy": "Dealers will inspect and repair the seat belts as necessary, free of charge.  Owner notification letters were mailed October 29, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-118.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V545000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "20/07/2021",
+        "Component": "FUEL SYSTEM, DIESEL:DELIVERY:HOSES, LINES/PIPING, AND FITTINGS",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2021-2022 Allegro Bus and Phaeton motorhomes, equipped with certain Cummins L9 diesel engines.  A fuel leak may occur from the fuel hose between the fuel pump and remote filter head.",
+        "Consequence": "A fuel leak in the presence of an ignition source can increase the risk of a fire.",
+        "Remedy": "Dealers will replace the fuel hoses, free of charge.  Owner notification letters were mailed September 10, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-117.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "22V068000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "08/02/2022",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2022 Allegro and Allegro Breeze motorhomes.  The buss bar may be improperly secured, which can cause electrical components in the DC Distribution Panel to overheat.",
+        "Consequence": "Overheated electrical components can melt and increase the risk of a fire.",
+        "Remedy": "Dealers will replace the buss bar with a cable, free of charge.  Owner notification letters were mailed March 18, 2022.  Owners may contact Tiffin customer service at 1-256-356-0261.  Tiffin's number for this recall is TIF-120.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "22V273000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "22/04/2022",
+        "Component": "STRUCTURE:BODY",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2021-2022 Allegro and 2022 Allegro Bay motorhomes. The slide-room may extend out 6 to 8 inches while parked or possibly while moving, due to defective seals in the hydraulic cylinders.",
+        "Consequence": "A slide-room that were to extend unintentionally during transit can increase the risk of a crash.",
+        "Remedy": "Dealers will replace the hydraulic cylinders, as necessary, free of charge.  Owner notification letters were mailed June 1, 2022.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-122.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "22V511000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "20/07/2022",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2021-2023 Allegro, Red 340, 2021-2022 Phaeton, Breeze, Allegro Red 360, and  2022 Bay motorhomes.  The output line on the LPG tanks may not connect properly to the service valve, which can cause a propane leak.",
+        "Consequence": "A propane leak in the presence of an ignition source can increase the risk of a fire.",
+        "Remedy": "Dealers will inspect and replace the service valves, as necessary, free of charge.  Owner notification letters were mailed September 18, 2022.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-124.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      }
+    ]
+  }
+}

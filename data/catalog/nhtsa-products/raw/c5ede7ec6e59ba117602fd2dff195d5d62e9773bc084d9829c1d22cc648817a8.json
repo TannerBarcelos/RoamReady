@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=ALLEGRO+RED&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:01:11.338184+00:00",
+  "payloadSHA256": "d52c0c79e2ff6ffcadb8da8832ff31ffe6104568f54b0d66e2bb17ca6852017c",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V680000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/11/2021",
+        "Component": "SEAT BELTS:REAR/OTHER:ANCHORAGE",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2022 Allegro Breeze, Allegro Red, Allegro, Allegro Bus, Phaeton, and 2018-2021 Zephyr recreational vehicles.  The sofa seat belts may not have been installed correctly, which could result in unsecured passengers.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 210, \"Seat Belt Assembly Anchorages.\"",
+        "Consequence": "Unsecured passengers have an increased risk of injury in the event of a crash.",
+        "Remedy": "Dealers will inspect and repair the seat belts as necessary, free of charge.  Owner notification letters were mailed October 29, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-118.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO RED"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "22V055000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/02/2022",
+        "Component": "STRUCTURE",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2020-2022 Allegro Red motorhomes.  The patio awning may have been improperly installed, allowing it to detach.",
+        "Consequence": "An awning that detaches while the vehicle is in motion can increase the risk of a crash or injury.",
+        "Remedy": "Dealers will inspect and secure the awning, free of charge.  Owner notification letters were mailed March 18, 2022.  Owners may contact Tiffin customer service at 1-256-356-0261.  Tiffin's number for this recall is TIF-121.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO RED"
+      }
+    ]
+  }
+}

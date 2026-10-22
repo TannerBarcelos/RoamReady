@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2015&make=GRAND+DESIGN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:52.237593+00:00",
+  "payloadSHA256": "4e837afe22974bd768986cae008309fff5cbdd59d173860a451bf4382bf50e50",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2015",
+        "make": "GRAND DESIGN",
+        "model": "SOLITUDE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "GRAND DESIGN",
+        "model": "MOMENTUM 385TH"
+      },
+      {
+        "modelYear": "2015",
+        "make": "GRAND DESIGN",
+        "model": "REFLECTION"
+      },
+      {
+        "modelYear": "2015",
+        "make": "GRAND DESIGN",
+        "model": "MOMENTUM"
+      }
+    ]
+  }
+}

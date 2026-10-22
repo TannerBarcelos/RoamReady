@@ -9,11 +9,12 @@ struct CampFinderView: View {
     @State private var showMap = true
     @State private var savedOnly = false
     @State private var camera = MapCameraPosition.automatic
-    @State private var connection = ConnectionStatus()
+    @Environment(Connectivity.self) private var connection
+    @State private var directory = OnlineCampgroundDirectory()
 
     var saved: Set<String> { store.savedCampgroundIDs }
     var results: [Campground] {
-        CampgroundLibrary.all.filter { filter.matches($0) && (!savedOnly || saved.contains($0.id)) }
+        directory.campgrounds.filter { filter.matches($0) && (!savedOnly || saved.contains($0.id)) }
     }
     var activeFilters: Int {
         filter.requiredAmenities.count + (filter.noElectricHookups ? 1 : 0) + (filter.rigType == nil ? 0 : 1)
@@ -21,6 +22,9 @@ struct CampFinderView: View {
     }
 
     var body: some View {
+        OnlineFeatureGate(feature: "Camp Finder") { onlineContent }
+    }
+    private var onlineContent: some View {
         List {
             Section {
                 HStack {
@@ -34,7 +38,7 @@ struct CampFinderView: View {
                 if showMap {
                     if connection.connected {
                         Map(position: $camera) {
-                            ForEach(results) { place in
+                            ForEach(Array(results.prefix(200))) { place in
                                 Annotation(place.name, coordinate: place.coordinate) {
                                     NavigationLink { CampgroundDetailView(campground: place) } label: {
                                         Image(systemName: "tent.fill").font(.title3).padding(10).foregroundStyle(.white).background(.blue, in: Circle())
@@ -50,7 +54,13 @@ struct CampFinderView: View {
                             .frame(minHeight: 180)
                     }
                 }
-            } footer: { Text(CampgroundLibrary.notice) }
+                if directory.loading { ProgressView("Loading campground directory…") }
+                if let failure = directory.failure {
+                    Text(failure).font(.caption).foregroundStyle(.secondary)
+                    Button("Retry directory") { Task { await directory.load() } }
+                }
+                if results.count > 200 { Text("Map shows the first 200 results. Search or filter to narrow the area.").font(.caption).foregroundStyle(.secondary) }
+            } footer: { Text(directory.notice) }
             Section("\(results.count) campgrounds") {
                 ForEach(results) { campground in
                     NavigationLink { CampgroundDetailView(campground: campground) } label: {
@@ -73,6 +83,7 @@ struct CampFinderView: View {
             }
         }
         .navigationTitle("Camp Finder")
+        .task(id: connection.isOnline) { if connection.isOnline { await directory.load() } }
         .searchable(text: $filter.query, prompt: "Campground, park, or state")
         .sheet(isPresented: $showFilters) { CampgroundFiltersView(filter: $filter) }
     }
@@ -145,6 +156,9 @@ struct CampgroundDetailView: View {
             .sorted { $0.arrival > $1.arrival }
     }
     var body: some View {
+        OnlineFeatureGate(feature: "Campground discovery") { onlineContent }
+    }
+    private var onlineContent: some View {
         List {
             Section {
                 Text(campground.region).foregroundStyle(.secondary)
@@ -152,6 +166,11 @@ struct CampgroundDetailView: View {
                 Button("Plan a trip here", systemImage: "calendar.badge.plus") { planning = true }
                 Button(saved ? "Remove from saved" : "Save campground", systemImage: saved ? "bookmark.fill" : "bookmark") {
                     store.toggleSavedCampground(campground.id)
+                }
+            }
+            Section {
+                NavigationLink { CampsiteListView(campground: campground) } label: {
+                    Label("Explore individual campsites", systemImage: "number.square")
                 }
             }
             Section("Known amenities") {
@@ -188,17 +207,25 @@ struct CampgroundPicker: View {
     @Environment(\.dismiss) private var dismiss
     let onSelect: (Campground) -> Void
     @State private var query = ""
+    @Environment(Connectivity.self) private var connectivity
+    @State private var directory = OnlineCampgroundDirectory()
     var body: some View {
+        OnlineFeatureGate(feature: "Campground search") { onlineContent }
+    }
+    private var onlineContent: some View {
         List {
             Section {
-                ForEach(CampgroundLibrary.all.filter { query.isEmpty || ($0.name + " " + $0.region).localizedCaseInsensitiveContains(query) }) { place in
+                ForEach(directory.campgrounds.filter { query.isEmpty || ($0.name + " " + $0.region).localizedCaseInsensitiveContains(query) }) { place in
                     Button { onSelect(place) } label: {
                         VStack(alignment: .leading, spacing: 4) { Text(place.name); Text(place.region).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
-            } footer: { Text(CampgroundLibrary.notice) }
+                if directory.loading { ProgressView("Loading campground directory…") }
+                if let failure = directory.failure { Text(failure).font(.caption).foregroundStyle(.secondary) }
+            } footer: { Text(directory.notice) }
         }
         .navigationTitle("Choose campground").navigationBarTitleDisplayMode(.inline)
+        .task(id: connectivity.isOnline) { if connectivity.isOnline { await directory.load() } }
         .searchable(text: $query, prompt: "Campground or state")
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
     }

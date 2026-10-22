@@ -1,0 +1,91 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=NEWMAR&model=BAY+STAR&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:01:08.821678+00:00",
+  "payloadSHA256": "07f1911a8ef5142edd4d612db00a05386dd59eb5462a489e2f9530760c8ae272",
+  "response": {
+    "Count": 5,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "21V571000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "27/07/2021",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2019-2021 Bay Star, Ventana, New Aire, 2019-2020 Canyon Star, Bay Star Sport, Essex, King Aire, London Aire, Mountain Aire,  2018-2021 Dutch Star, 2020 Kountry Star, and 2019 Ventana LE recreational vehicles.  The adhesive that bonds the vented portion of the window may fail.",
+        "Consequence": "Adhesive failure may cause the vent portion of the window to detach, increasing the risk of a crash or injury.",
+        "Remedy": "Dealers will inspect the windows, and replace the vent if necessary, free of charge.  Owner notification letters were mailed on September 10, 2021.  Owners may contact Newmar customer service at 1-800-731-8300.  Newmar's number for this recall is 21E 047.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "NEWMAR",
+        "Model": "BAY STAR"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "20V719000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "20/11/2020",
+        "Component": "EQUIPMENT:APPLIANCE:OVEN/STOVE/COOKTOP",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2019-2020 Bay Star and Ventana, 2019 Ventana LE, 2020 Canyon Star, Dutch Star, Kountry Star and Super Star and 2021 Bay Star Sport motorhomes equipped with Dometic 3 burner cooking stoves.  The stove's saddle valve securing bolt may be overtightened, possibly damaging the o-ring seal and causing a continuous gas leak.",
+        "Consequence": "A gas leak can increase the risk of a fire.",
+        "Remedy": "Newmar will notify owners, and dealers will install a remedy kit of gaskets, washers, thread locker bolts, and two round orange labels, free of charge.  The recall began January 18, 2021.  Owners may contact Newmar customer service at 1-800-731-8300.  Newmar's number for this recall is 20E 071.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "NEWMAR",
+        "Model": "BAY STAR"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "22V234000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "11/04/2022",
+        "Component": "SEATS",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2019-2022 Bay Star, Bay Star Sport, Ventana, Dutch Star, New Aire, Canyon Star, 2019 Ventana LE, 2020-2022 Kountry Star, 2019-2020 Mountain Aire, London Aire, Essex, and 2021 Super Star vehicles.  The wiring under the seats may be incorrectly secured, which can lead to a pinched wire in the seat adjustment mechanism and cause an electrical short circuit.",
+        "Consequence": "A short circuit increases the risk of a fire.",
+        "Remedy": "Dealers will inspect and secure the wiring, adding circuit breaker and fuse protection as necessary, free of charge.  Owner notification letters are expected to be mailed on June 10, 2022.  Owners may contact Newmar's customer service at 1-800-731-8300.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "NEWMAR",
+        "Model": "BAY STAR"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "23V469000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "07/07/2023",
+        "Component": "SEAT BELTS:REAR/OTHER:ANCHORAGE",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2019-2023 Bay Star, 2020-2023 Bay Star Sport, and 2022-2023 Super Star motorhomes.  The seat belt brackets for the dinette seat belts were modified to avoid interference with the vehicle slide-out rollers in the floor.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard numbers 210, \"Seat belt Assembly Anchorages\" and 207, \"Seating Systems.\"",
+        "Consequence": "Modified seat belt mounting brackets can fail to properly restrain an occupant in a crash, increasing the risk of injury.",
+        "Remedy": "Dealers will replace the seat belt mounting brackets, free of charge.  Owner notification letters were mailed August 4, 2023.  Owners may contact Newmar customer service at 1-800-731-8300.  Newmar's number for this recall is 604RSB.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "NEWMAR",
+        "Model": "BAY STAR"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "26V108000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "24/02/2026",
+        "Component": "STRUCTURE:BODY:HOOD:HINGE AND ATTACHMENTS",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2018-2026 Bay Star and Bay Star Sport motorhomes. The hood stops mounting adhesive may fail, which can allow the hood stop to detach while the vehicle is in transit.",
+        "Consequence": "Hood stops that detach can become a road hazard, increasing the risk of a crash or injury.",
+        "Remedy": "Dealers will inspect and reinstall the hood stop brackets, free of charge. Owner notification letters were mailed April 20, 2026. Owners may contact Newmar customer service at 1-800-731-8300. Newmar's number for this recall is 627 RSB.",
+        "Notes": null,
+        "ModelYear": "2020",
+        "Make": "NEWMAR",
+        "Model": "BAY STAR"
+      }
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=GRAND+DESIGN&model=IMAGINE&modelYear=2021",
+  "retrievedAt": "2026-10-19T20:01:05.638916+00:00",
+  "payloadSHA256": "690260ca79f011a335a2fee0b9847f8645e2953cefbfe76647e7e6d968df0b89",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "22V039000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "28/01/2022",
+        "Component": "STRUCTURE:INTERIOR PANELS:DOOR",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2020-2021 Imagine travel trailers.  The cast aluminum pull handles on the cabinet doors and drawers may have sharp edges.",
+        "Consequence": "Sharp handles could scrape or cut an occupant, increasing their risk of injury.",
+        "Remedy": "Dealers will replace the handles, free of charge.  Owner notification letters were mailed March 14, 2022.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910027.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2021",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "21V636000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "13/08/2021",
+        "Component": "POWER TRAIN:AXLE ASSEMBLY",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2021 Imagine recreational trailers equipped with Dexter D30 axles.  The axles may have been assembled with incorrect inner bearings.",
+        "Consequence": "Incorrect inner bearings can cause the wheels to lock up or reduce stopping ability, increasing the risk of a crash.",
+        "Remedy": "Dealers will inspect the axles for incorrect bearings and replace the bearings as necessary, free of charge.  Owner notification letters were mailed August 24, 2021.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910024.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2021",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "21V393000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "26/05/2021",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2016-2021 Imagine, Transcend, and Momentum travel trailers.  The LP regulator that controls the LP gas pressure may fail, allowing excessive gas pressure that causes the appliance flame to increase.",
+        "Consequence": "Excessive gas pressure and a larger than intended appliance flame can increase the risk of a fire.",
+        "Remedy": "Dealers will replace the LP regulator, free of charge.  Owner notification letters were mailed June 24, 2021.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910023.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2021",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=SUNSEEKER&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:01:14.031738+00:00",
+  "payloadSHA256": "b46bcac2fa2758115a61bccde42afb1a00eaba80e5a6802986a0ec192f789a25",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "18V357000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/06/2018",
+        "Component": "POWER TRAIN:AXLE ASSEMBLY",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2019 Forest River Forester and Sunseeker and Coachmen Leprechaun and Freelander motorhomes.  The U-Bolts that secure the rear differential may not have been properly tightened, causing them to loosen over time and allowing the rear axles to shift.",
+        "Consequence": "Loose rear axle assemblies can cause a loss of control, increasing the risk of a crash.",
+        "Remedy": "Forest River has notified owners, and dealers will inspect the U-Bolts and properly tighten or replace the U-Bolts, as necessary, free of charge.  The recall began on June 6, 2018.  Owners may contact Forest River customer service for Sunseeker and Forester vehicles at 1-574-206-7600, or Coachmen customer service for Freelander and Leprechaun vehicles at 1-574-825-8602.  Forest River's number for this recall is 105-0749.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "FOREST RIVER",
+        "Model": "SUNSEEKER"
+      }
+    ]
+  }
+}

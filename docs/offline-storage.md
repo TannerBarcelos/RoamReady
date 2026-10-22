@@ -14,7 +14,7 @@ The app still projects its library into memory. The projection cache is a device
 
 Core Data binary attributes with **Allows External Storage** hold durable attachment contents. Core Data may store smaller bytes in SQLite and larger bytes in its private external files. This is intentionally not a strict metadata-only database. Core Data and its CloudKit mirroring own physical file placement and transfer; the app must not inspect or manipulate those private files.
 
-Existing photo import resizes and recompresses JPEGs to at most 2560 pixels. `Media/` contains readable local copies; when one is missing it is recreated from the managed binary attribute. Imported or downloaded contents remain available offline. A new device needs an online initial download before attachments are available offline. There is no guarantee that every cloud attachment has finished downloading simply because metadata is visible. Camera capture, PDF/manual import, original-quality preservation, and storage eviction controls are not implemented by this change. The same managed binary storage can support those future attachment types.
+Existing photo import resizes and recompresses JPEGs to at most 2560 pixels. `Media/` contains readable local copies; when one is missing it is recreated from the managed binary attribute. Imported or downloaded contents remain available offline. A new device needs an online initial download before attachments are available offline. There is no guarantee that every cloud attachment has finished downloading simply because metadata is visible. Trip camera capture uses the same local photo import path. PDF/manual import, rig-camera capture, original-quality preservation, and storage eviction controls are not implemented. The same managed binary storage can support those future attachment types.
 
 Photo removal drops visible references. Durable assets and soft-deleted rows currently remain retained; automatic pruning needs a separately tested multi-device retention policy. Cache copies are not the sole durable source.
 
@@ -36,7 +36,7 @@ Profile's explicit JSON export includes metadata and saved campground IDs, not a
 
 ## iCloud setup
 
-The default build has empty entitlements and an empty `ROAMREADY_MIRRORING_CONTAINER`. It makes no CloudKit requests and needs no account for local features.
+The default build includes the mandatory Sign in with Apple entitlement and an empty `ROAMREADY_MIRRORING_CONTAINER`. Initial account/onboarding requires connectivity; an established pinned session can use local trips offline. The unconfigured default makes no CloudKit requests.
 
 1. Register the App ID, team, and a **new dedicated CloudKit container** for managed mirroring. Do not reuse the previous custom-transport container/schema: automatic mirroring cannot adopt those records. Existing cloud-only data must first download through the previous build; this change migrates on-device data only.
 2. Apply `Config/Cloud.xcconfig.example`, set the actual new `ROAMREADY_MIRRORING_CONTAINER`, and use `Config/Cloud.entitlements`. Enable the iCloud/CloudKit and Push Notifications capabilities in Xcode. Let signing supply the appropriate `aps-environment`. `remote-notification` background mode is declared in Info.plist.
@@ -46,7 +46,7 @@ The default build has empty entitlements and an empty `ROAMREADY_MIRRORING_CONTA
 
 Managed import/export/setup event notifications provide progress/error reporting. A completed event means that activity completed, not that every device is up to date. No force-sync button or immediate transfer guarantee is exposed. Apple controls foreground/background scheduling; silent notifications need correct provisioning and remain subject to OS constraints.
 
-The OS iCloud account supplies private CloudKit identity; an app OAuth login is not required. Account transitions are handled by Apple's mirroring stack, with availability reported by the UI. The previous custom account binding is not reused and no cross-account isolation behavior beyond Apple's documented lifecycle is claimed. Sign-out/switch behavior, local-cache retention, and cloud deletion/reset semantics must be validated on devices before release. Do not implement an automatic cloud reset/reupload on errors. Sign in with Apple remains a separate future backend identity.
+The OS iCloud account supplies private CloudKit identity; an app OAuth login is not required. A separately approved container-specific CloudKit user identity is stored in device-only metadata. A preflight checks it before opening mirroring, and account-change notifications schedule teardown/local-only reopening. Unavailable identity leaves local trip access intact. The previous custom transport binding is not reused. These safeguards do not guarantee cancellation of an in-flight transfer; Apple's lifecycle and physical-device testing still apply. Sign-out/switch behavior, local-cache retention, and cloud deletion/reset semantics must be validated on devices before release. Do not implement an automatic cloud reset/reupload on errors. Native Sign in with Apple now gates app access separately; no server account service is deployed. See [account contract](account-and-offline-contract.md).
 
 ## Validation and outstanding release gates
 

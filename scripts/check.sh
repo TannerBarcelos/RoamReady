@@ -19,6 +19,8 @@ export SWIFTC_BIN
 
 "$SWIFT_BIN" test
 python3 scripts/validate_catalog.py
+python3 scripts/test_import_ridb.py
+python3 scripts/validate_campgrounds.py
 
 "$SWIFT_BIN" -e '
 import Foundation
@@ -47,7 +49,7 @@ for path in list((root / "Camp").rglob("*.plist")) + list((root / "Camp").rglob(
         plistlib.load(stream)
 with (root / "Camp/Camp.entitlements").open("rb") as stream:
     entitlements = plistlib.load(stream)
-assert entitlements == {}, "Default build should not request unconfigured Apple capabilities"
+assert entitlements == {"com.apple.developer.applesignin": ["Default"]}, "Sign in with Apple is required; optional cloud/weather capabilities stay unconfigured"
 
 json_files = list((root / "Camp").rglob("*.json"))
 for path in json_files:

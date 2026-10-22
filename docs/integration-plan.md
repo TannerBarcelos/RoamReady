@@ -1,33 +1,31 @@
-# Next production integrations
+# Remaining production integrations
 
-## Offline contract
+## Established account, then offline trips
 
-Local onboarding, trip creation, both checklist snapshots, progress, edits, notes, ratings, and locally imported photos must work without an account or connection. Remote calls must not sit in those write paths. Always acknowledge durable local writes separately from cloud delivery.
+Initial Sign in with Apple and rig/profile onboarding require internet. Existing device sessions reopen planned trips offline; local Core Data writes never wait for cloud delivery. Camp Finder, profile/rig changes, account changes, and fresh weather need connectivity. Camera capture, imported photos, checklist edits, site notes, ratings, and manual trip creation from known details remain local. See [account/offline contract](account-and-offline-contract.md).
 
-The app now uses Core Data SQLite with incremental field writes and a transactional upload queue. SwiftUI observes a local library projection; failed changes stay in memory with a surfaced save error. Legacy JSON is imported once and retained for recovery. See [storage architecture](offline-storage.md) for the implemented behavior and release gates.
+Native Apple credential authentication, Keychain storage, pinned local ownership, online revocation checks, and signout persistence teardown are implemented. There is no server account/session service. Account deletion and complete local/cloud erase remain release work; no fake server validation/deletion is claimed. Multiple app-account libraries are not implemented.
 
-## Identity and iCloud
+## Managed iCloud
 
-Implement Sign in with Apple for backend identity and CloudKit private storage for Apple-account sync independently. The former does not authenticate a different iCloud account or replace CloudKit's account status.
+`NSPersistentCloudKitContainer` owns SQLite, private CloudKit mirroring, retries, history, and external binary transfers. There is no raw SQLite usage or custom record transport. Provision a new dedicated cloud container and deploy its generated schema. Approval pins the separate device iCloud identity; unavailable or mismatched identity leaves authenticated local trip access intact.
 
-An already signed-in person must be able to use locally available trips without refreshing their remote session. Initial sign-in and recovery require connectivity. People without iCloud keep local use. Changing either identity must isolate its associated remote state; never silently merge another account's trips into the active local library. Offer explicit, reviewed local-data migration where necessary.
+Two-device/account/attachment acceptance and actual iOS 27 runtime remain required. See [storage architecture](offline-storage.md).
 
-`NSPersistentCloudKitContainer` now manages private CloudKit mirroring, retries, persistent history, imports, and external binary asset transfers. The default build stays local-only. Configure a new dedicated container and opt in on next launch; do not reuse the previous custom CloudKit schema.
+## Apple Foundation Models only
 
-The app retains incremental property edits, logical duplicate reconciliation, note history, soft deletions, and a device-only coherent projection during partial imports. Apple controls transfer timing and concurrent cloud conflict resolution. Device acceptance for account changes, quota, partial transfers, concurrent edits, and offline use remains required. See [offline storage](offline-storage.md) for the implemented contract and migration details.
+Remove hosted AI from the roadmap. The only generative route is Apple's on-device Foundation Models, gated to iPhone 16 or newer product eligibility and Apple's independent runtime availability. Saved checklist guidance remains the fallback. No provider/model choice or remote question transfer is exposed. Initial Apple model download/readiness is an online prerequisite.
 
-## Hosted AI
+## Campground data
 
-Keep model selection out of the consumer UI. Use saved guidance and on-device Foundation Models first when supported. A hosted request is an optional fallback when online; its failure must leave saved guidance available.
+The RIDB public bulk export supports a real federal campground and site snapshot without an API key. `scripts/import_ridb.py` builds dated factual index/site shards, and the app downloads them over HTTPS from configurable public snapshot hosting. Development hosting points to this repository branch through Info.plist; production should use an owned CDN/versioned snapshot endpoint with an update owner and measured traffic budget. Static directory facts are not live booking availability.
 
-Use an authenticated backend with verified Sign in with Apple sessions, Keychain session storage on device, per-account/device rate limits, input/output caps, request timeouts, idempotency, and a measurable monthly spend ceiling. Provider keys stay server-side. Benchmark one inexpensive model against actual equipment questions before committing to it; keep the provider behind a backend interface so changing it requires no model picker.
+A tested RIDB-shaped proxy client is ready for future live provider refresh. A deployed bounded backend and registered RIDB API key are still needed for that path; never ship provider keys in the app. NPS, state/local/private coverage, broader regional datasets, and any reservation availability require separate integrations/agreements. See [source report](campground-sourcing.md).
 
-Disclose that a request will leave the device and send only the relevant question, rig/equipment context, and selected guidance. Photos/location/history should not be included by default. Keep evaluation cases for unsupported questions, missing rig manuals, hazardous symptoms, prompt injection in user notes, and fabricated specifications. Source references must distinguish editorial guidance from user-authored notes.
+## Rig catalog
 
-## Data delivery
-
-Obtain actual offline distribution terms and sample coverage matrices before selecting a full rig or campground provider. The separate sourcing reports enumerate candidates and unresolved coverage. Bundle an approved text snapshot, validate schema/identifiers/provenance, and stage signed updates atomically with a known-good fallback. Imagery, manuals, and offline maps each need their own rights and download status.
+Keep sourced brochure records and explicit make/model/year government evidence with per-record provenance. The importer must not treat regulatory vPIC chassis/trailer labels as comprehensive retail RV models. Exact model-year tuples and explicitly evidenced rig categories are required. No guessed year ranges or unsupported floorplans should enter onboarding. Official images/manual redistribution need separate rights. See [catalog sourcing](catalog-sourcing.md).
 
 ## Native release gate
 
-Run the checked-in native build script with Xcode and the iOS 27 SDK, then the airplane-mode acceptance pass in `validation.md`. Validate genuine Liquid Glass behavior, light/dark appearance, large text, VoiceOver, Reduce Transparency/Motion, photo-library edge cases, time zones, low storage, and unsupported Foundation Models states. WeatherKit needs App ID provisioning and provider attribution review. A passing portable Swift test suite cannot substitute for this gate.
+Provision real Apple identifiers and test on iPhone. Run iOS 27 build/runtime, airplane-mode return access, multi-device cloud transfers, signup/revocation/recovery, camera permissions, large datasets, VoiceOver, Dynamic Type, reduced transparency/motion, WeatherKit attribution, storage exhaustion, and Foundation Models eligibility. Portable tests and SDK 26.5 simulator builds do not establish iOS 27 or production readiness.

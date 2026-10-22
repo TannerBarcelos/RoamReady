@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=PHAETON&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:01:11.227112+00:00",
+  "payloadSHA256": "bbce5c530e691a8995c2f176092df55ba4ac3aeff3a09fe0a9d58cd2c0840666",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V680000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/11/2021",
+        "Component": "SEAT BELTS:REAR/OTHER:ANCHORAGE",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2022 Allegro Breeze, Allegro Red, Allegro, Allegro Bus, Phaeton, and 2018-2021 Zephyr recreational vehicles.  The sofa seat belts may not have been installed correctly, which could result in unsecured passengers.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 210, \"Seat Belt Assembly Anchorages.\"",
+        "Consequence": "Unsecured passengers have an increased risk of injury in the event of a crash.",
+        "Remedy": "Dealers will inspect and repair the seat belts as necessary, free of charge.  Owner notification letters were mailed October 29, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-118.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2019",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "18V341000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "25/05/2018",
+        "Component": "STRUCTURE:BODY:DOOR",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2019 Tiffin Allegro RED, Allegro Open Road, Breeze, Bus, Phaeton, and Zephyr motorhomes.  The entry door on these vehicles may have been improperly assembled, allowing the door to open while the vehicle is moving.",
+        "Consequence": "If the door comes open while the motorhome is moving, there is an increased risk of injury to the motorhome occupants.",
+        "Remedy": "Tiffin will notify owners, and dealers will adjust the door lock mechanism, free of charge.  The recall began on June 18, 2018.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-110.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V306000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "30/04/2021",
+        "Component": "FUEL SYSTEM, DIESEL:FUEL INJECTION SYSTEM:FUEL RAIL",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2017-2021 Bus and Phaeton vehicles.  The sealing washer may not seat correctly in the pilot bore, allowing the high pressure fuel rail assembly to leak.",
+        "Consequence": "A fuel leak in the presence of an ignition source increases the risk of a fire.",
+        "Remedy": "Tiffin will work with Cummins to inspect the rail threads , and replace the rail and fuel lines if damage is found, free of charge.  Owner notification letters were mailed August 11, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "19V228000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "22/03/2019",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2019 Phaeton, Allegro Bus, and Zephyr motorhomes.  The alternating current electrical wires may have been improperly secured in the Energy Management Module, causing increased electrical resistance.",
+        "Consequence": "The additional resistance can cause the wires to overheat, increasing the risk of a fire.",
+        "Remedy": "Tiffin will notify owners, and dealers will inspect the Alternating Current Relay Board and make sure the wires are properly secured, free of charge.  The recall began April 15, 2019.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIFF-111.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      }
+    ]
+  }
+}

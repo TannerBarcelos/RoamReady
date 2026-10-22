@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=VIEW&modelYear=2026",
+  "retrievedAt": "2026-10-19T20:01:04.636927+00:00",
+  "payloadSHA256": "81a0afff76ca1255b846f61eac7aea5fddaa430afa54b5a47da38d07fc81ca93",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "25V478000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "22/07/2025",
+        "Component": "AIR BAGS",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2025-2026 Revel Sport, 2024-2025 Vita, 2025 Porto, Adventure Wagon, 2024-2026 View, Revel, Navion, and Ekko motorhomes. Supplemental Restraint System (SRS) wires can be caught in the seat mechanism when the driver or passenger seats are adjusted.",
+        "Consequence": "Damaged wires can prevent air bags from deploying in a crash, increasing the risk of injury.",
+        "Remedy": "Dealers will inspect and re-route the wiring, free of charge. Owner notification letters were mailed September 19, 2025. Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885. Winnebago's number for this recall is 199.",
+        "Notes": null,
+        "ModelYear": "2026",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "26V016000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "16/01/2026",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:PLUMBING:FREEZE PREVENTION HEATER",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2024-2026 Spirit, Minnie Winnie, Travato, View, Navion, and 2026-2027 Sunflyer, 2021-2026 Commercial vehicle, and 2023-2026 425 Commercial shell motorhomes equipped with a ThermaHeat Tank Pad. The water tank heating pad may experience high resistance and fail.",
+        "Consequence": "A heating pad failure can increase the risk of a fire.",
+        "Remedy": "Dealers will install a new water tank heating pad, free of charge. Owner notification letters were mailed March 16, 2026. Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885. Winnebago's number for this recall is 201.",
+        "Notes": null,
+        "ModelYear": "2026",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      }
+    ]
+  }
+}

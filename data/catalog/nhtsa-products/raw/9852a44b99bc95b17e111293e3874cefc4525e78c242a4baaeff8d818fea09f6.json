@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=MINNIE+WINNIE&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:01:02.680086+00:00",
+  "payloadSHA256": "8c118bc4825a53b68ddaf198c4d87a31c562395a75c5fb45b5645c825310e3d1",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Towable",
+        "NHTSACampaignNumber": "20V441000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "29/07/2020",
+        "Component": "STRUCTURE:EMERGENCY:ESCAPE/EGRESS/EXIT",
+        "Summary": "Winnebago Towable (Winnebago) is recalling certain 2019-2020 Micro Minnie 5 travel trailers.  An emergency exit window was not installed in the bedroom.",
+        "Consequence": "If occupants do not have access to the entry door, there is no alternate means of escape provided which may result in serious injury or death.",
+        "Remedy": "Winnebago will notify owners, and dealers will replace the right side bedroom window with an escape window, free of charge.  The recall began August 17, 2020.  Owners may contact Winnebago customer service at 1-574-825-5280 extension 5220.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "WINNEBAGO",
+        "Model": "MINNIE WINNIE"
+      }
+    ]
+  }
+}

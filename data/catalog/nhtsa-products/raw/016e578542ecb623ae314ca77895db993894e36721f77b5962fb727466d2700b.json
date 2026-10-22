@@ -1,0 +1,176 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2015&make=FOREST+RIVER&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:55.166663+00:00",
+  "payloadSHA256": "7fbf01eb6e87a95ee238e7270b0d563e1dafbc47a7ee0aed9a4f65aaf8e3ebb6",
+  "response": {
+    "count": 33,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "XLR"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "CARDINAL"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SANDPIPER"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SOLERA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "VENGEANCE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SALEM"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "WILDWOOD"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SIERRA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "CONTINENTAL"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "LIMITED EDITION"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SHASTA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "PUMA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "FORESTER"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SURVEYOR"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "FLAGSTAFF"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "COACHMEN"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "LEGACY"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "ROCKWOOD"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "DYNAMAX"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "WILDCAT"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "GEORGETOWN"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "BERKSHIRE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "WORK AND PLAY"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "BLUE RIDGE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "PALOMINO"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "COLUMBUS"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "R-POD"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE GREY WOLF"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "FR3"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "SOFTSIDE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "VIBE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "FOREST RIVER",
+        "model": "CRUSADER"
+      }
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=ALANTE&modelYear=2017",
+  "retrievedAt": "2026-10-19T20:00:58.502857+00:00",
+  "payloadSHA256": "d0b926f2a710021d714ac687749f0ac8c924e185a65f6faf25b60efb039f097b",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "19V270000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/04/2019",
+        "Component": "ELECTRICAL SYSTEM:WIRING:FUSES AND CIRCUIT BREAKERS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2014-2019 Precept, 2016-2019 Alante and 2019 Precept Prestige motorhomes built on a Ford F53 chassis.  The blower motor electrical circuit may be missing the 25amp fuse, possibly resulting in overheating of the wiring.",
+        "Consequence": "If the wiring in the circuit overheats, it can increase the risk of fire.",
+        "Remedy": "Jayco has notified owners, and dealers will install a 25amp fuse, free of charge.  The recall began April 16, 2019.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903432.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "JAYCO",
+        "Model": "ALANTE"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "19V706000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "03/10/2019",
+        "Component": "STRUCTURE:FRAME AND MEMBERS:UNDERBODY SHIELDS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2016-2017 Alante motorhomes built on Ford F53 chassis.  A heat shield may have not have been installed, allowing the hydraulic lines to be exposed to excessive heat.",
+        "Consequence": "Excessive heat can melt hydraulic lines, increasing the risk of a fire.",
+        "Remedy": "Jayco will notify owners, and dealers will install aftermarket heat shields to the chassis, free of charge.  The recall began November 14, 2019.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903442.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "JAYCO",
+        "Model": "ALANTE"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "16V561000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "27/07/2016",
+        "Component": "SEATS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain model year 2016-2017 Alante and Precept motorhomes manufactured October 13, 2014, to June 23, 2016.  The affected vehicles have a driver seat that may loosen and detach from the seat base as a result of the seat having been swiveled around.",
+        "Consequence": "If the seat detaches from the seat base while vehicle is being driven, the operator may lose control, increasing the risk of a crash.",
+        "Remedy": "Jayco has notified owners, and dealers will install a jam nut on top of the seat base nut, free of charge.  The recall began on August 16, 2016.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 9903310.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "JAYCO",
+        "Model": "ALANTE"
+      }
+    ]
+  }
+}

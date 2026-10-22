@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CloudSyncSection: View {
     @Environment(CampStore.self) private var store
+    @Environment(Connectivity.self) private var connectivity
     @State private var confirming = false
     var body: some View {
         Section {
@@ -14,10 +15,15 @@ struct CloudSyncSection: View {
                 if store.sync.requiresRestart {
                     Text("Close and reopen RoamReady to apply this setting.").font(.caption).foregroundStyle(.secondary)
                 }
+                if store.sync.accountNeedsReview {
+                    Button("Approve original iCloud account") { Task { await store.sync.enable() } }
+                        .disabled(!connectivity.isOnline || store.sync.busy)
+                }
                 if store.sync.requested {
                     Button("Turn off iCloud sync") { Task { await store.sync.disable() } }
+                        .disabled(!connectivity.isOnline)
                 } else {
-                    Button("Enable iCloud sync") { confirming = true }
+                    Button("Enable iCloud sync") { confirming = true }.disabled(!connectivity.isOnline || store.sync.busy)
                 }
             }
             if let notice = store.libraryNotice { Text(notice).font(.caption).foregroundStyle(.secondary) }

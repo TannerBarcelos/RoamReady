@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2022&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:50.581908+00:00",
+  "payloadSHA256": "fd52282cf3f37e7a935042d41e37be3b6757b36319e7750494d9e02a586e5481",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2022",
+        "make": "JAYCO",
+        "model": "REDHAWK SE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "JAYCO",
+        "model": "ALANTE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "JAYCO",
+        "model": "SENECA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      }
+    ]
+  }
+}

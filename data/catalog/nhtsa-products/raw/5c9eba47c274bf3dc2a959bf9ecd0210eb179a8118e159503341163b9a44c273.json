@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=VIEW&modelYear=2015",
+  "retrievedAt": "2026-10-19T20:01:01.116575+00:00",
+  "payloadSHA256": "22c8dcac07967ef270b5734d698de09e82fab6fa8c7e1207ea2dad32b5cdde88",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "17V262000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "19/04/2017",
+        "Component": "EQUIPMENT:ELECTRICAL:RADIO/TAPE DECK/CD ETC.",
+        "Summary": "Winnebago Industries, Inc (Winnebago) is recalling certain 2014-2017 Winnebago View, VIA, ERA, and Itasca Navion motorhomes.  The affected vehicles have an Axxess radio volume control module that may interfere with the chassis electrical system.",
+        "Consequence": "The Axxess radio volume control module can affect electrical system functions, possibly causing an engine shutdown, power loss, illumination of malfunction indicator warning lights, and interfere with the restraint system.  These scenarios can increase the risk of crash or increase the risk of injury in the event of a crash.",
+        "Remedy": "Winnebago will notify owners, and dealers will remove the Axxess radio volume control module, free of charge.  The recall began on May 23, 2017.  Owners may contact Winnebago customer service at 1-800-537-1885.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "17V782000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "07/12/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2013-2018 Winnebago Era, Travato, Minnie Winnie, Fuse, View, Trend, Aspect, Brave, Vista, Sightseer, Adventurer, Forza, Journey, Tour, Revel, Paseo, Chalet, Access, and Intent motorhomes and Commercial vehicles, and 2013-2018 Itasca Spirit, Navion, Cambria, Tribute, Sunstar, Sunova, Suncruiser, Solei, Meridian, Elipse, Horizon, Reyo, and Via motorhomes.  These vehicles are equipped with Kidde Plastic-Handle or Push Button 'Pindicator' fire extinguishers that may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Winnebago will notify owners, instructing them to contact Kidde for replacement or aftermarket fire extinguishers, free of charge.  The recall began on January 19, 2018.  Owners may contact Winnebago customer service at 1-641-585-3535, or Kidde customer service toll-free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "15V135000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "09/03/2015",
+        "Component": "STRUCTURE",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain model year 2015 Winnebago ERA, View, and Itasca Navion vehicles manufactured September 11, 2014, to February 27, 2015 and built on a Mercedes-Benz Sprinter Chassis.  In the affected vehicles, the abutting wedge, a component attached to the door jamb to make opening the door easier after a severe frontal impact, may have been installed incorrectly.",
+        "Consequence": "If a vehicle that has an incorrectly installed abutting wedge is involved in a severe frontal accident, a greater force may be necessary to open the doors, increasing the risk of injury.",
+        "Remedy": "Mercedes-Benz notify owners, and their dealers will check the installation of the abutting wedge, correcting it as necessary, free of charge.  The recall began in March 2015.  Owners may contact Mercedes-Benz Sprinter customer service at 1-877-762-8267.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "15V625000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "06/10/2015",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain model year 2013-2016 Winnebago Era, Travato, View, Trend, Via, Journey, and Tour motorhomes and Itasca Navion, Viva, Reyo, Meridian, and Elipse motorhomes manufactured June 26, 2012, to August 26, 2015.  In the affected vehicles, the high pressure liquid propane (LP) hose may harden and result in an LP leak at the crimp fitting.",
+        "Consequence": "An LP leak in the presence of an ignition source increases the risk of a fire.",
+        "Remedy": "Winnebago will notify owners, and dealers will replace the LP hose, free of charge.   The recall began on November 25, 2015.   Owners may contact Winnebago customer service at 1-641-585-3535.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "WINNEBAGO",
+        "Model": "VIEW"
+      }
+    ]
+  }
+}

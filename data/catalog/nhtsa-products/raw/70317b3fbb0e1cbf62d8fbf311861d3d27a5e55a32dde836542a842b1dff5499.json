@@ -1,0 +1,5 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=NAVION&modelYear=2016",
+  "retrievedAt": "2026-10-19T20:01:51.109517+00:00",
+  "error": "HTTP 400: Bad Request"
+}

@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=GRAND+DESIGN&model=IMAGINE&modelYear=2016",
+  "retrievedAt": "2026-10-19T20:01:04.847657+00:00",
+  "payloadSHA256": "935089378359efd6fe1f7a1982408455a378ff9b80154d2048f3e8e1f2d86cee",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "21V393000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "26/05/2021",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2016-2021 Imagine, Transcend, and Momentum travel trailers.  The LP regulator that controls the LP gas pressure may fail, allowing excessive gas pressure that causes the appliance flame to increase.",
+        "Consequence": "Excessive gas pressure and a larger than intended appliance flame can increase the risk of a fire.",
+        "Remedy": "Dealers will replace the LP regulator, free of charge.  Owner notification letters were mailed June 24, 2021.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910023.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "16V355000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "25/05/2016",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS:LINES AND FITTINGS",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain model year 2016-2017 Imagine and Reflection recreational trailers manufactured January 15, 2016 to May 4, 2016.  The MB Sturgis LP regulator on these vehicles may allow propane gas to leak into the regulator sight glass causing it to degrade and potentially crack.",
+        "Consequence": "If the indicator sight glass cracks, propane gas may leak out, increasing the risk of a fire.",
+        "Remedy": "Grand Design will notify owners, and dealers will replace the LP regulator kit, free of charge.  The recall began on June 6, 2016.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910006.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      }
+    ]
+  }
+}

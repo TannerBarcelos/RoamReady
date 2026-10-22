@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2021&make=AIRSTREAM&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:49.496688+00:00",
+  "payloadSHA256": "f500488df74187e0caffd1a9e6536a58e8583d235ccd5d7c8443a2b72b508a21",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2021",
+        "make": "AIRSTREAM",
+        "model": "GLOBETROTTER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "AIRSTREAM",
+        "model": "BASECAMP"
+      },
+      {
+        "modelYear": "2021",
+        "make": "AIRSTREAM",
+        "model": "INTERSTATE NINETEEN"
+      },
+      {
+        "modelYear": "2021",
+        "make": "AIRSTREAM",
+        "model": "FLYING CLOUD"
+      }
+    ]
+  }
+}

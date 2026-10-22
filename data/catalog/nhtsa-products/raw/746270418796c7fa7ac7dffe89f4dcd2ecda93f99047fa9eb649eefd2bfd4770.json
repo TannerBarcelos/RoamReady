@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=ALLEGRO+BUS&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:01:11.399896+00:00",
+  "payloadSHA256": "5c6bc312e7758aa9b45cd399895d827505a541b631a84c441059425b361a8eab",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V680000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/11/2021",
+        "Component": "SEAT BELTS:REAR/OTHER:ANCHORAGE",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2022 Allegro Breeze, Allegro Red, Allegro, Allegro Bus, Phaeton, and 2018-2021 Zephyr recreational vehicles.  The sofa seat belts may not have been installed correctly, which could result in unsecured passengers.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 210, \"Seat Belt Assembly Anchorages.\"",
+        "Consequence": "Unsecured passengers have an increased risk of injury in the event of a crash.",
+        "Remedy": "Dealers will inspect and repair the seat belts as necessary, free of charge.  Owner notification letters were mailed October 29, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-118.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO BUS"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "23V643000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "20/09/2023",
+        "Component": "EQUIPMENT:APPLIANCE:OVEN/STOVE/COOKTOP",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2016-2024 Allegro Bus, and 2017-2024 Zephyr motorhomes.  The 240-Volt induction cooktop may not be grounded, which can create an electrical shock hazard if the wires short-circuit.",
+        "Consequence": "An electrical shock can increase the risk of injury.",
+        "Remedy": "Dealers will install a ground for the metal junction box, free of charge.  Owner notification letters were mailed October 20, 2023.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-133.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO BUS"
+      }
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=PRECEPT&modelYear=2024",
+  "retrievedAt": "2026-10-19T20:01:00.976737+00:00",
+  "payloadSHA256": "42220ae1dd89b5ae7491fb1d0df9b00025199ccd31ec89aa809d0d7321dd8965",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V318000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "04/05/2023",
+        "Component": "SERVICE BRAKES, HYDRAULIC:FOUNDATION COMPONENTS:DISC:CALIPER",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2023-2024 Entegra Emblem, Vision, Vision XL, Jayco Alante, Precept, and Precept Prestige motorhomes, built on Ford F-53 chassis.  The rear brake caliper attachment bolts may not be tightened correctly, which can allow the caliper to loosen and possibly damage the wheel or brake lines.",
+        "Consequence": "A damaged wheel can result in a loss of tire pressure.  A damaged brake line can cause a brake fluid leak and reduce brake performance.  Either condition increases the risk of a crash.",
+        "Remedy": "Jayco will notify owners, and Ford dealers will inspect and tighten the rear caliper bolts, as necessary, free of charge.  In addition, any damaged bolts will be replaced, free of charge.  Owner notification letters were mailed May 24, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V673000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/10/2023",
+        "Component": "STRUCTURE:EMERGENCY:ESCAPE/EGRESS/EXIT",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2024 Jayco Precept and Entegra Coach Vision XL motorhomes.  The window shade may obstruct the emergency exit window opening.",
+        "Consequence": "An obstructed emergency exit window may prevent or delay occupants from exiting in an emergency, increasing the risk of injury.",
+        "Remedy": "Dealer will inspect and replace the window shade, as necessary, free of charge.  Owner notification letters were mailed October 19, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 9903592.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V771000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "16/11/2023",
+        "Component": "ELECTRICAL SYSTEM: INSTRUMENT CLUSTER/PANEL",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2023-2024 Entegra Emblem, Vision, Vision XL, Jayco Alante, Precept, and Precept Prestige motorhomes.  Corrosion in the Smart Data Link Connector (SDLC) may interfere with the Controller Area Network (CAN) communication, resulting in an inoperative instrument panel.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard numbers 101, \"Control and Displays\" and 105, \"Hydraulic and Electric Brake Systems.\"",
+        "Consequence": "An inoperative instrument panel cannot show critical safety information, such as the speedometer or warning lights, increasing the risk of a crash.",
+        "Remedy": "Ford dealers will install a wire harness connector, and inspect and replace the SDLC module, as necessary, free of charge.  Owner notification letters were mailed December 13, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      }
+    ]
+  }
+}

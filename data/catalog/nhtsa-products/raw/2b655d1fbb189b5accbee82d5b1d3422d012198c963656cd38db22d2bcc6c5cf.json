@@ -1,0 +1,41 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2018&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.587137+00:00",
+  "payloadSHA256": "3dfdaa20d29ef1aa15cb7150afcd66e688527e0b3cf393916e08716a56db9ec6",
+  "response": {
+    "count": 6,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2018",
+        "make": "NEWMAR",
+        "model": "MOUNTAIN AIRE"
+      },
+      {
+        "modelYear": "2018",
+        "make": "NEWMAR",
+        "model": "DUTCH STAR"
+      },
+      {
+        "modelYear": "2018",
+        "make": "NEWMAR",
+        "model": "KING AIRE"
+      },
+      {
+        "modelYear": "2018",
+        "make": "NEWMAR",
+        "model": "VENTANA"
+      },
+      {
+        "modelYear": "2018",
+        "make": "NEWMAR",
+        "model": "BAY STAR"
+      },
+      {
+        "modelYear": "2018",
+        "make": "NEWMAR",
+        "model": "NEW AIRE"
+      }
+    ]
+  }
+}

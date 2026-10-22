@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2018&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:50.372515+00:00",
+  "payloadSHA256": "8ddc5dfe646e49f1f2699bf9bdb29cc1e287d16945733d1413278bbed4775a36",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2018",
+        "make": "JAYCO",
+        "model": "REDHAWK"
+      },
+      {
+        "modelYear": "2018",
+        "make": "JAYCO",
+        "model": "GREYHAWK"
+      },
+      {
+        "modelYear": "2018",
+        "make": "JAYCO",
+        "model": "ALANTE"
+      },
+      {
+        "modelYear": "2018",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      }
+    ]
+  }
+}

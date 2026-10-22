@@ -1,0 +1,21 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2016&make=AIRSTREAM&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:48.777506+00:00",
+  "payloadSHA256": "effaa35cd401068cc6f13ede6574790e6c416edfb199107485ad03df81fdf835",
+  "response": {
+    "count": 2,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2016",
+        "make": "AIRSTREAM",
+        "model": "INTERSTATE"
+      },
+      {
+        "modelYear": "2016",
+        "make": "AIRSTREAM",
+        "model": "SPORT"
+      }
+    ]
+  }
+}

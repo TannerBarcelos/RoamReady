@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=GRAND+DESIGN&model=IMAGINE&modelYear=2018",
+  "retrievedAt": "2026-10-19T20:01:05.151893+00:00",
+  "payloadSHA256": "b90653c561e289232ac98180af51d1cd64560d0398fd8e1131c9b7846bbc2230",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "21V393000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "26/05/2021",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2016-2021 Imagine, Transcend, and Momentum travel trailers.  The LP regulator that controls the LP gas pressure may fail, allowing excessive gas pressure that causes the appliance flame to increase.",
+        "Consequence": "Excessive gas pressure and a larger than intended appliance flame can increase the risk of a fire.",
+        "Remedy": "Dealers will replace the LP regulator, free of charge.  Owner notification letters were mailed June 24, 2021.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910023.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "17V789000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "08/12/2017",
+        "Component": "EQUIPMENT:MECHANICAL:INTEGRATED JACK/LEVELER/STABILIZER",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2017-2018 Reflection and Imagine travel trailers equipped with a Smart-Jack model power tongue jack.  The laminated plastic touch pad on the jack may crack or separate allowing water to enter, potentially causing the jack to operate unintentionally.",
+        "Consequence": "If the tongue jack retracts or extends unexpectedly, there could be an increased risk of a crash or injury.",
+        "Remedy": "Grand Design will notify owners, and dealers will replace the power tongue jack, free of charge.  The recall began on December 29, 2017.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 900012.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "17V271000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "25/04/2017",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2017-2018 Imagine travel trailers.  The screws that secure the slide room mechanism columns may shear, allowing the slide room to extend while the trailer is being towed.",
+        "Consequence": "If the slide room opens during transit there would be an increased risk of a crash.",
+        "Remedy": "Grand Design will notify owners, and dealers will replace the slide mechanism column securing screws, free of charge.  The recall began on May 15, 2017.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910009.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      },
+      {
+        "Manufacturer": "Grand Design RV, LLC",
+        "NHTSACampaignNumber": "17V620000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "04/10/2017",
+        "Component": "ELECTRICAL SYSTEM:WIRING",
+        "Summary": "Grand Design RV, LLC (Grand Design) is recalling certain 2017-2018 Imagine recreational trailers.  The wires at the air conditioning unit may detach from the connector and the loose wires may short circuit.",
+        "Consequence": "A short circuit increases the risk of a fire.",
+        "Remedy": "Grand Design has notified owners, and dealers will change the existing wire connectors for the air conditioning unit to positive retention wire connectors, free of charge.  The recall began on October 23, 2017.  Owners may contact Grand Design customer service at 1-574-825-9679.  Grand Design's number for this recall is 910010.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2018",
+        "Make": "GRAND DESIGN",
+        "Model": "IMAGINE"
+      }
+    ]
+  }
+}

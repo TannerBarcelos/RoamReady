@@ -4,16 +4,41 @@ import CampCore
 @main
 struct CampApp: App {
     @State private var store = CampStore()
+    @State private var account = AccountSession()
+    @State private var connectivity = Connectivity()
+    @State private var libraryTransition: Task<Void, Never>?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             AppRoot()
                 .environment(store)
+                .environment(account)
+                .environment(connectivity)
                 .tint(.blue)
-                .task { await store.load() }
+                .onChange(of: account.canAccessLibrary, initial: true) { _, allowed in
+                    let previous = libraryTransition
+                    libraryTransition = Task {
+                        await previous?.value
+                        if allowed {
+                            guard account.canAccessLibrary else { return }
+                            await store.load(online: connectivity.isOnline)
+                        } else {
+                            await store.suspendLibrary()
+                        }
+                    }
+                }
+                .task(id: connectivity.isOnline) {
+                    await account.verifyWhenOnline(connectivity.isOnline)
+                    if connectivity.isOnline && account.canAccessLibrary {
+                        await libraryTransition?.value
+                        guard account.canAccessLibrary else { return }
+                        await store.resumeMirroringIfNeeded()
+                    }
+                }
                 .onChange(of: scenePhase) { _, phase in
-                    store.sync.setActive(phase == .active)
+                    store.sync.setActive(phase == .active && account.canAccessLibrary)
+                    if phase == .active { Task { await account.verifyWhenOnline(connectivity.isOnline) } }
                     if phase != .active { Task { await store.flushForBackground() } }
                 }
         }
@@ -21,11 +46,15 @@ struct CampApp: App {
 }
 
 struct AppRoot: View {
+    @Environment(Connectivity.self) private var connectivity
     @Environment(CampStore.self) private var store
+    @Environment(AccountSession.self) private var account
 
     var body: some View {
         Group {
-            if store.isLoading {
+            if !account.canAccessLibrary {
+                AccountWelcomeView()
+            } else if store.isLoading {
                 ProgressView("Opening your trips…")
             } else if let failure = store.loadFailure {
                 ContentUnavailableView {
@@ -33,7 +62,7 @@ struct AppRoot: View {
                 } description: {
                     Text(failure)
                 } actions: {
-                    Button("Try again") { Task { await store.load() } }
+                    Button("Try again") { Task { await store.load(online: connectivity.isOnline) } }
                     if FileManager.default.fileExists(atPath: store.archiveURL.path) {
                         ShareLink("Export legacy recovery file", item: store.archiveURL)
                     }

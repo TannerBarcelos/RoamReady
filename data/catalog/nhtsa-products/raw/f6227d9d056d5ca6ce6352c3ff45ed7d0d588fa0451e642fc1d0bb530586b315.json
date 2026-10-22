@@ -1,0 +1,91 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=SENECA&modelYear=2022",
+  "retrievedAt": "2026-10-19T20:01:00.814152+00:00",
+  "payloadSHA256": "c98b1b682a7fb259975699a39a0a17cf27070d3bbc6436b6fca1c6b71e29b92f",
+  "response": {
+    "Count": 5,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "22V053000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/02/2022",
+        "Component": "STEERING:LINKAGES:TIE ROD ASSEMBLY",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2021-2022 Entegra Coach Accolade, Accolade XL, Jayco Seneca, and Seneca Prestige Class C motorhomes.  The tie rod clamps may be loose, which could result in loose tie rod ends that could break or detach.",
+        "Consequence": "Detached or broken tie rod ends can result in steering loss, increasing the risk of a crash.",
+        "Remedy": "Daimler Truck dealers will replace the tie rod clamp bolts and nuts, free of charge.  Owner notification letters were mailed March 15, 2022.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 21V-369.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "22V059000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "03/02/2022",
+        "Component": "STEERING:LINKAGES:TIE ROD ASSEMBLY",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2021-2022 Entegra Coach Accolade, Accolade XL, Jayco Seneca and Seneca Prestige Class C motorhomes.  The steering arm and tie rod bolts may have a defective seam that can fracture.",
+        "Consequence": "A fractured bolt may cause a loss of steering control, increasing the risk of a crash.",
+        "Remedy": "Daimler Trucks North America will replace the tie rod arm bolts and steering arm bolts, free of charge.  Owner notification letters were mailed March 28, 2022.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 21V-256/21E029.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "22V121000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "03/03/2022",
+        "Component": "TIRES:VALVE",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2022 Seneca, Seneca Prestige, Entegra Accolade and Accolade XL motorhomes.  The tire valve stem extension for the inner wheel may come into contact with the outer wheel rim opening and become damaged.",
+        "Consequence": "Damage to the valve stem extension may result in a loss of tire pressure of the inner wheel, increasing the risk of a crash.",
+        "Remedy": "Daimler Trucks North America, LLC will remove the inner valve stem extension and stabilizer, free of charge.  Owner notification letters were mailed April 28, 2022.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is FL912 21V-921.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V102000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "20/02/2023",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2022-2023 Entegra Accolade, Accolade XL, Anthem, Aspire, Cornerstone, Emblem, Esteem, Expanse, Expanse LI, Odyssey, Qwest, Reatta, Reatta XL, Jayco Alante, Greyhawk, Greyhawk Prestige, Melbourne, Melbourne Prestige, Precept, Precept Prestige, Redhawk, Redhawk SE, Seneca, Seneca Prestige, and Seneca XT recreational vehicles.  The certification labels may be missing the rear Gross Axle Weight Rating (GAWR).  As such, these vehicles fail to comply with the requirements of 49 CFR Part 567, \"Certification.\"",
+        "Consequence": "Missing axle information may result in the vehicle being overloaded, increasing the risk of a crash.",
+        "Remedy": "Dealers will install a new corrected certification label, free of charge.  Owner notification letters were mailed March 31, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 9903583.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V477000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "12/07/2023",
+        "Component": "VISIBILITY:WINDSHIELD WIPER/WASHER:LINKAGES",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2021-2022 Entegra Coach Accolade, Accolade XL, Jayco Seneca, and Seneca Prestige recreational vehicles.  The windshield wipers may fail, resulting in reduced driver visibility.",
+        "Consequence": "Reduced driver visibility increases the risk of a crash.",
+        "Remedy": "Dealers will inspect and replace the windshield wiper arms, as necessary, free of charge.  Owner notification letters were mailed August 11, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      }
+    ]
+  }
+}

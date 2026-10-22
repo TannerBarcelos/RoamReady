@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=AIRSTREAM&model=BAMBI&modelYear=2023",
+  "retrievedAt": "2026-10-19T20:00:58.067098+00:00",
+  "payloadSHA256": "10a42e7f9ced09f08753de9e89d570e88557d3313dd9686aa01d4e20e8093c02",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "23V134000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/03/2023",
+        "Component": "EQUIPMENT:APPLIANCE:OVEN/STOVE/COOKTOP",
+        "Summary": "Airstream Inc. (Airstream) is recalling certain 2021-2023 Basecamp, Bambi, Atlas, and Interstate travel trailers, equipped with certain SDS2 2-Burner Drop-in Cooktops.  The internal aluminum burner tubes that connect to the gas valves may fracture and cause a gas leak.",
+        "Consequence": "A gas leak in the presence of an ignition source can increase the risk of a fire.",
+        "Remedy": "Dealers will install a regulator support bracket, free of charge. Owner notification letters are expected to be mailed April 29, 2023.  Owners may contact Airstream Customer Service at 877-596-6111 (Travel Trailer ext. 7491) or (Touring Coach ext. 7401).",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "AIRSTREAM",
+        "Model": "BAMBI"
+      },
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "23V435000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "21/06/2023",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Airstream, Inc. (Airstream) is recalling certain 2023 Bambi vehicles.  The capacity of the freshwater tank was overstated, resulting in an incorrect Cargo Carrying Capacity label.   As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 110, \"Tire Selection and Rims.\"",
+        "Consequence": "An incorrect label may lead to unintentionally overloading the vehicle, increasing the risk of a crash.",
+        "Remedy": "Airstream will mail corrected labels, free of charge.  Owner notification letters were mailed July 26, 2023.  Owners may contact Airstream customer service at 1-877-596-6505 or 1-937-596-6111 ext. 7401 or 7411.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "AIRSTREAM",
+        "Model": "BAMBI"
+      },
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "23V519000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "27/07/2023",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Airstream, Inc. (Airstream) is recalling certain 2023-2024 Bambi, Basecamp, Caravel, Flying Cloud, Globetrotter, International, and Interstate travel trailers.  The SmartPlug 30 Amp inlet manufactured with the manganese bronze D-rings may crack or fail when over tightened.",
+        "Consequence": "A D-ring that cracks or fails may allow wires to loosen, causing electrical arcing and increasing the risk of a fire.",
+        "Remedy": "Dealers will inspect and replace the SmartPlug 30-amp inlet as needed, free of charge.  Owner notification letters were mailed August 8, 2023.  Owners may contact Airstream customer service at 1-877-596-6505 or 1-937-596-6111 ext. 7401 or 7411.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "AIRSTREAM",
+        "Model": "BAMBI"
+      }
+    ]
+  }
+}

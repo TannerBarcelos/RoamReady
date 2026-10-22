@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=PHAETON&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:01:11.478890+00:00",
+  "payloadSHA256": "f9d4b08638b00a908189150da6f1c4f4cf15f1734175e35cf0054b7fb3cbc66f",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V680000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/11/2021",
+        "Component": "SEAT BELTS:REAR/OTHER:ANCHORAGE",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2018-2022 Allegro Breeze, Allegro Red, Allegro, Allegro Bus, Phaeton, and 2018-2021 Zephyr recreational vehicles.  The sofa seat belts may not have been installed correctly, which could result in unsecured passengers.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard number 210, \"Seat Belt Assembly Anchorages.\"",
+        "Consequence": "Unsecured passengers have an increased risk of injury in the event of a crash.",
+        "Remedy": "Dealers will inspect and repair the seat belts as necessary, free of charge.  Owner notification letters were mailed October 29, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-118.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "20V534000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/09/2020",
+        "Component": "STEERING",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2020 Bus and Phaeton motorhomes.  The steering pinch bolts may not have been properly tightened.",
+        "Consequence": "A loose steering pinch bolt can result in a loss of steering control, increasing the risk of a crash.",
+        "Remedy": "Tiffin will notify owners, and dealers will tighten the steering bolts to specification, free of charge.  The recall began August 27, 2020.  Owners may contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V306000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "30/04/2021",
+        "Component": "FUEL SYSTEM, DIESEL:FUEL INJECTION SYSTEM:FUEL RAIL",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2017-2021 Bus and Phaeton vehicles.  The sealing washer may not seat correctly in the pilot bore, allowing the high pressure fuel rail assembly to leak.",
+        "Consequence": "A fuel leak in the presence of an ignition source increases the risk of a fire.",
+        "Remedy": "Tiffin will work with Cummins to inspect the rail threads , and replace the rail and fuel lines if damage is found, free of charge.  Owner notification letters were mailed August 11, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      }
+    ]
+  }
+}

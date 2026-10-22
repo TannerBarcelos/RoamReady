@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=FORESTER&modelYear=2024",
+  "retrievedAt": "2026-10-19T20:01:15.274917+00:00",
+  "payloadSHA256": "f03791cebb1955e9360cca5277351218cd506d87edb6a148239494721449741a",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "23V774000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/11/2023",
+        "Component": "PARKING BRAKE:ELECTRICAL",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2022-2024 Forester and Sunseeker motorhomes.  The park brake signal wire may not be connected to the house battery control center, which can allow the slideroom to extend during transit.",
+        "Consequence": "A slideroom unexpectedly extends increases the risk of a crash.",
+        "Remedy": "Dealers will connect the signal wire to the battery control center, free of charge.  Owner notification letters were mailed December 12, 2023.  Owners may contact Forest River Customer Service at 1-574-206-7600.  Forest River's number for this recall is 34-1707.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "FOREST RIVER",
+        "Model": "FORESTER"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "24V351000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/05/2024",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS:LINES AND FITTINGS",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2024-2025 Solera, 2023-2025 Forester, and Sunseeker motorhomes.  The Liquid Propane (LP) line may not be properly secured, which can cause the line to become damaged and leak.",
+        "Consequence": "A propane gas leak in the presence of an ignition source increases the risk of a fire.",
+        "Remedy": "Dealers will install a p-clamp to secure the LP line, free of charge.  Owner notification letters were mailed May 28, 2024.  Owners may contact Forest River Customer Service at 1-574-206-7600.  Forest River's number for this recall is 34-1780.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "FOREST RIVER",
+        "Model": "FORESTER"
+      }
+    ]
+  }
+}

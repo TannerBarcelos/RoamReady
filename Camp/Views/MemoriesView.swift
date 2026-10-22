@@ -7,12 +7,16 @@ import ImageIO
 
 struct MemoriesView: View {
     @Environment(CampStore.self) private var store
+    @Environment(\.openURL) private var openURL
     let tripID: UUID
     @State private var selections: [PhotosPickerItem] = []
     @State private var importing = false
     @State private var failure: String?
     @State private var selectedPhoto: TripPhoto?
     @State private var importTask: Task<Void, Never>?
+    @State private var showingCamera = false
+    @State private var requestingCamera = false
+    @State private var needsCameraPermission = false
     var body: some View {
         Group {
             if let trip = store.trip(tripID) {
@@ -28,11 +32,30 @@ struct MemoriesView: View {
                         NavigationLink("Earlier note versions") { NoteHistoryView(tripID: tripID) }
                     }
                     Section {
+                        Button {
+                            Task {
+                                requestingCamera = true; failure = nil; needsCameraPermission = false
+                                defer { requestingCamera = false }
+                                do {
+                                    try await CameraAccess.request()
+                                    showingCamera = true
+                                } catch CameraCaptureError.permissionDenied {
+                                    needsCameraPermission = true
+                                    failure = CameraCaptureError.permissionDenied.localizedDescription
+                                } catch { failure = error.localizedDescription }
+                            }
+                        } label: { Label("Take a photo", systemImage: "camera") }
+                        .disabled(importing || requestingCamera)
                         PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images) {
                             Label(importing ? "Saving photos…" : "Add trip photos", systemImage: "photo.badge.plus")
-                        }.disabled(importing)
+                        }.disabled(importing || requestingCamera)
                         if importing { ProgressView("Saving on this iPhone") }
                         if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
+                        if needsCameraPermission {
+                            Button("Open Settings") {
+                                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                            }
+                        }
                         if trip.photos.isEmpty {
                             Text("Keep the moments you’ll want to come back to.").foregroundStyle(.secondary).padding(.vertical)
                         } else {
@@ -48,7 +71,7 @@ struct MemoriesView: View {
                             }.padding(.vertical, 6)
                         }
                     } header: { Text("Photos · \(trip.photos.count)") } footer: {
-                        Text("Photos are copied into RoamReady and resized for storage. Keep originals in your photo library. iCloud-only photos need a connection before importing.")
+                        Text("Photos are saved on this iPhone and resized for storage. Camera photos stay in RoamReady; use Share to save a copy elsewhere. iCloud-only library photos need a connection before importing.")
                     }
                 }
             } else { ContentUnavailableView("Trip unavailable", systemImage: "photo") }
@@ -62,13 +85,31 @@ struct MemoriesView: View {
                 for selection in selected {
                     do {
                         guard let data = try await selection.loadTransferable(type: Data.self) else { throw CampUIError.unreadablePhoto }
-                        let filename = try await store.media.importPhoto(data)
-                        store.editTrip(tripID) { $0.photos.append(TripPhoto(filename: filename)) }
+                        try await savePhoto(data)
                     } catch { failure = "Some photos couldn’t be saved. \(error.localizedDescription)" }
                 }
             }
         }
         .sheet(item: $selectedPhoto) { photo in PhotoDetailView(tripID: tripID, photo: photo) }
+        .fullScreenCover(isPresented: $showingCamera) {
+            CameraCapture { result in
+                showingCamera = false
+                guard let result else { return }
+                importTask = Task {
+                    importing = true; failure = nil
+                    defer { importing = false }
+                    do { try await savePhoto(result.get()) }
+                    catch { failure = "The photo couldn’t be saved. \(error.localizedDescription)" }
+                }
+            }.ignoresSafeArea()
+        }
+    }
+
+    private func savePhoto(_ data: Data) async throws {
+        guard store.trip(tripID) != nil else { throw CocoaError(.fileNoSuchFile) }
+        let filename = try await store.media.importPhoto(data)
+        guard store.trip(tripID) != nil else { throw CocoaError(.fileNoSuchFile) }
+        store.editTrip(tripID) { $0.photos.append(TripPhoto(filename: filename)) }
     }
 }
 
