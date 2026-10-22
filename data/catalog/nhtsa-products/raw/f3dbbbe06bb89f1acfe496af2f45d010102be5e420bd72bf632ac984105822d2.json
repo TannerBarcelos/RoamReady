@@ -1,0 +1,51 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2018&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:54.514400+00:00",
+  "payloadSHA256": "8e83e909b8469984ee1728c5bac87276be0fb2123e21b81ecc72dff9c388c3ab",
+  "response": {
+    "count": 8,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "WAYFARER"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "BUS"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "ALLEGRO RED"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "ALLEGRO"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "ALLEGRO BREEZE"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "ALLEGRO BUS"
+      },
+      {
+        "modelYear": "2018",
+        "make": "TIFFIN",
+        "model": "ALLEGRO OPEN ROAD"
+      }
+    ]
+  }
+}

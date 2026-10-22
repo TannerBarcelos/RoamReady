@@ -1,0 +1,21 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2024&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:50.925574+00:00",
+  "payloadSHA256": "97b84df632d434178499a24e73910f301ae27bcb5c4bd173333574fa886fcc90",
+  "response": {
+    "count": 2,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2024",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      },
+      {
+        "modelYear": "2024",
+        "make": "JAYCO",
+        "model": "SWIFT"
+      }
+    ]
+  }
+}

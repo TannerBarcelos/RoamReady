@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=BERKSHIRE&modelYear=2015",
+  "retrievedAt": "2026-10-19T20:01:12.577569+00:00",
+  "payloadSHA256": "ea18843d643ac7941123ee195ee1e5ddba3f04766e654623149ad98b45e60978",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "17V623000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "06/10/2017",
+        "Component": "EXTERIOR LIGHTING:HEADLIGHTS:HIGH/LOW BEAM DIMMER SWITCH",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2014-2017 Berkshire XL and XLT buses.  The headlights may shut off while switching from low beam to high beam settings, reducing visibility for the operator and other vehicles.",
+        "Consequence": "If the headlights shut off while driving, decreasing or causing a full loss of visibility, there would be an increased risk of a crash.",
+        "Remedy": "Forest River will notify owners, and dealers will install a supplemental wiring harness that will stop the headlights from shutting off unexpectedly, free of charge.  The recall began on October 31, 2017.  Owners may contact Forest River customer service at 1-574-295-2117.  Forest River's number for this recall is 40-0241.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "FOREST RIVER",
+        "Model": "BERKSHIRE"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "17V756000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "22/11/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2003-2018 Forest River Berkshire, Charleston, Rockport, Cedar Creek, Cherokee, Riverstone, Salem, Sandpiper, Sierra, Vengeance, Wildcat, Wildwood, XLR Boost, Cargo Mate, Continental Cargo, motorhomes, recreational trailers, toyhaulers, cargo trailers and restroom trailers and 2009-2018 Coachmen Mirada, Pursuit, Concord, Leprechaun, Freelander, Orion and Prism motorhomes, 2009-2017 Coachmen Apex and Catalina recreational trailers, and 2013-2017 Shasta Oasis and Revere recreational trailers, equipped with Kidde Plastic-Handle or Push Button 'Pindicator' Fire Extinguishers.  These extinguishers may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Forest River will notify owners, instructing them to contact Kidde for a replacement fire extinguisher, free of charge.  The recall began on December 27, 2017.  Owners may contact Forest River customer service at 1-800-348-7440, or Kidde customer service toll free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.  Forest River's number for this recall is 51-0544.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "FOREST RIVER",
+        "Model": "BERKSHIRE"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "15V771000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "19/11/2015",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS:WATER HEATER",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain model year 2012-2016 Berkshire, Charleston, Legacy, Dynamax, XLR, Continental Cargo, Work & Play, Shockwave, and Coachmen Brookstone recreational vehicles and toy haulers, equipped with Atwood on demand water heaters, models OD45, OD50, and OD50CW, manufactured January 2, 2012, to August 13, 2015.  The affected water heaters have a water and gas valve that may cause the water heater to overheat the water in the hot water supply tap.",
+        "Consequence": "The overheating of the water may result in the release of steam, possibly causing the operator is to scald themselves and increasing the risk of injury.",
+        "Remedy": "Forest River will notify owners of a field remedy as provided by Atwood to the Dealerships and O.E.M. A. Inspection and installation instructions for the remedy, to be used and applied only by qualified service center personnel. B. Installation of a water flow adjustment STOP KEY that prevents the adjustment of the water flow down below .5gal/min. C. The addition of a star or lock washer to secure the adjustment screw that prevents unintended adjustment or and adjustment drift from vibration as you travel down the road. D. Securement of the remedy with the application of a warning and tamper proof label applied over the stop key and adjustment screw.   The recall began on December 17, 2015.  Owners may contact Forest River customer service at 1-800-348-7440, or Atwood customer service at 1-574-264-2131. Forest River's number for this recall is 51-11092015-0107.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "FOREST RIVER",
+        "Model": "BERKSHIRE"
+      }
+    ]
+  }
+}

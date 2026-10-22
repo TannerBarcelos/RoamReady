@@ -4,9 +4,13 @@ import CampCore
 
 struct OnboardingView: View {
     @Environment(CampStore.self) private var store
+    @Environment(Connectivity.self) private var connectivity
     @State private var step = 0
     @State private var profile = CamperProfile()
     var body: some View {
+        OnlineFeatureGate(feature: "Initial onboarding") { onboardingContent }
+    }
+    private var onboardingContent: some View {
         NavigationStack {
             Form {
                 if step == 0 {
@@ -18,6 +22,7 @@ struct OnboardingView: View {
                                 .foregroundStyle(.secondary)
                         }.padding(.vertical)
                     }
+                    if store.sync.configured { CloudSyncSection() }
                     Section("What do you camp in?") {
                         ForEach(RigType.allCases) { type in
                             Button {
@@ -45,14 +50,14 @@ struct OnboardingView: View {
                     }
                     Section {
                         Label("Your trips stay on this iPhone", systemImage: "iphone")
-                        Text("You can plan, check off steps, and save photos without an account or internet connection.")
+                        Text("Once setup is complete, your planned trips, checklists, photos, and notes work without an internet connection.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("This development build stores data locally. iCloud sync and account services are not yet enabled.")
+                        Text("You’re signed in with Apple. Onboarding, profile and account changes, and Camp Finder require a connection. Optional iCloud sync can be managed from Profile.")
                     }
                 }
             }
-            .navigationTitle(step == 0 ? "Welcome to Camp" : step == 1 ? "Your rig" : "Make it yours")
+            .navigationTitle(step == 0 ? "Welcome to RoamReady" : step == 1 ? "Your rig" : "Make it yours")
             .navigationBarTitleDisplayMode(step == 0 ? .inline : .large)
             .toolbar {
                 if step > 0 { ToolbarItem(placement: .topBarLeading) { Button("Back", systemImage: "chevron.left") { step -= 1 } } }
@@ -60,6 +65,7 @@ struct OnboardingView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button(step < 2 ? "Continue" : "Start camping") {
+                    guard connectivity.isOnline else { return }
                     if step < 2 { step += 1 } else { store.finishOnboarding(profile) }
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
@@ -101,8 +107,9 @@ struct RigFormSections: View {
                     RigImage(rig: rig, size: 72)
                     VStack(alignment: .leading, spacing: 10) {
                         PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label(importing ? "Saving photo…" : "Choose a photo", systemImage: "photo")
+                            Label("Choose a photo", systemImage: "photo")
                         }.disabled(importing)
+                        if importing { ProgressView("Saving photo…") }
                         if rig.photoFilename != nil {
                             Button("Use emoji instead") { rig.photoFilename = nil }
                         }

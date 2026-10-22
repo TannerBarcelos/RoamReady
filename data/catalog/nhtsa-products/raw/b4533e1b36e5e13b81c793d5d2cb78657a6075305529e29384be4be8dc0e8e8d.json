@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=SENECA&modelYear=2017",
+  "retrievedAt": "2026-10-19T20:00:59.060625+00:00",
+  "payloadSHA256": "71a76dabb8eba0e98153bf0814a89113e2a5c98a1de253533ccc0efd868322f4",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "20V796000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/12/2020",
+        "Component": "EQUIPMENT:MECHANICAL:INTEGRATED JACK/LEVELER/STABILIZER",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2015-2020 Seneca Class C motorhomes.  The mounting brackets for the leveling system hydraulic pump and reservoir may fail, allowing the components to contact the ground.",
+        "Consequence": "Contact with the ground may cause the pump and reservoir to detach or leak hydraulic fluids, increasing the risk of a crash.",
+        "Remedy": "Jayco will notify owners, and dealers will install an updated support bracket.  The recall began February 12, 2021.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 9903529.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      }
+    ]
+  }
+}

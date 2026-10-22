@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=PHAETON&modelYear=2017",
+  "retrievedAt": "2026-10-19T20:01:10.675218+00:00",
+  "payloadSHA256": "5f124b6b29c6e3fe27468bce13711d0de2b38df459f32c278701ddb37940e8bf",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "21V306000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "30/04/2021",
+        "Component": "FUEL SYSTEM, DIESEL:FUEL INJECTION SYSTEM:FUEL RAIL",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2017-2021 Bus and Phaeton vehicles.  The sealing washer may not seat correctly in the pilot bore, allowing the high pressure fuel rail assembly to leak.",
+        "Consequence": "A fuel leak in the presence of an ignition source increases the risk of a fire.",
+        "Remedy": "Tiffin will work with Cummins to inspect the rail threads , and replace the rail and fuel lines if damage is found, free of charge.  Owner notification letters were mailed August 11, 2021.  Owners may contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "17V841000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "22/12/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2009-2018 Allegro and Allegro RED, Bus and Phaeton vehicles, 2009-2010 Bay vehicles, 2011-2018 Breeze vehicles, and 2009-2015, and 2017-2018 Zephyr vehicles.  These motorhomes are equipped with Kidde Plastic-Handle or Push Button 'Pindicator' Fire Extinguishers that may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Tiffin will notify owners, and instruct them to contact Kidde for a replacement fire extinguisher, free of charge.  The recall began on February 5, 2018.  Owners may contact Kidde customer service toll-free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.  Owners may also contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "TIFFIN",
+        "Model": "PHAETON"
+      }
+    ]
+  }
+}

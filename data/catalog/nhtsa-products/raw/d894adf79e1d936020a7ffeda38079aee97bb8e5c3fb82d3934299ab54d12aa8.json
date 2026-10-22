@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2015&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:49.958938+00:00",
+  "payloadSHA256": "1da4fd28f0490baab971917b06f95181f4be0c047799594ac3c59ddcf4b3db0e",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2015",
+        "make": "JAYCO",
+        "model": "REDHAWK"
+      },
+      {
+        "modelYear": "2015",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      },
+      {
+        "modelYear": "2015",
+        "make": "JAYCO",
+        "model": "GREYHAWK"
+      },
+      {
+        "modelYear": "2015",
+        "make": "JAYCO",
+        "model": "MELBOURNE CLASS C"
+      }
+    ]
+  }
+}

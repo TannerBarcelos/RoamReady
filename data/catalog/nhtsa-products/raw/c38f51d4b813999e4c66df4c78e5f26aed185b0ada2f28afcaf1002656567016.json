@@ -1,0 +1,21 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2025&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:50.924429+00:00",
+  "payloadSHA256": "63045fce057ec874c79c9f2ee008e24d58cc456aeba04ed668baa89b36ad3021",
+  "response": {
+    "count": 2,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2025",
+        "make": "JAYCO",
+        "model": "COMET"
+      },
+      {
+        "modelYear": "2025",
+        "make": "JAYCO",
+        "model": "GRANITE RIDGE"
+      }
+    ]
+  }
+}

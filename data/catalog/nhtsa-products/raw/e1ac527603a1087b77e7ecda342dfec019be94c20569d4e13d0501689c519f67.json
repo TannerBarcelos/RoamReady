@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=MELBOURNE&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:00:59.817422+00:00",
+  "payloadSHA256": "c04a54e4064b5af87106d18131910a02932d418cf1f3be2f7b5ad8ad591b1990",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "20V388000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/07/2020",
+        "Component": "STRUCTURE:FRAME AND MEMBERS:UNDERBODY SHIELDS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2021 Entegra Qwest and Jayco Melbourne and Melbourne Prestige motorhomes built on Mercedes-Benz Sprinter chassis.  The rear part of the fender liner on the front axle may contact and chafe the brake hose, possibly resulting in a loss of brake fluid.",
+        "Consequence": "Loss of brake fluid can extend the distance needed to stop the vehicle, increasing the risk of a crash.",
+        "Remedy": "Jayco will notify owners, and Mercedes Sprinter dealers will inspect and replace the brake hoses, and the fender liners will be modified, free of charge.  The recall began July 14, 2020.  Owners may contact Jayco customer service at 1-800-517-9137.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "MELBOURNE"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "18V451000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/07/2018",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2018-2019 Jayco Alante, Precept, Seneca, Redhawk, and Melbourne motorhomes.  The Cargo Carrying Capacity (CCC) label incorrectly overstates the cargo capacity, potentially causing the vehicle to be overloaded.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 120, \"Wheels and Rims - Other than Passenger Cars.\"",
+        "Consequence": "An overloaded vehicle has an increased risk of a crash.",
+        "Remedy": "Jayco will notify owners, and will provided a corrected CCC label, free of charge.  The recall began on August 22, 2018.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903405.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "MELBOURNE"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "20V327000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/06/2020",
+        "Component": "EQUIPMENT:OTHER:OWNERS/SERVICE/OTHER MANUAL",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2020 Entegra Qwest and 2019-2021 Jayco Melbourne and Melbourne Prestige Class C motorhomes built on Mercedes-Benz Sprinter chassis.  The Operator's Manual may not contain the correct information about how the automatic parking function (\"Auto-P\") operates.",
+        "Consequence": "If the driver relies on the Auto-P function as described in the Operator's Manual, vehicle rollaway or movement may occur, increasing the risk of a crash.",
+        "Remedy": "Jayco will notify owners, and Mercedes-Benz or Freightliner Sprinter dealers will provide the correct description of the Auto-P function for the Operator's Manual, free of charge.  This recall began May 19, 2020.  Owners may contact Jayco customer service at 1-800-517-9137 or Sprinter service at 1-877-762-8267.  The booklet with correct information is also available online, free of charge.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "MELBOURNE"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V081000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "16/02/2023",
+        "Component": "POWER TRAIN:AUTOMATIC TRANSMISSION:INTERNAL:PARK PAWL",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2023 Entegra Launch, Launch LE, Qwest, Jayco Melbourne, Melbourne Prestige, Terrain, and Terrain LE motorhomes.  The guide bushing on the parking pawl may fatigue, which can cause the parking pawl not to engage and result in a vehicle rollaway.",
+        "Consequence": "Vehicle rollaway increases the risk of a crash.",
+        "Remedy": "Dealers will update the software of the electronic stability, transmission control, direct select module, and electronic ignition switch control units, free of charge.  Owner notification letters were mailed March 8, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is MB 22V-796.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "MELBOURNE"
+      }
+    ]
+  }
+}

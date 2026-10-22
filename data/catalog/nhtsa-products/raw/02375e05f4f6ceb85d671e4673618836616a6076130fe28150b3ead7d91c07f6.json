@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2016&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:49.969542+00:00",
+  "payloadSHA256": "86caf001a2139bd1fe4599a0b308a530ee51da101313841cb5a77e5f2a32ecad",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2016",
+        "make": "JAYCO",
+        "model": "GREYHAWK"
+      },
+      {
+        "modelYear": "2016",
+        "make": "JAYCO",
+        "model": "ALANTE CLASS A 31L"
+      },
+      {
+        "modelYear": "2016",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      },
+      {
+        "modelYear": "2016",
+        "make": "JAYCO",
+        "model": "REDHAWK"
+      }
+    ]
+  }
+}

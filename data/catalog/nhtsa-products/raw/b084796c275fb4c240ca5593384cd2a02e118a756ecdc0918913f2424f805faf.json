@@ -1,0 +1,31 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2015&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:54.040047+00:00",
+  "payloadSHA256": "e2f148631354ada274e9172835be9d28542e9627bc0bacb7633212ac4aa96fe7",
+  "response": {
+    "count": 4,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2015",
+        "make": "TIFFIN",
+        "model": "ALLEGRO BUS"
+      },
+      {
+        "modelYear": "2015",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      },
+      {
+        "modelYear": "2015",
+        "make": "TIFFIN",
+        "model": "ALLEGRO RED"
+      },
+      {
+        "modelYear": "2015",
+        "make": "TIFFIN",
+        "model": "ALLEGRO OPEN ROAD"
+      }
+    ]
+  }
+}

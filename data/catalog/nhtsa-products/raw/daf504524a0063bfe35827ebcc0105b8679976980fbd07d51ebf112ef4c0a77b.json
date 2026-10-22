@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=NEWMAR&model=LONDON+AIRE&modelYear=2022",
+  "retrievedAt": "2026-10-19T20:01:09.410245+00:00",
+  "payloadSHA256": "1c68e4e9e8271158f556db2d1b02070414a5da4b364ce19e0b68b23a75ee94ea",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "21V822000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "19/10/2021",
+        "Component": "STEERING:HYDRAULIC POWER ASSIST:PUMP",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2020-2021 Essex, 2020-2022 King Aire and London Aire motorhomes.  A machining defect may cause pressure to build in the power steering pump and break the shaft seal, resulting in a loss of power steering assist.",
+        "Consequence": "A loss of power steering assist increases the risk of a crash.",
+        "Remedy": "On behalf of Newmar Corporation, Shyft Group will inspect the pump serial number, and replace the power steering pump if necessary, free of charge.  Owner notification letters were mailed on December 22, 2021. Owners may contact Newmar's customer service at 1-800-731-8300.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "NEWMAR",
+        "Model": "LONDON AIRE"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "21V088000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "18/02/2021",
+        "Component": "SUSPENSION:FRONT",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2020-2022 Dutch Star, King Aire, Essex, London Aire, and Mountain Aire motorhomes.  The steering gear mounting bolts may become loose and back out, resulting in difficulty steering.",
+        "Consequence": "Difficulty steering, or the inability to steer in both directions, can increase the risk of a crash.",
+        "Remedy": "On behalf of Newmar, Shyft Group Inc. will coordinate the recall repair and notify owners, and dealers will replace the steering gear mounting bolts and washers, free of charge.  The recall is expected to began April 19, 2021.  Owners may contact Newmar customer service at 1-800-731-8300.  Newmar's number for this recall is 21V 041.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2022",
+        "Make": "NEWMAR",
+        "Model": "LONDON AIRE"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "22V166000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/03/2022",
+        "Component": "STEERING:CRITICAL FASTENERS",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2021-2022 New Aire, Essex, King Aire, Ventana, Kountry Star, London Aire, Dutch Star and Mountain Aire motorhomes.  The upper bolt connecting the steering column may not have been properly tightened, causing the nut to loosen off the bolt, potentially resulting in loss of steering control.",
+        "Consequence": "Loss of steering control increases the risk of a crash.",
+        "Remedy": "Dealers will inspect and tighten the upper and lower bolts as necessary, free of charge.  Owner notification letters were mailed on May 16, 2022.  Owners may contact Newmar's customer service at 1-800-731-8300.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "NEWMAR",
+        "Model": "LONDON AIRE"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "24V019000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/01/2024",
+        "Component": "SEATS",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2022-2023 Dutch Star, Mountain Aire, London Aire, Essex, and 2016 London Aire motorhomes.  The pedestal mounting plate may be improperly welded, causing the plate to separate and the seat assembly to loosen or detach.  As such, these seat assemblies fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 207, Seating Systems,\", and number 210, \"Seat belt assembly anchorages.\"",
+        "Consequence": "A loose or detached seat assembly increases the risk of injury.",
+        "Remedy": "Dealers will inspect for a missing weld, and replace the pedestal as necessary, free of charge.  Owner notification letters were mailed January 31, 2024.  Owners may contact Newmar customer service at 1-800-731-8300.  Newmar's number for this recall is 608 RSB.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "NEWMAR",
+        "Model": "LONDON AIRE"
+      }
+    ]
+  }
+}

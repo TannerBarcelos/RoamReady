@@ -1,0 +1,36 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2023&make=AIRSTREAM&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:49.548721+00:00",
+  "payloadSHA256": "e09f1d919a58a7680f26054b7fa7085d4e1728248213dbb11dcefa50a277d807",
+  "response": {
+    "count": 5,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2023",
+        "make": "AIRSTREAM",
+        "model": "GLOBETROTTER"
+      },
+      {
+        "modelYear": "2023",
+        "make": "AIRSTREAM",
+        "model": "FLYING CLOUD"
+      },
+      {
+        "modelYear": "2023",
+        "make": "AIRSTREAM",
+        "model": "INTERNATIONAL"
+      },
+      {
+        "modelYear": "2023",
+        "make": "AIRSTREAM",
+        "model": "ATLAS"
+      },
+      {
+        "modelYear": "2023",
+        "make": "AIRSTREAM",
+        "model": "BAMBI"
+      }
+    ]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2015&make=WINNEBAGO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:51.395654+00:00",
+  "payloadSHA256": "4ea7b7b1786e3e4c52b1cccfdb214fd76639da36d04ff1a5831736d09e2ca116",
+  "response": {
+    "count": 9,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "BRAVE"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "VIEW"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "ERA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "TRAVATO"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "VISTA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "ITASCA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "VIA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "FORZA"
+      },
+      {
+        "modelYear": "2015",
+        "make": "WINNEBAGO",
+        "model": "24J VIEW"
+      }
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2023&make=WINNEBAGO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:51.798780+00:00",
+  "payloadSHA256": "166134e35fabcc451aa95b68c569699b3ceda815a1d05b376c410a849fe43010",
+  "response": {
+    "count": 7,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "EKKO"
+      },
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "VIEW"
+      },
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "TRAVATO"
+      },
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "NAVION"
+      },
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "REVEL"
+      },
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "ADVENTURER"
+      },
+      {
+        "modelYear": "2023",
+        "make": "WINNEBAGO",
+        "model": "MICRO MINNIE"
+      }
+    ]
+  }
+}

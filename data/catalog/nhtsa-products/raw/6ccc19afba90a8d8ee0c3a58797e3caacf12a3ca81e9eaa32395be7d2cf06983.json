@@ -1,0 +1,41 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2016&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.251507+00:00",
+  "payloadSHA256": "331c3b74f3297a04700df31c56ef31f43bf4ea89e3cbe29d46e769e5bc9f0e38",
+  "response": {
+    "count": 6,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2016",
+        "make": "NEWMAR",
+        "model": "BAY STAR"
+      },
+      {
+        "modelYear": "2016",
+        "make": "NEWMAR",
+        "model": "CANYON STAR"
+      },
+      {
+        "modelYear": "2016",
+        "make": "NEWMAR",
+        "model": "LONDON AIRE"
+      },
+      {
+        "modelYear": "2016",
+        "make": "NEWMAR",
+        "model": "VENTANA"
+      },
+      {
+        "modelYear": "2016",
+        "make": "NEWMAR",
+        "model": "DUTCH STAR"
+      },
+      {
+        "modelYear": "2016",
+        "make": "NEWMAR",
+        "model": "VENTANA LE"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2015&make=AIRSTREAM&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:48.694003+00:00",
+  "payloadSHA256": "6aa68bf64419549b2a3d0b427948e9c3c1a65c59e6d603331f3a37ba6af83ef9",
+  "response": {
+    "count": 3,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2015",
+        "make": "AIRSTREAM",
+        "model": "LAND YACHT"
+      },
+      {
+        "modelYear": "2015",
+        "make": "AIRSTREAM",
+        "model": "INTERNATIONAL"
+      },
+      {
+        "modelYear": "2015",
+        "make": "AIRSTREAM",
+        "model": "FLYING CLOUD"
+      }
+    ]
+  }
+}

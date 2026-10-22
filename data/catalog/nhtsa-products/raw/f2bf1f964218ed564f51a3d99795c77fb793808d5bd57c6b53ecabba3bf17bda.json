@@ -1,0 +1,21 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2025&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:55.143418+00:00",
+  "payloadSHA256": "73214e60fffd783bf3e83de065a4537b3ba84f30b7c4759ab6cd60364a356c8b",
+  "response": {
+    "count": 2,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2025",
+        "make": "TIFFIN",
+        "model": "WAYFARER"
+      },
+      {
+        "modelYear": "2025",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      }
+    ]
+  }
+}

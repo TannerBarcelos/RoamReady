@@ -1,0 +1,56 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2021&make=WINNEBAGO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:51.784299+00:00",
+  "payloadSHA256": "3868974c5482d0d83aeae313e5528e910e1fdacdeaef2adb9b7fb4b8ee1c387d",
+  "response": {
+    "count": 9,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "EKKO"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "REVEL"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "ADVENTURER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "FORZA"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "SOLIS"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "TRAVATO"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "NAVION"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "VIEW"
+      },
+      {
+        "modelYear": "2021",
+        "make": "WINNEBAGO",
+        "model": "MICRO MINNIE"
+      }
+    ]
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2021&make=FOREST+RIVER&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:55.749059+00:00",
+  "payloadSHA256": "8839383979ef7656b9b2fd8790270e782e9f58e21e9f7699eb03eaa6d8d97f47",
+  "response": {
+    "count": 37,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "STEALTH"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "IBEX"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "FLAGSTAFF"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE WOLF PACK"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "COLUMBUS"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "R-POD"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "IMPRESSION"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "SABRE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "XLR"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "FREEDOM EXPRESS"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CEDAR CREEK"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "ROCKWOOD"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "FORESTER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "SUNSEEKER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "VIBE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CRUSADER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "SURVEYOR"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "AVENGER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "VENGEANCE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "GEORGETOWN"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "PUMA"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "SIERRA"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "SANDPIPER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "PALOMINO"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "BERKSHIRE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "XLR TOYHAULER"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "COACHMEN"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "WILDWOOD"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "SALEM"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CARDINAL"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "AURORA"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "FR3"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CASCADE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "OZARK"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "WORK AND PLAY"
+      },
+      {
+        "modelYear": "2021",
+        "make": "FOREST RIVER",
+        "model": "CLIPPER CAMPING TRAILER"
+      }
+    ]
+  }
+}

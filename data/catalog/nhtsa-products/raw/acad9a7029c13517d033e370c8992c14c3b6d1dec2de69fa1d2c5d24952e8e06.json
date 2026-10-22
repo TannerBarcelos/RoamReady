@@ -1,0 +1,16 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2026&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.823187+00:00",
+  "payloadSHA256": "d13e64abef5ae00cd5816897b549c1cc2e87a3ef05dca07dcfdbc80311cdb2e5",
+  "response": {
+    "count": 1,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2026",
+        "make": "NEWMAR",
+        "model": "NEW AIRE"
+      }
+    ]
+  }
+}

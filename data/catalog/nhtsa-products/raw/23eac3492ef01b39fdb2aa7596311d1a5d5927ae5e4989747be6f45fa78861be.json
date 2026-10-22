@@ -1,0 +1,146 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2020&make=FOREST+RIVER&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:55.693097+00:00",
+  "payloadSHA256": "97603f5b1a656d0b6b138c3164ad56d6aaecba83edcd5e11b4a8a9076b15769b",
+  "response": {
+    "count": 27,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "PUMA"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SUNSHINE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SURVEYOR"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SABRE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "VIBE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "PALOMINO"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "RIVERSTONE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "XLR"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "VENGEANCE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "CARDINAL"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "OZARK"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "AVENGER"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SANDPIPER"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "FLAGSTAFF"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE GREY WOLF"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "WILDWOOD"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SALEM"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "DYNAMAX"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "XLR TOYHAULER"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "CEDAR CREEK"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SUNSEEKER"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "ROCKWOOD"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "BERKSHIRE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "R-POD"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "GEORGETOWN"
+      },
+      {
+        "modelYear": "2020",
+        "make": "FOREST RIVER",
+        "model": "SANDSTORM"
+      }
+    ]
+  }
+}

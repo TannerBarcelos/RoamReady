@@ -1,0 +1,51 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2021&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.652224+00:00",
+  "payloadSHA256": "aeb374f63978db1dc7f21369f2eb68cbe14e9c6c21543a75cece93c2588725b0",
+  "response": {
+    "count": 8,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "BAY STAR"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "NEW AIRE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "VENTANA"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "KOUNTRY STAR"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "ESSEX"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "LONDON AIRE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "DUTCH STAR"
+      },
+      {
+        "modelYear": "2021",
+        "make": "NEWMAR",
+        "model": "BAY STAR SPORT"
+      }
+    ]
+  }
+}

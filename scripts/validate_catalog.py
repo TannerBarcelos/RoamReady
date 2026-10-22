@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 import re
 import sys
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 RIG_TYPES = {
@@ -22,6 +22,10 @@ SOURCE_HOSTS = {
     'Jayco': {'www.jayco.com'},
     # This exact manufacturer-controlled bucket is linked by Lance support.
     'Lance': {'lance-camper.s3-us-west-1.amazonaws.com', 'www.lancecamper.com'},
+}
+NHTSA_REVIEWED_MAKES = {
+    'Airstream', 'Forest River', 'Grand Design', 'Jayco', 'Newmar',
+    'Tiffin', 'Winnebago',
 }
 REQUIRED = {
     'id', 'make', 'model', 'year', 'floorplan', 'rigType',
@@ -42,6 +46,25 @@ def https_url(value):
 
 def nonempty(value):
     return isinstance(value, str) and bool(value.strip()) and value == value.strip()
+
+
+def reviewed_provenance(record):
+    """Accept reviewed manufacturers or exact, year-bound federal product URLs.
+
+    Field/URL checks do not replace the separate source-response provenance audit.
+    vPIC URLs are intentionally not accepted as curated retail model evidence.
+    """
+    source = urlsplit(record['sourceURL'])
+    make = record.get('make')
+    if source.hostname in SOURCE_HOSTS.get(make, set()):
+        return True
+    if source.hostname != 'api.nhtsa.gov' or make not in NHTSA_REVIEWED_MAKES:
+        return False
+    query = parse_qs(source.query, keep_blank_values=True)
+    return (source.path == '/products/vehicle/models'
+            and not source.fragment
+            and query == {'modelYear': [str(record.get('year'))],
+                          'make': [make.upper()], 'issueType': ['r']})
 
 
 def validate(data):
@@ -92,9 +115,8 @@ def validate(data):
         source = r.get('sourceURL')
         if not https_url(source):
             errors.append(f'{label}: sourceURL must be an HTTPS provenance URL')
-        elif (not isinstance(r.get('make'), str)
-              or urlsplit(source).hostname not in SOURCE_HOSTS.get(r['make'], set())):
-            errors.append(f'{label}: sourceURL host is not reviewed for this make')
+        elif not isinstance(r.get('make'), str) or not reviewed_provenance(r):
+            errors.append(f'{label}: sourceURL is not reviewed for this make/year')
         image = r.get('imageURL')
         if image is not None:
             if not https_url(image):

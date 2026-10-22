@@ -1,0 +1,41 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2017&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.303597+00:00",
+  "payloadSHA256": "c4b69db783d6dcdaf70a7ad767700a212a352d1000f651ea5d3999d4899a2789",
+  "response": {
+    "count": 6,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2017",
+        "make": "NEWMAR",
+        "model": "CANYON STAR"
+      },
+      {
+        "modelYear": "2017",
+        "make": "NEWMAR",
+        "model": "KING AIRE"
+      },
+      {
+        "modelYear": "2017",
+        "make": "NEWMAR",
+        "model": "LONDON AIRE"
+      },
+      {
+        "modelYear": "2017",
+        "make": "NEWMAR",
+        "model": "VENTANA"
+      },
+      {
+        "modelYear": "2017",
+        "make": "NEWMAR",
+        "model": "DUTCH STAR"
+      },
+      {
+        "modelYear": "2017",
+        "make": "NEWMAR",
+        "model": "BAY STAR"
+      }
+    ]
+  }
+}

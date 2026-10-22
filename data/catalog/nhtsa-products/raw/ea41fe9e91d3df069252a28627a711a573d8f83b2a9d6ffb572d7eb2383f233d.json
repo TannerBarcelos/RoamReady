@@ -1,0 +1,36 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2021&make=GRAND+DESIGN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:52.627551+00:00",
+  "payloadSHA256": "9fd02881a8fa006fa52f640b50eaa80b72fddd1010c8a2c03834c04de964669e",
+  "response": {
+    "count": 5,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2021",
+        "make": "GRAND DESIGN",
+        "model": "TRANSCEND"
+      },
+      {
+        "modelYear": "2021",
+        "make": "GRAND DESIGN",
+        "model": "MOMENTUM"
+      },
+      {
+        "modelYear": "2021",
+        "make": "GRAND DESIGN",
+        "model": "IMAGINE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "GRAND DESIGN",
+        "model": "SOLITUDE"
+      },
+      {
+        "modelYear": "2021",
+        "make": "GRAND DESIGN",
+        "model": "REFLECTION"
+      }
+    ]
+  }
+}

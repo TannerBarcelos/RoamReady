@@ -164,3 +164,59 @@ An optional official-image pack needs separate distribution rights. Fetch only i
 7. Refresh current-year data on a scheduled basis and when manufacturer revisions are detected. Preserve old versions and alias mappings; never erase historical profiles when a source disappears.
 
 Release blockers for a “fully curated database” claim: contracted offline data rights; agreed geographic/year scope; quantified manufacturer coverage; historic and custom-rig fallback; source-backed normalization; ongoing update ownership. Official brochure imagery has its own unresolved rights dependency and is not implied by obtaining text data.
+
+## Free API investigation and acquired expansion — 2026-10-19
+
+**A usable free API exists, with limited coverage:** NHTSA's vehicle-products API supplies explicit retail make/model/model-year identities in its safety database. This is a separate system from vPIC. It is publicly documented, requires no API key in the tested requests, and provides a practical factual backfill without scraping blocked commercial finder pages. It does not provide a complete retail catalog, floorplan coverage, brochure photographs, or installed equipment. [Official dataset/API documentation](https://www.nhtsa.gov/nhtsa-datasets-and-apis)
+
+`scripts/catalog_nhtsa.py` acquired **249 additional source-backed identities across seven makes and model years 2015–2026**. The acquisition made 84 make/year product lookups. Only exact reviewed family names are considered; each admitted identity is then corroborated against an exact make/model/year recall response containing an explicit, unambiguous vehicle-type statement. The parser ignores the manufacturer-name prefix so “Tiffin Motorhomes, Inc.” alone cannot count as motorhome classification evidence. Mixed-type families such as Eagle, Reflection, Momentum, Rockwood and Cherokee are excluded rather than guessed. All acquired floorplans are null, and all image URLs are null.
+
+| Make | Admitted identities |
+| --- | ---: |
+| Airstream | 18 |
+| Forest River | 42 |
+| Grand Design | 18 |
+| Jayco | 37 |
+| Newmar | 49 |
+| Tiffin | 31 |
+| Winnebago | 54 |
+| **Total** | **249** |
+
+The type breakdown is 213 motorhomes, 29 travel trailers and 7 fifth wheels. The importer excluded 417 unreviewed or insufficiently corroborated product rows. Fourteen exact products appeared in the products endpoint but their recall endpoint returned HTTP 400; these inconsistencies are recorded as errors and **none are admitted**. A missing result is not proof that a model did not exist. Source inclusion is not a statement about whether an individual owner's VIN has an unrepaired recall.
+
+Files are deliberately separated from the shipped resource:
+
+- `data/catalog/nhtsa-products/candidate-catalog.json`: 249 additional identities in the app's exact v1 schema.
+- `data/catalog/nhtsa-products/combined-catalog.json`: 331 identities when merged with the audited 82-record manufacturer seed, spanning eight makes. Existing IDs and source-backed floorplans are preserved. This is a merge-ready artifact; generating it does not change the app bundle.
+- `data/catalog/nhtsa-products/provenance.json`: identity, product evidence URL, retrieval time/hash, type evidence URL, campaign ID and classification evidence for each admitted record.
+- `data/catalog/nhtsa-products/raw/`: cached API responses, including rejected requests for deterministic offline replay.
+- `data/catalog/nhtsa-products/report.json`: per-make/year lookup counts, admitted counts, exclusions, and acquisition errors.
+
+Reproduce acquisition with `python3 scripts/catalog_nhtsa.py --start-year 2015 --end-year 2026`. Replay exclusively from disk and prepare a combined artifact with `python3 scripts/catalog_nhtsa.py --offline --seed Camp/Resources/rig-catalog.json`. The command exits nonzero if source errors exist, while still writing the explicitly partial validated output and error report. It never retries rejected access, supplies credentials, uses rotating proxies, or bypasses a challenge. `python3 scripts/validate_catalog.py data/catalog/nhtsa-products/combined-catalog.json` validates the export. The validator accepts only the reviewed federal products endpoint with exact make/year query parameters; vPIC URLs remain excluded as retail catalog provenance.
+
+### Other free candidates and scrape access review
+
+| Source | Live result / restriction | Decision |
+| --- | --- | --- |
+| NHTSA vPIC | Free public API; returned zero models for Jayco make ID 4516 in 2025. Name search `jayco` instead matched a different “JAYCO TRAILER COMPANY.” Winnebago returned generic classifications such as “Class C” and incomplete vehicles; Forest River mixed RV and cargo products. | Useful for manufacturer/VIN reconciliation, **not** an unreviewed onboarding import. [API FAQ](https://vpic.nhtsa.dot.gov/api/Home/Index/FAQ) |
+| NHTSA vehicle-products / recalls API | Exact retail make/model/year evidence; coverage is constrained by the safety database. | Used for the conservative acquisition above. No imagery, manuals or recall prose are placed in the app catalog. |
+| RVUSA | `robots.txt` returned `Allow: /`; guide and terms requests returned HTTP 403. A permissive robots file does not grant data/image redistribution rights. | No bulk scrape attempted and no block bypassed. Evaluate an explicit data agreement if broader coverage is required. [Robots](https://www.rvusa.com/robots.txt) |
+| Newmar / Winnebago / Grand Design | Newmar robots allows crawling, but the shared Winnebago Industries terms expressly restrict scraping/extraction/copying. A subsequent content request also returned HTTP 403. | No scalable manufacturer-site scrape implemented. [Terms](https://www.newmarcorp.com/terms-of-use), [Winnebago terms](https://www.winnebago.com/terms-of-use) |
+| Lance | `robots.txt` has broad disallow rules, including the site root and document paths. | No automated site crawl. The earlier manually verified seed remains separate from any proposal for bulk acquisition. [Robots](https://www.lancecamper.com/robots.txt) |
+| RV Fuel Vault Find My Fit | Offers a free-to-start dealer fitment API, but its published data-use license prohibits bulk download, database reconstruction and competing catalog use. | Unsuitable for this app's offline catalog. [Developer offering](https://thervfuelvault.com/developers), [data-use terms](https://thervfuelvault.com/developers/register) |
+| Generic free VIN/automotive databases | Search surfaced vPIC wrappers and car-oriented catalogs. No reviewed offering established complete RV coach/floorplan coverage and unrestricted offline catalog redistribution. | Do not present these as a complete free RV database. Use official vPIC directly for its documented scope. |
+
+Government API availability supports the factual acquisition above; it does not confer rights to manufacturer brochure photos or third-party marketing copy. The source inventory earlier in this document is **not** a declaration that every listed site is scrape-permitted. Access, factual verification, coverage, and redistribution rights remain separate questions.
+
+## Measurable production coverage targets
+
+These are proposed acceptance criteria for the product team, not claims already met:
+
+1. **Scope:** North American retail RVs, model years 2000 through the currently released model year, across all six RV categories; manual car/tent/custom entry always available offline.
+2. **Manufacturer baseline:** Publish an explicit make/year/type matrix for every manufacturer in the agreed launch inventory. Every matrix cell must say verified, partial, unavailable or not applicable. No implied continuous year ranges.
+3. **Source completeness:** For each approved, accessible source edition, import and review 100% of its relevant identity rows or publish an exception list. Measure licensed-feed coverage against its supplied manifest rather than an invented market-total denominator.
+4. **Accuracy:** Every admitted tuple has explicit year evidence, a source URL, reviewed class evidence, and a recorded source edition or response hash. No unmatched duplicates; no unsupported floorplans. Independently review at least 10% of each new make/year/type cohort, and 100% of conflicts before release.
+5. **User coverage:** In a representative pilot of at least 500 rigs spanning all six RV categories, target at least 95% exact make/model/year matching and report floorplan-match rate separately. This does not establish 95% of the entire RV market. Track the reason for every manual fallback.
+6. **Offline freshness:** Ship the approved snapshot in the bundle, keep old profiles stable, publish a coverage/version date, and verify atomic update rollback. Track current-year additions monthly and validate changed source records before release.
+
+Acquisition priority for a zero-data-license-cost path is: (1) retain and expand the documented federal subset with conservative review; (2) add independently verified manufacturer facts where access and reuse permit; (3) obtain missing manufacturer permissions and donated datasets without assuming consent; (4) quantify remaining gaps. If the free path misses the agreed coverage target, compare contracted J.D. Power, Black Book and RVUSA samples against that measured gap before purchasing. No outreach or purchase has been performed.

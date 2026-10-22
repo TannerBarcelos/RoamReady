@@ -1,0 +1,151 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2022&make=FOREST+RIVER&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:55.734339+00:00",
+  "payloadSHA256": "a4bd4a26dfbe4c77ca8d840758321be0ca101bb9e2eb8dc3a951398156378cf4",
+  "response": {
+    "count": 28,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "FLAGSTAFF"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "ROCKWOOD"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "XLR"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "XLR TOYHAULER"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "PUMA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "EAST TO WEST ALTA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "VENGEANCE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SALEM"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "CHEROKEE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "OZARK"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SANDSTORM"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SHOCKWAVE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "CEDAR CREEK"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "COLUMBUS"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SUNSEEKER"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "R-POD"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "FORESTER"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "GEORGETOWN"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SHASTA OASIS"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SOLERA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "FR3"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "SUNSHINE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "CARGO MATE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "NOMAD"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "WILDWOOD"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "redundant AVENGER"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "RIVERSTONE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "FOREST RIVER",
+        "model": "IBEX"
+      }
+    ]
+  }
+}

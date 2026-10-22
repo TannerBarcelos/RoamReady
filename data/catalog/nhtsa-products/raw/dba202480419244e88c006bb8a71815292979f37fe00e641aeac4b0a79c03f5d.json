@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=NEWMAR&model=LONDON+AIRE&modelYear=2023",
+  "retrievedAt": "2026-10-19T20:01:09.977152+00:00",
+  "payloadSHA256": "656fafa3902d0371d2780e543762bd82ba11b669ec0571a1f727e1b502795ae6",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "24V019000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/01/2024",
+        "Component": "SEATS",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2022-2023 Dutch Star, Mountain Aire, London Aire, Essex, and 2016 London Aire motorhomes.  The pedestal mounting plate may be improperly welded, causing the plate to separate and the seat assembly to loosen or detach.  As such, these seat assemblies fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 207, Seating Systems,\", and number 210, \"Seat belt assembly anchorages.\"",
+        "Consequence": "A loose or detached seat assembly increases the risk of injury.",
+        "Remedy": "Dealers will inspect for a missing weld, and replace the pedestal as necessary, free of charge.  Owner notification letters were mailed January 31, 2024.  Owners may contact Newmar customer service at 1-800-731-8300.  Newmar's number for this recall is 608 RSB.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "NEWMAR",
+        "Model": "LONDON AIRE"
+      },
+      {
+        "Manufacturer": "Newmar Corporation",
+        "NHTSACampaignNumber": "25V431000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "27/06/2025",
+        "Component": "STRUCTURE:BODY:DOOR",
+        "Summary": "Newmar Corporation (Newmar) is recalling certain 2023-2024 London Aire, Essex, and 2016-2024 King Aire motorhomes. The baggage door skins may come loose and separate from the door frame.",
+        "Consequence": "A detached door skin can become a road hazard, increasing the risk of a crash.",
+        "Remedy": "Dealers will inspect and add fasteners and adhesive the door as necessary, free of charge. Owner letters were mailed August 22, 2025. Owners may contact Newmar customer service at 1-800-731-8300. Newmar's number for this recall is 619 RSB.",
+        "Notes": null,
+        "ModelYear": "2023",
+        "Make": "NEWMAR",
+        "Model": "LONDON AIRE"
+      }
+    ]
+  }
+}

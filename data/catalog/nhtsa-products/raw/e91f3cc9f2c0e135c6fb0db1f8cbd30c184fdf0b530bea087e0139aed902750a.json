@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=ALLEGRO&modelYear=2016",
+  "retrievedAt": "2026-10-19T20:01:10.432000+00:00",
+  "payloadSHA256": "86405f112cf994943782952bf32da9e73a6a10710c969ffca837cf36930f0735",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "17V841000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "22/12/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain 2009-2018 Allegro and Allegro RED, Bus and Phaeton vehicles, 2009-2010 Bay vehicles, 2011-2018 Breeze vehicles, and 2009-2015, and 2017-2018 Zephyr vehicles.  These motorhomes are equipped with Kidde Plastic-Handle or Push Button 'Pindicator' Fire Extinguishers that may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Tiffin will notify owners, and instruct them to contact Kidde for a replacement fire extinguisher, free of charge.  The recall began on February 5, 2018.  Owners may contact Kidde customer service toll-free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.  Owners may also contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "16V692000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "26/09/2016",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain model year 2015-2017 Allegro Open Road motorhomes manufactured April 1, 2015, to September 16, 2016.  The affected vehicles have a tow hitch with a weight capacity sticker that may indicate an incorrect weight capacity.",
+        "Consequence": "If the hitch is loaded to the weight on sticker, the hitch may fail and the towed vehicle can separate from the motorhome, increasing the risk of a crash.",
+        "Remedy": "Tiffin will notify owners, and send them a corrected label to replace the incorrect label, free of charge.  The recall began on October 31, 2016.  Owners may contact Tiffin customer service at 1-256-356-8661.  Tiffin's number for this recall is TIF-104.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      },
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "16V397000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/06/2016",
+        "Component": "STEERING:GEAR BOX:MOUNTING BRACKET",
+        "Summary": "Tiffin Motorhomes is recalling certain model year 2014-2016 Allegro Phaeton and 2015-2016 Allegro Bus trucks manufactured October 1, 2014 to August 1, 2015, equipped with certain ZF RL77 / 80EM independent front steering axles equipped with Bosch 8018 steering boxes. The boxes were manufactured using incorrect internal spacers that can cause premature wear in the connection between the steering wheel and the front axle.",
+        "Consequence": "The steering wheel's connection to the front axle could fail resulting in a sudden loss of steering ability, increasing the risk of a crash.",
+        "Remedy": "Tiffin will notify owners, and dealers will inspect and replace the steering box if necessary, free of charge. Owners are urged not to drive their vehicles until they have been inspected. The recall began on August 17, 2016.  Owners may contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO"
+      }
+    ]
+  }
+}

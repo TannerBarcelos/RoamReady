@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=AIRSTREAM&model=BASECAMP&modelYear=2020",
+  "retrievedAt": "2026-10-19T20:00:56.901337+00:00",
+  "payloadSHA256": "444c4a8028a8c9744fc1afd8de6dc8a374c9fb69aa6c36d88b2a4150bbf39ac3",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "19V397000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "24/05/2019",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Airstream, Inc. (Airstream) is recalling certain 2017-2020 Basecamp trailers. The Tire Placard is lacking the trailer's spare tire information.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 110, \"Tire Selections and Rims.\"",
+        "Consequence": "The lack of information on the Tire Placard may lead an owner to unintentionally install the wrong size spare tire, affecting the vehicle control and handling, increasing the risk of crash.",
+        "Remedy": "Airstream will notify owners, and will provide corrected labels, free of charge.  The recall is expected to begin July 23, 2019.  Owners may contact Airstream customer service at 1-877-596-6505 or 1-937-596-6111 extension 7401 or 7411.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "AIRSTREAM",
+        "Model": "BASECAMP"
+      },
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "19V753000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "21/10/2019",
+        "Component": "TRAILER HITCHES",
+        "Summary": "Airstream, Inc.  (Airstream) is recalling certain 2019-2020 Sport, Nest, Flying Cloud, International Serenity, International Signature, Classic, Globetrotter and Tommy Bahama trailers and 2020 Basecamp, Bambi and Caravel trailers.  Due to improper welding, the Demco ball coupler installed on the travel trailers may not provide enough clamping force on the tow ball, potentially causing the coupler to separate from the tow ball.",
+        "Consequence": "If the coupler separates from the tow ball, the trailer can detach from the tow vehicle, increasing the risk of a crash.",
+        "Remedy": "Airstream will notify owners, and will send a temporary use adaptor that can be slipped over the ball portion of the coupler to allow owners to tow their trailers.  For the final remedy, dealers will add a shim plate to the backside of the ball coupler clamp to put it in position to apply the required clamping force on the tow ball, free of charge.  The recall began November 13, 2019.  Owners may contact Airstream customer service at 1-877-596-6505 or 1-937-596-6111 extension 7401 or 7411.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "AIRSTREAM",
+        "Model": "BASECAMP"
+      },
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "21V195000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "19/03/2021",
+        "Component": "EQUIPMENT:APPLIANCE:AIR CONDITIONER",
+        "Summary": "Airstream, Inc. (Airstream) is recalling certain 2017-2020 Basecamp travel trailers.  The mounting bolts that secure the air conditioner to the roof may loosen or break, allowing the air conditioner to separate from the trailer.",
+        "Consequence": "A separated air conditioner can become a road hazard, increasing the risk of a crash or injury.",
+        "Remedy": "Airstream will notify owners, and dealers will inspect the air conditioning mounting bolts are secure and replace if necessary, as well as install additional foam support blocks, free of charge.  The recall began May 7, 2021.  Owners may contact Airstream customer service at 1-877-596-6505 or 1-937-596-6111 ext. 7401 or 7411.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2020",
+        "Make": "AIRSTREAM",
+        "Model": "BASECAMP"
+      },
+      {
+        "Manufacturer": "Airstream, Inc.",
+        "NHTSACampaignNumber": "22V932000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "15/12/2022",
+        "Component": "VISIBILITY:GLASS, SIDE/REAR",
+        "Summary": "Airstream Inc. (Airstream) is recalling certain 2017-2022 Basecamp 16, and 2021-2022 Basecamp 20 travel trailers.  The adhesive bond between the glass and metal frame of the entry door window can fail, causing the glass to separate from the frame.",
+        "Consequence": "A window glass that detaches from the trailer can increase the risk of injury or crash.",
+        "Remedy": "Dealers will test the windows and replace, as necessary, free of charge.  Owner notification letters were mailed February 9, 2023.  Owners may contact Airstream customer service at 1-877-596-6505 or 1-937-596-6111 ext. 7401 or 7411.  This recall is an expansion of recall number 20V-349.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2020",
+        "Make": "AIRSTREAM",
+        "Model": "BASECAMP"
+      }
+    ]
+  }
+}

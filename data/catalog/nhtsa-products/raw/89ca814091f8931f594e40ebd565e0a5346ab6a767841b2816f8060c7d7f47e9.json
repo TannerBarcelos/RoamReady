@@ -1,0 +1,91 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=VISTA&modelYear=2017",
+  "retrievedAt": "2026-10-19T20:01:01.744514+00:00",
+  "payloadSHA256": "a22de30e99a8e968076b7b3ad7fb1e01e63eeb8f4bfcd199b5d0542070a0b995",
+  "response": {
+    "Count": 5,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "17V782000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "07/12/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2013-2018 Winnebago Era, Travato, Minnie Winnie, Fuse, View, Trend, Aspect, Brave, Vista, Sightseer, Adventurer, Forza, Journey, Tour, Revel, Paseo, Chalet, Access, and Intent motorhomes and Commercial vehicles, and 2013-2018 Itasca Spirit, Navion, Cambria, Tribute, Sunstar, Sunova, Suncruiser, Solei, Meridian, Elipse, Horizon, Reyo, and Via motorhomes.  These vehicles are equipped with Kidde Plastic-Handle or Push Button 'Pindicator' fire extinguishers that may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Winnebago will notify owners, instructing them to contact Kidde for replacement or aftermarket fire extinguishers, free of charge.  The recall began on January 19, 2018.  Owners may contact Winnebago customer service at 1-641-585-3535, or Kidde customer service toll-free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "WINNEBAGO",
+        "Model": "VISTA"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "16V598000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "12/08/2016",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Winnebago Industries, Inc (Winnebago) is recalling certain model year 2015-2017 Itasca Cambria, 2015-2017 Winnebago ERA, Travato, Fuse, Aspect, and Vista recreational vehicles, and 2015-2017 Itasca Sunstar recreational vehicles manufactured May 6, 2014, to April 22, 2016.  The affected vehicles may have a electrical connection to the automatic transfer switch (ATS) that may not be properly tightened.",
+        "Consequence": "A loose power connection may cause a build up of heat at the connection, increasing the risk of a fire.",
+        "Remedy": "Winnebago will notify owners, and dealers will tighten the electrical connection, replacing the ATS box and switch, as necessary.  These repairs will be performed free of charge.  The recall began on September 22, 2016.  Owners may contact Winnebago customer service at 1-800-537-1885.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "WINNEBAGO",
+        "Model": "VISTA"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "19V811000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "13/11/2019",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2017-2020 Itasca Vista, Sunstar, and Adventurer 35F motorhomes.  An electrical connector was mounted directly on the floor instead of to a standoff backet as intended.",
+        "Consequence": "If the floor gets wet where the electrical connection is mounted, there is an increased risk of an electrical short and fire.",
+        "Remedy": "Winnebago will notify owners, and dealers will correctly mount the electrical connector onto a metal standoff bracket, free of charge.  The recall began December 10, 2019.  Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885.  Winnebago's number for this recall is 160.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2017",
+        "Make": "WINNEBAGO",
+        "Model": "VISTA"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "24V733000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/10/2024",
+        "Component": "EXTERIOR LIGHTING:TURN SIGNAL",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2013-2017 Tour, 2013-2018 Journey, 2014-2022 Forza, 2015-2016 Brave, 2015-2019 Grand Tour, 2015-2021 Vista, 2016-2018 Adventurer, Sightseer, 2016-2021 Commercial Vehicle, 2018-2021 Intent, Sunstar, 2018-2020 Horizon, Itasca 2013-2017 Ellipse, Meridian, 2014-2017 Solei, 2015-2016 Tribute, 2015-2018 Sunstar, 2016-2018 Suncruiser, and Sunova motorhomes.  The turn signals may have a smaller than required luminous lens area.  As such these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) Number 108, \"Lamps, Reflective Devices, and Associated Equipment.\"",
+        "Consequence": "A small lens can make it difficult for other drivers to see the turn signal, increasing the risk of a crash.",
+        "Remedy": "Dealers will replace the turn signals, free of charge.  Owner notification letters were mailed April 17, 2026.  Owners may contact Winnebago Customer Care at 1-800-537-1885.  Winnebago's number for this recall is 189.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2017",
+        "Make": "WINNEBAGO",
+        "Model": "VISTA"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "24V826000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/11/2024",
+        "Component": "LATCHES/LOCKS/LINKAGES:HOOD:LATCH",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2014-2018 Sightseer, Itasca Sunova, 2016-2025 Forza, Vista, and Itasca/Winnebago Sunstar, 2015-2025 Adventurer, 2015-2024 Commercial Vehicle, 2015-2028 Itasca Suncruiser, and 2016-2017 Itasca Solei recreational vehicles.  The hood bracket adhesive may have been incorrectly applied which can allow the bracket to detach.",
+        "Consequence": "A detached hood bracket may become a road hazard and increase the risk of a crash.",
+        "Remedy": "Dealers will inspect and repair as necessary, free of charge.  Owner notification letters began being mailed January 31, 2025.  Owners may contact Winnebago at 1-800-537-1885.  Winnebago's number for this recall is 192.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153) or go to nhtsa.gov.",
+        "ModelYear": "2017",
+        "Make": "WINNEBAGO",
+        "Model": "VISTA"
+      }
+    ]
+  }
+}

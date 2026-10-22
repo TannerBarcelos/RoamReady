@@ -8,3 +8,6 @@ xcuserdata/
 Config/Local.xcconfig
 *.ipa
 *.xcarchive
+
+__pycache__/
+*.pyc

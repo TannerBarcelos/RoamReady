@@ -1,0 +1,46 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2020&make=JAYCO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:50.212975+00:00",
+  "payloadSHA256": "e682a25e4017b02ccec452f819d8f3f8e233046e1febfb905f7cfddc6db82739",
+  "response": {
+    "count": 7,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "EMBARK"
+      },
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "GREYHAWK"
+      },
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "MELBOURNE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "ALANTE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "ALL TRAVEL TRAILERS"
+      },
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "SENECA"
+      },
+      {
+        "modelYear": "2020",
+        "make": "JAYCO",
+        "model": "PRECEPT"
+      }
+    ]
+  }
+}

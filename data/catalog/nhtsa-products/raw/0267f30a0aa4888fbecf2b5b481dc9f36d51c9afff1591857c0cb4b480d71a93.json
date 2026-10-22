@@ -1,0 +1,76 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2022&make=WINNEBAGO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:51.783027+00:00",
+  "payloadSHA256": "8e42dd0c7d7ac0ea4e79f6bec5f0b5baac71cc8e37296439ec837180cd83818d",
+  "response": {
+    "count": 13,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "REVEL"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "ADVENTURER"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "SOLIS"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "TRAVATO"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "EKKO"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "VIEW"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "MINNIE WINNIE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "FORZA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "INSPIRE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "ERA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "SUNSTAR"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "MICRO MINNIE"
+      },
+      {
+        "modelYear": "2022",
+        "make": "WINNEBAGO",
+        "model": "VOYAGE!"
+      }
+    ]
+  }
+}

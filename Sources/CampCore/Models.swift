@@ -107,13 +107,23 @@ public struct ChecklistItem: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct ChecklistTemplates: Codable, Equatable, Sendable {
+    public var id: UUID
     public var version: Int
     public var sourceURL: String
     public var setup: [ChecklistItem]
     public var teardown: [ChecklistItem]
-    public init(version: Int = 1, sourceURL: String = ChecklistFactory.sourceURL,
+    public init(id: UUID = UUID(), version: Int = 1, sourceURL: String = ChecklistFactory.sourceURL,
                 setup: [ChecklistItem] = [], teardown: [ChecklistItem] = []) {
-        self.version = version; self.sourceURL = sourceURL; self.setup = setup; self.teardown = teardown
+        self.id = id; self.version = version; self.sourceURL = sourceURL; self.setup = setup; self.teardown = teardown
+    }
+    private enum CodingKeys: String, CodingKey { case id, version, sourceURL, setup, teardown }
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        version = try c.decode(Int.self, forKey: .version)
+        sourceURL = try c.decode(String.self, forKey: .sourceURL)
+        setup = try c.decode([ChecklistItem].self, forKey: .setup)
+        teardown = try c.decode([ChecklistItem].self, forKey: .teardown)
     }
 }
 

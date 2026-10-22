@@ -1,0 +1,43 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=FR3&modelYear=2024",
+  "retrievedAt": "2026-10-19T20:01:15.319840+00:00",
+  "payloadSHA256": "5d9d9e96a79af4d9dfd711b5f41452363b7746a7a5690a4f021f0cf77015b590",
+  "response": {
+    "Count": 2,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "24V103000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "12/02/2024",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER:LPG SYSTEMS:TANK ASSEMBLY",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2019-2024 Georgetown and FR3 Class A motorhomes.  The liquid petroleum gas (LPG) tank mounting brackets may break, which can result in the LPG tank becoming dislodged and damaged.",
+        "Consequence": "A damaged LPG tank increases the risk of a fire.",
+        "Remedy": "Dealers will inspect and replace the brackets and welds as necessary, free of charge.  Owner notification letters were mailed March 11, 2024.  Owners may contact Forest River Customer Service at 1-574-206-7600.  Forest River's number for this recall is 68-1736.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "FOREST RIVER",
+        "Model": "FR3"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "24V771000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "08/11/2024",
+        "Component": "EQUIPMENT:APPLIANCE:AIR CONDITIONER",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2024 Ahara, Entrada, 2022-2025 FR3, Georgetown, 2021-2023 Dynamax Isata, 2021-2025 Encore, Mirada, Pursuit, 2025 Sportscoach, V-Cruise, V-Sport, V-Tour, 2023 Sunseeker, and 2024-2025 V-RV motorhomes, equipped with General Electric air conditioners with a soft start device with part number ICM870-16A-BH5400.  The air conditioner soft start device may fail and overheat.",
+        "Consequence": "An air conditioner soft start device that overheats increases the risk of a fire.",
+        "Remedy": "Dealers will replace the soft start, free of charge.  Owner notification letters were mailed July 1, 2025.  Owners may contact Encore, Mirada, Pursuit and Sportscoach customer service at 1-574-825-8212, Isata customer service at 574-262-3474, Georgetown, FR3, and Sunseeker customer service at 574-206-7600, Ahara and Entrada customer service at 574-264-6664, and V-Cruise, V-RV, V-Sport, and V-Tour customer service at 574-617-6408.  Forest River's number for this recall is 51-1839.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153) or go to nhtsa.gov.",
+        "ModelYear": "2024",
+        "Make": "FOREST RIVER",
+        "Model": "FR3"
+      }
+    ]
+  }
+}

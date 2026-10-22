@@ -1,0 +1,26 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2018&make=AIRSTREAM&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:49.101228+00:00",
+  "payloadSHA256": "dbeb03f439f4959d2e32e928a99fe2fd92357a3f052266ff382c008006589bb1",
+  "response": {
+    "count": 3,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2018",
+        "make": "AIRSTREAM",
+        "model": "INTERSTATE"
+      },
+      {
+        "modelYear": "2018",
+        "make": "AIRSTREAM",
+        "model": "GLOBETROTTER"
+      },
+      {
+        "modelYear": "2018",
+        "make": "AIRSTREAM",
+        "model": "INTERNATIONAL"
+      }
+    ]
+  }
+}

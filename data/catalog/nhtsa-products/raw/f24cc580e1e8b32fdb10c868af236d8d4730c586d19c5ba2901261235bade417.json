@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=FOREST+RIVER&model=GEORGETOWN&modelYear=2015",
+  "retrievedAt": "2026-10-19T20:01:12.715122+00:00",
+  "payloadSHA256": "2f15e91a53fbc759ac75c2ebd90ef3f0851c0f5e927945f392e8d861746c71dc",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "21V523000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "09/07/2021",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2015-2017 Coachmen Cross Country, 2015 Coachmen Encore, 2016-2020 Coachmen Mirada, 2018-2021 Coachmen Sportscoach, 2019-2021 Forest River Berkshire, 2011-2016 Forest River Blue Ridge, 2014-2019 Forest River Cardinal, 2014-2020 Forest River Cedar Creek, 2014-2021 Forest River Georgetown, 2019 Forest River Legacy, and 2017-2018 Forest River Riverstone recreational vehicles equipped with Hehr 6400 Series windows.  The adhesive that bonds the vented portion of the window may fail.",
+        "Consequence": "Adhesive failure may cause the vent portion of the window to detach, increasing the risk of a crash or injury.",
+        "Remedy": "Dealers will inspect the windows, and replace the vent if necessary, free of charge.  Owner notification letters were mailed September 2, 2021.  Owners may contact Forest River customer service at 1-574-825-8600.  Forest River's number for this recall is 51-1380.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2015",
+        "Make": "FOREST RIVER",
+        "Model": "GEORGETOWN"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "16V176000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "29/03/2016",
+        "Component": "STRUCTURE:EMERGENCY:ESCAPE/EGRESS/EXIT",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain model year 2015-2017 Georgetown recreational vehicles, model GTA369XLF,  manufactured from December 8, 2014, through March 22, 2016.  A vented window was installed in the rear wall of the vehicle instead of a secondary egress window.",
+        "Consequence": "Without a secondary egress window, occupants may be trapped in the event of an emergency, increasing the risk of injury or death.",
+        "Remedy": "Forest River will notify owners, and dealers will remove the vented window and install an egress window, free of charge.  The recall began on May 10, 2016.  Owners may contact Forest River customer service at 1-574-206-7600.  Forest River's number for this recall is 15-03232016-0151.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "FOREST RIVER",
+        "Model": "GEORGETOWN"
+      },
+      {
+        "Manufacturer": "Forest River, Inc.",
+        "NHTSACampaignNumber": "24V913000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "06/12/2024",
+        "Component": "EXTERIOR LIGHTING:TURN SIGNAL",
+        "Summary": "Forest River, Inc. (Forest River) is recalling certain 2009-2017 Georgetown Class A motorhomes.  The amber turn signal lens has an undersized reflective surface.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 108, \"Lamps, Reflective Devices, and Associated Equipment.\"",
+        "Consequence": "Inadequately reflective turn signals can make it difficult for other drivers to see when the vehicle intends to turn, increasing the risk of a crash.",
+        "Remedy": "Dealers will replace the turn signal, and bulb, free of charge.  Owner notification letters were mailed December 11, 2025.  Owners may call Forest River customer service at 1-574-206-7600. Forest River's number for this recall is 68-1875.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153) or go to nhtsa.gov.",
+        "ModelYear": "2015",
+        "Make": "FOREST RIVER",
+        "Model": "GEORGETOWN"
+      }
+    ]
+  }
+}

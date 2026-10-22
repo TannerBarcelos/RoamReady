@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=PRECEPT&modelYear=2022",
+  "retrievedAt": "2026-10-19T20:01:00.853936+00:00",
+  "payloadSHA256": "bf177ad31ed766453ad2ce6450a29996bbfc979fd2ac39383ff3770e99e741e2",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "22V297000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "04/05/2022",
+        "Component": "EQUIPMENT:RECREATIONAL VEHICLE/TRAILER",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2020-2022 Jayco Precept motorhomes.  The heat shield beneath the storage compartment may not be long enough, which can allow the heat from the exhaust system to melt the storage compartment.",
+        "Consequence": "A storage compartment that melts can increase the risk of a fire.",
+        "Remedy": "Dealers will extend the heat shield, free of charge.  Owner notification letters were mailed June 27, 2022.  Owners may contact Jayco customer service at 1-800-283-8267.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V102000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "20/02/2023",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2022-2023 Entegra Accolade, Accolade XL, Anthem, Aspire, Cornerstone, Emblem, Esteem, Expanse, Expanse LI, Odyssey, Qwest, Reatta, Reatta XL, Jayco Alante, Greyhawk, Greyhawk Prestige, Melbourne, Melbourne Prestige, Precept, Precept Prestige, Redhawk, Redhawk SE, Seneca, Seneca Prestige, and Seneca XT recreational vehicles.  The certification labels may be missing the rear Gross Axle Weight Rating (GAWR).  As such, these vehicles fail to comply with the requirements of 49 CFR Part 567, \"Certification.\"",
+        "Consequence": "Missing axle information may result in the vehicle being overloaded, increasing the risk of a crash.",
+        "Remedy": "Dealers will install a new corrected certification label, free of charge.  Owner notification letters were mailed March 31, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 9903583.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "23V217000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "30/03/2023",
+        "Component": "SUSPENSION:REAR",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2021-2022 Jayco Atlante, Precept, Precept Prestige, Entegra Emblem, Vision, and Vision XL motorhomes.  The rear stabilizer bar attachment brackets may break and separate from the vehicle.",
+        "Consequence": "Brackets that separate from the vehicle can create a road hazard, increasing the risk of a crash.",
+        "Remedy": "Dealers will inspect the bolt tightness for both rear stabilizer attachment brackets and replace the weld nuts, bolts, and brackets as necessary, free of charge.  Owner notification letters were mailed April 24, 2023.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is Ford 22V-731.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2022",
+        "Make": "JAYCO",
+        "Model": "PRECEPT"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2025&make=WINNEBAGO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:51.914709+00:00",
+  "payloadSHA256": "1d73ff8ba009897daf8ceb7efedb5f0b7b082235ba1c97bc26f6bbb451b141da",
+  "response": {
+    "count": 3,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2025",
+        "make": "WINNEBAGO",
+        "model": "VIEW"
+      },
+      {
+        "modelYear": "2025",
+        "make": "WINNEBAGO",
+        "model": "MINNIE WINNIE"
+      },
+      {
+        "modelYear": "2025",
+        "make": "WINNEBAGO",
+        "model": "EKKO"
+      }
+    ]
+  }
+}

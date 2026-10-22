@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=SENECA&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:00:59.893755+00:00",
+  "payloadSHA256": "72795e2b21a1277a7eb33878275abc43490c1fc8d16815840a58ec2931f90622",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "18V451000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/07/2018",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2018-2019 Jayco Alante, Precept, Seneca, Redhawk, and Melbourne motorhomes.  The Cargo Carrying Capacity (CCC) label incorrectly overstates the cargo capacity, potentially causing the vehicle to be overloaded.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 120, \"Wheels and Rims - Other than Passenger Cars.\"",
+        "Consequence": "An overloaded vehicle has an increased risk of a crash.",
+        "Remedy": "Jayco will notify owners, and will provided a corrected CCC label, free of charge.  The recall began on August 22, 2018.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903405.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "20V796000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/12/2020",
+        "Component": "EQUIPMENT:MECHANICAL:INTEGRATED JACK/LEVELER/STABILIZER",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2015-2020 Seneca Class C motorhomes.  The mounting brackets for the leveling system hydraulic pump and reservoir may fail, allowing the components to contact the ground.",
+        "Consequence": "Contact with the ground may cause the pump and reservoir to detach or leak hydraulic fluids, increasing the risk of a crash.",
+        "Remedy": "Jayco will notify owners, and dealers will install an updated support bracket.  The recall began February 12, 2021.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is 9903529.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "22V121000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "03/03/2022",
+        "Component": "TIRES:VALVE",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2022 Seneca, Seneca Prestige, Entegra Accolade and Accolade XL motorhomes.  The tire valve stem extension for the inner wheel may come into contact with the outer wheel rim opening and become damaged.",
+        "Consequence": "Damage to the valve stem extension may result in a loss of tire pressure of the inner wheel, increasing the risk of a crash.",
+        "Remedy": "Daimler Trucks North America, LLC will remove the inner valve stem extension and stabilizer, free of charge.  Owner notification letters were mailed April 28, 2022.  Owners may contact Jayco customer service at 1-800-283-8267.  Jayco's number for this recall is FL912 21V-921.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "SENECA"
+      }
+    ]
+  }
+}

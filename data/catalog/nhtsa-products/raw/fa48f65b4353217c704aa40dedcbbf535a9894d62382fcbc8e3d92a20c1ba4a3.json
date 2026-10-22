@@ -1,0 +1,46 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2020&make=NEWMAR&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:53.451839+00:00",
+  "payloadSHA256": "2222156e48079d47851e4c0cfe508db52d808d703357b4680086f519c53a828a",
+  "response": {
+    "count": 7,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "DUTCH STAR"
+      },
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "KING AIRE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "VENTANA"
+      },
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "LONDON AIRE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "NEW AIRE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "KOUNTRY STAR"
+      },
+      {
+        "modelYear": "2020",
+        "make": "NEWMAR",
+        "model": "BAY STAR"
+      }
+    ]
+  }
+}

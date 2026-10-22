@@ -19,6 +19,8 @@ export SWIFTC_BIN
 
 "$SWIFT_BIN" test
 python3 scripts/validate_catalog.py
+python3 scripts/test_import_ridb.py
+python3 scripts/validate_campgrounds.py
 
 "$SWIFT_BIN" -e '
 import Foundation
@@ -47,7 +49,7 @@ for path in list((root / "Camp").rglob("*.plist")) + list((root / "Camp").rglob(
         plistlib.load(stream)
 with (root / "Camp/Camp.entitlements").open("rb") as stream:
     entitlements = plistlib.load(stream)
-assert entitlements == {}, "Default build should not request unconfigured Apple capabilities"
+assert entitlements == {"com.apple.developer.applesignin": ["Default"]}, "Sign in with Apple is required; optional cloud/weather capabilities stay unconfigured"
 
 json_files = list((root / "Camp").rglob("*.json"))
 for path in json_files:
@@ -94,8 +96,7 @@ for reference in scheme.iter("BuildableReference"):
 
 sources = sorted((root / "Camp").rglob("*.swift"))
 assert sources, "No native app source files found"
-for source in sources:
-    subprocess.run([os.environ["SWIFTC_BIN"], "-frontend", "-parse", str(source)], check=True)
+subprocess.run([os.environ["SWIFTC_BIN"], "-frontend", "-parse"] + [str(source) for source in sources], check=True)
 print(f"Validated plists, {len(json_files)} JSON files, {len(record_ids)} catalog records, project references, shared scheme.")
 print(f"Parsed syntax of {len(sources)} native Swift source files. Apple SDK APIs were NOT type-checked.")
 PY

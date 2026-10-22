@@ -3,9 +3,13 @@ import CampCore
 
 struct ProfileView: View {
     @Environment(CampStore.self) private var store
+    @Environment(Connectivity.self) private var connectivity
     @State private var editing = false
     @State private var editingTemplates = false
     @State private var resetConfirmation = false
+    @State private var exportURL: URL?
+    @State private var exportFailure: String?
+    @State private var preparingExport = false
     var body: some View {
         List {
             if let profile = store.state.profile {
@@ -18,7 +22,8 @@ struct ProfileView: View {
                             Text(profile.experience.title).font(.caption).foregroundStyle(.secondary)
                         }
                     }.padding(.vertical, 6)
-                    Button("Edit profile & rig", systemImage: "pencil") { editing = true }
+                    Button("Edit profile & rig", systemImage: "pencil") { editing = true }.disabled(!connectivity.isOnline)
+                    if !connectivity.isOnline { Text("Connect to edit your profile or rig.").font(.caption).foregroundStyle(.secondary) }
                 }
             }
             Section {
@@ -31,24 +36,36 @@ struct ProfileView: View {
                 SaveStatus()
                 LabeledContent("Trips on this iPhone", value: String(store.state.trips.count))
                 LabeledContent("Trip photos", value: String(store.state.trips.reduce(0) { $0 + $1.photos.count }))
-                if FileManager.default.fileExists(atPath: store.archiveURL.path) {
-                    ShareLink(item: store.archiveURL) { Label("Export trip data (JSON)", systemImage: "square.and.arrow.up") }
-                        .disabled(store.isSaving || store.saveFailure != nil)
-                }
+                Button(preparingExport ? "Preparing export…" : "Prepare trip data export", systemImage: "square.and.arrow.up") {
+                    Task {
+                        preparingExport = true; exportFailure = nil
+                        defer { preparingExport = false }
+                        do { exportURL = try await store.exportLibrary() }
+                        catch { exportFailure = error.localizedDescription }
+                    }
+                }.disabled(preparingExport || store.isSaving || store.saveFailure != nil)
+                if let exportURL { ShareLink("Share JSON export", item: exportURL) }
+                if let exportFailure { Text(exportFailure).font(.caption).foregroundStyle(.red) }
                 if store.saveFailure != nil { Button("Retry saving", systemImage: "arrow.clockwise") { store.retrySave() } }
             } header: { Text("On this iPhone") } footer: {
-                Text("JSON exports include your profile, checklists, and notes. Share photos individually from each trip. iCloud sync and account services are not enabled in this build.")
+                Text("JSON exports include your profile, checklists, notes, and saved campgrounds. Share photos individually from each trip.")
             }
+            Section("Account") {
+                NavigationLink { AccountSettingsView() } label: { Label("Apple Account", systemImage: "person.crop.circle") }
+                    .disabled(!connectivity.isOnline)
+                if !connectivity.isOnline { Text("Account changes need a connection.").font(.caption).foregroundStyle(.secondary) }
+            }
+            CloudSyncSection().disabled(!connectivity.isOnline)
             Section("Camping help") {
                 Label(CampingAssistant.availability, systemImage: "iphone").font(.subheadline)
-                Text("Saved guidance is always available. On supported iPhones with Apple Intelligence ready, Camp can explain that guidance on device. Online AI is not enabled in this build.").font(.footnote).foregroundStyle(.secondary)
+                Text("Saved guidance is always available. AI explanations use Apple Foundation Models on iPhone 16 or newer when Apple Intelligence is enabled and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
                 Text(store.catalogNotice).font(.footnote).foregroundStyle(.secondary)
-                Text(CampgroundLibrary.notice).font(.footnote).foregroundStyle(.secondary)
+                Text("Camp Finder downloads a dated federal campground and campsite snapshot from RIDB. It does not show live booking availability.").font(.footnote).foregroundStyle(.secondary)
                 if let url = URL(string: ChecklistFactory.sourceURL) { Link("Checklist reference: Camping World", destination: url) }
             } header: { Text("Sources & coverage") } footer: {
-                Text("Camp · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")
+                Text("RoamReady · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")
             }
         }
         .navigationTitle("Profile")
@@ -66,6 +83,7 @@ struct ProfileView: View {
 
 struct EditProfileView: View {
     @Environment(CampStore.self) private var store
+    @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
     @State var profile: CamperProfile
     @State private var rebuildTemplates = true
@@ -74,6 +92,9 @@ struct EditProfileView: View {
         return previous.type != profile.rig.type || previous.equipment != profile.rig.equipment
     }
     var body: some View {
+        OnlineFeatureGate(feature: "Profile changes") { onlineContent }
+    }
+    private var onlineContent: some View {
         NavigationStack {
             Form {
                 Section("About you") {
@@ -91,7 +112,10 @@ struct EditProfileView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { store.updateProfile(profile, rebuildTemplates: rigChanged && rebuildTemplates); dismiss() }
+                    Button("Save") {
+                        guard connectivity.isOnline else { return }
+                        store.updateProfile(profile, rebuildTemplates: rigChanged && rebuildTemplates); dismiss()
+                    }
                 }
             }
         }

@@ -1,0 +1,46 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2022&make=TIFFIN&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:54.762203+00:00",
+  "payloadSHA256": "b9cbd43704f9e8d7c1a1b38d72df37f93fb77ff5e3550eb8a47fc86724754c76",
+  "response": {
+    "count": 7,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "ALLEGRO RED"
+      },
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "PHAETON"
+      },
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "ALLEGRO"
+      },
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "CAHABA"
+      },
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "ALLEGRO BAY"
+      },
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "ALLEGRO OPEN ROAD"
+      },
+      {
+        "modelYear": "2022",
+        "make": "TIFFIN",
+        "model": "MIDAS"
+      }
+    ]
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=ALLEGRO+BUS&modelYear=2015",
+  "retrievedAt": "2026-10-19T20:01:10.172921+00:00",
+  "payloadSHA256": "11999224e5eb89c8252f4969910d2cce6b8670203e890ba2dbf94d922fa9fb3c",
+  "response": {
+    "Count": 1,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Tiffin Motorhomes, Inc.",
+        "NHTSACampaignNumber": "14V609000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "30/09/2014",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Tiffin Motorhomes, Inc. (Tiffin) is recalling certain model year 2013-2015 Allegro Bus 45 foot LP, 37 foot, and 40 foot motorhomes.  In the affected vehicles, the Federal Certification label incorrectly states the front Gross Axle Weight Rating (GAWR).  As such, the vehicles do not conform to Part 567, \"Certification.\"",
+        "Consequence": "If the motorhome is loaded to the incorrect specifications listed on the label, tire failure may result, increasing the risk of a crash.",
+        "Remedy": "Tiffin will notify owners and send a corrected sticker for the customer to put over the incorrect sticker, free of charge.  The recall began early October 2014.  Owners may contact Tiffin customer service at 1-256-356-8661.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2015",
+        "Make": "TIFFIN",
+        "Model": "ALLEGRO BUS"
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+name: Apple validation
+on:
+  push:
+    branches: [main, sqlite-cloudkit]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  persistence:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate core, SQLite persistence, and CloudKit source with Apple SDKs
+        run: ./scripts/check.sh
+      - name: Compile native iOS app with the installed SDK
+        shell: bash
+        run: |
+          sdk_version="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          if [[ "${sdk_version%%.*}" -ge 27 ]]; then
+            ./scripts/check.sh --native
+          else
+            echo "::warning::SDK $sdk_version is below the product target of iOS 27. Building with a temporary deployment override verifies Apple APIs, not iOS 27 release readiness."
+            xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData IPHONEOS_DEPLOYMENT_TARGET="$sdk_version" CODE_SIGNING_ALLOWED=NO build
+          fi

@@ -1,0 +1,75 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=ADVENTURER&modelYear=2023",
+  "retrievedAt": "2026-10-19T20:01:04.310800+00:00",
+  "payloadSHA256": "a82e83f0b8fac42668a0adec310c19808ebfd1b94d669d94eff35b7667069a79",
+  "response": {
+    "Count": 4,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "23V140000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "02/03/2023",
+        "Component": "EXTERIOR LIGHTING",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2023 Adventurer, Vista and Itasca Sunstar motorhomes.  The motorhomes may be missing the rear reflectors.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 108, \"Lamps, Reflective Devices, and Associated Equipment.\"",
+        "Consequence": "Missing reflectors reduce the vehicle's visibility to other drivers, increasing the risk of a crash.",
+        "Remedy": "Dealers will install the reflectors, free of charge.  Owner notification letters were mailed May 11, 2023.  Owners may contact Winnebago customer service at 1-641-585-6939 or 1-800-537-1885.  Winnebago's number for this recall is 173",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "23V365000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "24/05/2023",
+        "Component": "SEAT BELTS:CRITICAL FASTENERS",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2020-2023 Winnebago Shell, 2021-2023 Winnebago Inspire, 2022-2023 Winnebago Vista, Adventurer, Forza, Journey and Itasca Sunstar motorhomes.  The seat belt attachment may have been improperly tightened.  As such these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) 210, \"Seat Belt Assembly Anchorages.\"",
+        "Consequence": "A loose seat belt attachment may not properly restrain the occupant in the event of a crash, increasing the risk of injury.",
+        "Remedy": "Dealers will inspect and tighten the seat belt attachment fasteners, as necessary, free of charge.  Owner notification letters were mailed July 24, 2023.  Owners may contact Winnebago at 1-800-537-1885.  Winnebago's number for this recall is 175.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "24V613000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "15/08/2024",
+        "Component": "ELECTRICAL SYSTEM:WIRING",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2023-2025 Vista, Sunstar, and Adventurer motorhomes built on F53 chassis.  The wiring may have been incorrectly routed, damaging the forward-facing camera wiring.",
+        "Consequence": "Damaged wiring can cause the camera to become inoperable, disabling active brake assist, lane keep assist, and auto high beams and increasing the risk of a crash.",
+        "Remedy": "Dealers will reroute the wiring, free of charge.  Owner notification letters were mailed October 4, 2024.  Owners may contact Winnebago customer service at 1-641-585-3535.  Winnebago's number for this recall is 187.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2023",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc.",
+        "NHTSACampaignNumber": "24V826000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/11/2024",
+        "Component": "LATCHES/LOCKS/LINKAGES:HOOD:LATCH",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2014-2018 Sightseer, Itasca Sunova, 2016-2025 Forza, Vista, and Itasca/Winnebago Sunstar, 2015-2025 Adventurer, 2015-2024 Commercial Vehicle, 2015-2028 Itasca Suncruiser, and 2016-2017 Itasca Solei recreational vehicles.  The hood bracket adhesive may have been incorrectly applied which can allow the bracket to detach.",
+        "Consequence": "A detached hood bracket may become a road hazard and increase the risk of a crash.",
+        "Remedy": "Dealers will inspect and repair as necessary, free of charge.  Owner notification letters began being mailed January 31, 2025.  Owners may contact Winnebago at 1-800-537-1885.  Winnebago's number for this recall is 192.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153) or go to nhtsa.gov.",
+        "ModelYear": "2023",
+        "Make": "WINNEBAGO",
+        "Model": "ADVENTURER"
+      }
+    ]
+  }
+}

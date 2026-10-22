@@ -1,0 +1,91 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=JAYCO&model=REDHAWK&modelYear=2019",
+  "retrievedAt": "2026-10-19T20:00:59.721706+00:00",
+  "payloadSHA256": "91b2e5f1bb40ecd5edb27917a455415d72351e33229af3bf2d2b6d47e6e37cb7",
+  "response": {
+    "Count": 5,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "20V548000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "09/09/2020",
+        "Component": "EQUIPMENT:MECHANICAL:INTEGRATED JACK/LEVELER/STABILIZER",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2016-2019 Jayco Greyhawk, 2016 and 2018-2019 Jayco Redhawk, 2017 Jayco Envoy 200 Series and 2018-2019 Entegra Odyssey, Jayco Esteem, and Jayco Greyhawk Prestige motorhomes.  The mounting brackets for the leveling system hydraulic pump and reservoir may fail allowing the components to contact the ground.",
+        "Consequence": "Contact with the ground may cause the pump and reservoir to detach or leak hydraulic fluids, increasing the risk of a crash.",
+        "Remedy": "Jayco will notify owners and dealers will install an additional support bracket, free of charge. The recall began November 6, 2020.  Owners may contact Jayco's customer service at 1-800-517-9137.  Jayco's number for this recall is 9901519.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "REDHAWK"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "21V204000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "24/03/2021",
+        "Component": "EQUIPMENT:APPLIANCE:OVEN/STOVE/COOKTOP",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2020 Jayco Alante, Precept, Greyhawk, Redhawk, Entegra Esteem, and Odyssey motorhomes equipped with Dometic 3 burner cooking stoves.  The saddle valve securing bolt may be overtightened, possibly damaging the o-ring seal and causing a continuous gas leak.",
+        "Consequence": "A gas leak can increase the risk of a fire.",
+        "Remedy": "Jayco will notify owners, and Dometic service centers will install a remedy kit of gaskets, washers, thread locker bolts, and two round orange labels, free of charge. Owner notification letters were mailed on May 3, 2021. Owners may contact Jayco customer service at 1-617-776-0344.  Jayco's number for this recall is 9903566.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "REDHAWK"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "18V451000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "05/07/2018",
+        "Component": "EQUIPMENT:OTHER:LABELS",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2018-2019 Jayco Alante, Precept, Seneca, Redhawk, and Melbourne motorhomes.  The Cargo Carrying Capacity (CCC) label incorrectly overstates the cargo capacity, potentially causing the vehicle to be overloaded.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 120, \"Wheels and Rims - Other than Passenger Cars.\"",
+        "Consequence": "An overloaded vehicle has an increased risk of a crash.",
+        "Remedy": "Jayco will notify owners, and will provided a corrected CCC label, free of charge.  The recall began on August 22, 2018.  Owners may contact Jayco customer service at 1-800-517-9137.  Jayco's number for this recall is 9903405.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "REDHAWK"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "19V690000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "01/10/2019",
+        "Component": "ELECTRICAL SYSTEM: INSTRUMENT CLUSTER/PANEL",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019-2020 Redhawk SE motorhomes. The seatbelt-unfastened warning light will not illuminate for approximately five seconds after the ignition is moved to the \"on\" or \"start\" position.  As such, these vehicles fail to comply with the requirements of Federal Motor Vehicle Safety Standard (FMVSS) number 208, \"Occupant Crash Protection.\"",
+        "Consequence": "Without the seatbelt warning reminder, the driver may forget to fasten the seatbelt, increasing the risk of injury in the event of a crash.",
+        "Remedy": "GM will notify owners, and dealers will reprogram the instrument panel cluster, free of charge.  The recall began October 9, 2019.  Owners may contact GMC customer service at 1-800-462-8782 or Jayco customer service at 1-800-517-9137.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "REDHAWK"
+      },
+      {
+        "Manufacturer": "Jayco, Inc.",
+        "NHTSACampaignNumber": "19V174000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "06/03/2019",
+        "Component": "PARKING BRAKE:CONVENTIONAL:MECHANICAL:LINKAGE AND CABLE",
+        "Summary": "Jayco, Inc. (Jayco) is recalling certain 2019 Jayco Greyhawk and Redhawk motorhomes.  The parking brake cable ends may be too small, allowing the cable to disconnect, preventing the emergency brake from engaging.",
+        "Consequence": "Without the parking brake being engaged, the vehicle may unintentionally move, especially when parked on an incline, increasing the risk of a crash.",
+        "Remedy": "Jayco has notified owners, and dealers will replace the parking brake cable, free of charge.  The recall began March 15, 2019.   Owners may contact Jayco's customer service at 1-800-517-9137.  Jayco's number for this recall is 9803428.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2019",
+        "Make": "JAYCO",
+        "Model": "REDHAWK"
+      }
+    ]
+  }
+}

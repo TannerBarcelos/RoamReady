@@ -11,6 +11,14 @@ struct MediaStore: Sendable {
         return directory.appendingPathComponent(filename)
     }
 
+    func restore(_ data: Data, filename: String) async throws {
+        guard let destination = url(for: filename) else { throw CampUIError.unreadablePhoto }
+        try await Task.detached(priority: .utility) {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: destination, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        }.value
+    }
+
     /// Decode a bounded thumbnail rather than expanding a full-resolution camera image.
     func importPhoto(_ data: Data) async throws -> String {
         try await Task.detached(priority: .userInitiated) {

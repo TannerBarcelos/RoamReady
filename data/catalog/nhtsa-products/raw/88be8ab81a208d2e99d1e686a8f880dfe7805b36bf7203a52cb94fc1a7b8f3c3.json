@@ -1,0 +1,46 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2020&make=AIRSTREAM&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:49.049334+00:00",
+  "payloadSHA256": "39b153532d17a6595aba39e884fa9098b468d8cae99c16450d8ae9eb50b1a618",
+  "response": {
+    "count": 7,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "BASECAMP"
+      },
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "INTERSTATE"
+      },
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "BAMBI"
+      },
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "FLYING CLOUD"
+      },
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "INTERNATIONAL"
+      },
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "ATLAS"
+      },
+      {
+        "modelYear": "2020",
+        "make": "AIRSTREAM",
+        "model": "MERCEDES-BENZ SPRINTER"
+      }
+    ]
+  }
+}

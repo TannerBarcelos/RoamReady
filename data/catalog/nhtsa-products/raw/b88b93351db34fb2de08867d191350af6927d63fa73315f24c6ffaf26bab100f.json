@@ -1,0 +1,59 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=WINNEBAGO&model=ASPECT&modelYear=2016",
+  "retrievedAt": "2026-10-19T20:01:01.455014+00:00",
+  "payloadSHA256": "a58116e7febc642011009f94d119006a545609910d0d74b28baad4582fcc8c9f",
+  "response": {
+    "Count": 3,
+    "Message": "Results returned successfully",
+    "results": [
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "18V546000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "17/08/2018",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Winnebago Industries, Inc (Winnebago) is recalling certain 2016-2019 Winnebago Era, Travato, Fuse, View, Trend, Aspect, Paseo, Via, Adventurer, Journey, Tour, and Grand Tour motorhomes.  These vehicles have an auxiliary solar charging port circuit that is not fused.",
+        "Consequence": "If solar panels are connected and they exceed the amperage capacity of the circuit, the unprotected circuit can increase the risk of a fire.",
+        "Remedy": "Winnebago will notify owners, and dealers will install an inline 15 amp fuse into the auxiliary solar charging port circuit, free of charge.  Winnebago issued interim notifications to owners on December 4, 2018.  The recall began June 5, 2019. Owners may contact Winnebago customer service 1-641-585-6939 or 1-800-537-1885.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "WINNEBAGO",
+        "Model": "ASPECT"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "16V598000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "12/08/2016",
+        "Component": "ELECTRICAL SYSTEM",
+        "Summary": "Winnebago Industries, Inc (Winnebago) is recalling certain model year 2015-2017 Itasca Cambria, 2015-2017 Winnebago ERA, Travato, Fuse, Aspect, and Vista recreational vehicles, and 2015-2017 Itasca Sunstar recreational vehicles manufactured May 6, 2014, to April 22, 2016.  The affected vehicles may have a electrical connection to the automatic transfer switch (ATS) that may not be properly tightened.",
+        "Consequence": "A loose power connection may cause a build up of heat at the connection, increasing the risk of a fire.",
+        "Remedy": "Winnebago will notify owners, and dealers will tighten the electrical connection, replacing the ATS box and switch, as necessary.  These repairs will be performed free of charge.  The recall began on September 22, 2016.  Owners may contact Winnebago customer service at 1-800-537-1885.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "WINNEBAGO",
+        "Model": "ASPECT"
+      },
+      {
+        "Manufacturer": "Winnebago Industries, Inc",
+        "NHTSACampaignNumber": "17V782000",
+        "parkIt": false,
+        "parkOutSide": false,
+        "overTheAirUpdate": false,
+        "ReportReceivedDate": "07/12/2017",
+        "Component": "EQUIPMENT",
+        "Summary": "Winnebago Industries, Inc. (Winnebago) is recalling certain 2013-2018 Winnebago Era, Travato, Minnie Winnie, Fuse, View, Trend, Aspect, Brave, Vista, Sightseer, Adventurer, Forza, Journey, Tour, Revel, Paseo, Chalet, Access, and Intent motorhomes and Commercial vehicles, and 2013-2018 Itasca Spirit, Navion, Cambria, Tribute, Sunstar, Sunova, Suncruiser, Solei, Meridian, Elipse, Horizon, Reyo, and Via motorhomes.  These vehicles are equipped with Kidde Plastic-Handle or Push Button 'Pindicator' fire extinguishers that may become clogged, preventing the extinguisher from discharging as expected or excessive force may be needed to activate the extinguisher.  Additionally, in certain models, the nozzle may detach from the valve assembly with enough force that it could cause injury and also render the product inoperable.  For a full list of the affected fire extinguisher models visit: https://static.nhtsa.gov/odi/rcl/2017/RMISC-17E062-5427.pdf",
+        "Consequence": "In the event of a fire, if the fire extinguisher does not function properly, it can increase the risk of injury.",
+        "Remedy": "Winnebago will notify owners, instructing them to contact Kidde for replacement or aftermarket fire extinguishers, free of charge.  The recall began on January 19, 2018.  Owners may contact Winnebago customer service at 1-641-585-3535, or Kidde customer service toll-free at 1-855-262-3540, or online at www.kidde.com and click on \"Product Safety Recall\" for more information.",
+        "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+        "ModelYear": "2016",
+        "Make": "WINNEBAGO",
+        "Model": "ASPECT"
+      }
+    ]
+  }
+}

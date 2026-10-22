@@ -1,0 +1,51 @@
+{
+  "sourceURL": "https://api.nhtsa.gov/products/vehicle/models?modelYear=2019&make=WINNEBAGO&issueType=r",
+  "retrievedAt": "2026-10-19T20:00:51.623590+00:00",
+  "payloadSHA256": "fc9e946d82fc260aca2181f1d2022c74ca01d32f497c7359e01e2ec87eb5a396",
+  "response": {
+    "count": 8,
+    "message": "Results returned successfully",
+    "results": [
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "MINNIE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "FORZA"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "MINNIE WINNIE"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "VISTA"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "VIEW"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "TRAVATO"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "TREND"
+      },
+      {
+        "modelYear": "2019",
+        "make": "WINNEBAGO",
+        "model": "SUNSTAR"
+      }
+    ]
+  }
+}
