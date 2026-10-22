@@ -28,7 +28,7 @@ struct AssistantView: View {
                         if answering { ProgressView("Looking at your saved guidance…") }
                         else { Label("Ask", systemImage: "sparkles") }
                     }.disabled(answering || question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                } footer: { Text("AI uses Apple’s on-device model only and requires iPhone 16 or newer with Apple Intelligence enabled and its model downloaded. Questions aren’t sent to an online AI service. Saved guidance works without AI.") }
+                } footer: { Text("AI uses Apple’s on-device model only. It needs an iPhone that supports Apple Intelligence (iPhone 15 Pro or later), with Apple Intelligence turned on and its model downloaded. Questions aren’t sent to an online AI service. Saved guidance works without AI.") }
                 if let response {
                     Section {
                         Text(response.text).textSelection(.enabled)

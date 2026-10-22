@@ -30,8 +30,7 @@ final class OnlineCampgroundDirectory {
             request.timeoutInterval = 25
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200, data.count < 15_000_000 else { throw URLError(.badServerResponse) }
-            let result = try await Task.detached(priority: .userInitiated) { try JSONDecoder().decode(CampgroundDirectory.self, from: data) }.value
-            guard result.schemaVersion == 1 else { throw CampError.unsupportedSchema(result.schemaVersion) }
+            let result = try await Task.detached(priority: .userInitiated) { try CampgroundDirectory.decode(data) }.value
             try Task.checkCancellation()
             campgrounds = result.campgrounds; notice = result.coverageNote
             loaded = true; failure = nil

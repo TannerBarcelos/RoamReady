@@ -8,7 +8,7 @@ enum CampgroundLibrary {
     static let directory: CampgroundDirectory? = {
         guard let url = Bundle.main.url(forResource: "campgrounds", withExtension: "json"),
               let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(CampgroundDirectory.self, from: data)
+        return try? CampgroundDirectory.decode(data)
     }()
     static var all: [Campground] { directory?.campgrounds ?? [] }
     static var notice: String { directory?.coverageNote ?? "The campground directory couldn’t be loaded. You can still plan a destination by entering its name." }

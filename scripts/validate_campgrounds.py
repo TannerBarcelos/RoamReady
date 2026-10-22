@@ -11,7 +11,10 @@ for name, expected in manifest['files'].items():
     assert Path(name).name == name and name.endswith('.json')
     assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, name
 index = json.loads((root / 'index.json').read_text())
-assert index['schemaVersion'] == 1
+assert index['schemaVersion'] in (1, 2)
+for campground in index['campgrounds']:
+    for key in ('reservationURL', 'websiteURL'):
+        assert key not in campground or campground[key].startswith('https://'), (campground['id'], key)
 facilities = {r['id'].removeprefix('ridb-') for r in index['campgrounds']}
 assert len(facilities) == len(index['campgrounds']) == manifest['campgrounds']
 ids = set(); with_sites = set()

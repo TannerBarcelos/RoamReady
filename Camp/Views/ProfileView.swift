@@ -54,7 +54,7 @@ struct ProfileView: View {
             CloudSyncSection().disabled(!connectivity.isOnline)
             Section("Camping help") {
                 Label(CampingAssistant.availability, systemImage: "iphone").font(.subheadline)
-                Text("Saved guidance is always available. AI explanations use Apple Foundation Models on iPhone 16 or newer when Apple Intelligence is enabled and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
+                Text("Saved guidance is always available. AI explanations use Apple’s on-device model on iPhones that support Apple Intelligence (iPhone 15 Pro or later) when it’s turned on and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
                 Text("Camp Finder downloads a dated federal campground and campsite snapshot from RIDB. It does not show live booking availability.").font(.footnote).foregroundStyle(.secondary)
