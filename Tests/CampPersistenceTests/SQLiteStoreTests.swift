@@ -12,8 +12,11 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         addTeardownBlock { try? FileManager.default.removeItem(at: d) }
         return d
     }
-    private func library() throws -> LibrarySnapshot {
-        let rig = Rig(make: "Test", model: "Trailer", year: 2024, lengthFeet: 23.5, slideCount: 1, axleCount: 2, hasBunkhouse: true)
+    /// `rigDetails: false` matches data written before the rig detail attributes existed (frozen v1 stores).
+    private func library(rigDetails: Bool = true) throws -> LibrarySnapshot {
+        let rig = rigDetails
+            ? Rig(make: "Test", model: "Trailer", year: 2024, lengthFeet: 23.5, slideCount: 1, axleCount: 2, hasBunkhouse: true)
+            : Rig(make: "Test", model: "Trailer")
         let trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000), departure: Date(timeIntervalSince1970: 1_750_086_400), rig: rig)
         return LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig), trips: [trip], templates: ChecklistFactory.templates(for: rig)), favorites: ["ridb-232447"])
     }
@@ -172,7 +175,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await store.close()
     }
     func testPreviousSQLiteMigrationRetainsAssetsNotesAndSource() async throws {
-        let d = try directory(), base = try library()
+        let d = try directory(), base = try library(rigDetails: false)
         try await makePreviousStore(directory: d, base: base)
         let store = try await SQLiteStore.open(directory: d)
         let imported = try await store.snapshot(); XCTAssertEqual(imported, base)
@@ -185,7 +188,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await reopened.close()
     }
     func testIncompletePreviousSyncPreservesUsableLibraryAndSource() async throws {
-        let d = try directory(), base = try library()
+        let d = try directory(), base = try library(rigDetails: false)
         try await makePreviousStore(directory: d, base: base, staged: true)
         let store = try await SQLiteStore.open(directory: d)
         let imported = try await store.snapshot(); XCTAssertEqual(imported, base)
