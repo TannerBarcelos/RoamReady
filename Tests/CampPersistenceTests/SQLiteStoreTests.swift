@@ -13,7 +13,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         return d
     }
     private func library() throws -> LibrarySnapshot {
-        let rig = Rig(make: "Test", model: "Trailer")
+        let rig = Rig(make: "Test", model: "Trailer", year: 2024, lengthFeet: 23.5, slideCount: 1, axleCount: 2, hasBunkhouse: true)
         let trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000), departure: Date(timeIntervalSince1970: 1_750_086_400), rig: rig)
         return LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig), trips: [trip], templates: ChecklistFactory.templates(for: rig)), favorites: ["ridb-232447"])
     }

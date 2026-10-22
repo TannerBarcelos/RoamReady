@@ -50,17 +50,58 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
     public var emoji: String
     public var photoFilename: String?
     public var equipment: Equipment
+    /// Owner-entered details. Optional so rigs saved before these fields existed still load.
+    public var lengthFeet: Double?
+    public var slideCount: Int?
+    public var axleCount: Int?
+    public var hasBunkhouse: Bool?
     public init(id: UUID = UUID(), type: RigType = .travelTrailer, make: String = "", model: String = "",
                 year: Int? = nil, floorplan: String = "", emoji: String = "🚐",
-                photoFilename: String? = nil, equipment: Equipment = Equipment()) {
+                photoFilename: String? = nil, equipment: Equipment = Equipment(),
+                lengthFeet: Double? = nil, slideCount: Int? = nil, axleCount: Int? = nil, hasBunkhouse: Bool? = nil) {
         self.id = id; self.type = type; self.make = make; self.model = model; self.year = year
         self.floorplan = floorplan; self.emoji = emoji; self.photoFilename = photoFilename
-        self.equipment = equipment
+        self.equipment = equipment; self.lengthFeet = lengthFeet; self.slideCount = slideCount
+        self.axleCount = axleCount; self.hasBunkhouse = hasBunkhouse
     }
     public var displayName: String {
         let name = [make, model, floorplan].filter { !$0.isEmpty }.joined(separator: " ")
         return name.isEmpty ? type.title : name
     }
+    /// Short owner-entered facts, e.g. "2024 · 19 ft · 1 slide · Bunkhouse".
+    public var detailSummary: String {
+        var parts: [String] = []
+        if let year { parts.append(String(year)) }
+        if let lengthFeet { parts.append(String(format: "%g ft", lengthFeet)) }
+        if let slideCount, slideCount > 0 { parts.append(slideCount == 1 ? "1 slide" : "\(slideCount) slides") }
+        if let axleCount { parts.append(axleCount == 1 ? "1 axle" : "\(axleCount) axles") }
+        if hasBunkhouse == true { parts.append("Bunkhouse") }
+        return parts.joined(separator: " · ")
+    }
+
+    public static let yearRange = 1950...2100
+    public static let lengthRange = 5.0...65.0
+    public static let slideRange = 1...8
+    public static let axleRange = 1...4
+
+    /// RVs need year, make, model, and length; tents and car camping need none of them.
+    /// Checked when the owner saves the form, not on load, so older profiles remain readable.
+    public func validateDetails() throws {
+        if type.isRV {
+            guard let year, !make.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let lengthFeet else {
+                throw CampError.incompleteRig
+            }
+            guard Self.yearRange.contains(year), lengthFeet.isFinite, Self.lengthRange.contains(lengthFeet) else {
+                throw CampError.invalidRigDetails
+            }
+        } else if let year, !Self.yearRange.contains(year) {
+            throw CampError.invalidRigDetails
+        }
+        if let slideCount, !Self.slideRange.contains(slideCount) { throw CampError.invalidRigDetails }
+        if let axleCount, !Self.axleRange.contains(axleCount) { throw CampError.invalidRigDetails }
+    }
+    public var hasRequiredDetails: Bool { (try? validateDetails()) != nil }
 }
 
 public enum Experience: String, Codable, CaseIterable, Identifiable, Sendable {
@@ -232,7 +273,7 @@ public struct AppState: Codable, Equatable, Sendable {
 
 public enum CampError: Error, LocalizedError, Equatable, Sendable {
     case missingCampground, invalidDates, invalidCoordinates, duplicateIdentifiers, emptyChecklistTitle
-    case invalidPhotoFilename, unsupportedSchema(Int)
+    case invalidPhotoFilename, unsupportedSchema(Int), incompleteRig, invalidRigDetails
     public var errorDescription: String? {
         switch self {
         case .missingCampground: "Enter a campground or destination name."
@@ -242,6 +283,8 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
         case .emptyChecklistTitle: "Every checklist step needs a title."
         case .invalidPhotoFilename: "A photo reference is invalid. Your existing file was not changed."
         case .unsupportedSchema(let version): "This data uses an unsupported format (version \(version)). Update the app before opening it."
+        case .incompleteRig: "Enter your rig’s year, make, model, and length."
+        case .invalidRigDetails: "Check your rig details. Year, length, slides, or axles are outside the supported range."
         }
     }
 }
@@ -256,35 +299,4 @@ private func validateChecklist(_ items: [ChecklistItem]) throws {
 private func validateFilename(_ filename: String) throws {
     guard !filename.isEmpty, filename != ".", filename != "..", !filename.contains("/"),
           !filename.contains("\\"), !filename.contains("\0") else { throw CampError.invalidPhotoFilename }
-}
-
-public struct RigCatalog: Codable, Sendable {
-    public let schemaVersion: Int
-    public let coverageNote: String
-    public let records: [RigCatalogRecord]
-    public init(schemaVersion: Int = 1, coverageNote: String, records: [RigCatalogRecord]) {
-        self.schemaVersion = schemaVersion; self.coverageNote = coverageNote; self.records = records
-    }
-    public static func decode(_ data: Data) throws -> RigCatalog {
-        let result = try JSONDecoder().decode(RigCatalog.self, from: data)
-        guard result.schemaVersion == 1 else { throw CampError.unsupportedSchema(result.schemaVersion) }
-        return result
-    }
-}
-
-public struct RigCatalogRecord: Codable, Identifiable, Sendable {
-    public let id: String
-    public let make: String
-    public let model: String
-    public let year: Int
-    public let floorplan: String?
-    public let rigType: RigType
-    public let sourceURL: String
-    public let imageURL: String?
-    public let imageRights: String
-    public init(id: String, make: String, model: String, year: Int, floorplan: String? = nil,
-                rigType: RigType, sourceURL: String, imageURL: String? = nil, imageRights: String) {
-        self.id = id; self.make = make; self.model = model; self.year = year; self.floorplan = floorplan
-        self.rigType = rigType; self.sourceURL = sourceURL; self.imageURL = imageURL; self.imageRights = imageRights
-    }
 }

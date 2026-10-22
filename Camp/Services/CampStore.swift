@@ -20,8 +20,6 @@ final class CampStore {
     private(set) var lastSavedAt: Date?
     let directory: URL
     let media: MediaStore
-    let catalog: [RigCatalogRecord]
-    let catalogNotice: String
     @ObservationIgnored private var disk: SQLiteStore?
     @ObservationIgnored private var baseline = LibrarySnapshot()
     @ObservationIgnored private var loadInProgress = false
@@ -42,15 +40,6 @@ final class CampStore {
     init() {
         directory = URL.applicationSupportDirectory.appendingPathComponent("Camp", isDirectory: true)
         media = MediaStore(directory: directory.appendingPathComponent("Media", isDirectory: true))
-        if let url = Bundle.main.url(forResource: "rig-catalog", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let decoded = try? RigCatalog.decode(data) {
-            catalog = decoded.records
-            catalogNotice = decoded.coverageNote
-        } else {
-            catalog = []
-            catalogNotice = "The catalog is unavailable. You can still enter your rig manually."
-        }
     }
 
     private func serializeLifecycle(_ operation: @escaping @MainActor () async -> Void) async {

@@ -245,7 +245,7 @@ public final class SQLiteStore: @unchecked Sendable {
                 guard !key.isEmpty, let row = groups[key]?.sorted(by: { identity($0) < identity($1) }).first else { return nil }
                 let deleted = groups[key]!.contains { $0.value(forKey: "removed") as? Bool == true }
                 var fields: [String: RecordValue] = [:]
-                for (field, type) in LegacyStoreModel.fields(kind) {
+                for (field, type) in LegacyStoreModel.managedFields(kind) {
                     guard let value = row.value(forKey: field) else { continue }
                     switch type {
                     case .stringAttributeType: fields[field] = .string(value as! String)
@@ -259,7 +259,7 @@ public final class SQLiteStore: @unchecked Sendable {
         }
     }
     private func set(_ value: RecordValue, field: String, kind: RecordKind, row: NSManagedObject) throws {
-        guard let type = LegacyStoreModel.fields(kind)[field] else { throw ReplicationError.invalidRecord }
+        guard let type = LegacyStoreModel.managedFields(kind)[field] else { throw ReplicationError.invalidRecord }
         switch (type, value) {
         case (_, .null): row.setValue(nil, forKey: field)
         case (.stringAttributeType, .string(let v)): row.setValue(v, forKey: field)
@@ -358,12 +358,12 @@ enum ManagedStoreModel {
         func attribute(_ name: String, _ type: NSAttributeType) -> NSAttributeDescription {
             let value = NSAttributeDescription(); value.name = name; value.attributeType = type; value.isOptional = true; return value
         }
-        let model = NSManagedObjectModel(); model.versionIdentifiers = ["RoamReady.Managed.v2"]
+        let model = NSManagedObjectModel(); model.versionIdentifiers = ["RoamReady.Managed.v3"]
         let library = RecordKind.allCases.map { kind in
             let entity = NSEntityDescription(); entity.name = LegacyStoreModel.name(kind); entity.managedObjectClassName = "NSManagedObject"
             let deleted = attribute("removed", .booleanAttributeType); deleted.defaultValue = false
             var properties = [attribute("key", .stringAttributeType), attribute("rowID", .stringAttributeType), deleted]
-            properties += LegacyStoreModel.fields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
+            properties += LegacyStoreModel.managedFields(kind).sorted { $0.key < $1.key }.map { attribute($0.key, $0.value) }
             if kind == .asset { let bytes = attribute("bytes", .binaryDataAttributeType); bytes.allowsExternalBinaryDataStorage = true; properties.append(bytes) }
             entity.properties = properties
             return entity

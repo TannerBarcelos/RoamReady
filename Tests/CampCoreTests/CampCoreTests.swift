@@ -158,12 +158,39 @@ final class CampCoreTests: XCTestCase, @unchecked Sendable {
         do { try await store.save(AppState()); XCTFail("Expected filesystem failure") } catch {}
     }
 
-    func testCatalogDecodesDeclaredRigTypesAndRejectsUnsupportedVersions() throws {
-        let data = Data(#"{"schemaVersion":1,"coverageNote":"Sample only","records":[{"id":"one","make":"Example","model":"Trail","year":2025,"rigType":"travelTrailer","sourceURL":"https://example.com/rig","imageRights":"No redistribution rights established"}]}"#.utf8)
-        let catalog = try RigCatalog.decode(data)
-        XCTAssertEqual(catalog.records.first?.rigType, .travelTrailer)
-        XCTAssertNil(catalog.records.first?.imageURL)
-        let future = Data(#"{"schemaVersion":2,"coverageNote":"New schema","records":[]}"#.utf8)
-        XCTAssertThrowsError(try RigCatalog.decode(future)) { XCTAssertEqual($0 as? CampError, .unsupportedSchema(2)) }
+    func testRVsRequireYearMakeModelAndLengthButTentsDoNot() throws {
+        var rig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024)
+        XCTAssertThrowsError(try rig.validateDetails()) { XCTAssertEqual($0 as? CampError, .incompleteRig) }
+        rig.lengthFeet = 23.5
+        XCTAssertNoThrow(try rig.validateDetails())
+        rig.model = "   "
+        XCTAssertFalse(rig.hasRequiredDetails)
+        XCTAssertTrue(Rig(type: .tent, equipment: .none).hasRequiredDetails)
+        XCTAssertTrue(Rig(type: .carCamping, equipment: .none).hasRequiredDetails)
+    }
+
+    func testRigDetailRangesAreEnforcedOnSave() {
+        let valid = Rig(type: .fifthWheel, make: "Jayco", model: "Eagle", year: 2025, lengthFeet: 38, slideCount: 4, axleCount: 2, hasBunkhouse: true)
+        XCTAssertNoThrow(try valid.validateDetails())
+        func changed(_ change: (inout Rig) -> Void) -> Rig { var rig = valid; change(&rig); return rig }
+        for broken in [changed { $0.year = 1800 }, changed { $0.lengthFeet = 0 }, changed { $0.lengthFeet = .infinity },
+                       changed { $0.slideCount = 0 }, changed { $0.axleCount = 9 }] {
+            XCTAssertThrowsError(try broken.validateDetails()) { XCTAssertEqual($0 as? CampError, .invalidRigDetails) }
+        }
+    }
+
+    func testRigsSavedBeforeDetailFieldsStillDecode() throws {
+        let legacy = Data(#"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","type":"travelTrailer","make":"Jayco","model":"Jay Flight","year":2021,"floorplan":"","emoji":"🚐","equipment":{"shorePower":true,"freshWater":true,"sewer":true,"slideOuts":false,"propane":true}}"#.utf8)
+        let rig = try JSONDecoder().decode(Rig.self, from: legacy)
+        XCTAssertNil(rig.lengthFeet); XCTAssertNil(rig.slideCount); XCTAssertNil(rig.axleCount); XCTAssertNil(rig.hasBunkhouse)
+        XCTAssertFalse(rig.hasRequiredDetails, "Older profiles load, then prompt for length on the next edit")
+        XCTAssertNoThrow(try AppState(profile: CamperProfile(rig: rig)).validated())
+    }
+
+    func testDetailSummaryListsOnlyEnteredFacts() {
+        XCTAssertEqual(Rig(year: 2024, lengthFeet: 19.5, slideCount: 1, axleCount: 1, hasBunkhouse: true).detailSummary,
+                       "2024 · 19.5 ft · 1 slide · 1 axle · Bunkhouse")
+        XCTAssertEqual(Rig(lengthFeet: 38, slideCount: 3, axleCount: 2, hasBunkhouse: false).detailSummary, "38 ft · 3 slides · 2 axles")
+        XCTAssertEqual(Rig().detailSummary, "")
     }
 }

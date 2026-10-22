@@ -65,9 +65,10 @@ struct OnboardingView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button(step < 2 ? "Continue" : "Start camping") {
-                    guard connectivity.isOnline else { return }
+                    guard connectivity.isOnline, step != 1 || profile.rig.hasRequiredDetails else { return }
                     if step < 2 { step += 1 } else { store.finishOnboarding(profile) }
                 }
+                .disabled(step == 1 && !profile.rig.hasRequiredDetails)
                 .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
                 .padding().background(.bar)
             }
@@ -78,36 +79,56 @@ struct OnboardingView: View {
 struct RigFormSections: View {
     @Environment(CampStore.self) private var store
     @Binding var rig: Rig
-    @State private var showCatalog = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var importing = false
     @State private var photoError: String?
 
     var body: some View {
         Group {
-            Section("Rig details") {
+            Section {
                 Picker("Type", selection: $rig.type) {
                     ForEach(RigType.allCases) { Text($0.title).tag($0) }
                 }.onChange(of: rig.type) { _, type in
                     rig.equipment = type.isRV ? Equipment() : .none
                     rig.emoji = type.defaultEmoji
                     rig.make = ""; rig.model = ""; rig.floorplan = ""; rig.year = nil
+                    rig.lengthFeet = nil; rig.slideCount = nil; rig.axleCount = nil; rig.hasBunkhouse = nil
                 }
-                Button("Choose from catalog", systemImage: "books.vertical") { showCatalog = true }
-                TextField("Make (optional)", text: $rig.make)
-                TextField("Model or your rig’s name", text: $rig.model)
-                TextField("Floorplan / trim (optional)", text: $rig.floorplan)
-                TextField("Model year (optional)", text: Binding(
-                    get: { rig.year.map(String.init) ?? "" },
-                    set: { value in rig.year = Int(value.prefix(4)) }
-                )).keyboardType(.numberPad)
+                if rig.type.isRV {
+                    TextField("Year", text: yearBinding).keyboardType(.numberPad)
+                    TextField("Make, e.g. Forest River", text: $rig.make).textInputAutocapitalization(.words)
+                    TextField("Model, e.g. No Boundaries NB19.5", text: $rig.model).textInputAutocapitalization(.words)
+                    TextField("Length (ft)", text: lengthBinding).keyboardType(.decimalPad)
+                } else {
+                    TextField("Name or description (optional)", text: $rig.model)
+                }
+            } header: { Text("Rig details") } footer: {
+                if rig.type.isRV {
+                    Text(detailsProblem ?? "Use the overall length from your owner’s documents. Camp Finder can match it against site length limits.")
+                }
+            }
+            if rig.type.isRV {
+                Section {
+                    Picker("Slide-outs", selection: slideBinding) {
+                        Text("None or not sure").tag(Int?.none)
+                        ForEach(Array(Rig.slideRange), id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                    }
+                    if rig.type.isTowable {
+                        Picker("Axles", selection: $rig.axleCount) {
+                            Text("Not specified").tag(Int?.none)
+                            ForEach(Array(Rig.axleRange), id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                        }
+                    }
+                    Toggle("Bunkhouse", isOn: Binding(get: { rig.hasBunkhouse ?? false }, set: { rig.hasBunkhouse = $0 }))
+                    TextField("Floorplan or trim (optional)", text: $rig.floorplan)
+                } header: { Text("Optional details") }
             }
             Section {
                 HStack(spacing: 16) {
                     RigImage(rig: rig, size: 72)
                     VStack(alignment: .leading, spacing: 10) {
                         PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Label("Choose a photo", systemImage: "photo")
+                            Label(rig.photoFilename == nil ? "Add a photo" : "Change photo", systemImage: "photo")
                         }.disabled(importing)
                         if importing { ProgressView("Saving photo…") }
                         if rig.photoFilename != nil {
@@ -119,24 +140,17 @@ struct RigFormSections: View {
                     .onChange(of: rig.emoji) { _, value in if value.count > 2 { rig.emoji = String(value.prefix(2)) } }
                 if let photoError { Text(photoError).font(.caption).foregroundStyle(.red) }
             } header: { Text("Make it recognizable") } footer: {
-                Text("Personal photos are saved on this iPhone. Official rig images will appear when licensed images are available.")
+                Text("Your rig photo is saved on this iPhone and included in iCloud sync when you turn it on.")
             }
             if rig.type.isRV {
                 Section {
                     Toggle("Shore power", isOn: $rig.equipment.shorePower)
                     Toggle("Fresh water connection", isOn: $rig.equipment.freshWater)
                     Toggle("Waste holding tanks", isOn: $rig.equipment.sewer)
-                    Toggle("Slide-outs", isOn: $rig.equipment.slideOuts)
                     Toggle("Propane system", isOn: $rig.equipment.propane)
                 } header: { Text("Confirm your equipment") } footer: {
                     Text("Options and modifications vary. These answers tailor your starting checklists; always follow your equipment manuals.")
                 }
-            }
-        }
-        .sheet(isPresented: $showCatalog) {
-            RigCatalogView(type: rig.type) { record in
-                rig.make = record.make; rig.model = record.model; rig.year = record.year
-                rig.floorplan = record.floorplan ?? ""
             }
         }
         .onChange(of: selectedPhoto) { _, selection in
@@ -152,50 +166,25 @@ struct RigFormSections: View {
             }
         }
     }
-}
 
-struct RigCatalogView: View {
-    @Environment(CampStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
-    let type: RigType
-    let onSelect: (RigCatalogRecord) -> Void
-    @State private var query = ""
-    @State private var make = "All makes"
-    var records: [RigCatalogRecord] { store.catalog.filter { $0.rigType == type } }
-    var makes: [String] { Array(Set(records.map(\.make))).sorted() }
-    var results: [RigCatalogRecord] {
-        records.filter {
-            (make == "All makes" || $0.make == make) &&
-            (query.isEmpty || "\($0.make) \($0.model) \($0.year) \($0.floorplan ?? "")".localizedCaseInsensitiveContains(query))
-        }.sorted { ($0.make, $0.model, -$0.year, $0.floorplan ?? "") < ($1.make, $1.model, -$1.year, $1.floorplan ?? "") }
+    private var detailsProblem: String? {
+        do { try rig.validateDetails(); return nil } catch { return error.localizedDescription }
     }
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Picker("Make", selection: $make) {
-                        Text("All makes").tag("All makes")
-                        ForEach(makes, id: \.self) { Text($0).tag($0) }
-                    }
-                } footer: { Text(store.catalogNotice) }
-                ForEach(results) { record in
-                    Button {
-                        onSelect(record); dismiss()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("\(record.make) \(record.model)").foregroundStyle(.primary)
-                            Text("\(String(record.year)) · \(record.floorplan ?? "Model series")").font(.subheadline).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                if results.isEmpty {
-                    ContentUnavailableView("No matching rigs", systemImage: "car.side", description: Text("Try another search or enter your rig manually."))
-                }
-                Button("My rig isn’t listed — enter manually") { dismiss() }
-            }
-            .searchable(text: $query, prompt: "Model, year, or floorplan")
-            .navigationTitle("Rig catalog")
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
-        }
+    private var yearBinding: Binding<String> {
+        Binding(get: { rig.year.map(String.init) ?? "" },
+                set: { value in rig.year = Int(value.filter(\.isNumber).prefix(4)) })
+    }
+    /// Accepts "23.5" or "23,5"; anything else clears the value so validation reports it.
+    private var lengthBinding: Binding<String> {
+        Binding(get: { rig.lengthFeet.map { String(format: "%g", $0) } ?? "" },
+                set: { value in
+                    let number = Double(value.replacingOccurrences(of: ",", with: "."))
+                    rig.lengthFeet = number.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+                })
+    }
+    /// The slide count also drives the slide-out checklist steps.
+    private var slideBinding: Binding<Int?> {
+        Binding(get: { rig.slideCount },
+                set: { value in rig.slideCount = value; rig.equipment.slideOuts = (value ?? 0) > 0 })
     }
 }

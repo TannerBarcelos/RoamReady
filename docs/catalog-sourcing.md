@@ -4,7 +4,9 @@ Research date: 2026-10-18; independent source audit: 2026-10-19. Initial geograp
 
 ## Result
 
-`Camp/Resources/rig-catalog.json` contains **82 source-backed starter records across three makes**, model year **2025**. Every record has a primary-source URL. It covers travel trailers, fifth wheels, Class A and Class C motorhomes, Class B camper vans, and truck campers. Folding camping trailers remain a sourcing gap after the audit below. Car camping, tents, conversions, and missing models use manual entry rather than invented manufacturer records. No manufacturer photographs or floorplan drawings are included.
+> **Status (v1):** the app no longer bundles or queries a rig catalog; owners enter year, make, model, length, and optional details. This report and `data/catalog/` are retained as research for a possible future lookup.
+
+The original app seed contained **82 source-backed starter records across three makes**, model year **2025**. Every record has a primary-source URL. It covers travel trailers, fifth wheels, Class A and Class C motorhomes, Class B camper vans, and truck campers. Folding camping trailers remain a sourcing gap after the audit below. Car camping, tents, conversions, and missing models use manual entry rather than invented manufacturer records. No manufacturer photographs or floorplan drawings are included.
 
 This is **not** the complete curated database requested for the finished product. The source discovery and acquisition strategy below identify how to build that database; a production license, systematic extraction, and independent editorial verification remain outstanding. No public source investigated establishes complete make/model/year/floorplan coverage or blanket offline redistribution rights.
 
@@ -192,7 +194,7 @@ Files are deliberately separated from the shipped resource:
 - `data/catalog/nhtsa-products/raw/`: cached API responses, including rejected requests for deterministic offline replay.
 - `data/catalog/nhtsa-products/report.json`: per-make/year lookup counts, admitted counts, exclusions, and acquisition errors.
 
-Reproduce acquisition with `python3 scripts/catalog_nhtsa.py --start-year 2015 --end-year 2026`. Replay exclusively from disk and prepare a combined artifact with `python3 scripts/catalog_nhtsa.py --offline --seed Camp/Resources/rig-catalog.json`. The command exits nonzero if source errors exist, while still writing the explicitly partial validated output and error report. It never retries rejected access, supplies credentials, uses rotating proxies, or bypasses a challenge. `python3 scripts/validate_catalog.py data/catalog/nhtsa-products/combined-catalog.json` validates the export. The validator accepts only the reviewed federal products endpoint with exact make/year query parameters; vPIC URLs remain excluded as retail catalog provenance.
+Reproduce acquisition with `python3 scripts/catalog_nhtsa.py --start-year 2015 --end-year 2026`. Replay exclusively from disk and prepare a combined artifact with `python3 scripts/catalog_nhtsa.py --offline --seed data/catalog/nhtsa-products/combined-catalog.json`. The command exits nonzero if source errors exist, while still writing the explicitly partial validated output and error report. It never retries rejected access, supplies credentials, uses rotating proxies, or bypasses a challenge. `python3 scripts/validate_catalog.py data/catalog/nhtsa-products/combined-catalog.json` validates the export. The validator accepts only the reviewed federal products endpoint with exact make/year query parameters; vPIC URLs remain excluded as retail catalog provenance.
 
 ### Other free candidates and scrape access review
 

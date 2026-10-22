@@ -19,7 +19,7 @@ cd Camp
 
 Requirements: Swift 6+, Bash, and Python 3. If Swift is not on PATH, use `SWIFT_BIN=/absolute/path/to/swift ./scripts/check.sh`.
 
-The script runs the `CampCore` tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, checks rig catalog IDs/types/provenance fields, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
+The script runs the `CampCore` tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, validates the research rig catalog in `data/catalog/` and confirms no rig catalog is bundled in the app, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
 
 On a Mac with the required SDK:
 
