@@ -20,6 +20,20 @@ public extension Trip {
         return start...end
     }
 
+    /// Complete when the owner marked it so, or once the day after departure has begun at the
+    /// campground (#31). Derived from the dates, so it needs no background work and syncs as is.
+    func isCompleted(asOf now: Date = Date()) -> Bool {
+        if completedAt != nil { return true }
+        guard let lastDay = forecastDayWindow?.upperBound,
+              let dayAfter = campgroundCalendar.date(byAdding: .day, value: 1, to: lastDay) else { return false }
+        return now >= dayAfter
+    }
+    /// Ended by its dates, as opposed to marked complete early.
+    func endedByDate(asOf now: Date = Date()) -> Bool {
+        var copy = self; copy.completedAt = nil
+        return copy.isCompleted(asOf: now)
+    }
+
     /// Check-in on the arrival day, at the campground's local time.
     var checkInDate: Date? { checkInMinutes.flatMap { campgroundInstant(onDayOf: arrival, minutes: $0) } }
     /// Check-out on the departure day, at the campground's local time.

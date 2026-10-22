@@ -283,6 +283,9 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
     public var amountPaid: Double?
     /// Display only; the app never sends reminders.
     public var cancellationDeadline: Date?
+    /// Set when the owner marks the trip complete before it ends. A trip also counts as complete,
+    /// with nothing stored, once its departure day is over (`isCompleted(asOf:)`).
+    public var completedAt: Date?
 
     public init(id: UUID = UUID(), campgroundName: String, latitude: Double? = nil, longitude: Double? = nil,
                 arrival: Date, departure: Date, siteNumber: String = "", notes: String = "",
@@ -358,7 +361,9 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
         for amount in [totalCost, amountPaid].compactMap({ $0 }) {
             guard amount.isFinite, amount >= 0 else { throw CampError.invalidBookingAmount }
         }
-        if let cancellationDeadline, !cancellationDeadline.timeIntervalSinceReferenceDate.isFinite { throw CampError.invalidDates }
+        for date in [cancellationDeadline, completedAt].compactMap({ $0 }) {
+            guard date.timeIntervalSinceReferenceDate.isFinite else { throw CampError.invalidDates }
+        }
     }
 }
 

@@ -95,7 +95,9 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         expectedV5["RR_rig"] = (expectedV3["RR_rig"]! + ["archivedAt:\(n)"]).sorted()
         expectedV5["RR_templates"] = (expected["RR_templates"]! + ["rigID:\(s)"]).sorted()
         expectedV5["RR_trip"] = (expected["RR_trip"]! + ["rigID:\(s)", "loop:\(s)", "confirmationNumber:\(s)", "bookingProvider:\(s)", "bookingURL:\(s)",
-                                                        "checkInMinutes:\(n)", "checkOutMinutes:\(n)", "totalCost:\(n)", "amountPaid:\(n)", "cancellationDeadline:\(n)"]).sorted()
+                                                        "checkInMinutes:\(n)", "checkOutMinutes:\(n)", "totalCost:\(n)", "amountPaid:\(n)", "cancellationDeadline:\(n)",
+                                                        "completedAt:\(n)"]).sorted()
+        expectedV5["RR_favorite"] = (expected["RR_favorite"]! + ["name:\(s)", "region:\(s)", "wantToGo:\(flag)", "favorite:\(flag)", "beenTo:\(flag)"]).sorted()
         var v5Records = shape(v5, "Library")
         v5Records.removeValue(forKey: ManagedStoreModel.documentEntity); v5Records.removeValue(forKey: ManagedStoreModel.documentContentEntity)
         XCTAssertEqual(v5Records, expectedV5)

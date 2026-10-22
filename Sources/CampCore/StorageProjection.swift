@@ -67,8 +67,15 @@ public enum ReplicationError: Error, LocalizedError {
 
 public struct LibrarySnapshot: Equatable, Sendable {
     public var state: AppState
-    public var favorites: Set<String>
-    public init(state: AppState = AppState(), favorites: Set<String> = []) { self.state = state; self.favorites = favorites }
+    /// Saved campgrounds by campground ID.
+    public var saved: [String: SavedCampground]
+    public init(state: AppState = AppState(), saved: [String: SavedCampground] = [:]) { self.state = state; self.saved = saved }
+    /// Campgrounds saved before lists existed (a single bookmark) are on "Want to go".
+    public init(state: AppState = AppState(), favorites: Set<String>) {
+        self.init(state: state, saved: Dictionary(uniqueKeysWithValues: favorites.map { ($0, SavedCampground(campgroundID: $0, wantToGo: true)) }))
+    }
+    /// Every saved campground's ID, whatever its lists.
+    public var favorites: Set<String> { Set(saved.keys) }
 }
 
 /// Codable domain types remain independent of Core Data / CloudKit.
@@ -122,6 +129,7 @@ public enum RecordProjection {
             for name in optionalTripStrings + optionalTripNumbers { if let value = all[name], value != .null { f[name] = value } }
             if let rigID = trip.rigID { f["rigID"] = .string(rigID.uuidString) }
             if let deadline = trip.cancellationDeadline { f["cancellationDeadline"] = .number(deadline.timeIntervalSinceReferenceDate) }
+            if let completedAt = trip.completedAt { f["completedAt"] = .number(completedAt.timeIntervalSinceReferenceDate) }
             f["position"] = .number(Double(tripPosition))
             add(key, .trip, f)
             try items(trip.setup, owner: key, phase: "setup"); try items(trip.teardown, owner: key, phase: "teardown")
@@ -130,7 +138,14 @@ public enum RecordProjection {
                 add("photo:\(photo.id)", .photo, p)
             }
         }
-        for id in snapshot.favorites { add("favorite:\(id)", .favorite, ["campgroundID": .string(id), "saved": .bool(true)]) }
+        for entry in snapshot.saved.values where !entry.isEmpty {
+            var f: [String: RecordValue] = ["campgroundID": .string(entry.campgroundID), "saved": .bool(true),
+                                            "wantToGo": .bool(entry.wantToGo), "favorite": .bool(entry.favorite)]
+            if !entry.name.isEmpty { f["name"] = .string(entry.name) }
+            if !entry.region.isEmpty { f["region"] = .string(entry.region) }
+            if let beenTo = entry.beenTo { f["beenTo"] = .bool(beenTo) }
+            add("favorite:\(entry.campgroundID)", .favorite, f)
+        }
         return result
     }
 
@@ -217,7 +232,17 @@ public enum RecordProjection {
         if profileRig != nil || legacyTemplates != nil || !snapshots.isEmpty {
             RigMigration.migrate(&state, profileRig: profileRig, legacyTemplates: legacyTemplates, snapshots: snapshots)
         }
-        return LibrarySnapshot(state: try state.validated(), favorites: Set(active.filter { $0.kind == .favorite && $0.fields["saved"] == .bool(true) }.compactMap { $0.fields["campgroundID"]?.string }))
+        var saved: [String: SavedCampground] = [:]
+        for record in active where record.kind == .favorite && record.fields["saved"] == .bool(true) {
+            guard let id = record.fields["campgroundID"]?.string else { continue }
+            func flag(_ name: String) -> Bool? { if case .bool(let value) = record.fields[name] { value } else { nil } }
+            // A record from before lists has only `saved`: the old bookmark, kept as "Want to go".
+            let legacy = flag("wantToGo") == nil && flag("favorite") == nil && flag("beenTo") == nil
+            saved[id] = SavedCampground(campgroundID: id, name: record.fields["name"]?.string ?? "",
+                                        region: record.fields["region"]?.string ?? "",
+                                        wantToGo: flag("wantToGo") ?? legacy, favorite: flag("favorite") ?? false, beenTo: flag("beenTo"))
+        }
+        return LibrarySnapshot(state: try state.validated(), saved: saved)
     }
     public static func fields<T: Encodable>(_ value: T) throws -> [String: RecordValue] {
         try JSONDecoder().decode([String: RecordValue].self, from: JSONEncoder().encode(value))

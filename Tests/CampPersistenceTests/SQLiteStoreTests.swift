@@ -98,12 +98,12 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
     func testSoftDeleteWinsOverStaleEditAndFavoriteCanBeSavedAgain() async throws {
         let store = try await SQLiteStore.open(directory: directory()), base = try library()
         try await store.save(from: LibrarySnapshot(), to: base)
-        var deleted = base; deleted.state.trips = []; deleted.favorites = []
+        var deleted = base; deleted.state.trips = []; deleted.saved = [:]
         try await store.save(from: base, to: deleted)
         var stale = base; stale.state.trips[0].notes = "Stale offline edit"
         try await store.save(from: base, to: stale)
         var state = try await store.snapshot(); XCTAssertTrue(state.state.trips.isEmpty)
-        let before = state; state.favorites = base.favorites
+        let before = state; state.saved = base.saved
         try await store.save(from: before, to: state)
         let after = try await store.snapshot(); XCTAssertEqual(after.favorites, base.favorites)
         try await store.close()

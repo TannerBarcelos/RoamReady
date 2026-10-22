@@ -7,14 +7,13 @@ struct CampFinderView: View {
     @State private var filter = CampgroundFilter()
     @State private var showFilters = false
     @State private var showMap = true
-    @State private var savedOnly = false
+    @State private var list: CampgroundList?
     @State private var camera = MapCameraPosition.automatic
     @Environment(Connectivity.self) private var connection
     @State private var directory = OnlineCampgroundDirectory()
 
-    var saved: Set<String> { store.savedCampgroundIDs }
     var results: [Campground] {
-        directory.campgrounds.filter { filter.matches($0) && (!savedOnly || saved.contains($0.id)) }
+        directory.campgrounds.filter { place in filter.matches(place) && (list.map { store.isCampground(place.id, on: $0) } ?? true) }
     }
     var activeFilters: Int {
         filter.requiredAmenities.count + (filter.noElectricHookups ? 1 : 0) + (filter.rigType == nil ? 0 : 1)
@@ -30,7 +29,13 @@ struct CampFinderView: View {
                 HStack {
                     Button { showFilters = true } label: { Label(activeFilters == 0 ? "Filters" : "Filters · \(activeFilters)", systemImage: "line.3.horizontal.decrease") }
                         .buttonStyle(.bordered)
-                    Toggle("Saved", isOn: $savedOnly).toggleStyle(.button).buttonStyle(.bordered)
+                    Menu {
+                        Picker("Show", selection: $list) {
+                            Text("All campgrounds").tag(CampgroundList?.none)
+                            ForEach(CampgroundList.allCases) { Text($0.title).tag(Optional($0)) }
+                        }
+                    } label: { Label(list?.title ?? "All", systemImage: list == nil ? "bookmark" : "bookmark.fill") }
+                        .buttonStyle(.bordered)
                     Spacer()
                     Button { showMap.toggle() } label: { Label(showMap ? "Show list" : "Show map", systemImage: showMap ? "list.bullet" : "map") }
                         .labelStyle(.iconOnly).buttonStyle(.bordered)
@@ -67,7 +72,11 @@ struct CampFinderView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(campground.name).font(.headline)
-                                if saved.contains(campground.id) { Image(systemName: "bookmark.fill").foregroundStyle(.blue).accessibilityLabel("Saved") }
+                                let lists = CampgroundList.allCases.filter { store.isCampground(campground.id, on: $0) }
+                                if !lists.isEmpty {
+                                    Image(systemName: lists.contains(.favorite) ? "star.fill" : "bookmark.fill").foregroundStyle(.blue)
+                                        .accessibilityLabel(lists.map(\.title).joined(separator: ", "))
+                                }
                             }
                             Text(campground.region).font(.subheadline).foregroundStyle(.secondary)
                             if !campground.availableAmenities.isEmpty {
@@ -78,7 +87,7 @@ struct CampFinderView: View {
                 }
                 if results.isEmpty {
                     ContentUnavailableView.search(text: filter.query)
-                    Button("Clear filters") { filter = CampgroundFilter(); savedOnly = false }
+                    Button("Clear filters") { filter = CampgroundFilter(); list = nil }
                 }
             }
         }
@@ -151,7 +160,6 @@ struct CampgroundDetailView: View {
     @Environment(CampStore.self) private var store
     let campground: Campground
     @State private var planning = false
-    var saved: Bool { store.savedCampgroundIDs.contains(campground.id) }
     var previousTrips: [Trip] {
         store.state.trips.filter {
             $0.campgroundID == campground.id || ($0.campgroundID == nil && $0.campgroundName.localizedCaseInsensitiveCompare(campground.name) == .orderedSame)
@@ -167,9 +175,16 @@ struct CampgroundDetailView: View {
                 Text(campground.region).foregroundStyle(.secondary)
                 Text(campground.notes)
                 Button("Plan a trip here", systemImage: "calendar.badge.plus") { planning = true }
-                Button(saved ? "Remove from saved" : "Save campground", systemImage: saved ? "bookmark.fill" : "bookmark") {
-                    store.toggleSavedCampground(campground.id)
+            }
+            Section {
+                ForEach(CampgroundList.allCases) { list in
+                    Toggle(isOn: Binding(get: { store.isCampground(campground.id, on: list) },
+                                         set: { store.setCampground(campground.id, name: campground.name, region: campground.region, on: list, $0) })) {
+                        Label(list.title, systemImage: list.symbol)
+                    }
                 }
+            } header: { Text("Your lists") } footer: {
+                Text("Campgrounds from your completed trips are added to Been here automatically. Turn it off to remove one.")
             }
             Section {
                 NavigationLink { CampsiteListView(campground: campground) } label: {

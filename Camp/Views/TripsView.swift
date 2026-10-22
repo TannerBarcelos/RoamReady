@@ -6,8 +6,7 @@ struct HomeView: View {
     @Environment(CampStore.self) private var store
     @State private var planning = false
     var featured: Trip? {
-        let today = Calendar.current.startOfDay(for: .now)
-        return store.state.trips.filter { $0.departure >= today }.sorted { $0.arrival < $1.arrival }.first
+        store.state.trips.filter { !$0.isCompleted() }.sorted { $0.arrival < $1.arrival }.first
             ?? store.state.trips.sorted { $0.arrival > $1.arrival }.first
     }
     var body: some View {
@@ -39,7 +38,7 @@ struct HomeView: View {
                             ProgressSummary(items: trip.setup)
                         }.padding(.vertical, 4)
                     }
-                } header: { Text(trip.departure < Calendar.current.startOfDay(for: .now) ? "Latest trip" : "Your next adventure") }
+                } header: { Text(trip.isCompleted() ? "Latest trip" : "Your next adventure") }
                 Section("Your trip") {
                     NavigationLink { ChecklistView(tripID: trip.id) } label: {
                         Label("Setup checklist", systemImage: "checklist")
@@ -68,15 +67,16 @@ struct HomeView: View {
 struct PlanView: View {
     @Environment(CampStore.self) private var store
     @State private var planning = false
-    var upcoming: [Trip] { store.state.trips.filter { $0.departure >= Calendar.current.startOfDay(for: .now) }.sorted { $0.arrival < $1.arrival } }
-    var past: [Trip] { store.state.trips.filter { $0.departure < Calendar.current.startOfDay(for: .now) }.sorted { $0.arrival > $1.arrival } }
+    var upcoming: [Trip] { store.state.trips.filter { !$0.isCompleted() }.sorted { $0.arrival < $1.arrival } }
+    var completed: [Trip] { store.state.trips.filter { $0.isCompleted() }.sorted { $0.arrival > $1.arrival } }
     var body: some View {
         List {
             if store.state.trips.isEmpty {
                 ContentUnavailableView("No trips yet", systemImage: "calendar.badge.plus", description: Text("After you reserve a campsite, add the booking here and we’ll prepare your checklists."))
             }
             if !upcoming.isEmpty { Section("Upcoming & current") { ForEach(upcoming) { TripRow(trip: $0) } } }
-            if !past.isEmpty { Section("Past trips") { ForEach(past) { TripRow(trip: $0) } } }
+            if !completed.isEmpty { Section("Completed trips") { ForEach(completed) { TripRow(trip: $0) } } }
+            Section { NavigationLink { SavedCampgroundsView() } label: { Label("Your campgrounds", systemImage: "bookmark") } }
             Button("Add a trip", systemImage: "plus") { planning = true }
         }
         .navigationTitle("Plan")
@@ -93,6 +93,7 @@ struct TripRow: View {
                 Text(trip.campgroundName).font(.headline)
                 Text(trip.dateSummary).font(.subheadline).foregroundStyle(.secondary)
                 if !trip.siteNumber.isEmpty { Text("Site \(trip.siteNumber)").font(.caption).foregroundStyle(.secondary) }
+                if trip.isCompleted() { Label("Completed", systemImage: "checkmark.seal").font(.caption).foregroundStyle(.secondary) }
             }.padding(.vertical, 4)
         }
     }
@@ -300,7 +301,17 @@ struct TripDetailView: View {
                     }
                     Section { Button("Ask for camping help", systemImage: "sparkles") { showAssistant = true } }
                     Section {
+                        if trip.endedByDate() {
+                            Label("Completed: this trip’s dates have passed", systemImage: "checkmark.seal")
+                        } else if trip.completedAt != nil {
+                            Label("Marked complete", systemImage: "checkmark.seal")
+                            Button("Reopen trip", systemImage: "arrow.uturn.backward") { store.markTripComplete(tripID, false) }
+                        } else {
+                            Button("Mark trip complete", systemImage: "checkmark.seal") { store.markTripComplete(tripID) }
+                        }
                         Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
+                    } footer: {
+                        Text("Trips complete on their own the day after departure. Completed trips at a Camp Finder campground add it to Been here.")
                     }
                 }
                 .navigationTitle(trip.campgroundName)
@@ -458,6 +469,69 @@ struct EditTripView: View {
             }
             .onAppear { if rigID == nil { rigID = trip.rigID } }
             .environment(\.timeZone, trip.planningTimeZone)
+        }
+    }
+}
+
+/// The owner's campground lists (#30). Works offline: names are saved with each entry, and
+/// campgrounds from completed trips come from the trips themselves.
+struct SavedCampgroundsView: View {
+    @Environment(CampStore.self) private var store
+    var body: some View {
+        List {
+            ForEach(CampgroundList.allCases) { list in
+                let ids = store.library.campgroundIDs(on: list)
+                Section(list.title) {
+                    if ids.isEmpty {
+                        Text(emptyText(list)).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    ForEach(ids, id: \.self) { id in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(name(id))
+                                if let region = store.savedCampgrounds[id]?.region, !region.isEmpty {
+                                    Text(region).font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            Button("Remove", systemImage: "minus.circle") {
+                                store.setCampground(id, name: name(id), region: "", on: list, false)
+                            }.labelStyle(.iconOnly).buttonStyle(.borderless)
+                                .accessibilityLabel("Remove \(name(id)) from \(list.title)")
+                        }
+                    }
+                }
+            }
+            let otherPlaces = Array(Set(store.state.trips.filter { $0.campgroundID == nil && $0.isCompleted() }.map(\.campgroundName))).sorted()
+            if !otherPlaces.isEmpty {
+                Section {
+                    ForEach(otherPlaces, id: \.self) { Text($0) }
+                } header: { Text("Other places you’ve camped") } footer: {
+                    Text("Trips entered by name rather than from Camp Finder.")
+                }
+            }
+        }
+        .navigationTitle("Your campgrounds")
+    }
+    private func name(_ id: String) -> String {
+        if let saved = store.savedCampgrounds[id]?.name, !saved.isEmpty { return saved }
+        return store.state.trips.first { $0.campgroundID == id }?.campgroundName ?? "Campground \(id)"
+    }
+    private func emptyText(_ list: CampgroundList) -> String {
+        switch list {
+        case .wantToGo: "Add campgrounds from Camp Finder."
+        case .beenTo: "Campgrounds from your completed trips appear here."
+        case .favorite: "Star the campgrounds you love in Camp Finder."
+        }
+    }
+}
+
+extension CampgroundList {
+    var symbol: String {
+        switch self {
+        case .wantToGo: "bookmark"
+        case .beenTo: "checkmark.seal"
+        case .favorite: "star"
         }
     }
 }
