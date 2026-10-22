@@ -8,7 +8,8 @@ import UIKit
 @MainActor @Observable
 final class CampStore {
     private(set) var state = AppState()
-    private(set) var savedCampgroundIDs: Set<String> = []
+    /// Saved campgrounds and their lists (#30), by campground ID.
+    private(set) var savedCampgrounds: [String: SavedCampground] = [:]
     private(set) var libraryNotice: String?
     private(set) var mediaRevision = 0
     /// Metadata for every active document. Bytes stay in the store until a document is opened.
@@ -98,7 +99,7 @@ final class CampStore {
             guard generation == libraryGeneration else { return }
             documents = loadedDocuments
             suspendedUnsaved = nil; saveFailure = nil; presentsSaveFailure = false
-            baseline = restored; state = restored.state; savedCampgroundIDs = restored.favorites
+            baseline = restored; state = restored.state; savedCampgrounds = restored.saved
             libraryNotice = notice
             didLoad = true; loadFailure = nil; lastSavedAt = .now
         } catch {
@@ -117,7 +118,7 @@ final class CampStore {
             sync.tearDown()
             if let disk { try? await disk.close() }
             disk = nil; didLoad = false; baseline = LibrarySnapshot()
-            state = AppState(); savedCampgroundIDs = []; mediaRevision += 1
+            state = AppState(); savedCampgrounds = [:]; mediaRevision += 1
             documents = []; documentFiles.removeAll()
             loadFailure = nil; presentsSaveFailure = false; isLoading = false
             isTransitioning = false
@@ -125,7 +126,7 @@ final class CampStore {
     }
     private func preserveFailedChanges() {
         if saveFailure != nil, didLoad {
-            suspendedUnsaved = (baseline, LibrarySnapshot(state: state, favorites: savedCampgroundIDs))
+            suspendedUnsaved = (baseline, library)
         }
     }
     /// After an iCloud account change, reopen local-only until the person retries or relaunches.
@@ -171,10 +172,16 @@ final class CampStore {
         }
     }
 
-    func toggleSavedCampground(_ id: String) {
+    var library: LibrarySnapshot { LibrarySnapshot(state: state, saved: savedCampgrounds) }
+
+    /// "Been here" also follows completed trips unless the owner chose otherwise.
+    func isCampground(_ id: String, on list: CampgroundList) -> Bool { library.isCampground(id, on: list) }
+
+    func setCampground(_ id: String, name: String, region: String, on list: CampgroundList, _ included: Bool) {
         guard !isTransitioning, wantsLibraryAccess else { return }
-        if savedCampgroundIDs.contains(id) { savedCampgroundIDs.remove(id) }
-        else { savedCampgroundIDs.insert(id) }
+        var next = library
+        next.setCampground(id, name: name, region: region, on: list, included)
+        savedCampgrounds = next.saved
         persist()
     }
     func exportLibrary() async throws -> URL {
@@ -207,7 +214,7 @@ final class CampStore {
             let notice = try await disk.metadata("migrationNotice").flatMap { String(data: $0, encoding: .utf8) }
             if let latest = try? await disk.documents(ownedBy: nil), generation == libraryGeneration { documents = latest }
             guard revision == saveRevision, generation == libraryGeneration, wantsLibraryAccess, !isTransitioning, saveTask == nil else { return }
-            baseline = fresh; state = fresh.state; savedCampgroundIDs = fresh.favorites
+            baseline = fresh; state = fresh.state; savedCampgrounds = fresh.saved
             libraryNotice = notice; mediaRevision += 1
         } catch {
             guard generation == libraryGeneration, wantsLibraryAccess else { return }
@@ -389,6 +396,12 @@ final class CampStore {
         persist()
     }
 
+    /// Marks a trip complete before its dates end (#31). Trips also complete on their own once the
+    /// day after departure begins; that needs no write.
+    func markTripComplete(_ id: UUID, _ complete: Bool = true) {
+        editTrip(id) { $0.completedAt = complete ? ($0.completedAt ?? .now) : nil }
+    }
+
     /// "Save as defaults for <rig>": writes only to the trip's own rig.
     func saveAsDefaults(_ tripID: UUID) throws {
         try mutate { try $0.saveTripChecklistsAsDefaults(tripID) }
@@ -400,7 +413,7 @@ final class CampStore {
     private func persist() {
         guard didLoad, !isTransitioning, wantsLibraryAccess else { return }
         saveRevision += 1
-        pendingSave = (saveRevision, LibrarySnapshot(state: state, favorites: savedCampgroundIDs))
+        pendingSave = (saveRevision, library)
         isSaving = true
         guard saveTask == nil else { return }
         saveTask = Task { [weak self] in

@@ -208,10 +208,11 @@ public final class SQLiteStore: @unchecked Sendable {
 
     public func export(to url: URL) async throws {
         let library = try await snapshot()
-        struct Export: Encodable { let schemaVersion = 1; let state: AppState; let savedCampgroundIDs: [String] }
+        struct Export: Encodable { let schemaVersion = 1; let state: AppState; let savedCampgroundIDs: [String]; let savedCampgrounds: [SavedCampground] }
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .millisecondsSince1970
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(Export(state: library.state, savedCampgroundIDs: library.favorites.sorted()))
+        let data = try encoder.encode(Export(state: library.state, savedCampgroundIDs: library.favorites.sorted(),
+                                             savedCampgrounds: library.saved.values.sorted { $0.campgroundID < $1.campgroundID }))
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url, options: .atomic)
     }
@@ -364,11 +365,13 @@ public final class SQLiteStore: @unchecked Sendable {
     }
     private struct CachedLibrary: Codable {
         let state: AppState
-        let favorites: Set<String>
-        var library: LibrarySnapshot { LibrarySnapshot(state: state, favorites: favorites) }
+        /// Caches written before saved-campground lists hold only `favorites`.
+        var favorites: Set<String>?
+        var saved: [String: SavedCampground]?
+        var library: LibrarySnapshot { saved.map { LibrarySnapshot(state: state, saved: $0) } ?? LibrarySnapshot(state: state, favorites: favorites ?? []) }
     }
     private func cache(_ library: LibrarySnapshot) throws {
-        let bytes = try JSONEncoder().encode(CachedLibrary(state: library.state, favorites: library.favorites))
+        let bytes = try JSONEncoder().encode(CachedLibrary(state: library.state, saved: library.saved))
         guard try meta("coherentProjection") != bytes else { return }
         try putMeta("coherentProjection", bytes); try context.save()
     }

@@ -25,7 +25,7 @@ enum ManagedStoreModel {
     static func v4() -> NSManagedObjectModel { build(version: v4Identifier, fields: v3Fields, includesDocuments: true) }
 
     /// v4 plus separate rigs with an archive date, per-rig default checklists, the trip's rig reference,
-    /// and booking details. Purely additive optional attributes; the record layout change itself is a
+    /// booking details, the trip's completion date (#31), and saved-campground lists (#30). Purely additive optional attributes; the record layout change itself is a
     /// data migration (`SQLiteStore.migrateRigReferences`). Land before the CloudKit schema goes to Production.
     static func v5() -> NSManagedObjectModel { build(version: v5Identifier, fields: v5Fields, includesDocuments: true) }
 
@@ -53,7 +53,10 @@ enum ManagedStoreModel {
         case .templates: result["rigID"] = .stringAttributeType
         case .trip:
             for name in ["rigID", "loop", "confirmationNumber", "bookingProvider", "bookingURL"] { result[name] = .stringAttributeType }
-            for name in ["checkInMinutes", "checkOutMinutes", "totalCost", "amountPaid", "cancellationDeadline"] { result[name] = .doubleAttributeType }
+            for name in ["checkInMinutes", "checkOutMinutes", "totalCost", "amountPaid", "cancellationDeadline", "completedAt"] { result[name] = .doubleAttributeType }
+        case .favorite:
+            for name in ["name", "region"] { result[name] = .stringAttributeType }
+            for name in ["wantToGo", "favorite", "beenTo"] { result[name] = .booleanAttributeType }
         default: break
         }
         return result
