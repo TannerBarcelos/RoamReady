@@ -13,7 +13,7 @@ struct CampsiteListView: View {
     private var results: [CampsiteSnapshot] {
         sites.filter { site in
             (query.isEmpty || (site.name + " " + site.loop + " " + site.kind).localizedCaseInsensitiveContains(query))
-            && (!rigOnly || store.state.profile.map { site.equipment[$0.rig.type.rawValue] != nil } == true)
+            && (!rigOnly || store.activeRig.map { site.equipment[$0.type.rawValue] != nil } == true)
         }
     }
     var body: some View {
