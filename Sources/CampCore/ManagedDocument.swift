@@ -25,6 +25,10 @@ public struct DocumentCategory: RawRepresentable, Hashable, Codable, Sendable, I
     public static let reservation = DocumentCategory(rawValue: "reservation")
     public static let other = DocumentCategory(rawValue: "other")
     public static let standard: [DocumentCategory] = [.manual, .registration, .insurance, .warranty, .maintenance, .reservation, .other]
+    /// Types that usually carry identity, policy, plate, VIN, address, or payment details.
+    /// Their files are always end-to-end encrypted in iCloud.
+    public static let sensitive: Set<DocumentCategory> = [.registration, .insurance, .reservation]
+    public var isSensitive: Bool { Self.sensitive.contains(self) }
     public var title: String {
         switch self {
         case .manual: "Manual"
@@ -98,6 +102,16 @@ public enum DocumentContentType: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// How a document's file is protected in iCloud. Document text fields are always end-to-end
+/// encrypted; this controls the file bytes.
+public enum DocumentProtection: String, Codable, CaseIterable, Comparable, Sendable {
+    /// Encrypted at rest by Apple (end-to-end only with Advanced Data Protection).
+    case standard
+    /// Encrypted on this device with a per-document key that only syncs end-to-end encrypted.
+    case endToEnd
+    public static func < (a: Self, b: Self) -> Bool { a == .standard && b == .endToEnd }
+}
+
 public struct DocumentMetadata: Equatable, Codable, Sendable {
     public var title: String
     public var category: DocumentCategory
@@ -106,9 +120,12 @@ public struct DocumentMetadata: Equatable, Codable, Sendable {
     public var issuedOn: Date?
     /// Expiration or renewal date, for example registration or insurance.
     public var expiresOn: Date?
+    /// The requested protection. Sensitive categories are raised to `.endToEnd` by validation,
+    /// and repositories never lower an existing document's protection.
+    public var protection: DocumentProtection
     public init(title: String, category: DocumentCategory = .other, notes: String = "",
-                issuedOn: Date? = nil, expiresOn: Date? = nil) {
-        self.title = title; self.category = category; self.notes = notes
+                issuedOn: Date? = nil, expiresOn: Date? = nil, protection: DocumentProtection = .standard) {
+        self.title = title; self.category = category; self.notes = notes; self.protection = protection
         self.issuedOn = issuedOn; self.expiresOn = expiresOn
     }
 }
@@ -165,6 +182,9 @@ public struct DocumentContents: Sendable {
 public enum DocumentSource: Sendable {
     /// Original bytes, stored exactly as provided.
     case file(Data, filename: String)
+    /// Original bytes read from a local file in chunks, so large files are never fully in memory.
+    /// The repository reads it during the call; the caller owns and removes the file afterwards.
+    case fileAt(URL, filename: String)
     case link(URL)
 }
 
@@ -183,7 +203,7 @@ public struct DocumentDraft: Sendable {
 public enum DocumentError: Error, LocalizedError, Equatable, Sendable {
     case emptyFile, fileTooLarge(limit: Int), unsupportedFileType, missingTitle, titleTooLong, notesTooLong
     case invalidDates, invalidLink, insecureLink, notALink, linkOnly
-    case documentNotFound, duplicateDocument, contentNotDownloaded, contentIntegrity
+    case documentNotFound, duplicateDocument, contentNotDownloaded, contentIntegrity, protectionNeedsContent
     public var errorDescription: String? {
         switch self {
         case .emptyFile: "The file is empty."
@@ -201,6 +221,7 @@ public enum DocumentError: Error, LocalizedError, Equatable, Sendable {
         case .duplicateDocument: "This document already exists."
         case .contentNotDownloaded: "This document hasn’t downloaded to this device yet. Connect to iCloud and try again."
         case .contentIntegrity: "The saved file doesn’t match its original. It was not opened."
+        case .protectionNeedsContent: "Download this document to this device before changing it to a protected type, so its file can be encrypted."
         }
     }
 }
@@ -208,7 +229,9 @@ public enum DocumentError: Error, LocalizedError, Equatable, Sendable {
 /// Validation shared by every repository so all features enforce the same rules.
 public enum DocumentPolicy {
     /// Conservative limit until large CloudKit transfers are validated on devices.
-    public static let maximumByteCount = 50 * 1024 * 1024
+    /// Files are streamed, so this bounds storage and iCloud quota use rather than memory.
+    /// CloudKit assets allow far larger files; raise only after device transfer testing.
+    public static let maximumByteCount = 250 * 1024 * 1024
     public static let maximumTitleLength = 200
     public static let maximumNotesLength = 10_000
 
@@ -222,6 +245,7 @@ public enum DocumentPolicy {
             guard date.timeIntervalSinceReferenceDate.isFinite else { throw DocumentError.invalidDates }
         }
         if let issued = result.issuedOn, let expires = result.expiresOn, expires < issued { throw DocumentError.invalidDates }
+        result.protection = requiredProtection(for: result)
         return result
     }
 
@@ -245,13 +269,32 @@ public enum DocumentPolicy {
         return try validatedLink(url)
     }
 
+    /// The protection a document must have: sensitive types are always end-to-end encrypted.
+    public static func requiredProtection(for metadata: DocumentMetadata) -> DocumentProtection {
+        metadata.category.isSensitive ? .endToEnd : metadata.protection
+    }
+
     /// Describe original bytes without changing them.
     public static func inspect(_ bytes: Data, filename: String) throws -> DocumentFile {
-        guard !bytes.isEmpty else { throw DocumentError.emptyFile }
-        guard bytes.count <= maximumByteCount else { throw DocumentError.fileTooLarge(limit: maximumByteCount) }
-        guard let type = DocumentContentType.detect(bytes) else { throw DocumentError.unsupportedFileType }
-        return DocumentFile(filename: sanitizedFilename(filename, for: type), contentType: type,
-                            byteCount: bytes.count, checksum: DocumentDigest.sha256(bytes))
+        try inspect(.data(bytes), filename: filename)
+    }
+
+    /// Describe original bytes, reading a file in chunks. The type comes from the leading bytes.
+    public static func inspect(_ source: DocumentByteSource, filename: String) throws -> DocumentFile {
+        let count = try source.byteCount()
+        guard count > 0 else { throw DocumentError.emptyFile }
+        guard count <= maximumByteCount else { throw DocumentError.fileTooLarge(limit: maximumByteCount) }
+        var hasher = DocumentHasher(), type: DocumentContentType?, seen = 0
+        try source.forEachChunk { chunk in
+            if type == nil {
+                guard let detected = DocumentContentType.detect(chunk) else { throw DocumentError.unsupportedFileType }
+                type = detected
+            }
+            hasher.update(chunk); seen += chunk.count
+        }
+        // A file that changed while being read is not the file the user picked.
+        guard seen == count, let type else { throw DocumentError.unsupportedFileType }
+        return DocumentFile(filename: sanitizedFilename(filename, for: type), contentType: type, byteCount: count, checksum: hasher.finalize())
     }
 
     /// A display and export name only. Never used as a path without a containing directory.
@@ -274,33 +317,90 @@ public enum DocumentPolicy {
     }
 }
 
-/// Accumulates a streamed download while enforcing the document rules as bytes arrive, so an
-/// oversized file or a non-document (for example an HTML page) is abandoned early.
-public struct BoundedDocumentBuffer: Sendable {
+/// Original bytes in memory or in a local file, read in fixed-size chunks.
+public enum DocumentByteSource: Sendable {
+    case data(Data)
+    case file(URL)
+    /// 1 MiB keeps memory flat while staying fast for hashing and encryption.
+    public static let chunkSize = 1 << 20
+
+    public func byteCount() throws -> Int {
+        switch self {
+        case .data(let data): return data.count
+        case .file(let url):
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            return (attributes[.size] as? NSNumber)?.intValue ?? 0
+        }
+    }
+
+    /// Calls `body` with consecutive chunks. The first chunk is at least 16 bytes when the
+    /// source is, so callers can identify the format from it.
+    public func forEachChunk(size: Int = chunkSize, _ body: (Data) throws -> Void) throws {
+        switch self {
+        case .data(let data):
+            var offset = data.startIndex
+            while offset < data.endIndex {
+                let end = data.index(offset, offsetBy: size, limitedBy: data.endIndex) ?? data.endIndex
+                try body(data[offset..<end]); offset = end
+            }
+        case .file(let url):
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            while let chunk = try handle.read(upToCount: size), !chunk.isEmpty { try body(chunk) }
+        }
+    }
+}
+
+/// Writes a streamed download to disk while enforcing the document rules as bytes arrive, so an
+/// oversized file or a non-document (for example an HTML page) is abandoned early and memory
+/// stays flat regardless of file size.
+public final class BoundedDocumentWriter {
+    public let destination: URL
     public let limit: Int
-    public private(set) var data = Data()
+    public private(set) var byteCount = 0
+    private var handle: FileHandle?
+    private var head = Data()
     private var checkedSignature = false
     /// Enough leading bytes to identify every supported signature.
     static let signatureLength = 16
 
-    public init(limit: Int = DocumentPolicy.maximumByteCount, expectedLength: Int64 = -1) throws {
+    public init(destination: URL, limit: Int = DocumentPolicy.maximumByteCount, expectedLength: Int64 = -1) throws {
         guard expectedLength <= Int64(limit) else { throw DocumentError.fileTooLarge(limit: limit) }
-        self.limit = limit
-        if expectedLength > 0 { data.reserveCapacity(Int(expectedLength)) }
+        self.destination = destination; self.limit = limit
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard FileManager.default.createFile(atPath: destination.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
+        handle = try FileHandle(forWritingTo: destination)
     }
 
-    public mutating func append<Bytes: Collection>(_ bytes: Bytes) throws where Bytes.Element == UInt8 {
-        guard data.count + bytes.count <= limit else { throw DocumentError.fileTooLarge(limit: limit) }
-        data.append(contentsOf: bytes)
-        if !checkedSignature, data.count >= Self.signatureLength {
-            guard DocumentContentType.detect(data) != nil else { throw DocumentError.unsupportedFileType }
-            checkedSignature = true
+    public func append(_ chunk: Data) throws {
+        guard let handle else { throw CocoaError(.fileWriteUnknown) }
+        guard byteCount + chunk.count <= limit else { throw DocumentError.fileTooLarge(limit: limit) }
+        if !checkedSignature {
+            head.append(chunk.prefix(Self.signatureLength - head.count))
+            if head.count >= Self.signatureLength {
+                guard DocumentContentType.detect(head) != nil else { throw DocumentError.unsupportedFileType }
+                checkedSignature = true
+            }
         }
+        try handle.write(contentsOf: chunk)
+        byteCount += chunk.count
     }
 
-    public func finish() throws -> Data {
-        guard !data.isEmpty else { throw DocumentError.emptyFile }
-        guard DocumentContentType.detect(data) != nil else { throw DocumentError.unsupportedFileType }
-        return data
+    /// Closes the file and returns it once it is a complete, supported document.
+    public func finish() throws -> URL {
+        try close()
+        guard byteCount > 0 else { throw DocumentError.emptyFile }
+        guard DocumentContentType.detect(head) != nil else { throw DocumentError.unsupportedFileType }
+        return destination
+    }
+
+    /// Stops writing and removes the partial file.
+    public func discard() {
+        try? close()
+        try? FileManager.default.removeItem(at: destination)
+    }
+
+    private func close() throws {
+        try handle?.close(); handle = nil
     }
 }

@@ -31,6 +31,8 @@ public final class SQLiteStore: @unchecked Sendable {
 
     public static func open(directory: URL, cloudContainerIdentifier: String? = nil) async throws -> SQLiteStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Staging holds only transient copies from an interrupted document import.
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(stagingDirectoryName, isDirectory: true))
         // Bootstrap locally so a v1 import is verified before mirroring can upload anything.
         let local = try await load(directory: directory, cloudContainerIdentifier: nil)
         do {

@@ -106,27 +106,84 @@ final class ManagedDocumentTests: XCTestCase {
         XCTAssertNil(deleted)
     }
 
-    func testBoundedDownloadBufferRejectsEarlyAndPreservesBytes() throws {
-        XCTAssertThrowsError(try BoundedDocumentBuffer(limit: 100, expectedLength: 101)) {
+    private func temporaryFile(_ data: Data? = nil) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("file.bin")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if let data { try data.write(to: url) }
+        addTeardownBlock { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        return url
+    }
+
+    func testIncrementalDigestMatchesOneShotAcrossChunkBoundaries() {
+        let data = Data((0..<200_003).map { UInt8(truncatingIfNeeded: $0 &* 7) })
+        for size in [1, 55, 64, 65, 4096, 1 << 20] {
+            var hasher = DocumentHasher(), portable = PortableSHA256()
+            try? DocumentByteSource.data(data).forEachChunk(size: size) { hasher.update($0); portable.update($0) }
+            XCTAssertEqual(hasher.finalize(), DocumentDigest.sha256(data), "\(size)")
+            XCTAssertEqual(portable.finalize(), DocumentDigest.portableSHA256(data), "\(size)")
+        }
+    }
+
+    func testFileInspectionStreamsAndMatchesInMemoryInspection() throws {
+        let large = Self.pdf + Data((0..<3_000_000).map { UInt8(truncatingIfNeeded: $0) })
+        let url = try temporaryFile(large)
+        let fromFile = try DocumentPolicy.inspect(.file(url), filename: "Manual.pdf")
+        XCTAssertEqual(fromFile, try DocumentPolicy.inspect(large, filename: "Manual.pdf"))
+        XCTAssertEqual(fromFile.byteCount, large.count)
+        var chunks = 0
+        try DocumentByteSource.file(url).forEachChunk { XCTAssertLessThanOrEqual($0.count, DocumentByteSource.chunkSize); chunks += 1 }
+        XCTAssertEqual(chunks, 3)
+        XCTAssertThrowsError(try DocumentPolicy.inspect(.file(try temporaryFile(Data("<html>not a manual</html>".utf8))), filename: "a.pdf")) {
+            XCTAssertEqual($0 as? DocumentError, .unsupportedFileType)
+        }
+        XCTAssertThrowsError(try DocumentPolicy.inspect(.file(try temporaryFile(Data())), filename: "a.pdf")) { XCTAssertEqual($0 as? DocumentError, .emptyFile) }
+    }
+
+    func testBoundedWriterRejectsEarlyAndPreservesBytes() throws {
+        XCTAssertThrowsError(try BoundedDocumentWriter(destination: temporaryFile(), limit: 100, expectedLength: 101)) {
             XCTAssertEqual($0 as? DocumentError, .fileTooLarge(limit: 100))
         }
-        var tooBig = try BoundedDocumentBuffer(limit: 100)
-        try tooBig.append([UInt8](Self.pdf.prefix(20)))
-        XCTAssertThrowsError(try tooBig.append([UInt8](repeating: 0, count: 81))) { XCTAssertEqual($0 as? DocumentError, .fileTooLarge(limit: 100)) }
+        let tooBig = try BoundedDocumentWriter(destination: temporaryFile(), limit: 100)
+        try tooBig.append(Self.pdf.prefix(20))
+        XCTAssertThrowsError(try tooBig.append(Data(count: 81))) { XCTAssertEqual($0 as? DocumentError, .fileTooLarge(limit: 100)) }
+        tooBig.discard(); XCTAssertFalse(FileManager.default.fileExists(atPath: tooBig.destination.path))
 
-        // A web page is abandoned as soon as its first bytes arrive.
-        var page = try BoundedDocumentBuffer()
-        XCTAssertThrowsError(try page.append(Array("<!doctype html><html>".utf8))) { XCTAssertEqual($0 as? DocumentError, .unsupportedFileType) }
+        // A web page is abandoned as soon as its first bytes arrive, even split across chunks.
+        let page = try BoundedDocumentWriter(destination: temporaryFile())
+        try page.append(Data("<!doctype".utf8))
+        XCTAssertThrowsError(try page.append(Data(" html><html>".utf8))) { XCTAssertEqual($0 as? DocumentError, .unsupportedFileType) }
 
-        var chunked = try BoundedDocumentBuffer(expectedLength: Int64(Self.pdf.count))
-        for start in stride(from: 0, to: Self.pdf.count, by: 7) {
-            try chunked.append([UInt8](Self.pdf[start..<min(start + 7, Self.pdf.count)]))
-        }
-        XCTAssertEqual(try chunked.finish(), Self.pdf)
+        let chunked = try BoundedDocumentWriter(destination: temporaryFile(), expectedLength: Int64(Self.pdf.count))
+        try DocumentByteSource.data(Self.pdf).forEachChunk(size: 7) { try chunked.append($0) }
+        XCTAssertEqual(try Data(contentsOf: chunked.finish()), Self.pdf)
 
-        var tiny = try BoundedDocumentBuffer()
-        try tiny.append(Array("GIF8".utf8))
+        let tiny = try BoundedDocumentWriter(destination: temporaryFile())
+        try tiny.append(Data("GIF8".utf8))
         XCTAssertThrowsError(try tiny.finish()) { XCTAssertEqual($0 as? DocumentError, .unsupportedFileType) }
-        XCTAssertThrowsError(try BoundedDocumentBuffer().finish()) { XCTAssertEqual($0 as? DocumentError, .emptyFile) }
+        XCTAssertThrowsError(try BoundedDocumentWriter(destination: temporaryFile()).finish()) { XCTAssertEqual($0 as? DocumentError, .emptyFile) }
+    }
+
+    func testSensitiveCategoriesAreAlwaysEndToEndEncrypted() throws {
+        for category in DocumentCategory.standard {
+            let validated = try DocumentPolicy.validated(DocumentMetadata(title: "Doc", category: category))
+            XCTAssertEqual(validated.protection, category.isSensitive ? .endToEnd : .standard, category.rawValue)
+        }
+        XCTAssertEqual(DocumentCategory.sensitive, [.registration, .insurance, .reservation])
+        let optIn = try DocumentPolicy.validated(DocumentMetadata(title: "Title deed", category: .other, protection: .endToEnd))
+        XCTAssertEqual(optIn.protection, .endToEnd)
+        XCTAssertLessThan(DocumentProtection.standard, .endToEnd)
+    }
+
+    func testRepositoryNeverLowersProtection() async throws {
+        let repository = InMemoryDocumentRepository()
+        let url = try temporaryFile(Self.pdf)
+        let doc = try await repository.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Policy", category: .insurance), source: .fileAt(url, filename: "policy.pdf")))
+        XCTAssertEqual(doc.metadata.protection, .endToEnd)
+        let relabeled = try await repository.updateDocument(id: doc.id, metadata: DocumentMetadata(title: "Policy", category: .manual))
+        XCTAssertEqual(relabeled.metadata.protection, .endToEnd)
+        XCTAssertEqual(relabeled.metadata.category, .manual)
+        let exported = try temporaryFile()
+        let file = try await repository.exportContents(ofDocument: doc.id, to: exported)
+        XCTAssertEqual(try Data(contentsOf: exported), Self.pdf); XCTAssertEqual(file, doc.file)
     }
 }

@@ -244,8 +244,9 @@ final class CampStore {
         // extra time, the download is cancelled and nothing partial is saved.
         let work = Task { () throws -> Void in
             let download = try await DocumentImport.download(link)
+            defer { DocumentImport.discard(download.url) }
             try Task.checkCancellation()
-            try await repository.attachContent(toDocument: id, bytes: download.data, filename: download.filename)
+            try await repository.attachContent(toDocument: id, source: .file(download.url), filename: download.filename)
         }
         let activity = BackgroundActivity(name: "Save document for offline use") { work.cancel() }
         defer { activity.end() }
@@ -262,8 +263,11 @@ final class CampStore {
     func documentFileURL(_ id: UUID) async throws -> URL {
         guard let file = document(id)?.file else { throw DocumentError.linkOnly }
         if let cached = documentFiles.cachedURL(for: file) { return cached }
-        let contents = try await documentRepository().contents(ofDocument: id)
-        return try await documentFiles.write(contents)
+        // Decrypted and verified chunk by chunk straight into the cache file.
+        let destination = documentFiles.url(for: file)
+        try await documentRepository().exportContents(ofDocument: id, to: destination)
+        documentFiles.protect(destination)
+        return destination
     }
 
     private func reloadDocuments() async {

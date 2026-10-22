@@ -85,6 +85,9 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         let metadata = try XCTUnwrap(model.entitiesByName[ManagedStoreModel.documentEntity])
         let encrypted = Set(metadata.attributesByName.values.filter(\.allowsCloudEncryption).map(\.name))
         XCTAssertEqual(encrypted, ["title", "notes", "linkURL", "filename"])
+        let content = try XCTUnwrap(model.entitiesByName[ManagedStoreModel.documentContentEntity])
+        XCTAssertEqual(Set(content.attributesByName.values.filter(\.allowsCloudEncryption).map(\.name)), ["contentKey"])
+        XCTAssertEqual(content.attributesByName["bytes"]?.allowsCloudEncryption, false, "Assets cannot use CloudKit field encryption")
         // Frozen v2 entities are untouched by document encryption settings.
         XCTAssertTrue(ManagedStoreModel.v2().entities.allSatisfy { $0.attributesByName.values.allSatisfy { !$0.allowsCloudEncryption } })
     }
@@ -123,7 +126,7 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         let d = try directory(), store = try await SQLiteStore.open(directory: d)
         let rigDoc = try await store.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Registration", category: .registration), source: .file(Self.pdf(), filename: "reg.pdf")))
         let tripDoc = try await store.addDocument(DocumentDraft(owner: trip, metadata: DocumentMetadata(title: "Site map", category: .reservation), source: .link(URL(string: "https://example.com/map")!)))
-        let edited = DocumentMetadata(title: "Registration 2027", category: .registration, notes: "Renew online", expiresOn: Date(timeIntervalSinceReferenceDate: 900_000_000))
+        let edited = DocumentMetadata(title: "Registration 2027", category: .registration, notes: "Renew online", expiresOn: Date(timeIntervalSinceReferenceDate: 900_000_000), protection: .endToEnd)
         _ = try await store.updateDocument(id: rigDoc.id, metadata: edited)
         await expectError(.missingTitle) { try await store.updateDocument(id: rigDoc.id, metadata: DocumentMetadata(title: " ")) }
         try await store.close()
@@ -227,6 +230,130 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         }
         let listed = try await store.documents(ownedBy: rig)
         XCTAssertEqual(listed.count, 1); XCTAssertEqual(listed.first?.metadata.title, "Chosen duplicate")
+        try await store.close()
+    }
+
+    // MARK: Streaming and end-to-end protection
+
+    private func temporaryFile(_ data: Data) throws -> URL {
+        let url = try directory().appendingPathComponent("source.pdf")
+        try data.write(to: url)
+        return url
+    }
+
+    private func storedContent(_ store: SQLiteStore, documentID: UUID) async throws -> (bytes: Data, encryption: String?, key: Data?) {
+        try await store.context.perform { [store] in
+            let request = NSFetchRequest<NSManagedObject>(entityName: ManagedStoreModel.documentContentEntity)
+            request.predicate = NSPredicate(format: "documentID == %@", documentID.uuidString)
+            let row = try XCTUnwrap(try store.context.fetch(request).first)
+            return (row.value(forKey: "bytes") as? Data ?? Data(), row.value(forKey: "encryption") as? String, row.value(forKey: "contentKey") as? Data)
+        }
+    }
+
+    func testSensitiveDocumentIsEncryptedInTheStoreAndRoundTripsAcrossRelaunch() async throws {
+        let d = try directory()
+        var plaintext = Data("%PDF-1.7\nPOLICY-NUMBER-RR-123456789\n".utf8)
+        plaintext.append(Self.pdf(size: 2_600_000))
+        let store = try await SQLiteStore.open(directory: d)
+        let doc = try await store.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Insurance", category: .insurance),
+                                                            source: .fileAt(try temporaryFile(plaintext), filename: "policy.pdf")))
+        XCTAssertEqual(doc.metadata.protection, .endToEnd)
+        let stored = try await storedContent(store, documentID: doc.id)
+        XCTAssertEqual(stored.encryption, DocumentCipher.scheme); XCTAssertEqual(stored.key?.count, 32)
+        XCTAssertNotEqual(stored.bytes, plaintext)
+        XCTAssertNil(stored.bytes.range(of: Data("POLICY-NUMBER-RR-123456789".utf8)), "Plaintext must not reach the mirrored attribute")
+        try await store.close()
+
+        let reopened = try await SQLiteStore.open(directory: d)
+        let inMemory = try await reopened.contents(ofDocument: doc.id).bytes; XCTAssertEqual(inMemory, plaintext)
+        let exported = d.appendingPathComponent("Exports/policy.pdf")
+        let file = try await reopened.exportContents(ofDocument: doc.id, to: exported)
+        XCTAssertEqual(try Data(contentsOf: exported), plaintext); XCTAssertEqual(file, doc.file)
+        let listed = try await reopened.document(id: doc.id); XCTAssertEqual(listed?.metadata.protection, .endToEnd)
+        try await reopened.close()
+    }
+
+    func testLargeStandardFileStreamsFromDiskAndExportsIdentically() async throws {
+        let d = try directory(), plaintext = Self.pdf(size: 30_000_000)
+        let store = try await SQLiteStore.open(directory: d)
+        let doc = try await store.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Owner’s manual", category: .manual),
+                                                            source: .fileAt(try temporaryFile(plaintext), filename: "manual.pdf")))
+        XCTAssertEqual(doc.metadata.protection, .standard)
+        let stored = try await storedContent(store, documentID: doc.id)
+        XCTAssertNil(stored.encryption); XCTAssertEqual(stored.bytes, plaintext)
+        let exported = d.appendingPathComponent("manual.pdf")
+        try await store.exportContents(ofDocument: doc.id, to: exported)
+        XCTAssertEqual(DocumentDigest.sha256(try Data(contentsOf: exported)), DocumentDigest.sha256(plaintext))
+        let staging = d.appendingPathComponent(SQLiteStore.stagingDirectoryName)
+        XCTAssertEqual((try? FileManager.default.contentsOfDirectory(atPath: staging.path))?.count ?? 0, 0, "Staging files are removed after saving")
+        try await store.close()
+    }
+
+    func testChoosingSensitiveTypeReEncryptsAndProtectionIsNeverLowered() async throws {
+        let store = try await SQLiteStore.open(directory: directory()), plaintext = Self.pdf(size: 1_500_000)
+        let doc = try await store.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Scan", category: .other), source: .file(plaintext, filename: "scan.pdf")))
+        let before = try await storedContent(store, documentID: doc.id); XCTAssertNil(before.encryption)
+        let upgraded = try await store.updateDocument(id: doc.id, metadata: DocumentMetadata(title: "Registration", category: .registration))
+        XCTAssertEqual(upgraded.metadata.protection, .endToEnd); XCTAssertEqual(upgraded.file, doc.file)
+        let after = try await storedContent(store, documentID: doc.id)
+        XCTAssertEqual(after.encryption, DocumentCipher.scheme); XCTAssertNotEqual(after.bytes, plaintext)
+        let rows = try await contentRowCount(store, documentID: doc.id); XCTAssertEqual(rows, 1, "The plaintext copy is replaced")
+        let relabeled = try await store.updateDocument(id: doc.id, metadata: DocumentMetadata(title: "Registration scan", category: .other))
+        XCTAssertEqual(relabeled.metadata.protection, .endToEnd)
+        let still = try await storedContent(store, documentID: doc.id); XCTAssertEqual(still.encryption, DocumentCipher.scheme)
+        let bytes = try await store.contents(ofDocument: doc.id).bytes; XCTAssertEqual(bytes, plaintext)
+
+        let optIn = try await store.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Title", category: .other, protection: .endToEnd),
+                                                              source: .file(Self.png, filename: "title.png")))
+        let optInStored = try await storedContent(store, documentID: optIn.id); XCTAssertEqual(optInStored.encryption, DocumentCipher.scheme)
+
+        // A file that hasn't downloaded to this device can't be re-encrypted, so the change is refused.
+        let pending = try await store.addDocument(DocumentDraft(owner: rig, metadata: DocumentMetadata(title: "Pending", category: .other), source: .file(Self.png, filename: "p.png")))
+        try await mutateContent(store, documentID: pending.id) { rows, context in rows.forEach(context.delete) }
+        await expectError(.protectionNeedsContent) { try await store.updateDocument(id: pending.id, metadata: DocumentMetadata(title: "Pending", category: .insurance)) }
+        let unchanged = try await store.document(id: pending.id); XCTAssertEqual(unchanged?.metadata.protection, .standard)
+        try await store.close()
+    }
+
+    func testEncryptedContentDetectsTamperingTruncationReorderingAndWrongKey() async throws {
+        let d = try directory(), store = try await SQLiteStore.open(directory: d)
+        let plaintext = Self.pdf(size: 3 * DocumentCipher.chunkSize + 100)
+        let doc = try await store.addDocument(DocumentDraft(owner: trip, metadata: DocumentMetadata(title: "Reservation", category: .reservation), source: .file(plaintext, filename: "r.pdf")))
+        let original = try await storedContent(store, documentID: doc.id)
+        let sealed = DocumentCipher.chunkSize + 28, header = 9
+        func expectRejected(_ bytes: Data? = nil, key: Data? = nil, _ label: String) async throws {
+            try await mutateContent(store, documentID: doc.id) { rows, _ in
+                rows.forEach { $0.setValue(bytes ?? original.bytes, forKey: "bytes"); $0.setValue(key ?? original.key, forKey: "contentKey") }
+            }
+            await expectError(.contentIntegrity) { try await store.contents(ofDocument: doc.id) }
+            let target = d.appendingPathComponent("out-\(label).pdf")
+            await expectError(.contentIntegrity) { try await store.exportContents(ofDocument: doc.id, to: target) }
+            XCTAssertFalse(FileManager.default.fileExists(atPath: target.path), "\(label): nothing partial is left behind")
+        }
+        var flipped = original.bytes; flipped[flipped.startIndex + header + 40] ^= 0x01
+        try await expectRejected(flipped, "flipped")
+        try await expectRejected(original.bytes.prefix(header + 2 * sealed), "truncated at a chunk boundary")
+        var reordered = original.bytes.prefix(header)
+        reordered.append(original.bytes[(original.bytes.startIndex + header + sealed)..<(original.bytes.startIndex + header + 2 * sealed)])
+        reordered.append(original.bytes[(original.bytes.startIndex + header)..<(original.bytes.startIndex + header + sealed)])
+        reordered.append(original.bytes.suffix(from: original.bytes.startIndex + header + 2 * sealed))
+        try await expectRejected(Data(reordered), "reordered")
+        try await expectRejected(key: Data(repeating: 7, count: 32), "wrong key")
+        // Ciphertext moved from another document fails because the document ID is authenticated.
+        let other = try await store.addDocument(DocumentDraft(owner: trip, metadata: DocumentMetadata(title: "Other", category: .reservation), source: .file(plaintext, filename: "o.pdf")))
+        let otherStored = try await storedContent(store, documentID: other.id)
+        try await expectRejected(otherStored.bytes, key: otherStored.key, "moved between documents")
+        try await mutateContent(store, documentID: doc.id) { rows, _ in rows.forEach { $0.setValue(original.bytes, forKey: "bytes"); $0.setValue(original.key, forKey: "contentKey") } }
+        let restored = try await store.contents(ofDocument: doc.id).bytes; XCTAssertEqual(restored, plaintext)
+        try await store.close()
+    }
+
+    func testProtectedLinkImportIsEncrypted() async throws {
+        let store = try await SQLiteStore.open(directory: directory())
+        let link = try await store.addDocument(DocumentDraft(owner: trip, metadata: DocumentMetadata(title: "Booking", category: .reservation), source: .link(URL(string: "https://example.com/b")!)))
+        _ = try await store.attachContent(toDocument: link.id, source: .file(try temporaryFile(Self.pdf(size: 5000))), filename: "booking.pdf")
+        let stored = try await storedContent(store, documentID: link.id); XCTAssertEqual(stored.encryption, DocumentCipher.scheme)
+        let bytes = try await store.contents(ofDocument: link.id).bytes; XCTAssertEqual(bytes, Self.pdf(size: 5000))
         try await store.close()
     }
 

@@ -35,7 +35,7 @@ enum ManagedStoreModel {
         "id": .stringAttributeType, "ownerKind": .stringAttributeType, "ownerID": .stringAttributeType,
         "title": .stringAttributeType, "category": .stringAttributeType, "notes": .stringAttributeType,
         "linkURL": .stringAttributeType, "filename": .stringAttributeType, "contentType": .stringAttributeType,
-        "checksum": .stringAttributeType, "byteCount": .integer64AttributeType,
+        "checksum": .stringAttributeType, "byteCount": .integer64AttributeType, "protection": .stringAttributeType,
         "issuedOn": .doubleAttributeType, "expiresOn": .doubleAttributeType,
         "createdAt": .doubleAttributeType, "updatedAt": .doubleAttributeType
     ]
@@ -43,9 +43,15 @@ enum ManagedStoreModel {
     /// so it is end-to-end encrypted even without Advanced Data Protection. CloudKit cannot change
     /// a field's encryption after the schema is deployed to production, so this set is fixed for v3.
     static let cloudEncryptedDocumentFields: Set<String> = ["title", "notes", "linkURL", "filename"]
+    /// `checksum` and `byteCount` describe the original plaintext. For end-to-end protected files,
+    /// `bytes` holds `DocumentCipher` output and `contentKey` the per-document key.
     static let documentContentFields: [String: NSAttributeType] = [
-        "documentID": .stringAttributeType, "checksum": .stringAttributeType, "byteCount": .integer64AttributeType
+        "documentID": .stringAttributeType, "checksum": .stringAttributeType, "byteCount": .integer64AttributeType,
+        "encryption": .stringAttributeType, "contentKey": .binaryDataAttributeType
     ]
+    /// CloudKit field encryption does not apply to assets, so the file is encrypted by the app and
+    /// only its small key relies on CloudKit's end-to-end encrypted fields.
+    static let cloudEncryptedContentFields: Set<String> = ["contentKey"]
 
     private static func attribute(_ name: String, _ type: NSAttributeType) -> NSAttributeDescription {
         let value = NSAttributeDescription(); value.name = name; value.attributeType = type; value.isOptional = true; return value
@@ -79,7 +85,7 @@ enum ManagedStoreModel {
         }
         if includesDocuments {
             library.append(entity(documentEntity, fields: documentFields, externalBytes: false, cloudEncrypted: cloudEncryptedDocumentFields))
-            library.append(entity(documentContentEntity, fields: documentContentFields, externalBytes: true))
+            library.append(entity(documentContentEntity, fields: documentContentFields, externalBytes: true, cloudEncrypted: cloudEncryptedContentFields))
         }
         let metadata = NSEntityDescription(); metadata.name = "LocalMetadata"; metadata.managedObjectClassName = "NSManagedObject"
         metadata.properties = [attribute("key", .stringAttributeType), attribute("value", .binaryDataAttributeType)]

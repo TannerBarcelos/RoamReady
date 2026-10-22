@@ -18,15 +18,10 @@ extension DocumentCategory {
     }
 }
 
-extension DocumentOwner {
-    /// Sensible first category when adding from this place in the app.
-    var suggestedCategory: DocumentCategory { kind == .rig ? .manual : .reservation }
-}
-
-/// A selected file awaiting details. Bytes are kept exactly as read.
+/// A selected file awaiting details: a temporary byte-for-byte copy, already inspected.
 struct PendingDocumentFile: Identifiable, Sendable {
     let id = UUID()
-    let data: Data
+    let url: URL
     let file: DocumentFile
 }
 
@@ -60,7 +55,7 @@ struct DocumentVaultSection: View {
         } header: { Text(header) } footer: { Text(footer) }
         .fileImporter(isPresented: $importingFile, allowedContentTypes: [.pdf, .image]) { result in
             switch result {
-            case .success(let url): read { try await DocumentImport.read(pickedURL: url) }
+            case .success(let url): read { try await DocumentImport.copy(pickedURL: url) }
             case .failure(let error): failure = error.localizedDescription
             }
         }
@@ -70,23 +65,28 @@ struct DocumentVaultSection: View {
             guard let selection else { return }
             photoSelection = nil
             read {
-                guard let data = try await selection.loadTransferable(type: Data.self) else { throw DocumentError.unsupportedFileType }
-                return (data, "Photo")
+                guard let photo = try await selection.loadTransferable(type: ImportedPhotoFile.self) else { throw DocumentError.unsupportedFileType }
+                return photo.url
             }
         }
         .sheet(item: $pendingFile) { pending in DocumentEditorView(mode: .newFile(owner, pending)) }
         .sheet(isPresented: $addingLink) { DocumentEditorView(mode: .newLink(owner)) }
     }
 
-    private func read(_ load: @escaping @MainActor () async throws -> (data: Data, filename: String)) {
+    private func read(_ load: @escaping @MainActor () async throws -> URL) {
         Task {
             reading = true; failure = nil
             defer { reading = false }
+            var copied: URL?
             do {
-                let loaded = try await load()
+                let url = try await load(); copied = url
                 // Validate before asking for details so unsupported files fail immediately.
-                pendingFile = PendingDocumentFile(data: loaded.data, file: try DocumentPolicy.inspect(loaded.data, filename: loaded.filename))
-            } catch { failure = error.localizedDescription }
+                let file = try await Task.detached(priority: .userInitiated) { try DocumentPolicy.inspect(.file(url), filename: url.lastPathComponent) }.value
+                pendingFile = PendingDocumentFile(url: url, file: file)
+            } catch {
+                if let copied { DocumentImport.discard(copied) }
+                failure = error.localizedDescription
+            }
         }
     }
 }
@@ -134,6 +134,9 @@ struct DocumentRow: View {
                 }.font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
+            if document.metadata.protection == .endToEnd {
+                Image(systemName: "lock.fill").foregroundStyle(.green).accessibilityLabel("End-to-end encrypted")
+            }
             DocumentAvailabilityIcon(availability: document.availability)
         }
         .accessibilityElement(children: .combine)
@@ -161,7 +164,9 @@ struct DocumentEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let mode: Mode
     @State private var title = ""
-    @State private var category = DocumentCategory.other
+    /// No default: the user must say what kind of document this is, because it decides protection.
+    @State private var category: DocumentCategory?
+    @State private var encryptFile = false
     @State private var notes = ""
     @State private var linkText = ""
     @State private var hasIssued = false
@@ -178,7 +183,7 @@ struct DocumentEditorView: View {
                 if case .newFile(_, let pending) = mode {
                     Section("File") {
                         LabeledContent("Name", value: pending.file.filename)
-                        LabeledContent("Type", value: pending.file.contentType.isImage ? "Image (\(pending.file.contentType.rawValue.uppercased()))" : "PDF")
+                        LabeledContent("Format", value: pending.file.contentType.isImage ? "Image (\(pending.file.contentType.rawValue.uppercased()))" : "PDF")
                         LabeledContent("Size", value: ByteCountFormatter.string(fromByteCount: Int64(pending.file.byteCount), countStyle: .file))
                     }
                 }
@@ -188,11 +193,19 @@ struct DocumentEditorView: View {
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                     } header: { Text("Link") } footer: { Text("Links open online. You can save a copy of a PDF or image link for offline use later.") }
                 }
+                Section {
+                    Picker("Document type", selection: $category) {
+                        Text("Choose a type").tag(DocumentCategory?.none)
+                        ForEach(categories) { type in
+                            Label(type.title, systemImage: type.isSensitive ? "lock.fill" : type.systemImage).tag(Optional(type))
+                        }
+                    }
+                } header: { Text("Document type") } footer: {
+                    Text("Registration, insurance, and reservation documents are always end-to-end encrypted.")
+                }
+                if let category { protectionSection(category) }
                 Section("Details") {
                     TextField("Title", text: $title)
-                    Picker("Category", selection: $category) {
-                        ForEach(categories) { Label($0.title, systemImage: $0.systemImage).tag($0) }
-                    }
                     TextField("Notes (policy number, page references…)", text: $notes, axis: .vertical).lineLimit(3...10)
                 }
                 Section("Dates") {
@@ -206,44 +219,77 @@ struct DocumentEditorView: View {
             .navigationTitle(isNew ? "New document" : "Edit document").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(saving) }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(saving || category == nil) }
             }
             .interactiveDismissDisabled(saving)
             .onAppear(perform: prepare)
+            .onDisappear {
+                // The temporary copy is only needed until the document is saved or abandoned.
+                if case .newFile(_, let pending) = mode { DocumentImport.discard(pending.url) }
+            }
         }
     }
 
+    /// Explains, before saving, exactly how this document will be protected.
+    @ViewBuilder private func protectionSection(_ category: DocumentCategory) -> some View {
+        Section {
+            if category.isSensitive || alreadyEncrypted {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("End-to-end encrypted").font(.headline)
+                        Text(category.isSensitive ? "\(category.title) documents often include policy, plate, VIN, or personal details." : "This document is already encrypted and stays that way.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: { Image(systemName: "lock.fill").foregroundStyle(.green) }
+            } else {
+                Toggle(isOn: $encryptFile) { Label("End-to-end encrypt this file", systemImage: encryptFile ? "lock.fill" : "lock.open") }
+            }
+        } header: { Text("Protection") } footer: {
+            Text(category.isSensitive || alreadyEncrypted || encryptFile
+                 ? "The file is encrypted on this iPhone before it syncs. Only your devices signed in to your Apple Account can read it, not Apple or RoamReady. If your iCloud Keychain is reset, encrypted copies in iCloud can’t be recovered; copies on your devices are unaffected. Encryption can’t be turned off later."
+                 : "The file is encrypted at rest by Apple in iCloud. Titles, notes, and links are always end-to-end encrypted.")
+        }
+    }
+
+    private var alreadyEncrypted: Bool {
+        if case .edit(let document) = mode { return document.metadata.protection == .endToEnd }
+        return false
+    }
     private var isNew: Bool {
         if case .edit = mode { return false }
         return true
     }
-    private var categories: [DocumentCategory] { DocumentCategory.standard.contains(category) ? DocumentCategory.standard : DocumentCategory.standard + [category] }
+    private var categories: [DocumentCategory] {
+        guard let category, !DocumentCategory.standard.contains(category) else { return DocumentCategory.standard }
+        return DocumentCategory.standard + [category]
+    }
 
     private func prepare() {
         guard !prepared else { return }
         prepared = true
         switch mode {
-        case .newFile(let owner, let pending):
-            title = DocumentPolicy.suggestedTitle(filename: pending.file.filename); category = owner.suggestedCategory
-        case .newLink(let owner): category = owner.suggestedCategory
+        case .newFile(_, let pending): title = DocumentPolicy.suggestedTitle(filename: pending.file.filename)
+        case .newLink: break
         case .edit(let document):
             let m = document.metadata
-            title = m.title; category = m.category; notes = m.notes
+            title = m.title; category = m.category; notes = m.notes; encryptFile = m.protection == .endToEnd
             if let date = m.issuedOn { hasIssued = true; issuedOn = date }
             if let date = m.expiresOn { hasExpiration = true; expiresOn = date }
         }
     }
 
     private func save() {
+        guard let category else { return }
         let metadata = DocumentMetadata(title: title, category: category, notes: notes,
-                                        issuedOn: hasIssued ? issuedOn : nil, expiresOn: hasExpiration ? expiresOn : nil)
+                                        issuedOn: hasIssued ? issuedOn : nil, expiresOn: hasExpiration ? expiresOn : nil,
+                                        protection: encryptFile || alreadyEncrypted ? .endToEnd : .standard)
         Task {
             saving = true; failure = nil
             defer { saving = false }
             do {
                 switch mode {
                 case .newFile(let owner, let pending):
-                    try await store.addDocument(DocumentDraft(owner: owner, metadata: metadata, source: .file(pending.data, filename: pending.file.filename)))
+                    try await store.addDocument(DocumentDraft(owner: owner, metadata: metadata, source: .fileAt(pending.url, filename: pending.file.filename)))
                 case .newLink(let owner):
                     let url = try DocumentPolicy.link(from: linkText)
                     var withTitle = metadata
@@ -279,6 +325,11 @@ struct DocumentDetailView: View {
                     Section {
                         Label(document.metadata.category.title, systemImage: document.metadata.category.systemImage)
                         availability(document)
+                        if document.metadata.protection == .endToEnd {
+                            Label("End-to-end encrypted in iCloud", systemImage: "lock.fill").foregroundStyle(.green)
+                        } else {
+                            Label("Encrypted at rest in iCloud", systemImage: "lock.icloud")
+                        }
                     }
                     if document.metadata.issuedOn != nil || document.metadata.expiresOn != nil {
                         Section("Dates") {
