@@ -24,7 +24,7 @@ A tested RIDB-shaped proxy client is ready for future live provider refresh. A d
 
 ## Rig catalog
 
-Keep sourced brochure records and explicit make/model/year government evidence with per-record provenance. The importer must not treat regulatory vPIC chassis/trailer labels as comprehensive retail RV models. Exact model-year tuples and explicitly evidenced rig categories are required. No guessed year ranges or unsupported floorplans should enter onboarding. Official images/manual redistribution need separate rights. See [catalog sourcing](catalog-sourcing.md).
+Deferred. v1 uses owner-entered rig details (required year, make, model, and length for RVs). If a lookup is revisited, these rules apply: Keep sourced brochure records and explicit make/model/year government evidence with per-record provenance. The importer must not treat regulatory vPIC chassis/trailer labels as comprehensive retail RV models. Exact model-year tuples and explicitly evidenced rig categories are required. No guessed year ranges or unsupported floorplans should enter onboarding. Official images/manual redistribution need separate rights. See [catalog sourcing](catalog-sourcing.md).
 
 ## Native release gate
 

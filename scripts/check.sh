@@ -64,19 +64,7 @@ for place in directory["campgrounds"]:
     assert place["sourceURL"].startswith("https://")
     assert all(type(value) is bool for value in place["amenities"].values())
     assert place["checkedAt"] and place["name"] and place["region"]
-catalog = json.loads((root / "Camp/Resources/rig-catalog.json").read_text())
-assert catalog["schemaVersion"] == 1
-assert isinstance(catalog["coverageNote"], str) and catalog["coverageNote"].strip()
-rig_types = {"travelTrailer", "fifthWheel", "motorhome", "camperVan", "truckCamper", "popUp", "carCamping", "tent"}
-record_ids = set()
-for record in catalog["records"]:
-    assert record["id"] not in record_ids, f'Duplicate catalog record: {record["id"]}'
-    record_ids.add(record["id"])
-    assert record["rigType"] in rig_types
-    assert type(record["year"]) is int
-    assert record["sourceURL"].startswith("https://")
-    for key in ("id", "make", "model", "imageRights"):
-        assert isinstance(record[key], str) and record[key].strip(), f"Empty {key}"
+assert not (root / "Camp/Resources/rig-catalog.json").exists(), "v1 uses owner-entered rig details; do not bundle a rig catalog"
 
 project = (root / "RoamReady.xcodeproj/project.pbxproj").read_text()
 definitions = set(re.findall(r"\b([A-F0-9]{24})\s*(?:/\*.*?\*/\s*)?=", project))
@@ -97,7 +85,7 @@ for reference in scheme.iter("BuildableReference"):
 sources = sorted((root / "Camp").rglob("*.swift"))
 assert sources, "No native app source files found"
 subprocess.run([os.environ["SWIFTC_BIN"], "-frontend", "-parse"] + [str(source) for source in sources], check=True)
-print(f"Validated plists, {len(json_files)} JSON files, {len(record_ids)} catalog records, project references, shared scheme.")
+print(f"Validated plists, {len(json_files)} JSON files, project references, shared scheme.")
 print(f"Parsed syntax of {len(sources)} native Swift source files. Apple SDK APIs were NOT type-checked.")
 PY
 

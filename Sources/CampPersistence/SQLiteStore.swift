@@ -89,36 +89,39 @@ public final class SQLiteStore: @unchecked Sendable {
 
     /// Verify a migration against its pre-migration fingerprint, then record the version.
     /// A failed verification fails closed on every launch so a damaged library never mirrors;
-    /// the frozen v2 copy in `Backups/` remains the recovery source.
+    /// the preserved copy in `Backups/` remains the recovery source.
     private func recordSchemaVersion(_ migration: ManagedStoreMigration.Pending?) async throws {
         var pending = migration
-        let backup = ManagedStoreMigration.backupURL(in: directory)
-        if pending == nil, try await metadata("managedSchemaV3") == nil, FileManager.default.fileExists(atPath: backup.path) {
+        if pending == nil, try await metadata(Self.schemaMarker) == nil, let backup = ManagedStoreMigration.existingBackup(in: directory) {
             // Core Data converted the store but the app stopped before verifying it. Verify
-            // against the preserved v2 copy instead of trusting the conversion.
-            pending = ManagedStoreMigration.Pending(sourceVersion: ManagedStoreModel.v2Identifier,
-                                                    fingerprint: try await ManagedStoreMigration.fingerprint(ofStoreAt: backup), backupURL: backup)
+            // against the preserved copy instead of trusting the conversion.
+            pending = ManagedStoreMigration.Pending(sourceVersion: backup.version,
+                                                    fingerprint: try await ManagedStoreMigration.fingerprint(ofStoreAt: backup.url, version: backup.version),
+                                                    backupURL: backup.url)
         }
         let resolved = pending
         try await context.perform { [self] in
-            let marker = try meta("managedSchemaV3").map { String(decoding: $0, as: UTF8.self) }
+            let marker = try meta(Self.schemaMarker).map { String(decoding: $0, as: UTF8.self) }
             if let resolved {
-                let migrated = try ManagedStoreMigration.fingerprint(context: context, model: ManagedStoreModel.v2())
+                guard let source = ManagedStoreModel.model(resolved.sourceVersion) else { throw ManagedStoreMigrationError.unrecognizedStoreVersion }
+                let migrated = try ManagedStoreMigration.fingerprint(context: context, model: source)
                 context.reset()
                 guard migrated == resolved.fingerprint else {
-                    try putMeta("managedSchemaV3", Data("verification-failed".utf8)); try context.save()
+                    try putMeta(Self.schemaMarker, Data("verification-failed".utf8)); try context.save()
                     throw ManagedStoreMigrationError.verificationFailed
                 }
-                try putMeta("managedSchemaV3", Data("migrated-from-\(resolved.sourceVersion)".utf8))
-                try putMeta("managedSchemaV3Backup", Data(resolved.backupURL.lastPathComponent.utf8))
+                try putMeta(Self.schemaMarker, Data("migrated-from-\(resolved.sourceVersion)".utf8))
+                try putMeta(Self.schemaMarker + "Backup", Data(resolved.backupURL.lastPathComponent.utf8))
             } else if marker == nil {
-                try putMeta("managedSchemaV3", Data("created".utf8))
+                try putMeta(Self.schemaMarker, Data("created".utf8))
             } else if marker == "verification-failed" {
                 throw ManagedStoreMigrationError.verificationFailed
             } else { return }
             do { try context.save() } catch { context.rollback(); throw error }
         }
     }
+    /// Device-only record of how this store reached the current model version.
+    static let schemaMarker = "managedSchemaVersion"
 
     static func loadStores(_ container: NSPersistentContainer) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
@@ -187,12 +190,16 @@ public final class SQLiteStore: @unchecked Sendable {
     }
 
     public func save(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) async throws {
-        try await context.perform { [self] in
+        let purged: Set<String> = try await context.perform { [self] () throws -> Set<String> in
             do {
-                try apply(from: baseline, to: desired)
+                let purged = try apply(from: baseline, to: desired)
                 if context.hasChanges { try context.save() }
+                return purged
             } catch { context.rollback(); throw error }
         }
+        // Local copies go only after the commit that released them succeeded.
+        let media = directory.appendingPathComponent("Media", isDirectory: true)
+        for filename in purged { try? FileManager.default.removeItem(at: media.appendingPathComponent(filename)) }
         _ = try await snapshot()
     }
 
@@ -227,7 +234,8 @@ public final class SQLiteStore: @unchecked Sendable {
         }
     }
 
-    private func apply(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) throws {
+    /// Returns photo filenames whose bytes were purged because nothing references them any more.
+    private func apply(from baseline: LibrarySnapshot, to desired: LibrarySnapshot) throws -> Set<String> {
         let before = try RecordProjection.documents(baseline), after = try RecordProjection.documents(desired)
         for key in Set(before.keys).union(after.keys).sorted() {
             let previous = before[key], next = after[key]
@@ -259,14 +267,36 @@ public final class SQLiteStore: @unchecked Sendable {
             }
         }
         for filename in RecordProjection.referencedPhotos(desired.state).subtracting(RecordProjection.referencedPhotos(baseline.state)) {
-            guard try rows("asset:\(filename)", .asset).isEmpty else { continue }
             guard filename == (filename as NSString).lastPathComponent, !filename.contains("..") else { throw ReplicationError.invalidRecord }
             let path = directory.appendingPathComponent("Media", isDirectory: true).appendingPathComponent(filename)
+            let existing = try rows("asset:\(filename)", .asset)
+            if !existing.isEmpty {
+                // A purged asset that is referenced again is revived from the local copy when present.
+                guard existing.allSatisfy({ $0.value(forKey: "removed") as? Bool == true }),
+                      let bytes = try? Data(contentsOf: path) else { continue }
+                existing[0].setValue(false, forKey: "removed"); existing[0].setValue(bytes, forKey: "bytes")
+                existing[0].setValue(Self.checksum(bytes), forKey: "checksum")
+                continue
+            }
             guard FileManager.default.fileExists(atPath: path.path) else { continue }
             let bytes = try Data(contentsOf: path), row = insert("asset:\(filename)", .asset)
             row.setValue(filename, forKey: "filename"); row.setValue(Self.checksum(bytes), forKey: "checksum")
             row.setValue(bytes, forKey: "bytes")
         }
+        // Purge photos this change released, unless a live row (including one synced from another
+        // device) still references them. Removing the bytes also frees the user's iCloud storage.
+        let released = RecordProjection.referencedPhotos(baseline.state).subtracting(RecordProjection.referencedPhotos(desired.state))
+        guard !released.isEmpty else { return [] }
+        let live = try records(kinds: [.rig, .photo]).filter { $0.deletion == nil }
+        let stillReferenced = Set(live.compactMap { ($0.fields["photoFilename"] ?? $0.fields["filename"])?.string })
+        var purged = Set<String>()
+        for filename in released.subtracting(stillReferenced) {
+            for row in try rows("asset:\(filename)", .asset) {
+                row.setValue(true, forKey: "removed"); row.setValue(nil, forKey: "bytes")
+            }
+            purged.insert(filename)
+        }
+        return purged
     }
 
     private static func checksum(_ data: Data) -> String { SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() }
@@ -291,7 +321,7 @@ public final class SQLiteStore: @unchecked Sendable {
                 guard !key.isEmpty, let row = groups[key]?.sorted(by: { identity($0) < identity($1) }).first else { return nil }
                 let deleted = groups[key]!.contains { $0.value(forKey: "removed") as? Bool == true }
                 var fields: [String: RecordValue] = [:]
-                for (field, type) in LegacyStoreModel.fields(kind) {
+                for (field, type) in LegacyStoreModel.managedFields(kind) {
                     guard let value = row.value(forKey: field) else { continue }
                     switch type {
                     case .stringAttributeType: fields[field] = .string(value as! String)
@@ -305,7 +335,7 @@ public final class SQLiteStore: @unchecked Sendable {
         }
     }
     private func set(_ value: RecordValue, field: String, kind: RecordKind, row: NSManagedObject) throws {
-        guard let type = LegacyStoreModel.fields(kind)[field] else { throw ReplicationError.invalidRecord }
+        guard let type = LegacyStoreModel.managedFields(kind)[field] else { throw ReplicationError.invalidRecord }
         switch (type, value) {
         case (_, .null): row.setValue(nil, forKey: field)
         case (.stringAttributeType, .string(let v)): row.setValue(v, forKey: field)

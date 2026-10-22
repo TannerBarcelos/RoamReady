@@ -23,8 +23,6 @@ final class CampStore {
     let directory: URL
     let media: MediaStore
     let documentFiles: DocumentFileCache
-    let catalog: [RigCatalogRecord]
-    let catalogNotice: String
     @ObservationIgnored private var disk: SQLiteStore?
     @ObservationIgnored private var baseline = LibrarySnapshot()
     @ObservationIgnored private var loadInProgress = false
@@ -46,15 +44,6 @@ final class CampStore {
         directory = URL.applicationSupportDirectory.appendingPathComponent("Camp", isDirectory: true)
         media = MediaStore(directory: directory.appendingPathComponent("Media", isDirectory: true))
         documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appendingPathComponent("RoamReadyDocuments", isDirectory: true))
-        if let url = Bundle.main.url(forResource: "rig-catalog", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let decoded = try? RigCatalog.decode(data) {
-            catalog = decoded.records
-            catalogNotice = decoded.coverageNote
-        } else {
-            catalog = []
-            catalogNotice = "The catalog is unavailable. You can still enter your rig manually."
-        }
     }
 
     private func serializeLifecycle(_ operation: @escaping @MainActor () async -> Void) async {
@@ -139,8 +128,23 @@ final class CampStore {
             suspendedUnsaved = (baseline, LibrarySnapshot(state: state, favorites: savedCampgroundIDs))
         }
     }
+    /// After an iCloud account change, reopen local-only until the person retries or relaunches.
     private func suspendCloudMirroring() async {
         cloudSuppressed = true
+        await reopenLibrary()
+    }
+    /// Applies the iCloud setting now. Reopening never deletes local data or the iCloud copy.
+    func setCloudSync(_ enabled: Bool) async {
+        sync.setRequested(enabled)
+        cloudSuppressed = false
+        await reopenLibrary()
+    }
+    /// Re-checks the iCloud account, e.g. after signing in to iCloud in Settings.
+    func retryCloudSync() async {
+        cloudSuppressed = false
+        await reopenLibrary()
+    }
+    private func reopenLibrary() async {
         await serializeLifecycle { [self] in
             guard wantsLibraryAccess else { return }
             isTransitioning = true; isLoading = true
@@ -346,7 +350,7 @@ final class CampStore {
     func deleteTrip(_ id: UUID) {
         guard !isTransitioning, wantsLibraryAccess else { return }
         state.trips.removeAll { $0.id == id }
-        // Retain media until a later successful garbage-collection pass, never delete before commit.
+        // Photo bytes no longer referenced are purged in the same commit that removes the trip.
         persist()
     }
 

@@ -27,6 +27,16 @@ enum LegacyStoreModel {
         for n in booleans { result[n] = .booleanAttributeType }
         return result
     }
+    /// Current managed (CloudKit-mirrored) attributes: v1 plus additive, optional fields.
+    /// Lightweight migration infers these; deploy the CloudKit schema again before release.
+    static func managedFields(_ kind: RecordKind) -> [String: NSAttributeType] {
+        var result = fields(kind)
+        if kind == .rig {
+            for n in ["lengthFeet", "slideCount", "axleCount"] { result[n] = .doubleAttributeType }
+            result["hasBunkhouse"] = .booleanAttributeType
+        }
+        return result
+    }
     static func v1() -> NSManagedObjectModel {
         func attribute(_ name: String, _ type: NSAttributeType, optional: Bool = true) -> NSAttributeDescription {
             let a = NSAttributeDescription(); a.name = name; a.attributeType = type; a.isOptional = optional; return a

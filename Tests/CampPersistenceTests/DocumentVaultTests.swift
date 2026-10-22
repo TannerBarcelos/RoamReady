@@ -61,13 +61,29 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         XCTAssertEqual(shape(v2, "Library"), expected)
         XCTAssertEqual(shape(v2, "Device"), ["LocalMetadata": ["key:\(s)", "value:\(b)"]])
         XCTAssertEqual(v2.entitiesByName["RR_asset"]?.attributesByName["bytes"]?.allowsExternalBinaryDataStorage, true)
-        // v3 must carry every v2 entity unchanged so the store migrates without data changes.
+
+        // v3 (frozen): v2 plus optional rig details, nothing else.
+        var expectedV3 = expected
+        expectedV3["RR_rig"] = (expected["RR_rig"]! + ["lengthFeet:\(n)", "slideCount:\(n)", "axleCount:\(n)", "hasBunkhouse:\(flag)"]).sorted()
         let v3 = ManagedStoreModel.v3()
-        for (name, hash) in v2.entityVersionHashesByName { XCTAssertEqual(v3.entityVersionHashesByName[name], hash, name) }
-        XCTAssertNotEqual(ManagedStoreModel.immutable(v2).versionChecksum, ManagedStoreModel.immutable(v3).versionChecksum)
+        XCTAssertEqual(v3.versionIdentifiers, [ManagedStoreModel.v3Identifier])
+        XCTAssertEqual(shape(v3, "Library"), expectedV3)
+
+        // v4 must carry every v3 entity unchanged so the store migrates without data changes.
+        let v4 = ManagedStoreModel.v4()
+        for (name, hash) in v3.entityVersionHashesByName { XCTAssertEqual(v4.entityVersionHashesByName[name], hash, name) }
+        // The runtime record mapping must describe exactly the current model's record attributes.
+        for kind in ManagedStoreModel.v2RecordKinds {
+            XCTAssertEqual(Set(v4.entitiesByName[LegacyStoreModel.name(kind)]!.attributesByName.keys).subtracting(["key", "rowID", "removed", "bytes"]),
+                           Set(LegacyStoreModel.managedFields(kind).keys), kind.rawValue)
+        }
+        let checksums = [v2, v3, v4].map { ManagedStoreModel.immutable($0).versionChecksum }
+        XCTAssertEqual(Set(checksums).count, 3)
         // Checksums must be stable across independently built copies of the same frozen model.
-        XCTAssertEqual(ManagedStoreModel.immutable(ManagedStoreModel.v2()).versionChecksum, ManagedStoreModel.immutable(v2).versionChecksum)
+        XCTAssertEqual(ManagedStoreModel.immutable(ManagedStoreModel.v2()).versionChecksum, checksums[0])
+        XCTAssertEqual(ManagedStoreModel.immutable(ManagedStoreModel.v3()).versionChecksum, checksums[1])
         XCTAssertNoThrow(try NSMappingModel.inferredMappingModel(forSourceModel: v2, destinationModel: v3))
+        XCTAssertNoThrow(try NSMappingModel.inferredMappingModel(forSourceModel: v3, destinationModel: v4))
     }
 
     func testDocumentEntitiesAreCloudKitCompatibleAndMirrored() throws {
@@ -497,23 +513,39 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         let store = try await SQLiteStore.open(directory: d)
         let migrated = try await store.snapshot(); XCTAssertEqual(migrated, base)
         let photo = try await store.asset(filename: "photo.jpg"); XCTAssertEqual(photo, photoBytes)
-        let marker = try await store.metadata("managedSchemaV3")
+        let marker = try await store.metadata(SQLiteStore.schemaMarker)
         XCTAssertEqual(marker.map { String(decoding: $0, as: UTF8.self) }, "migrated-from-\(ManagedStoreModel.v2Identifier)")
-        let backup = ManagedStoreMigration.backupURL(in: d)
+        let backup = ManagedStoreMigration.backupURL(in: d, version: ManagedStoreModel.v2Identifier)
         let backupMetadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(type: .sqlite, at: backup)
         XCTAssertTrue(ManagedStoreModel.v2().isConfiguration(withName: "Library", compatibleWithStoreMetadata: backupMetadata))
         let libraryMetadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(type: .sqlite, at: d.appendingPathComponent("RoamReadyManaged.sqlite"))
-        XCTAssertTrue(ManagedStoreModel.v3().isConfiguration(withName: "Library", compatibleWithStoreMetadata: libraryMetadata))
+        XCTAssertTrue(ManagedStoreModel.v4().isConfiguration(withName: "Library", compatibleWithStoreMetadata: libraryMetadata))
         let doc = try await store.addDocument(DocumentDraft(owner: .rig(base.state.profile!.rig.id), metadata: DocumentMetadata(title: "Manual"), source: .file(Self.pdf(), filename: "m.pdf")))
         try await store.close()
 
         let reopened = try await SQLiteStore.open(directory: d)
         let again = try await reopened.snapshot(); XCTAssertEqual(again, base)
-        let still = try await reopened.metadata("managedSchemaV3")
+        let still = try await reopened.metadata(SQLiteStore.schemaMarker)
         XCTAssertEqual(still.map { String(decoding: $0, as: UTF8.self) }, "migrated-from-\(ManagedStoreModel.v2Identifier)")
         let bytes = try await reopened.contents(ofDocument: doc.id).bytes; XCTAssertEqual(bytes, Self.pdf())
         let photoAgain = try await reopened.asset(filename: "photo.jpg"); XCTAssertEqual(photoAgain, photoBytes)
         try await reopened.close()
+    }
+
+    func testV3StoreWithRigDetailsMigratesToV4() async throws {
+        let d = try directory()
+        let rig = Rig(make: "Grand Design", model: "Imagine", year: 2025, lengthFeet: 28.5, slideCount: 2, axleCount: 2, hasBunkhouse: false)
+        let trip = try Trip.create(campgroundName: "Lakeside", arrival: Date(timeIntervalSince1970: 1_750_000_000), departure: Date(timeIntervalSince1970: 1_750_086_400), rig: rig)
+        let base = LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig), trips: [trip], templates: ChecklistFactory.templates(for: rig)))
+        try await makeV2Store(directory: d, base: base, photo: Data([5, 6, 7]), model: ManagedStoreModel.v3())
+        let store = try await SQLiteStore.open(directory: d)
+        let migrated = try await store.snapshot(); XCTAssertEqual(migrated, base)
+        XCTAssertEqual(migrated.state.profile?.rig.lengthFeet, 28.5)
+        let marker = try await store.metadata(SQLiteStore.schemaMarker)
+        XCTAssertEqual(marker.map { String(decoding: $0, as: UTF8.self) }, "migrated-from-\(ManagedStoreModel.v3Identifier)")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d, version: ManagedStoreModel.v3Identifier).path))
+        let photo = try await store.asset(filename: "photo.jpg"); XCTAssertEqual(photo, Data([5, 6, 7]))
+        try await store.close()
     }
 
     func testInterruptedMigrationIsVerifiedAgainstBackupAndFailsClosedOnMismatch() async throws {
@@ -521,13 +553,13 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         try await makeV2Store(directory: d, base: base, photo: Data([1, 2, 3]))
         var store = try await SQLiteStore.open(directory: d)
         // Simulate termination after Core Data converted the store but before verification.
-        try await store.setMetadata("managedSchemaV3", value: nil)
+        try await store.setMetadata(SQLiteStore.schemaMarker, value: nil)
         try await store.close()
         store = try await SQLiteStore.open(directory: d)
-        let resumed = try await store.metadata("managedSchemaV3")
+        let resumed = try await store.metadata(SQLiteStore.schemaMarker)
         XCTAssertEqual(resumed.map { String(decoding: $0, as: UTF8.self) }, "migrated-from-\(ManagedStoreModel.v2Identifier)")
         // Now diverge from the backup and interrupt again: verification must refuse to open.
-        try await store.setMetadata("managedSchemaV3", value: nil)
+        try await store.setMetadata(SQLiteStore.schemaMarker, value: nil)
         try await store.context.perform { [store] in
             let request = NSFetchRequest<NSManagedObject>(entityName: LegacyStoreModel.name(.trip))
             try store.context.fetch(request).forEach { $0.setValue("Changed outside migration", forKey: "notes") }
@@ -538,7 +570,7 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
             do { _ = try await SQLiteStore.open(directory: d); XCTFail("Expected verification failure") }
             catch { XCTAssertEqual(error as? ManagedStoreMigrationError, .verificationFailed) }
         }
-        XCTAssertTrue(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d).path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d, version: ManagedStoreModel.v2Identifier).path))
     }
 
     func testUnknownStoreVersionIsRefusedAndLeftUntouched() async throws {
@@ -554,14 +586,14 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         // Still in the newer format: nothing was inferred or converted.
         let metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(type: .sqlite, at: url)
         XCTAssertTrue(future.isConfiguration(withName: "Library", compatibleWithStoreMetadata: metadata))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d, version: ManagedStoreModel.v2Identifier).path))
     }
 
     func testNewStoreRecordsCurrentSchemaWithoutBackup() async throws {
         let d = try directory(), store = try await SQLiteStore.open(directory: d)
-        let marker = try await store.metadata("managedSchemaV3")
+        let marker = try await store.metadata(SQLiteStore.schemaMarker)
         XCTAssertEqual(marker.map { String(decoding: $0, as: UTF8.self) }, "created")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: ManagedStoreMigration.backupURL(in: d, version: ManagedStoreModel.v2Identifier).path))
         try await store.close()
     }
 
@@ -603,9 +635,9 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         for store in container.persistentStoreCoordinator.persistentStores { try container.persistentStoreCoordinator.remove(store) }
     }
 
-    private func makeV2Store(directory: URL, base: LibrarySnapshot, photo: Data) async throws {
+    private func makeV2Store(directory: URL, base: LibrarySnapshot, photo: Data, model: NSManagedObjectModel = ManagedStoreModel.v2()) async throws {
         let docs = Array(try RecordProjection.documents(base).values)
-        try await makeStore(directory: directory, model: ManagedStoreModel.v2()) { context in
+        try await makeStore(directory: directory, model: model) { context in
             for doc in docs {
                 let row = NSEntityDescription.insertNewObject(forEntityName: LegacyStoreModel.name(doc.kind), into: context)
                 row.setValue(doc.key, forKey: "key"); row.setValue(UUID().uuidString, forKey: "rowID")

@@ -19,6 +19,9 @@ struct ProfileView: View {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(profile.name.isEmpty ? "Your camping profile" : profile.name).font(.title3.bold())
                             Text(profile.rig.displayName).foregroundStyle(.secondary)
+                            if !profile.rig.detailSummary.isEmpty {
+                                Text(profile.rig.detailSummary).font(.caption).foregroundStyle(.secondary)
+                            }
                             Text(profile.experience.title).font(.caption).foregroundStyle(.secondary)
                         }
                     }.padding(.vertical, 6)
@@ -78,7 +81,6 @@ struct ProfileView: View {
                 Text("Saved guidance is always available. AI explanations use Apple Foundation Models on iPhone 16 or newer when Apple Intelligence is enabled and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
-                Text(store.catalogNotice).font(.footnote).foregroundStyle(.secondary)
                 Text("Camp Finder downloads a dated federal campground and campsite snapshot from RIDB. It does not show live booking availability.").font(.footnote).foregroundStyle(.secondary)
                 if let url = URL(string: ChecklistFactory.sourceURL) { Link("Checklist reference: Camping World", destination: url) }
             } header: { Text("Sources & coverage") } footer: {
@@ -130,9 +132,9 @@ struct EditProfileView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        guard connectivity.isOnline else { return }
+                        guard connectivity.isOnline, profile.rig.hasRequiredDetails else { return }
                         store.updateProfile(profile, rebuildTemplates: rigChanged && rebuildTemplates); dismiss()
-                    }
+                    }.disabled(!profile.rig.hasRequiredDetails)
                 }
             }
         }

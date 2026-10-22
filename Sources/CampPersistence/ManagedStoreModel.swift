@@ -3,22 +3,42 @@ import Foundation
 import CoreData
 import CampCore
 
-/// Versioned managed models. Shipped versions are frozen: never edit `v2()` or anything it
-/// reads. Add a new version, keep the previous one buildable, and migrate explicitly
-/// (see `ManagedStoreMigration`). `SQLiteStoreTests` pins each frozen shape.
+/// Versioned managed models. Shipped versions are frozen: never edit `v2()`, `v3()`, or anything
+/// they read. Add a new version, keep every previous one buildable, and migrate explicitly
+/// (see `ManagedStoreMigration`). `DocumentVaultTests` pins each frozen shape.
 enum ManagedStoreModel {
     static let library = "Library", device = "Device"
-    static let v2Identifier = "RoamReady.Managed.v2", v3Identifier = "RoamReady.Managed.v3"
+    static let v2Identifier = "RoamReady.Managed.v2", v3Identifier = "RoamReady.Managed.v3", v4Identifier = "RoamReady.Managed.v4"
     static let documentEntity = "RR_document", documentContentEntity = "RR_documentContent"
 
     /// The model new and migrated stores open with.
-    static func make() -> NSManagedObjectModel { v3() }
+    static func make() -> NSManagedObjectModel { v4() }
 
     /// FROZEN: first managed CloudKit mirroring model.
-    static func v2() -> NSManagedObjectModel { build(version: v2Identifier, includesDocuments: false) }
+    static func v2() -> NSManagedObjectModel { build(version: v2Identifier, fields: v2Fields, includesDocuments: false) }
 
-    /// v2 plus the shared document vault. Purely additive, so a lightweight mapping exists.
-    static func v3() -> NSManagedObjectModel { build(version: v3Identifier, includesDocuments: true) }
+    /// FROZEN: v2 plus optional rig details (length, slides, axles, bunkhouse).
+    static func v3() -> NSManagedObjectModel { build(version: v3Identifier, fields: v3Fields, includesDocuments: false) }
+
+    /// v3 plus the shared document vault. Purely additive, so a lightweight mapping exists.
+    static func v4() -> NSManagedObjectModel { build(version: v4Identifier, fields: v3Fields, includesDocuments: true) }
+
+    /// Every version, oldest first. Migration stages connect neighbours.
+    static let versions: [(identifier: String, make: @Sendable () -> NSManagedObjectModel)] = [
+        (v2Identifier, { v2() }), (v3Identifier, { v3() }), (v4Identifier, { v4() })
+    ]
+    static func model(_ identifier: String) -> NSManagedObjectModel? { versions.first { $0.identifier == identifier }?.make() }
+
+    static func v2Fields(_ kind: RecordKind) -> [String: NSAttributeType] { LegacyStoreModel.fields(kind) }
+    /// Frozen copy of the rig details added in v3, independent of `LegacyStoreModel.managedFields`.
+    static func v3Fields(_ kind: RecordKind) -> [String: NSAttributeType] {
+        var result = v2Fields(kind)
+        if kind == .rig {
+            for name in ["lengthFeet", "slideCount", "axleCount"] { result[name] = .doubleAttributeType }
+            result["hasBunkhouse"] = .booleanAttributeType
+        }
+        return result
+    }
 
     /// A model's version checksum is only stable once it can no longer be edited. Attaching it
     /// to a coordinator locks it; read `versionChecksum` only from models returned here.
@@ -83,10 +103,10 @@ enum ManagedStoreModel {
         return entity
     }
 
-    private static func build(version: String, includesDocuments: Bool) -> NSManagedObjectModel {
+    private static func build(version: String, fields: (RecordKind) -> [String: NSAttributeType], includesDocuments: Bool) -> NSManagedObjectModel {
         let model = NSManagedObjectModel(); model.versionIdentifiers = [version]
         var library = v2RecordKinds.map { kind in
-            entity(LegacyStoreModel.name(kind), fields: LegacyStoreModel.fields(kind), externalBytes: kind == .asset)
+            entity(LegacyStoreModel.name(kind), fields: fields(kind), externalBytes: kind == .asset)
         }
         if includesDocuments {
             library.append(entity(documentEntity, fields: documentFields, externalBytes: false, cloudEncrypted: cloudEncryptedDocumentFields))

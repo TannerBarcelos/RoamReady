@@ -12,8 +12,11 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         addTeardownBlock { try? FileManager.default.removeItem(at: d) }
         return d
     }
-    private func library() throws -> LibrarySnapshot {
-        let rig = Rig(make: "Test", model: "Trailer")
+    /// `rigDetails: false` matches data written before the rig detail attributes existed (frozen v1 stores).
+    private func library(rigDetails: Bool = true) throws -> LibrarySnapshot {
+        let rig = rigDetails
+            ? Rig(make: "Test", model: "Trailer", year: 2024, lengthFeet: 23.5, slideCount: 1, axleCount: 2, hasBunkhouse: true)
+            : Rig(make: "Test", model: "Trailer")
         let trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000), departure: Date(timeIntervalSince1970: 1_750_086_400), rig: rig)
         return LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig), trips: [trip], templates: ChecklistFactory.templates(for: rig)), favorites: ["ridb-232447"])
     }
@@ -173,7 +176,7 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await store.close()
     }
     func testPreviousSQLiteMigrationRetainsAssetsNotesAndSource() async throws {
-        let d = try directory(), base = try library()
+        let d = try directory(), base = try library(rigDetails: false)
         try await makePreviousStore(directory: d, base: base)
         let store = try await SQLiteStore.open(directory: d)
         let imported = try await store.snapshot(); XCTAssertEqual(imported, base)
@@ -186,12 +189,157 @@ final class SQLiteStoreTests: XCTestCase, @unchecked Sendable {
         try await reopened.close()
     }
     func testIncompletePreviousSyncPreservesUsableLibraryAndSource() async throws {
-        let d = try directory(), base = try library()
+        let d = try directory(), base = try library(rigDetails: false)
         try await makePreviousStore(directory: d, base: base, staged: true)
         let store = try await SQLiteStore.open(directory: d)
         let imported = try await store.snapshot(); XCTAssertEqual(imported, base)
         let notice = try await store.metadata("migrationNotice"); XCTAssertNotNil(notice)
         XCTAssertTrue(FileManager.default.fileExists(atPath: d.appendingPathComponent("RoamReady.sqlite").path))
+        try await store.close()
+    }
+
+    func testStoreCreatedBeforeRigDetailsMigratesAndThenPersistsThem() async throws {
+        let d = try directory()
+        let oldRig = Rig(type: .travelTrailer, make: "Forest River", model: "No Boundaries NB19.5", year: 2024, photoFilename: "rig.jpg")
+        let old = LibrarySnapshot(state: AppState(profile: CamperProfile(name: "Camper", rig: oldRig)))
+        // Build the previous managed (v2) model, without the rig detail attributes, and write rows with it.
+        let v2 = ManagedStoreModel.v2()
+        XCTAssertNil(v2.entitiesByName[LegacyStoreModel.name(.rig)]?.attributesByName["lengthFeet"])
+        let container = NSPersistentContainer(name: "RoamReadyV2", managedObjectModel: v2)
+        let library = NSPersistentStoreDescription(url: d.appendingPathComponent("RoamReadyManaged.sqlite"))
+        library.configuration = "Library"
+        library.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+        let device = NSPersistentStoreDescription(url: d.appendingPathComponent("RoamReadyDevice.sqlite"))
+        device.configuration = "Device"
+        for description in [device, library] {
+            container.persistentStoreDescriptions = [description]
+            try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
+                container.loadPersistentStores { _, error in if let error { c.resume(throwing: error) } else { c.resume() } }
+            }
+        }
+        let context = container.newBackgroundContext()
+        try await context.perform {
+            for doc in try RecordProjection.documents(old).values {
+                let row = NSEntityDescription.insertNewObject(forEntityName: LegacyStoreModel.name(doc.kind), into: context)
+                row.setValue(doc.key, forKey: "key"); row.setValue(UUID().uuidString, forKey: "rowID")
+                for (field, value) in doc.fields {
+                    switch value {
+                    case .string(let v): row.setValue(v, forKey: field)
+                    case .number(let v): row.setValue(v, forKey: field)
+                    case .bool(let v): row.setValue(v, forKey: field)
+                    case .null: break
+                    default: row.setValue(try JSONEncoder().encode(value), forKey: field)
+                    }
+                }
+            }
+            try context.save()
+        }
+        for store in container.persistentStoreCoordinator.persistentStores { try container.persistentStoreCoordinator.remove(store) }
+
+        // Opening with the current model migrates in place; the existing rig, photo reference, and emoji survive.
+        let store = try await SQLiteStore.open(directory: d)
+        let migrated = try await store.snapshot()
+        XCTAssertEqual(migrated, old)
+        XCTAssertNil(migrated.state.profile?.rig.lengthFeet)
+        XCTAssertEqual(migrated.state.profile?.rig.photoFilename, "rig.jpg")
+        XCTAssertEqual(migrated.state.profile?.rig.emoji, oldRig.emoji)
+
+        var completed = migrated
+        completed.state.profile?.rig.lengthFeet = 19.5
+        completed.state.profile?.rig.setSlideCount(0)
+        completed.state.profile?.rig.axleCount = 1
+        completed.state.profile?.rig.hasBunkhouse = false
+        try await store.save(from: migrated, to: completed)
+        try await store.close()
+        let reopened = try await SQLiteStore.open(directory: d)
+        let restored = try await reopened.snapshot()
+        XCTAssertEqual(restored, completed)
+        XCTAssertEqual(restored.state.profile?.rig.slideCount, 0)
+        XCTAssertEqual(restored.state.profile?.rig.hasBunkhouse, false)
+
+        // Clearing an optional detail removes it rather than leaving a stale value.
+        var cleared = restored
+        cleared.state.profile?.rig.axleCount = nil
+        try await reopened.save(from: restored, to: cleared)
+        let afterClear = try await reopened.snapshot()
+        XCTAssertNil(afterClear.state.profile?.rig.axleCount)
+        try await reopened.close()
+    }
+    func testRigDetailAttributesAreOptionalInTheMirroredModelOnly() {
+        let rig = ManagedStoreModel.make().entitiesByName[LegacyStoreModel.name(.rig)]!
+        for name in ["lengthFeet", "slideCount", "axleCount", "hasBunkhouse"] {
+            XCTAssertEqual(rig.attributesByName[name]?.isOptional, true, name)
+        }
+        let frozen = LegacyStoreModel.v1().entitiesByName[LegacyStoreModel.name(.rig)]!
+        XCTAssertNil(frozen.attributesByName["lengthFeet"], "The frozen v1 import model must not change")
+    }
+
+    func testUnreferencedPhotosArePurgedOnlyAfterTheLastReferenceGoes() async throws {
+        let d = try directory()
+        let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
+        let oldBytes = Data([1, 1, 1]), newBytes = Data([2, 2, 2]), tripBytes = Data([3, 3, 3])
+        try oldBytes.write(to: media.appendingPathComponent("old.jpg"))
+        try newBytes.write(to: media.appendingPathComponent("new.jpg"))
+        try tripBytes.write(to: media.appendingPathComponent("trip.jpg"))
+        func exists(_ name: String) -> Bool { FileManager.default.fileExists(atPath: media.appendingPathComponent(name).path) }
+        let rig = Rig(make: "Forest River", model: "No Boundaries NB19.5", year: 2024, photoFilename: "old.jpg", lengthFeet: 19.5)
+        let first = LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig)))
+        let store = try await SQLiteStore.open(directory: d)
+        try await store.save(from: LibrarySnapshot(), to: first)
+        let stored = try await store.asset(filename: "old.jpg"); XCTAssertEqual(stored, oldBytes)
+
+        // Replacing the rig photo purges the old bytes and local copy.
+        var replaced = first; replaced.state.profile?.rig.photoFilename = "new.jpg"
+        try await store.save(from: first, to: replaced)
+        let purgedOld = try await store.asset(filename: "old.jpg"); XCTAssertNil(purgedOld)
+        XCTAssertFalse(exists("old.jpg"))
+        let keptNew = try await store.asset(filename: "new.jpg"); XCTAssertEqual(keptNew, newBytes)
+
+        // A trip's rig snapshot keeps the photo after the profile switches to emoji.
+        var withTrip = replaced
+        var trip = try Trip.create(campgroundName: "Pines", arrival: Date(timeIntervalSince1970: 1_750_000_000),
+                                   departure: Date(timeIntervalSince1970: 1_750_086_400), rig: replaced.state.profile!.rig)
+        trip.photos = [TripPhoto(filename: "trip.jpg", createdAt: trip.arrival)]
+        withTrip.state.trips = [trip]
+        try await store.save(from: replaced, to: withTrip)
+        var emoji = withTrip; emoji.state.profile?.rig.photoFilename = nil
+        try await store.save(from: withTrip, to: emoji)
+        let snapshotPhoto = try await store.asset(filename: "new.jpg"); XCTAssertEqual(snapshotPhoto, newBytes)
+        XCTAssertTrue(exists("new.jpg"))
+
+        // Removing a trip photo purges it; the trip and its rig photo stay.
+        var noTripPhoto = emoji; noTripPhoto.state.trips[0].photos = []
+        try await store.save(from: emoji, to: noTripPhoto)
+        let purgedTripPhoto = try await store.asset(filename: "trip.jpg"); XCTAssertNil(purgedTripPhoto)
+        XCTAssertFalse(exists("trip.jpg"))
+        let stillNew = try await store.asset(filename: "new.jpg"); XCTAssertEqual(stillNew, newBytes)
+
+        // Deleting the trip releases the last reference to the rig photo.
+        var noTrip = noTripPhoto; noTrip.state.trips = []
+        try await store.save(from: noTripPhoto, to: noTrip)
+        let purgedNew = try await store.asset(filename: "new.jpg"); XCTAssertNil(purgedNew)
+        XCTAssertFalse(exists("new.jpg"))
+        try await store.close()
+
+        let reopened = try await SQLiteStore.open(directory: d)
+        let restored = try await reopened.snapshot(); XCTAssertEqual(restored, noTrip)
+        try await reopened.close()
+    }
+    func testPurgedPhotoReferencedAgainIsRevivedFromTheLocalCopy() async throws {
+        let d = try directory()
+        let media = d.appendingPathComponent("Media"); try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
+        let bytes = Data([4, 5, 6])
+        let rig = Rig(make: "Jayco", model: "Eagle", year: 2025, photoFilename: "rig.jpg", lengthFeet: 38)
+        try bytes.write(to: media.appendingPathComponent("rig.jpg"))
+        let withPhoto = LibrarySnapshot(state: AppState(profile: CamperProfile(rig: rig)))
+        var withoutPhoto = withPhoto; withoutPhoto.state.profile?.rig.photoFilename = nil
+        let store = try await SQLiteStore.open(directory: d)
+        try await store.save(from: LibrarySnapshot(), to: withPhoto)
+        try await store.save(from: withPhoto, to: withoutPhoto)
+        let purged = try await store.asset(filename: "rig.jpg"); XCTAssertNil(purged)
+        try bytes.write(to: media.appendingPathComponent("rig.jpg"))
+        try await store.save(from: withoutPhoto, to: withPhoto)
+        let revived = try await store.asset(filename: "rig.jpg"); XCTAssertEqual(revived, bytes)
         try await store.close()
     }
 
