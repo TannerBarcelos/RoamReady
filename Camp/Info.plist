@@ -14,6 +14,7 @@
     <key>RoamReadyMirroringContainerIdentifier</key><string>$(ROAMREADY_MIRRORING_CONTAINER)</string>
     <key>UIBackgroundModes</key><array><string>remote-notification</string></array>
     <key>NSCameraUsageDescription</key><string>Take photos of your rig and campsite to save with your trips, even while offline.</string>
+    <key>RoamReadyAccountServiceURL</key><string></string>
     <key>RoamReadyCampgroundDataURL</key><string>https://raw.githubusercontent.com/TannerBarcelos/RoamReady/main/data/campgrounds</string>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>UIApplicationSceneManifest</key>

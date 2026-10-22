@@ -123,6 +123,19 @@ final class CampStore {
             isTransitioning = false
         }
     }
+    /// Account deletion: close the library and delete everything RoamReady keeps on this device:
+    /// the Core Data stores and backups, Media, the forecast cache, document caches and imports,
+    /// and stored preferences. The caller has already revoked the account and deleted iCloud data.
+    func eraseLibrary() async throws {
+        await suspendLibrary()
+        let fileManager = FileManager.default
+        for location in [directory, documentFiles.directory, DocumentImport.directory] where fileManager.fileExists(atPath: location.path) {
+            try fileManager.removeItem(at: location)
+        }
+        if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
+        suspendedUnsaved = nil; saveFailure = nil; libraryNotice = nil
+    }
+
     private func preserveFailedChanges() {
         if saveFailure != nil, didLoad {
             suspendedUnsaved = (baseline, LibrarySnapshot(state: state, favorites: savedCampgroundIDs))

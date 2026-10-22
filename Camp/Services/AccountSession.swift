@@ -118,6 +118,24 @@ final class AccountSession {
         }
     }
 
+    /// Whether `userID` is the Apple user this device's library belongs to.
+    func isOwner(_ userID: String) -> Bool {
+        let pinned = (try? readOwner()) ?? credential?.userID
+        return pinned == userID
+    }
+
+    /// Last step of account deletion: forget the owner on this device and return to sign-in.
+    func eraseLocalAccount() throws {
+        try AccountKeychain.delete()
+        if FileManager.default.fileExists(atPath: ownerURL.deletingLastPathComponent().path) {
+            try FileManager.default.removeItem(at: ownerURL.deletingLastPathComponent())
+        }
+        authRevision += 1
+        credential = nil; pending = nil
+        signedIn = false; displayName = ""; email = ""
+        failure = nil; startupFailure = nil; needsLegacyAdoption = false
+    }
+
     private func establish(_ record: LocalCredential) throws {
         try FileManager.default.createDirectory(at: ownerURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(record.userID).write(to: ownerURL, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
@@ -171,6 +189,10 @@ private enum AccountKeychain {
         if status == errSecItemNotFound { return nil }
         guard status == errSecSuccess, let data = item as? Data else { throw AccountError.keychain(status) }
         return try JSONDecoder().decode(LocalCredential.self, from: data)
+    }
+    static func delete() throws {
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw AccountError.keychain(status) }
     }
     static func write(_ record: LocalCredential) throws {
         let data = try JSONEncoder().encode(record)

@@ -1,0 +1,28 @@
+# RoamReady's only server component in v1: Sign in with Apple token revocation (#12).
+# v2 adds the AI proxy to this same Worker under /v1/ (#34).
+#
+# Secrets (never in this file, the repo, or the app):
+#   wrangler secret put APPLE_PRIVATE_KEY --env staging      # contents of AuthKey_<KEYID>.p8
+#   wrangler secret put APPLE_PRIVATE_KEY --env production
+name = "roamready"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[env.staging]
+name = "roamready-staging"
+workers_dev = true
+
+[env.staging.vars]
+# Replace with the real App ID (#6). The identity token's `aud` must equal this.
+APPLE_BUNDLE_ID = "com.example.RoamReady"
+APPLE_TEAM_ID = "REPLACE_ME"
+APPLE_KEY_ID = "REPLACE_ME"
+
+[env.production]
+name = "roamready"
+
+[env.production.vars]
+APPLE_BUNDLE_ID = "com.example.RoamReady"
+APPLE_TEAM_ID = "REPLACE_ME"
+APPLE_KEY_ID = "REPLACE_ME"
