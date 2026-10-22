@@ -29,7 +29,7 @@ public enum ManagedStoreMigrationError: Error, LocalizedError {
 enum ManagedStoreMigration {
     /// Ordered stages from every frozen version to the current model.
     static func stagedMigrationManager() -> NSStagedMigrationManager {
-        let v2 = ManagedStoreModel.v2(), v3 = ManagedStoreModel.v3()
+        let v2 = ManagedStoreModel.immutable(ManagedStoreModel.v2()), v3 = ManagedStoreModel.immutable(ManagedStoreModel.v3())
         let stage = NSCustomMigrationStage(migratingFrom: NSManagedObjectModelReference(model: v2, versionChecksum: v2.versionChecksum),
                                            to: NSManagedObjectModelReference(model: v3, versionChecksum: v3.versionChecksum))
         stage.label = "RoamReady managed v2 to v3: shared document vault"

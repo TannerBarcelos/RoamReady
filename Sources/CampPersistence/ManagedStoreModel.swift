@@ -20,6 +20,13 @@ enum ManagedStoreModel {
     /// v2 plus the shared document vault. Purely additive, so a lightweight mapping exists.
     static func v3() -> NSManagedObjectModel { build(version: v3Identifier, includesDocuments: true) }
 
+    /// A model's version checksum is only stable once it can no longer be edited. Attaching it
+    /// to a coordinator locks it; read `versionChecksum` only from models returned here.
+    static func immutable(_ model: NSManagedObjectModel) -> NSManagedObjectModel {
+        _ = NSPersistentStoreCoordinator(managedObjectModel: model)
+        return model
+    }
+
     /// Record kinds present in v2. Fixed here so a future `RecordKind` case cannot alter it.
     static let v2RecordKinds: [RecordKind] = [.profile, .rig, .trip, .checklistItem, .templates, .photo, .asset, .favorite, .noteRevision]
 

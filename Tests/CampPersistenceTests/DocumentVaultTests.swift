@@ -64,7 +64,9 @@ final class DocumentVaultTests: XCTestCase, @unchecked Sendable {
         // v3 must carry every v2 entity unchanged so the store migrates without data changes.
         let v3 = ManagedStoreModel.v3()
         for (name, hash) in v2.entityVersionHashesByName { XCTAssertEqual(v3.entityVersionHashesByName[name], hash, name) }
-        XCTAssertNotEqual(v2.versionChecksum, v3.versionChecksum)
+        XCTAssertNotEqual(ManagedStoreModel.immutable(v2).versionChecksum, ManagedStoreModel.immutable(v3).versionChecksum)
+        // Checksums must be stable across independently built copies of the same frozen model.
+        XCTAssertEqual(ManagedStoreModel.immutable(ManagedStoreModel.v2()).versionChecksum, ManagedStoreModel.immutable(v2).versionChecksum)
         XCTAssertNoThrow(try NSMappingModel.inferredMappingModel(forSourceModel: v2, destinationModel: v3))
     }
 
