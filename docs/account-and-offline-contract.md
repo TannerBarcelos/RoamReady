@@ -18,7 +18,7 @@ Cancelling a trip deletes it. The confirmation names the trip and dates and stat
 
 ## No accounts in v1
 
-Sign in with Apple was removed. With no server holding user data, no Android or web app, and no sharing between people, an account added sign-up friction, a required connection on first launch, a token-revocation backend, and App Store account-deletion obligations (Guideline 5.1.1(v)), and protected nothing that the device passcode and iCloud don't already. Builds before this change kept the Apple user ID, name, and email in the Keychain and a pinned-owner file; both are deleted at launch.
+Sign in with Apple was removed. With no server holding user data, no Android or web app, and no sharing between people, an account added sign-up friction, a required connection on first launch, a token-revocation backend (an earlier Cloudflare Worker, since deleted), and App Store account-deletion obligations (Guideline 5.1.1(v)), and protected nothing that the device passcode and iCloud don't already. Builds before this change kept the Apple user ID, name, and email in the Keychain and a pinned-owner file; both are deleted at launch.
 
 **Erase all data** (Profile) is the deletion path: it deletes the app's CloudKit zone (when sync is configured; needs a connection and a signed-in iCloud account), then the local stores, Media, caches, documents, and preferences, stopping and naming the step if one fails. Other devices using the same iCloud account stop syncing and keep their local copy until erased.
 
