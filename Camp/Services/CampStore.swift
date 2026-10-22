@@ -176,8 +176,12 @@ final class CampStore {
     func exportLibrary() async throws -> URL {
         await saveTask?.value
         guard let disk, saveFailure == nil else { throw CocoaError(.fileWriteUnknown) }
-        let url = directory.appendingPathComponent("Exports/RoamReady.json")
-        try await disk.export(to: url)
+        // Includes readable copies of every document, so it is protected like the store and
+        // replaced on each export rather than accumulating.
+        let url = directory.appendingPathComponent("Exports/RoamReady Export.zip")
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent("Exports/RoamReady.json"))
+        try await disk.exportArchive(to: url)
+        documentFiles.protect(url)
         return url
     }
     func revisions(for tripID: UUID) async throws -> [NoteRevision] {
@@ -268,6 +272,12 @@ final class CampStore {
         try await documentRepository().exportContents(ofDocument: id, to: destination)
         documentFiles.protect(destination)
         return destination
+    }
+
+    /// From this device's mirroring records; refreshed by sync events through `mediaRevision`.
+    func cloudStatus(ofDocument id: UUID) async -> DocumentCloudStatus? {
+        guard let disk = try? documentRepository() else { return nil }
+        return try? await disk.cloudStatus(ofDocument: id)
     }
 
     private func reloadDocuments() async {

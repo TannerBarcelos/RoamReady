@@ -317,6 +317,7 @@ struct DocumentDetailView: View {
     @State private var working = false
     @State private var editing = false
     @State private var confirmingDelete = false
+    @State private var cloudStatus: DocumentCloudStatus?
 
     var body: some View {
         Group {
@@ -330,6 +331,7 @@ struct DocumentDetailView: View {
                         } else {
                             Label("Encrypted at rest in iCloud", systemImage: "lock.icloud")
                         }
+                        if let cloudStatus { cloudStatusLabel(cloudStatus) }
                     }
                     if document.metadata.issuedOn != nil || document.metadata.expiresOn != nil {
                         Section("Dates") {
@@ -350,6 +352,10 @@ struct DocumentDetailView: View {
                 .toolbar { ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true } } }
                 .sheet(isPresented: $editing) { DocumentEditorView(mode: .edit(document)) }
                 .task(id: "\(document.file?.checksum ?? "")-\(document.isContentAvailable)") { await prepareFile(document) }
+                // Sync events bump `mediaRevision`, so the status follows uploads as they finish.
+                .task(id: "\(document.updatedAt.timeIntervalSinceReferenceDate)-\(store.mediaRevision)") {
+                    cloudStatus = await store.cloudStatus(ofDocument: documentID)
+                }
                 .confirmationDialog("Delete “\(document.metadata.title)”?", isPresented: $confirmingDelete, titleVisibility: .visible) {
                     Button("Delete document", role: .destructive) { delete() }
                 } message: {
@@ -367,6 +373,14 @@ struct DocumentDetailView: View {
         case .offline: Label("Saved on this iPhone · opens offline", systemImage: "iphone")
         case .awaitingDownload: Label("Waiting to download from iCloud", systemImage: "icloud.and.arrow.down")
         case .onlineOnly: Label("Link · needs a connection to open", systemImage: "link")
+        }
+    }
+
+    @ViewBuilder private func cloudStatusLabel(_ status: DocumentCloudStatus) -> some View {
+        switch status {
+        case .localOnly: Label("On this iPhone only · iCloud sync is off", systemImage: "iphone")
+        case .waitingToUpload: Label("Waiting to upload to iCloud", systemImage: "icloud.and.arrow.up")
+        case .inICloud: Label("Saved in iCloud", systemImage: "checkmark.icloud")
         }
     }
 

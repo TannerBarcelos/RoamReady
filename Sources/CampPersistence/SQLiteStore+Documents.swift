@@ -1,17 +1,18 @@
 #if canImport(CoreData)
 import Foundation
 @preconcurrency import CoreData
+import CloudKit
 import CryptoKit
 import CampCore
 
-/// Core Data document vault. Metadata (`RR_document`) and original bytes
-/// (`RR_documentContent.bytes`, external storage allowed) mirror through the same
+/// Core Data document vault. Metadata (`RR_document`) and file chunks (`RR_documentContent`, one
+/// row per 1 MiB with external binary storage allowed) mirror through the same
 /// NSPersistentCloudKitContainer as the rest of the library. No custom transfer queue exists.
 ///
-/// Large files never pass through memory as a whole in this code: uploads are hashed and, when
-/// protected, encrypted in chunks into a staging file, then handed to Core Data as memory-mapped
-/// data. Exports decrypt and verify chunk by chunk into a file. How Core Data itself buffers
-/// external binary values is up to Core Data.
+/// Memory stays bounded by a small batch of chunks regardless of file size: uploads are read,
+/// hashed, and (when protected) encrypted chunk by chunk, saved in batches, and refaulted; reads
+/// fetch, verify, and release one chunk at a time. A file becomes visible only when every chunk of
+/// one version is present, so batched writes and partial CloudKit imports are never exposed.
 extension SQLiteStore: DocumentRepository {
     public func documents(ownedBy owner: DocumentOwner?) async throws -> [ManagedDocument] {
         try await context.perform { [self] in
@@ -36,27 +37,31 @@ extension SQLiteStore: DocumentRepository {
         let metadata = try DocumentPolicy.validated(draft.metadata)
         var link: URL?
         if case .link(let url) = draft.source { link = try DocumentPolicy.validatedLink(url) }
-        // Hash and encrypt before entering the shared context so slow work never blocks it.
-        let staged = try draft.source.byteSource.map { upload in
-            try stageContent(upload.source, file: DocumentPolicy.inspect(upload.source, filename: upload.filename),
-                             documentID: draft.id, protection: metadata.protection)
-        }
-        defer { staged?.discard() }
-        return try await context.perform { [self] in
-            do {
-                // Tombstoned identifiers are never reused.
-                guard try documentRows(draft.id).isEmpty else { throw DocumentError.duplicateDocument }
-                let row = insertRow(ManagedStoreModel.documentEntity, key: documentKey(draft.id))
-                row.setValue(draft.id.uuidString, forKey: "id")
-                row.setValue(draft.owner.kind.rawValue, forKey: "ownerKind"); row.setValue(draft.owner.id.uuidString, forKey: "ownerID")
-                row.setValue(draft.createdAt.timeIntervalSinceReferenceDate, forKey: "createdAt")
-                row.setValue(Date().timeIntervalSinceReferenceDate, forKey: "updatedAt")
-                apply(metadata, to: row)
-                row.setValue(link?.absoluteString, forKey: "linkURL")
-                if let staged { insertContent(staged, documentID: draft.id, metadataRow: row) }
-                try context.save()
-                return try makeDocument(row, available: availableContent(documentID: draft.id)).unwrapped()
-            } catch { context.rollback(); throw error }
+        let upload = try draft.source.byteSource.map { ($0.source, try DocumentPolicy.inspect($0.source, filename: $0.filename)) }
+        // Tombstoned identifiers are never reused. Checked first so no chunks are written in vain.
+        guard try await context.perform({ [self] in try documentRows(draft.id).isEmpty }) else { throw DocumentError.duplicateDocument }
+        var version: StoredVersion?
+        if let upload { version = try await writeVersion(upload.0, file: upload.1, documentID: draft.id, protection: metadata.protection) }
+        let written = version
+        do {
+            return try await context.perform { [self] in
+                do {
+                    guard try documentRows(draft.id).isEmpty else { throw DocumentError.duplicateDocument }
+                    let row = insertRow(ManagedStoreModel.documentEntity, key: documentKey(draft.id))
+                    row.setValue(draft.id.uuidString, forKey: "id")
+                    row.setValue(draft.owner.kind.rawValue, forKey: "ownerKind"); row.setValue(draft.owner.id.uuidString, forKey: "ownerID")
+                    row.setValue(draft.createdAt.timeIntervalSinceReferenceDate, forKey: "createdAt")
+                    row.setValue(Date().timeIntervalSinceReferenceDate, forKey: "updatedAt")
+                    apply(metadata, to: row)
+                    row.setValue(link?.absoluteString, forKey: "linkURL")
+                    if let written { setFile(written.file, on: row); try putMeta(written.pendingMarker, nil) }
+                    try context.save()
+                    return try makeDocument(row, available: availableContent(documentID: draft.id)).unwrapped()
+                } catch { context.rollback(); throw error }
+            }
+        } catch {
+            if let written { await discardVersion(written) }
+            throw error
         }
     }
 
@@ -64,32 +69,36 @@ extension SQLiteStore: DocumentRepository {
     public func updateDocument(id: UUID, metadata: DocumentMetadata) async throws -> ManagedDocument {
         var validated = try DocumentPolicy.validated(metadata)
         guard let current = try await document(id: id) else { throw DocumentError.documentNotFound }
-        // Protection is only ever raised. Raising it re-encrypts the stored file.
+        // Protection is only ever raised. Raising it re-encrypts the stored file as a new version.
         validated.protection = max(validated.protection, current.metadata.protection)
-        var staged: StagedContent?
+        var version: StoredVersion?
         if validated.protection > current.metadata.protection, let file = current.file {
             guard current.isContentAvailable else { throw DocumentError.protectionNeedsContent }
             let plaintext = stagingURL()
             defer { try? FileManager.default.removeItem(at: plaintext) }
             try await exportContents(ofDocument: id, to: plaintext)
-            staged = try stageContent(.file(plaintext), file: file, documentID: id, protection: validated.protection)
+            version = try await writeVersion(.file(plaintext), file: file, documentID: id, protection: validated.protection)
         }
-        defer { staged?.discard() }
-        let replacement = staged, finalMetadata = validated
-        return try await context.perform { [self] in
-            do {
-                guard let row = try activeDocumentRow(id) else { throw DocumentError.documentNotFound }
-                if let replacement {
-                    // The file must not have changed since it was read for re-encryption.
-                    guard row.value(forKey: "checksum") as? String == replacement.file.checksum else { throw DocumentError.contentIntegrity }
-                    for old in try contentRows(documentID: id) { context.delete(old) }
-                    insertContent(replacement, documentID: id, metadataRow: row)
-                }
-                apply(finalMetadata, to: row)
-                row.setValue(Date().timeIntervalSinceReferenceDate, forKey: "updatedAt")
-                if context.hasChanges { try context.save() }
-                return try makeDocument(row, available: availableContent(documentID: id)).unwrapped()
-            } catch { context.rollback(); throw error }
+        let replacement = version, finalMetadata = validated
+        do {
+            return try await context.perform { [self] in
+                do {
+                    guard let row = try activeDocumentRow(id) else { throw DocumentError.documentNotFound }
+                    if let replacement {
+                        // The file must not have changed since it was read for re-encryption.
+                        guard row.value(forKey: "checksum") as? String == replacement.file.checksum else { throw DocumentError.contentIntegrity }
+                        for old in try contentRows(documentID: id) where old.value(forKey: "versionID") as? String != replacement.versionID { context.delete(old) }
+                        try putMeta(replacement.pendingMarker, nil)
+                    }
+                    apply(finalMetadata, to: row)
+                    row.setValue(Date().timeIntervalSinceReferenceDate, forKey: "updatedAt")
+                    if context.hasChanges { try context.save() }
+                    return try makeDocument(row, available: availableContent(documentID: id)).unwrapped()
+                } catch { context.rollback(); throw error }
+            }
+        } catch {
+            if let replacement { await discardVersion(replacement) }
+            throw error
         }
     }
 
@@ -98,43 +107,46 @@ extension SQLiteStore: DocumentRepository {
         let file = try DocumentPolicy.inspect(source, filename: filename)
         guard let current = try await document(id: id) else { throw DocumentError.documentNotFound }
         guard current.link != nil else { throw DocumentError.notALink }
-        let staged = try stageContent(source, file: file, documentID: id, protection: current.metadata.protection)
-        defer { staged.discard() }
-        return try await context.perform { [self] in
-            do {
-                guard let row = try activeDocumentRow(id) else { throw DocumentError.documentNotFound }
-                // Re-importing a link deliberately replaces its previous imported copy.
-                for old in try contentRows(documentID: id) { context.delete(old) }
-                insertContent(staged, documentID: id, metadataRow: row)
-                row.setValue(Date().timeIntervalSinceReferenceDate, forKey: "updatedAt")
-                try context.save()
-                return try makeDocument(row, available: availableContent(documentID: id)).unwrapped()
-            } catch { context.rollback(); throw error }
+        let version = try await writeVersion(source, file: file, documentID: id, protection: current.metadata.protection)
+        do {
+            return try await context.perform { [self] in
+                do {
+                    guard let row = try activeDocumentRow(id) else { throw DocumentError.documentNotFound }
+                    // Re-importing a link deliberately replaces its previous imported copy.
+                    for old in try contentRows(documentID: id) where old.value(forKey: "versionID") as? String != version.versionID { context.delete(old) }
+                    setFile(file, on: row); try putMeta(version.pendingMarker, nil)
+                    row.setValue(Date().timeIntervalSinceReferenceDate, forKey: "updatedAt")
+                    try context.save()
+                    return try makeDocument(row, available: availableContent(documentID: id)).unwrapped()
+                } catch { context.rollback(); throw error }
+            }
+        } catch {
+            await discardVersion(version)
+            throw error
         }
     }
 
     public func contents(ofDocument id: UUID) async throws -> DocumentContents {
-        let (file, candidates) = try await contentCandidates(id)
-        for candidate in candidates {
+        let (file, versions) = try await completeVersions(id)
+        for version in versions {
             var bytes = Data()
-            if (try? verify(candidate, file: file, documentID: id, into: { bytes.append($0) })) != nil {
-                return DocumentContents(file: file, bytes: bytes)
-            }
+            do { try await read(version, file: file, documentID: id) { bytes.append($0) }; return DocumentContents(file: file, bytes: bytes) }
+            catch DocumentError.contentIntegrity { continue }
         }
-        throw candidates.isEmpty ? DocumentError.contentNotDownloaded : DocumentError.contentIntegrity
+        throw versions.isEmpty ? DocumentError.contentNotDownloaded : DocumentError.contentIntegrity
     }
 
     @discardableResult
     public func exportContents(ofDocument id: UUID, to url: URL) async throws -> DocumentFile {
-        let (file, candidates) = try await contentCandidates(id)
+        let (file, versions) = try await completeVersions(id)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        for candidate in candidates {
+        for version in versions {
             // Write beside the destination; only a fully verified file is moved into place.
             let partial = url.deletingLastPathComponent().appendingPathComponent(".\(UUID().uuidString).partial")
             do {
                 guard FileManager.default.createFile(atPath: partial.path, contents: nil) else { throw CocoaError(.fileWriteUnknown) }
                 let handle = try FileHandle(forWritingTo: partial)
-                do { try verify(candidate, file: file, documentID: id, into: { try handle.write(contentsOf: $0) }); try handle.close() }
+                do { try await read(version, file: file, documentID: id) { try handle.write(contentsOf: $0) }; try handle.close() }
                 catch { try? handle.close(); throw error }
                 if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
                 try FileManager.default.moveItem(at: partial, to: url)
@@ -145,7 +157,7 @@ extension SQLiteStore: DocumentRepository {
                 try? FileManager.default.removeItem(at: partial); throw error
             }
         }
-        throw candidates.isEmpty ? DocumentError.contentNotDownloaded : DocumentError.contentIntegrity
+        throw versions.isEmpty ? DocumentError.contentNotDownloaded : DocumentError.contentIntegrity
     }
 
     public func deleteDocument(id: UUID) async throws {
@@ -154,7 +166,7 @@ extension SQLiteStore: DocumentRepository {
                 let rows = try documentRows(id)
                 guard rows.contains(where: { $0.value(forKey: "removed") as? Bool != true }) else { throw DocumentError.documentNotFound }
                 // Keep an identity-only tombstone so a stale device cannot resurrect it, and drop
-                // personal metadata. Content rows (bytes and keys) are removed to release storage.
+                // personal metadata. Every chunk row (bytes and keys) is removed to release storage.
                 for row in rows {
                     row.setValue(true, forKey: "removed")
                     for field in ["title", "notes", "linkURL", "filename", "checksum", "contentType", "category"] { row.setValue(nil, forKey: field) }
@@ -167,86 +179,194 @@ extension SQLiteStore: DocumentRepository {
         }
     }
 
-    // MARK: Staging (outside the context)
+    /// Whether this document and every chunk of its current file have iCloud records. This reflects
+    /// Core Data's mirroring metadata on this device; a metadata edit made after the upload is not
+    /// distinguished from the uploaded version.
+    public func cloudStatus(ofDocument id: UUID) async throws -> DocumentCloudStatus {
+        guard cloudEnabled else { return .localOnly }
+        let objectIDs = try await context.perform { [self] () -> [NSManagedObjectID] in
+            guard let row = try activeDocumentRow(id) else { throw DocumentError.documentNotFound }
+            var ids = [row.objectID]
+            if let checksum = row.value(forKey: "checksum") as? String {
+                let chunks = try contentRows(documentID: id).filter { $0.value(forKey: "checksum") as? String == checksum }
+                let versions = Dictionary(grouping: chunks) { $0.value(forKey: "versionID") as? String ?? "" }
+                // A file not yet downloaded here came from iCloud; the document record decides.
+                guard let complete = versions.values.first(where: { isComplete($0) }) else { return ids }
+                ids += complete.map(\.objectID)
+            }
+            return ids
+        }
+        guard !objectIDs.isEmpty else { return .waitingToUpload }
+        return container.records(for: objectIDs).count == objectIDs.count ? .inICloud : .waitingToUpload
+    }
 
-    /// Bytes ready to hand to Core Data. Protected bytes are already ciphertext.
-    struct StagedContent: Sendable {
+    // MARK: Chunked versions
+
+    /// A file version whose chunks are saved but not yet referenced by its document.
+    struct StoredVersion: Sendable {
         let file: DocumentFile
-        let bytes: Data
-        let encryption: String?
-        let key: Data?
-        let stagingFile: URL?
-        func discard() { if let stagingFile { try? FileManager.default.removeItem(at: stagingFile) } }
+        let versionID: String
+        let documentID: UUID
+        var pendingMarker: String { "pendingDocumentVersion:\(documentID.uuidString):\(versionID)" }
     }
 
-    struct ContentCandidate: Sendable {
-        let bytes: Data
-        let encryption: String?
-        let key: Data?
-    }
-
+    /// Chunks per save. Bounds memory to a few MiB however Core Data buffers values internally.
+    static let chunksPerSave = 4
     static let stagingDirectoryName = "DocumentStaging"
     private func stagingURL() -> URL {
         directory.appendingPathComponent(Self.stagingDirectoryName, isDirectory: true).appendingPathComponent(UUID().uuidString)
     }
 
-    /// Re-reads the source while hashing (and encrypting when protected) and refuses it unless it
-    /// is exactly the bytes that were inspected.
-    private func stageContent(_ source: DocumentByteSource, file: DocumentFile, documentID: UUID, protection: DocumentProtection) throws -> StagedContent {
-        switch protection {
-        case .endToEnd:
-            let key = DocumentCipher.newKey(), staging = stagingURL()
-            do {
-                let digest = try DocumentCipher.encrypt(source, to: staging, key: key, documentID: documentID)
-                guard digest == file.checksum else { throw DocumentError.contentIntegrity }
-                return StagedContent(file: file, bytes: try Data(contentsOf: staging, options: .mappedIfSafe), encryption: DocumentCipher.scheme,
-                                     key: key.withUnsafeBytes { Data($0) }, stagingFile: staging)
-            } catch { try? FileManager.default.removeItem(at: staging); throw error }
-        case .standard:
-            let bytes: Data
-            switch source {
-            case .data(let data): bytes = data
-            // Mapped, so a large file is paged from disk rather than copied into memory.
-            case .file(let url): bytes = try Data(contentsOf: url, options: .mappedIfSafe)
+    /// Reads `source` chunk by chunk, encrypting when protected, and saves the chunks in batches.
+    /// A device-only marker lets the next launch remove the chunks if the app stops before the
+    /// document references them. The source must be exactly the bytes described by `file`.
+    private func writeVersion(_ source: DocumentByteSource, file: DocumentFile, documentID: UUID, protection: DocumentProtection) async throws -> StoredVersion {
+        let version = StoredVersion(file: file, versionID: UUID().uuidString, documentID: documentID)
+        let key = protection == .endToEnd ? DocumentCipher.newKey() : nil
+        let keyData = key.map { $0.withUnsafeBytes { Data($0) } }
+        let count = DocumentChunkReader.chunkCount(byteCount: file.byteCount)
+        try await context.perform { [self] in
+            do { try putMeta(version.pendingMarker, Data(file.checksum.utf8)); try context.save() } catch { context.rollback(); throw error }
+        }
+        do {
+            let reader = try DocumentChunkReader(source)
+            var hasher = DocumentHasher(), index = 0, total = 0
+            while true {
+                var batch: [(index: Int, bytes: Data, checksum: String)] = []
+                while batch.count < Self.chunksPerSave, let plaintext = try reader.next() {
+                    guard index < count else { throw DocumentError.contentIntegrity }
+                    hasher.update(plaintext); total += plaintext.count
+                    let stored = try key.map { try DocumentCipher.seal(plaintext, key: $0, documentID: documentID, index: index, final: index == count - 1) } ?? plaintext
+                    batch.append((index, stored, DocumentDigest.sha256(plaintext))); index += 1
+                }
+                guard !batch.isEmpty else { break }
+                let pending = batch
+                try await context.perform { [self] in
+                    do {
+                        let rows = pending.map { chunk in
+                            let row = insertRow(ManagedStoreModel.documentContentEntity, key: "documentContent:\(documentID.uuidString):\(version.versionID):\(chunk.index)")
+                            row.setValue(documentID.uuidString, forKey: "documentID"); row.setValue(version.versionID, forKey: "versionID")
+                            row.setValue(file.checksum, forKey: "checksum"); row.setValue(Int64(file.byteCount), forKey: "byteCount")
+                            row.setValue(Int64(chunk.index), forKey: "chunkIndex"); row.setValue(Int64(count), forKey: "chunkCount")
+                            row.setValue(chunk.checksum, forKey: "chunkChecksum")
+                            // Original bytes (or their ciphertext), unmodified: no resizing, recompression, or stripping.
+                            row.setValue(chunk.bytes, forKey: "bytes")
+                            row.setValue(keyData == nil ? nil : DocumentCipher.scheme, forKey: "encryption"); row.setValue(keyData, forKey: "contentKey")
+                            return row
+                        }
+                        try context.save()
+                        rows.forEach { context.refresh($0, mergeChanges: false) }
+                    } catch { context.rollback(); throw error }
+                }
             }
-            var hasher = DocumentHasher()
-            try DocumentByteSource.data(bytes).forEachChunk { hasher.update($0) }
-            guard bytes.count == file.byteCount, hasher.finalize() == file.checksum else { throw DocumentError.contentIntegrity }
-            return StagedContent(file: file, bytes: bytes, encryption: nil, key: nil, stagingFile: nil)
+            // A file that changed while being read is not the file that was inspected.
+            guard index == count, total == file.byteCount, hasher.finalize() == file.checksum else { throw DocumentError.contentIntegrity }
+            return version
+        } catch {
+            await discardVersion(version)
+            throw error
         }
     }
 
-    /// Streams verified plaintext into `sink`. Throws `contentIntegrity` unless every byte matches.
-    private func verify(_ candidate: ContentCandidate, file: DocumentFile, documentID: UUID, into sink: (Data) throws -> Void) throws {
-        var hasher = DocumentHasher(), count = 0
-        func emit(_ chunk: Data) throws { hasher.update(chunk); count += chunk.count; try sink(chunk) }
-        switch candidate.encryption {
-        case nil: try DocumentByteSource.data(candidate.bytes).forEachChunk(emit)
-        case DocumentCipher.scheme?:
-            guard let key = candidate.key, key.count == 32 else { throw DocumentError.contentIntegrity }
-            try DocumentCipher.decrypt(candidate.bytes, key: SymmetricKey(data: key), documentID: documentID, emit)
-        default: throw DocumentError.contentIntegrity
+    /// Removes an unreferenced version's chunks and its marker. Best effort; also run at launch.
+    private func discardVersion(_ version: StoredVersion) async {
+        try? await context.perform { [self] in
+            do {
+                for row in try contentRows(documentID: version.documentID) where row.value(forKey: "versionID") as? String == version.versionID {
+                    context.delete(row)
+                }
+                try putMeta(version.pendingMarker, nil)
+                try context.save()
+            } catch { context.rollback(); throw error }
         }
-        guard count == file.byteCount, hasher.finalize() == file.checksum else { throw DocumentError.contentIntegrity }
     }
 
-    private func contentCandidates(_ id: UUID) async throws -> (DocumentFile, [ContentCandidate]) {
+    /// Chunks left by an import interrupted on this device are never referenced; remove them.
+    /// Only this device's own markers are considered, so chunks still arriving from other
+    /// devices through CloudKit are never touched.
+    func cleanUpInterruptedDocumentWrites() async throws {
+        let markers = try await context.perform { [self] () -> [String] in
+            let request = NSFetchRequest<NSManagedObject>(entityName: "LocalMetadata")
+            request.predicate = NSPredicate(format: "key BEGINSWITH %@ AND value != nil", "pendingDocumentVersion:")
+            return try context.fetch(request).compactMap { $0.value(forKey: "key") as? String }
+        }
+        for marker in markers {
+            let parts = marker.split(separator: ":")
+            guard parts.count == 3, let documentID = UUID(uuidString: String(parts[1])) else { continue }
+            await discardVersion(StoredVersion(file: DocumentFile(filename: "", contentType: .pdf, byteCount: 0, checksum: ""),
+                                               versionID: String(parts[2]), documentID: documentID))
+        }
+    }
+
+    /// Object IDs are immutable identifiers that are safe to pass between contexts.
+    struct ChunkRef: @unchecked Sendable {
+        let objectID: NSManagedObjectID
+        let checksum: String
+    }
+    struct CompleteVersion: @unchecked Sendable {
+        let chunks: [ChunkRef]
+        let encryption: String?
+        let key: Data?
+    }
+
+    /// Complete versions of the current file, in a deterministic order. No bytes are loaded.
+    private func completeVersions(_ id: UUID) async throws -> (DocumentFile, [CompleteVersion]) {
         try await context.perform { [self] in
             context.refreshAllObjects()
             guard let row = try activeDocumentRow(id) else { throw DocumentError.documentNotFound }
             guard let file = makeDocument(row, available: [])?.file else { throw DocumentError.linkOnly }
-            let candidates = try contentRows(documentID: id).filter { $0.value(forKey: "checksum") as? String == file.checksum }.compactMap { content -> ContentCandidate? in
-                guard let bytes = content.value(forKey: "bytes") as? Data else { return nil }
-                let candidate = ContentCandidate(bytes: bytes, encryption: content.value(forKey: "encryption") as? String,
-                                                 key: content.value(forKey: "contentKey") as? Data)
-                context.refresh(content, mergeChanges: false)
-                return candidate
+            let rows = try contentRows(documentID: id).filter { $0.value(forKey: "checksum") as? String == file.checksum }
+            let versions = Dictionary(grouping: rows) { $0.value(forKey: "versionID") as? String ?? "" }
+            let complete = versions.keys.sorted().compactMap { versionID -> CompleteVersion? in
+                guard let chunks = versions[versionID], isComplete(chunks) else { return nil }
+                let ordered = chunks.sorted { ($0.value(forKey: "chunkIndex") as? Int64 ?? 0) < ($1.value(forKey: "chunkIndex") as? Int64 ?? 0) }
+                let refs = ordered.compactMap { chunk in (chunk.value(forKey: "chunkChecksum") as? String).map { ChunkRef(objectID: chunk.objectID, checksum: $0) } }
+                guard refs.count == ordered.count else { return nil }
+                defer { chunks.forEach { context.refresh($0, mergeChanges: false) } }
+                return CompleteVersion(chunks: refs, encryption: ordered[0].value(forKey: "encryption") as? String,
+                                       key: ordered[0].value(forKey: "contentKey") as? Data)
             }
-            return (file, candidates)
+            return (file, complete)
         }
     }
 
+    /// Fetches, verifies, and releases one chunk at a time, passing plaintext to `sink` in order.
+    /// Throws `contentIntegrity` at the first chunk that fails, so output is provisional until
+    /// this returns.
+    private func read(_ version: CompleteVersion, file: DocumentFile, documentID: UUID, into sink: (Data) throws -> Void) async throws {
+        let key: SymmetricKey?
+        switch version.encryption {
+        case nil: key = nil
+        case DocumentCipher.scheme?:
+            guard let data = version.key, data.count == 32 else { throw DocumentError.contentIntegrity }
+            key = SymmetricKey(data: data)
+        default: throw DocumentError.contentIntegrity
+        }
+        var hasher = DocumentHasher(), total = 0
+        for (index, chunk) in version.chunks.enumerated() {
+            let stored = try await context.perform { [self] () -> Data? in
+                let row = try context.existingObject(with: chunk.objectID)
+                defer { context.refresh(row, mergeChanges: false) }
+                return row.value(forKey: "bytes") as? Data
+            }
+            guard let stored else { throw DocumentError.contentNotDownloaded }
+            let plaintext = try key.map { try DocumentCipher.open(stored, key: $0, documentID: documentID, index: index, final: index == version.chunks.count - 1) } ?? stored
+            guard DocumentDigest.sha256(plaintext) == chunk.checksum else { throw DocumentError.contentIntegrity }
+            hasher.update(plaintext); total += plaintext.count
+            try sink(plaintext)
+        }
+        guard total == file.byteCount, hasher.finalize() == file.checksum else { throw DocumentError.contentIntegrity }
+    }
+
     // MARK: Rows (call inside `context.perform`)
+
+    /// All chunks 0..<chunkCount present exactly once, with a consistent count.
+    private func isComplete(_ chunks: [NSManagedObject]) -> Bool {
+        let counts = Set(chunks.compactMap { $0.value(forKey: "chunkCount") as? Int64 })
+        guard counts.count == 1, let count = counts.first, count > 0 else { return false }
+        let indices = chunks.compactMap { $0.value(forKey: "chunkIndex") as? Int64 }
+        return indices.count == Int(count) && Set(indices) == Set(0..<count)
+    }
 
     private func documentKey(_ id: UUID) -> String { "document:\(id.uuidString)" }
 
@@ -280,34 +400,34 @@ extension SQLiteStore: DocumentRepository {
         try activeDocumentRows(NSPredicate(format: "key == %@", documentKey(id))).first
     }
 
+    /// Chunk rows for a document. Bytes are faults until read.
     private func contentRows(documentID: UUID) throws -> [NSManagedObject] {
         let request = NSFetchRequest<NSManagedObject>(entityName: ManagedStoreModel.documentContentEntity)
         request.predicate = NSPredicate(format: "documentID == %@", documentID.uuidString)
+        request.returnsObjectsAsFaults = true
         return try context.fetch(request).sorted { rowIdentity($0) < rowIdentity($1) }
     }
 
-    /// "documentID|checksum" pairs present locally, read without faulting any bytes.
+    /// "documentID|checksum" for every complete version present locally, read without faulting bytes.
     private func availableContent(documentID: UUID? = nil) throws -> Set<String> {
         let request = NSFetchRequest<NSDictionary>(entityName: ManagedStoreModel.documentContentEntity)
         request.resultType = .dictionaryResultType
-        request.propertiesToFetch = ["documentID", "checksum"]
+        request.propertiesToFetch = ["documentID", "checksum", "versionID", "chunkIndex", "chunkCount"]
         if let documentID { request.predicate = NSPredicate(format: "documentID == %@", documentID.uuidString) }
-        return Set(try context.fetch(request).compactMap { entry in
-            guard let id = entry["documentID"] as? String, let checksum = entry["checksum"] as? String else { return nil }
-            return id + "|" + checksum
-        })
+        var versions: [String: (key: String, count: Int64, indices: Set<Int64>)] = [:]
+        for entry in try context.fetch(request) {
+            guard let id = entry["documentID"] as? String, let checksum = entry["checksum"] as? String, let versionID = entry["versionID"] as? String,
+                  let index = entry["chunkIndex"] as? Int64, let count = entry["chunkCount"] as? Int64 else { continue }
+            var version = versions[versionID] ?? (id + "|" + checksum, count, [])
+            guard version.count == count else { version.count = -1; versions[versionID] = version; continue }
+            version.indices.insert(index); versions[versionID] = version
+        }
+        return Set(versions.values.filter { $0.count > 0 && $0.indices == Set(0..<$0.count) }.map(\.key))
     }
 
-    private func insertContent(_ staged: StagedContent, documentID: UUID, metadataRow: NSManagedObject) {
-        let content = insertRow(ManagedStoreModel.documentContentEntity, key: "documentContent:\(documentID.uuidString):\(staged.file.checksum)")
-        content.setValue(documentID.uuidString, forKey: "documentID")
-        content.setValue(staged.file.checksum, forKey: "checksum"); content.setValue(Int64(staged.file.byteCount), forKey: "byteCount")
-        // Original bytes (or their ciphertext), unmodified: no resizing, recompression, or stripping.
-        content.setValue(staged.bytes, forKey: "bytes")
-        content.setValue(staged.encryption, forKey: "encryption"); content.setValue(staged.key, forKey: "contentKey")
-        let file = staged.file
-        metadataRow.setValue(file.filename, forKey: "filename"); metadataRow.setValue(file.contentType.rawValue, forKey: "contentType")
-        metadataRow.setValue(Int64(file.byteCount), forKey: "byteCount"); metadataRow.setValue(file.checksum, forKey: "checksum")
+    private func setFile(_ file: DocumentFile, on row: NSManagedObject) {
+        row.setValue(file.filename, forKey: "filename"); row.setValue(file.contentType.rawValue, forKey: "contentType")
+        row.setValue(Int64(file.byteCount), forKey: "byteCount"); row.setValue(file.checksum, forKey: "checksum")
     }
 
     private func apply(_ metadata: DocumentMetadata, to row: NSManagedObject) {

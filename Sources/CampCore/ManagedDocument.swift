@@ -141,6 +141,16 @@ public struct DocumentFile: Equatable, Codable, Sendable {
     }
 }
 
+/// Whether a document's metadata and file have reached iCloud, from this device's mirroring records.
+public enum DocumentCloudStatus: Equatable, Sendable {
+    /// iCloud sync is off on this device.
+    case localOnly
+    /// Saved on this device; not all of it has been uploaded yet.
+    case waitingToUpload
+    /// The document and every chunk of its file have iCloud records.
+    case inICloud
+}
+
 public enum DocumentAvailability: Equatable, Sendable {
     /// Original bytes are stored on this device and open without a connection.
     case offline
@@ -348,6 +358,44 @@ public enum DocumentByteSource: Sendable {
             defer { try? handle.close() }
             while let chunk = try handle.read(upToCount: size), !chunk.isEmpty { try body(chunk) }
         }
+    }
+}
+
+/// Pull-based reader that yields exactly `size`-byte chunks (the last may be shorter), so callers
+/// can await between chunks. Chunk boundaries never depend on how the OS returns reads.
+public final class DocumentChunkReader {
+    public let size: Int
+    private var data: Data?
+    private var offset = 0
+    private var handle: FileHandle?
+
+    public init(_ source: DocumentByteSource, size: Int = DocumentByteSource.chunkSize) throws {
+        self.size = size
+        switch source {
+        case .data(let bytes): data = bytes
+        case .file(let url): handle = try FileHandle(forReadingFrom: url)
+        }
+    }
+    deinit { try? handle?.close() }
+
+    /// The next chunk, or nil at the end.
+    public func next() throws -> Data? {
+        if let data {
+            guard offset < data.count else { return nil }
+            let start = data.index(data.startIndex, offsetBy: offset), end = data.index(start, offsetBy: min(size, data.count - offset))
+            offset += size
+            return Data(data[start..<end])
+        }
+        guard let handle else { return nil }
+        var chunk = Data()
+        while chunk.count < size, let piece = try handle.read(upToCount: size - chunk.count), !piece.isEmpty { chunk.append(piece) }
+        if chunk.isEmpty { try handle.close(); self.handle = nil; return nil }
+        return chunk
+    }
+
+    /// Number of chunks a file of `byteCount` bytes is stored as.
+    public static func chunkCount(byteCount: Int, size: Int = DocumentByteSource.chunkSize) -> Int {
+        byteCount <= 0 ? 0 : (byteCount + size - 1) / size
     }
 }
 

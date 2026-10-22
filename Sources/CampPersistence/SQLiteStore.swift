@@ -13,7 +13,7 @@ public struct NoteRevision: Identifiable, Sendable {
 /// Core Data owns SQLite, external binary files, persistent history, and CloudKit mirroring.
 /// Only value types leave the private managed-object context.
 public final class SQLiteStore: @unchecked Sendable {
-    private let container: NSPersistentCloudKitContainer
+    let container: NSPersistentCloudKitContainer
     /// Serializes every read and write. Document APIs share it with library snapshots.
     let context: NSManagedObjectContext
     public let directory: URL
@@ -37,6 +37,7 @@ public final class SQLiteStore: @unchecked Sendable {
         let local = try await load(directory: directory, cloudContainerIdentifier: nil)
         do {
             try await local.importPreviousDatabase()
+            try await local.cleanUpInterruptedDocumentWrites()
             _ = try await local.snapshot()
         } catch {
             try? await local.close()
@@ -69,6 +70,9 @@ public final class SQLiteStore: @unchecked Sendable {
             description.shouldMigrateStoreAutomatically = true
             description.shouldInferMappingModelAutomatically = true
             description.setOption(ManagedStoreMigration.stagedMigrationManager(), forKey: NSPersistentStoreStagedMigrationManagerOptionKey)
+            // Zero deleted content so replaced plaintext (for example after a document is
+            // re-encrypted) doesn't linger in free database pages. A Core Data store option.
+            description.setOption(["secure_delete": "1"] as NSDictionary, forKey: NSSQLitePragmasOption)
             #if os(iOS)
             description.setOption(FileProtectionType.completeUntilFirstUserAuthentication.rawValue as NSString, forKey: NSPersistentStoreFileProtectionKey)
             #endif
@@ -321,12 +325,13 @@ public final class SQLiteStore: @unchecked Sendable {
         guard try meta("coherentProjection") != bytes else { return }
         try putMeta("coherentProjection", bytes); try context.save()
     }
-    private func meta(_ key: String) throws -> Data? {
+    func meta(_ key: String) throws -> Data? {
         let request = NSFetchRequest<NSManagedObject>(entityName: "LocalMetadata")
         request.predicate = NSPredicate(format: "key == %@", key); request.fetchLimit = 1
         return try context.fetch(request).first?.value(forKey: "value") as? Data
     }
-    private func putMeta(_ key: String, _ value: Data?) throws {
+    /// Device-only metadata. Call inside `context.perform`.
+    func putMeta(_ key: String, _ value: Data?) throws {
         let request = NSFetchRequest<NSManagedObject>(entityName: "LocalMetadata")
         request.predicate = NSPredicate(format: "key == %@", key); request.fetchLimit = 1
         let row = try context.fetch(request).first ?? NSEntityDescription.insertNewObject(forEntityName: "LocalMetadata", into: context)

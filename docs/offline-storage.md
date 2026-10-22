@@ -32,7 +32,7 @@ If the previous custom transport left incomplete records in its incoming staging
 
 For older JSON installations, the legacy decoder imports validated data and available photos idempotently. A corrupt/future archive fails without marking migration complete; missing old photos do not discard trips. JSON is not re-imported over a successfully migrated SQLite library. Import data commits before its device-only completion marker; the separate stores are not claimed to provide a cross-store atomic transaction.
 
-Profile's explicit JSON export includes metadata and saved campground IDs, not attachment or document bytes. Copying a `.sqlite` file alone is not a complete backup: WAL and Core Data external asset files belong to the store. A full backup must use supported Core Data mechanisms.
+Profile's explicit export is a zip with library JSON, document details, and verified document files; trip photo bytes are shared individually. Copying a `.sqlite` file alone is not a complete backup: WAL and Core Data external asset files belong to the store. A full backup must use supported Core Data mechanisms.
 
 ## iCloud setup
 

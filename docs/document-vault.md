@@ -30,11 +30,13 @@ Detail screens provide Quick Look preview for PDFs and images, a share sheet for
 
 - **Original bytes.** Uploaded bytes are stored exactly as received: no resizing, recompression, or metadata stripping. This differs from trip photos, which are still resized to 2560 px. The SHA-256 of the bytes is recorded when they are added. Every read (`contents(ofDocument:)` and `exportContents(ofDocument:to:)`) re-hashes the plaintext and throws `contentIntegrity` instead of returning altered bytes.
 - **Type detection from bytes.** PDF, JPEG, PNG, HEIC/HEIF, GIF, TIFF, and WebP are recognized by their signatures. Filename extensions are never trusted; a renamed ZIP or HTML page is rejected with `unsupportedFileType`. Empty files are rejected, and so are files over `DocumentPolicy.maximumByteCount` (250 MB). CloudKit assets allow far larger files (an Apple engineer cites up to 50 GB, bounded by the user's iCloud quota). The limit bounds storage and quota use, not memory, and should be revisited after large-transfer device testing.
-- **Streaming.** Imports never hold a whole file in memory in RoamReady's code:
+- **Bounded memory, end to end.** No layer handles a whole file as one value, including Core Data and CloudKit:
   - Picked files are copied byte for byte to a temporary file under `NSFileCoordinator`. Photos arrive as files through a `FileRepresentation`, and links stream to disk.
-  - Inspection hashes in 1 MiB chunks. Protected files are encrypted chunk by chunk into a staging file.
-  - Core Data receives memory-mapped data. Exports for preview and share decrypt and verify chunk by chunk into a file, and only a fully verified file is moved into place.
-  - How Core Data itself buffers an external binary value internally is up to Core Data. Measure peak memory with very large files on devices.
+  - Each file version is stored as **1 MiB chunk rows**: one Core Data value and one CloudKit record per chunk. Writes read, hash, and (when protected) encrypt one chunk at a time, saving four chunks per Core Data save and then releasing them.
+  - Reads fetch, verify, and release one chunk at a time. Peak memory is a few MiB whatever the file size.
+  - A file is shown as available only when every chunk of one version is present. A partially imported file, or a write still in progress, is never exposed.
+  - Previews and shares are decrypted and verified into a file, and only a fully verified file is moved into place.
+- **Interrupted writes.** Before writing chunks, the device records a device-only marker. The marker is cleared in the same save that makes the document reference the new version. If the app stops first, the next launch deletes that version's unreferenced chunks. Only markers written on this device are considered, so chunks still arriving from another device through CloudKit are never removed.
 - **Offline.** Uploaded and downloaded contents live in the Core Data store, so they reopen after relaunch with no network. Quick Look and sharing use a readable, verified copy (decrypted when protected) under `Caches/RoamReadyDocuments/<sha256>/`, with `completeUntilFirstUserAuthentication` data protection. The cache is disposable: it is rebuilt from the store when missing, and it is removed when the library is suspended for an account change.
 - **Links.** Only `https://` URLs with a host and no embedded credentials are accepted. `http://` is rejected, not upgraded. A bare host typed by the user gets `https://`.
 - **Deletion.** Only `deleteDocument(id:)` deletes. It hard-deletes the content rows, so storage is released and CloudKit deletes the asset. It also leaves an identity-only tombstone: title, notes, link, file facts, and dates are cleared, and the tombstone prevents another device's stale copy from resurrecting the document. Deleted identifiers are never reused (`duplicateDocument`).
@@ -46,7 +48,7 @@ Document data lives in the existing `NSPersistentCloudKitContainer` **Library** 
 | Entity | Purpose |
 | --- | --- |
 | `RR_document` | Metadata: `id`, `ownerKind`, `ownerID`, `title`, `category`, `notes`, `linkURL`, `filename`, `contentType`, `byteCount`, `checksum`, `issuedOn`, `expiresOn`, `createdAt`, `updatedAt`, plus the shared `key`/`rowID`/`removed`. No binary attributes, so listings never fault bytes. |
-| `RR_documentContent` | `documentID`, `checksum`, `byteCount`, and `bytes` (Binary Data, **Allows External Storage**). |
+| `RR_documentContent` | One row per 1 MiB chunk: `documentID`, `versionID`, `checksum` and `byteCount` (of the whole plaintext file), `chunkIndex`, `chunkCount`, `chunkChecksum` (SHA-256 of the chunk's plaintext), `encryption`, `contentKey` (cloud-encrypted), and `bytes` (Binary Data, **Allows External Storage**). |
 
 Core Data decides whether a given `bytes` value stays inline in SQLite or moves to its private external-storage directory, and CloudKit mirroring decides how it transfers (typically as a `CKAsset`). **Do not assume any particular binary is outside SQLite**, and never read or modify Core Data's external files directly.
 
@@ -64,7 +66,7 @@ CloudKit's field encryption does not cover assets, and Core Data mirrors large b
 | `.standard` | Other types, unless the user opts in. | Encrypted at rest by Apple; end to end only with Advanced Data Protection. |
 
 How `.endToEnd` works:
-- `DocumentCipher` (`aes256gcm-chunked-v1`) encrypts the original bytes in 1 MiB AES-256-GCM chunks with a random key for each document.
+- `DocumentCipher` (`aes256gcm-chunks-v1`) seals each 1 MiB chunk row with AES-256-GCM, using a random key for each stored file version.
 - Each chunk's authenticated data binds the document ID, the chunk index, and a final-chunk flag. A chunk moved between documents, reordered, or truncated at a chunk boundary therefore fails, as does any flipped bit or wrong key. This is tested.
 - The 32-byte key is stored in `RR_documentContent.contentKey`, marked `allowsCloudEncryption`. CloudKit end-to-end encrypts it with the user's iCloud Keychain.
 - There is therefore no separate key management, and no new way to lose data beyond the iCloud Keychain reset that already applies to encrypted fields.
@@ -73,7 +75,13 @@ How `.endToEnd` works:
 Rules:
 - **Never lowered.** A repository never lowers a document's protection. Changing a document to a sensitive type, or opting in, re-encrypts the existing file and replaces the unencrypted copy. Changing it back to a non-sensitive type keeps it encrypted.
 - **Needs the file.** Raising protection requires the file on this device; otherwise it fails with `protectionNeedsContent`.
-- **Earlier copies.** An earlier unencrypted copy may persist in iCloud or device backups until Apple reclaims it.
+- **Earlier copies.** When protection is raised, the unencrypted chunk rows are deleted in the same save that switches to the encrypted version. Core Data then deletes their CloudKit records and external files. Both stores also open with SQLite `secure_delete` (set through Core Data's `NSSQLitePragmasOption`), so removed inline bytes are zeroed rather than left in free pages.
+
+  What the app cannot erase:
+  - **Device backups** (iCloud Backup or a computer) taken before the change.
+  - **Apple's server-side asset retention** after a record is deleted, whose timing Apple controls.
+
+  This is why the document type is required at import: sensitive files are encrypted before their first save, so for them no unencrypted copy ever exists.
 - **On the device.** The local store holds the key next to the ciphertext. On the device, data is protected by iOS Data Protection; the end-to-end protection applies to iCloud.
 
 Changing the sensitive set later is safe: it only affects documents saved or edited afterwards. Existing encrypted documents stay encrypted.
@@ -87,7 +95,7 @@ On a new device, document metadata can arrive before its content row. That docum
 `Sources/CampPersistence/ManagedStoreModel.swift` holds versioned, code-built models:
 
 - `v2()`: **frozen**. This is the first managed-mirroring model. `DocumentVaultTests.testFrozenV2ModelShapeIsUnchanged` pins every entity, attribute, and type. `v2RecordKinds` is a literal list, so adding a `RecordKind` case cannot alter v2. `LegacyStoreModel.v1()` remains frozen for the earlier custom-sync store.
-- `v3()`: v2 plus `RR_document` and `RR_documentContent`. Current (`make()`).
+- `v3()`: v2 plus `RR_document` and the chunked `RR_documentContent`. Current (`make()`).
 
 `ManagedStoreMigration` migrates explicitly. Before the Library store loads:
 
@@ -172,12 +180,33 @@ try await repository.addDocument(DocumentDraft(id: archived.id, owner: archived.
                                                createdAt: archived.createdAt))
 ```
 
-A deleted document's identifier is tombstoned, so restoring it returns `duplicateDocument`. Recovery should report that rather than work around it. The current JSON export still excludes documents and photo bytes. The backup work order owns adding them.
+A deleted document's identifier is tombstoned, so restoring it returns `duplicateDocument`. Recovery should report that rather than work around it. ### Export
+
+Profile › **Prepare export** creates `RoamReady Export.zip` using `SQLiteStore.exportArchive(to:)`. It contains:
+
+| Path | Contents |
+| --- | --- |
+| `library.json` | Trips, checklists, notes, and saved campgrounds. |
+| `documents.json` | Every document's details and an `ExportedDocument.Status`: `included`, `linkOnly`, or `notDownloaded`. |
+| `Documents/` | Each included document's verified original file. |
+
+Files are written chunk by chunk and zipped by `NSFileCoordinator`'s `.forUploading` option; no archive code ships in the app. End-to-end encrypted documents are exported **readable**, and the UI says so: the archive is the user's own copy, outside iCloud's protection.
+
+The archive is a portable copy. Importing it back (recovery) belongs to the backup work order, which can use `documents.json` with the `DocumentDraft` restore pattern above. Trip photo bytes are still shared individually, not included.
 
 ## Tests
 
-- Portable (`Tests/CampCoreTests/ManagedDocumentTests.swift`, Linux and macOS): SHA-256 vectors and chunked hashing, streamed file inspection, sensitive-type protection rules, signature detection, invalid imports (empty, oversized, renamed non-documents), filename sanitizing, HTTPS link rules, the bounded download buffer (declared or actual size over the limit, early rejection of web pages, chunked bytes kept intact), metadata validation, unknown categories, and the in-memory repository contract (including missing content).
-- Core Data (`Tests/CampPersistenceTests/DocumentVaultTests.swift`, macOS CI): frozen v2 shape and v3 additive hashes, stable checksums for the frozen models, CloudKit model rules and the encrypted-field set, 3 MB original-byte round trip across close/reopen with no network, metadata edits and owner separation, link-only until import and re-import replacement, invalid imports leaving the store unchanged, metadata without downloaded content, tamper detection, deletion and tombstones, duplicate-row reconciliation, explicit v2→v3 migration preserving photos and assets with a backup, interrupted-migration re-verification and fail-closed behavior, refusal of unknown store versions, the new-store marker, sensitive types encrypted in the store with no plaintext in the mirrored attribute, a 30 MB streamed file export, re-encryption when protection is raised and refusal to lower it, detection of flipped, truncated, reordered, cross-document, and wrong-key ciphertext, and encrypted link imports.
+- Portable (`Tests/CampCoreTests/ManagedDocumentTests.swift`, Linux and macOS): SHA-256 vectors and chunked hashing, streamed file inspection, the fixed-size chunk reader, sensitive-type protection rules, signature detection, invalid imports (empty, oversized, renamed non-documents), filename sanitizing, HTTPS link rules, the bounded download buffer (declared or actual size over the limit, early rejection of web pages, chunked bytes kept intact), metadata validation, unknown categories, and the in-memory repository contract (including missing content).
+- Core Data (`Tests/CampPersistenceTests/DocumentVaultTests.swift`, macOS CI): frozen v2 shape and v3 additive hashes, stable checksums for the frozen models, CloudKit model rules and the encrypted-field set, 3 MB original-byte round trip across close/reopen with no network, metadata edits and owner separation, link-only until import and re-import replacement, invalid imports leaving the store unchanged, metadata without downloaded content, tamper detection, deletion and tombstones, duplicate-row reconciliation, explicit v2→v3 migration preserving photos and assets with a backup, interrupted-migration re-verification and fail-closed behavior, refusal of unknown store versions, the new-store marker, sensitive types encrypted in the store with no plaintext in the mirrored attribute, a 30 MB streamed file export, re-encryption when protection is raised and refusal to lower it, detection of flipped, truncated, reordered, cross-document, and wrong-key ciphertext, encrypted link imports, files stored as bounded chunk rows, missing chunks reported as not downloaded, interrupted writes removed only by the device that started them, secure delete enabled, and the zip export's manifest and verified files.
+
+## iCloud status per document
+
+`SQLiteStore.cloudStatus(ofDocument:)` returns one of three values:
+- `.localOnly`: sync is off.
+- `.inICloud`: the document row and every chunk of its current file have CloudKit records, per `NSPersistentCloudKitContainer.records(for:)`.
+- `.waitingToUpload`: otherwise.
+
+The detail screen shows it, and it refreshes when sync events arrive. It reflects Core Data's mirroring metadata on this device. A metadata edit made after the first upload isn't tracked separately, because Core Data doesn't expose per-record pending-export state.
 
 ## Not yet validated
 

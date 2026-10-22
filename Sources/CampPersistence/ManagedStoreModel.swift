@@ -43,10 +43,15 @@ enum ManagedStoreModel {
     /// so it is end-to-end encrypted even without Advanced Data Protection. CloudKit cannot change
     /// a field's encryption after the schema is deployed to production, so this set is fixed for v3.
     static let cloudEncryptedDocumentFields: Set<String> = ["title", "notes", "linkURL", "filename"]
-    /// `checksum` and `byteCount` describe the original plaintext. For end-to-end protected files,
-    /// `bytes` holds `DocumentCipher` output and `contentKey` the per-document key.
+    /// One row per 1 MiB chunk of a stored file version, so neither Core Data nor CloudKit ever
+    /// handles a whole large file as one value. `versionID` groups the chunks written together;
+    /// a file is available only when one version has all of its chunks. `checksum` and `byteCount` describe the whole
+    /// original plaintext (identifying the version); `chunkIndex`, `chunkCount`, and `chunkChecksum`
+    /// (SHA-256 of the chunk's plaintext) describe this chunk. For end-to-end protected files,
+    /// `bytes` holds a `DocumentCipher` box and `contentKey` the version's key.
     static let documentContentFields: [String: NSAttributeType] = [
-        "documentID": .stringAttributeType, "checksum": .stringAttributeType, "byteCount": .integer64AttributeType,
+        "documentID": .stringAttributeType, "versionID": .stringAttributeType, "checksum": .stringAttributeType, "byteCount": .integer64AttributeType,
+        "chunkIndex": .integer64AttributeType, "chunkCount": .integer64AttributeType, "chunkChecksum": .stringAttributeType,
         "encryption": .stringAttributeType, "contentKey": .binaryDataAttributeType
     ]
     /// CloudKit field encryption does not apply to assets, so the file is encrypted by the app and

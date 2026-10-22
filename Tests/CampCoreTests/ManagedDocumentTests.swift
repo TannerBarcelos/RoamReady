@@ -186,4 +186,22 @@ final class ManagedDocumentTests: XCTestCase {
         let file = try await repository.exportContents(ofDocument: doc.id, to: exported)
         XCTAssertEqual(try Data(contentsOf: exported), Self.pdf); XCTAssertEqual(file, doc.file)
     }
+
+    func testChunkReaderYieldsFixedSizeChunksFromMemoryAndFiles() throws {
+        let data = Data((0..<10_007).map { UInt8(truncatingIfNeeded: $0 &* 3) })
+        for source in [DocumentByteSource.data(data), .data(data.dropFirst(7)), .file(try temporaryFile(data))] {
+            let expected: Data
+            if case .data(let bytes) = source { expected = bytes } else { expected = data }
+            let reader = try DocumentChunkReader(source, size: 1000)
+            var chunks: [Data] = []
+            while let chunk = try reader.next() { chunks.append(chunk) }
+            XCTAssertEqual(chunks.count, DocumentChunkReader.chunkCount(byteCount: expected.count, size: 1000))
+            XCTAssertTrue(chunks.dropLast().allSatisfy { $0.count == 1000 })
+            XCTAssertEqual(chunks.reduce(Data(), +), expected)
+            XCTAssertNil(try reader.next())
+        }
+        XCTAssertEqual(DocumentChunkReader.chunkCount(byteCount: 0), 0)
+        XCTAssertEqual(DocumentChunkReader.chunkCount(byteCount: DocumentByteSource.chunkSize), 1)
+        XCTAssertEqual(DocumentChunkReader.chunkCount(byteCount: DocumentByteSource.chunkSize + 1), 2)
+    }
 }
