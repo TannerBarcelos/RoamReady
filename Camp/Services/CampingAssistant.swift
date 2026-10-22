@@ -27,18 +27,19 @@ enum CampingAssistant {
         #endif
     }
 
+    /// One clear status line; every Apple unavailability reason maps to its own explanation.
     static var availability: String {
         guard meetsDevicePolicy else {
-            return "Saved guidance available · AI requires iPhone 16 or newer"
+            return "Saved guidance available · AI help requires iPhone 15 or newer"
         }
         #if canImport(FoundationModels)
         switch SystemLanguageModel.default.availability {
         case .available: return "Apple on-device AI available · Works offline"
         case .unavailable(let reason):
             switch reason {
-            case .deviceNotEligible: return "Saved guidance available · Apple AI is unavailable on this device"
-            case .appleIntelligenceNotEnabled: return "Saved guidance available · Enable Apple Intelligence in Settings for AI"
-            case .modelNotReady: return "Saved guidance available · Apple’s AI model is downloading or preparing"
+            case .deviceNotEligible: return "Saved guidance available · This iPhone doesn’t support Apple Intelligence (iPhone 15 Pro or later)"
+            case .appleIntelligenceNotEnabled: return "Saved guidance available · Turn on Apple Intelligence in Settings to use AI help"
+            case .modelNotReady: return "Saved guidance available · Apple’s AI model is still downloading or preparing. Try again later."
             @unknown default: return "Saved guidance available · Apple AI is currently unavailable"
             }
         @unknown default: return "Saved guidance available · Apple AI is currently unavailable"

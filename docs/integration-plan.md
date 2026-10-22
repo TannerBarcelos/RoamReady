@@ -14,7 +14,7 @@ Two-device/account/attachment acceptance and actual iOS 27 runtime remain requir
 
 ## Apple Foundation Models only
 
-Remove hosted AI from the roadmap. The only generative route is Apple's on-device Foundation Models, gated to iPhone 16 or newer product eligibility and Apple's independent runtime availability. Saved checklist guidance remains the fallback. No provider/model choice or remote question transfer is exposed. Initial Apple model download/readiness is an online prerequisite.
+v1 has no hosted AI. The only generative route is Apple's on-device Foundation Models, gated to iPhone 15 or newer product eligibility and Apple's independent runtime availability (Apple Intelligence itself requires iPhone 15 Pro or later). Remote models with a model selector are planned for v2 (#34). Saved checklist guidance remains the fallback. No provider/model choice or remote question transfer is exposed. Initial Apple model download/readiness is an online prerequisite.
 
 ## Campground data
 
