@@ -54,7 +54,7 @@ Use your rig's **Manuals & paperwork**, a trip's **View confirmation & documents
 2. Give it a title and choose its document category. Optionally add notes and issue/expiration dates.
 3. Save, then open it to preview or share.
 
-Files can be up to 50 MB. Imported originals already on the device open offline. A link needs a connection until a copy is saved; **Waiting to download from iCloud** means the file is not yet on this device. Registration, insurance, and reservation files receive end-to-end protection automatically; other types can opt in.
+Files can be up to 50 MiB. Imported originals already on the device open offline. A link needs a connection until a copy is saved; **Waiting to download from iCloud** means the file is not yet on this device. New files are encrypted automatically when synced to your private iCloud; there is no separate encryption setting.
 
 Documents retained after a trip or rig is deleted appear in **Profile → Unattached documents**. See the [document vault](document-vault.md) for protection and availability details.
 

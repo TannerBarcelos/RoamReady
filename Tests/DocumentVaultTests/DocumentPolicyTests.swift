@@ -78,10 +78,10 @@ final class DocumentPolicyTests: XCTestCase {
         XCTAssertEqual(DocumentCategory.insurance.title, "Insurance")
     }
 
-    func testSensitiveCategoriesAreAlwaysEndToEndEncrypted() throws {
+    func testAllNewContentUsesAppleManagedEncryption() throws {
         for category in DocumentCategory.standard {
             let validated = try DocumentPolicy.validated(DocumentMetadata(title: "Doc", category: category))
-            XCTAssertEqual(validated.protection, category.isSensitive ? .endToEnd : .standard, category.rawValue)
+            XCTAssertEqual(validated.protection, .endToEnd, category.rawValue)
         }
         XCTAssertEqual(DocumentCategory.sensitive, [.registration, .insurance, .reservation])
         let optIn = try DocumentPolicy.validated(DocumentMetadata(title: "Title deed", category: .other, protection: .endToEnd))

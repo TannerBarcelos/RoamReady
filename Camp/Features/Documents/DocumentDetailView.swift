@@ -27,7 +27,7 @@ struct DocumentDetailView: View {
                 if document.protection == .endToEnd {
                     Label("End-to-end encrypted in iCloud", systemImage: "lock.fill").foregroundStyle(.green)
                 } else {
-                    Label("Encrypted at rest in iCloud", systemImage: "lock.icloud")
+                    Label("Encrypted in iCloud", systemImage: "lock.icloud")
                 }
                 if library.iCloud.enabledForSession {
                     Label(library.iCloud.status, systemImage: "icloud").font(.caption)
@@ -53,7 +53,7 @@ struct DocumentDetailView: View {
         .navigationTitle(document.title).navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true } } }
         .sheet(isPresented: $editing) { DocumentEditorView(mode: .edit(document)) }
-        .task(id: "\(document.checksum ?? "")-\(document.availability == .offline)") { prepareFile() }
+        .task(id: "\(document.checksum ?? "")-\(document.availability == .offline)") { await prepareFile() }
         .confirmationDialog("Delete “\(document.title)”?", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("Delete document", role: .destructive) { dismiss(); context.delete(document); library.save() }
         } message: {
@@ -88,9 +88,10 @@ struct DocumentDetailView: View {
         }
     }
 
-    private func prepareFile() {
+    private func prepareFile() async {
         guard document.file != nil else { fileURL = nil; fileProblem = nil; return }
-        do { fileURL = try library.documentFiles.url(for: document); fileProblem = nil }
+        do { fileURL = try await library.documentFiles.url(for: document); fileProblem = nil }
+        catch is CancellationError { }
         catch { fileURL = nil; fileProblem = error.localizedDescription }
     }
 
@@ -100,8 +101,10 @@ struct DocumentDetailView: View {
             downloading = true; failure = nil
             defer { downloading = false }
             do {
-                let (bytes, filename) = try await DocumentImport.download(link)
-                try document.attach(bytes, file: DocumentPolicy.inspect(bytes, filename: filename))
+                let imported = try await DocumentImport.download(link)
+                let payload = try await Task.detached(priority: .userInitiated) { try imported.documentPayload() }.value
+                try Task.checkCancellation()
+                document.attach(payload)
                 library.save()
             } catch { failure = error.localizedDescription }
         }

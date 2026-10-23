@@ -45,9 +45,9 @@ Checklist wording is original, with the [Camping World setup and teardown articl
 
 Attach rig manuals, registration, insurance, warranties, and trip confirmations during onboarding or later. Upload PDFs/images or add HTTPS links, with a title, chosen category, notes, and optional issue/expiration dates.
 
-Uploaded originals are preserved byte-for-byte, limited to 50 MB, and checked by SHA-256 on every read. Downloaded files open offline; links require connectivity until a copy is saved. Quick Look, sharing, confirmed deletion, and a Profile zip export are available.
+Uploaded originals are preserved byte-for-byte, limited to 50 MiB, and checked by SHA-256 on every read. Downloaded files open offline; links require connectivity until a copy is saved. Quick Look, sharing, confirmed deletion, and a Profile zip export are available.
 
-Registration, insurance, and reservation files are always end-to-end encrypted before cloud transfer; other categories can opt in. A new device must download file content before it can open it offline. See the [document vault](document-vault.md) for storage, encryption, and export details.
+All new files use Apple-managed encrypted SwiftData fields and CloudKit assets; no encryption toggle or app-generated file keys are needed. Existing files remain readable in their original format. A new device must download file content before it can open it offline. See the [document vault](document-vault.md) for storage, encryption, and export details.
 
 ## Memories
 

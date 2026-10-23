@@ -216,46 +216,86 @@ struct LibraryTests {
     static let pdf = Data("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n".utf8) + Data((0..<10_000).map { UInt8(truncatingIfNeeded: $0) })
 
     private func addFile(_ category: DocumentCategory, protection: DocumentProtection = .standard) throws -> StoredDocument {
-        let file = try DocumentPolicy.inspect(Self.pdf, filename: "file.pdf")
         return try StoredDocument.add(DocumentMetadata(title: "Doc", category: category, protection: protection),
-                                      contents: (Self.pdf, file), in: context)
+                                      contents: DocumentPayload(bytes: Self.pdf, filename: "file.pdf"), in: context)
     }
 
-    @Test func filesAreStoredExactlyAndSensitiveTypesAreEncrypted() throws {
-        let manual = try addFile(.manual), insurance = try addFile(.insurance)
+    @Test func allNewFilesUseAppleEncryptionWithoutApplicationKeys() throws {
+        for category in DocumentCategory.standard {
+            let document = try addFile(category)
+            #expect(document.protection == .endToEnd)
+            #expect(document.content?.protectedBytes == Self.pdf)
+            #expect(document.content?.bytes == nil && document.content?.key == nil)
+            #expect(try document.contents() == Self.pdf && document.availability == .offline)
+        }
+        let attributes = [("Rig", "protectedPhoto"), ("TripPhoto", "protectedImage"), ("DocumentContent", "protectedBytes")]
+        for (entityName, attributeName) in attributes {
+            let entity = try #require(LibraryStore.schema.entities.first { $0.name == entityName })
+            let attribute = try #require(entity.attributesByName[attributeName])
+            #expect(attribute.options.contains(.externalStorage))
+            #expect(attribute.options.contains(.allowsCloudEncryption), "Small inline attachments need encrypted fields too")
+        }
         try context.save()
-        #expect(manual.protection == .standard && manual.content?.bytes == Self.pdf && manual.content?.key == nil)
-        #expect(insurance.protection == .endToEnd && insurance.content?.key?.count == 32)
-        #expect(insurance.content?.bytes != Self.pdf, "No plaintext in the mirrored attribute")
-        #expect(try manual.contents() == Self.pdf && insurance.contents() == Self.pdf)
-        #expect(manual.availability == .offline)
     }
 
     @Test func tamperedOrMissingBytesAreNeverReturned() throws {
         let document = try addFile(.insurance)
-        document.content?.bytes?[40] ^= 0x01
+        document.content?.protectedBytes?[40] ^= 0x01
         #expect(throws: DocumentError.contentIntegrity) { try document.contents() }
-        document.content?.bytes = nil
+        document.content?.protectedBytes = nil
         #expect(document.availability == .awaitingDownload)
         #expect(throws: DocumentError.contentNotDownloaded) { try document.contents() }
     }
 
-    @Test func raisingProtectionReEncryptsAndItIsNeverLowered() throws {
+    @Test func changingMetadataDoesNotRequireDownloadingOrRewritingTheFile() throws {
         let document = try addFile(.manual)
+        document.content?.protectedBytes = nil
         var metadata = document.metadata; metadata.category = .registration
         try document.update(metadata)
-        #expect(document.protection == .endToEnd && document.content?.key != nil)
+        #expect(document.category == .registration && document.availability == .awaitingDownload)
+        #expect(document.content?.key == nil && document.content?.bytes == nil)
+    }
+
+    @Test func legacyFilesRemainReadableAndReplacementUsesAppleEncryption() throws {
+        let original = Data("%PDF-1.7\nlegacy attachment\n".utf8)
+        let file = try DocumentPolicy.inspect(original, filename: "old.pdf")
+        let document = try addFile(.insurance)
+        document.documentID = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
+        document.checksum = file.checksum; document.byteCount = file.byteCount
+        document.content?.checksum = file.checksum
+        document.content?.protectedBytes = nil
+        document.content?.bytes = Data(base64Encoded: "AAECAwQFBgcICQoLYlKSXejU7CyHLfLs0IoBTeKi81WTEzIZVhPvIrYnY0tcLaHMOfhEUMhQNg==")!
+        document.content?.key = Data(base64Encoded: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=")!
+        #expect(try document.contents() == original)
+        try document.update(DocumentMetadata(title: "Renamed", category: .manual))
+        #expect(try document.contents() == original, "Metadata edits preserve the legacy format")
+        document.content?.key = nil
+        #expect(document.availability == .awaitingDownload)
+        #expect(throws: DocumentError.contentNotDownloaded) { try document.contents() }
+        document.attach(try DocumentPayload(bytes: Self.pdf, filename: "new.pdf"))
+        #expect(document.content?.bytes == nil && document.content?.key == nil)
         #expect(try document.contents() == Self.pdf)
-        metadata.category = .manual; metadata.protection = .standard
-        try document.update(metadata)
-        #expect(document.protection == .endToEnd)
+    }
+
+    @Test func oldPhotoFieldsRemainVisibleAndNewPhotosUseEncryptedFields() throws {
+        let rig = try Rig.add(trailer, to: context)
+        rig.photo = Data([1, 2, 3])
+        #expect(rig.draft.photo == rig.photo)
+        var draft = rig.draft; draft.photo = Data([4, 5, 6])
+        try rig.update(draft)
+        #expect(rig.photo == nil && rig.protectedPhoto == draft.photo && rig.photoData == draft.photo)
+        let photo = TripPhoto(image: Data([7, 8, 9]))
+        context.insert(photo)
+        #expect(photo.image == nil && photo.imageData == photo.protectedImage)
+        photo.protectedImage = nil; photo.image = Data([1])
+        #expect(photo.imageData == Data([1]))
     }
 
     @Test func linksStayOnlineOnlyUntilTheirContentsAreSaved() throws {
         let link = try StoredDocument.add(DocumentMetadata(title: "Manual", category: .manual), link: URL(string: "https://example.com/m.pdf"), in: context)
         #expect(link.availability == .onlineOnly)
         #expect(throws: DocumentError.linkOnly) { try link.contents() }
-        try link.attach(Self.pdf, file: DocumentPolicy.inspect(Self.pdf, filename: "m.pdf"))
+        link.attach(try DocumentPayload(bytes: Self.pdf, filename: "m.pdf"))
         #expect(link.availability == .offline && link.linkURL != nil)
         #expect(throws: DocumentError.insecureLink) {
             try StoredDocument.add(DocumentMetadata(title: "Bad"), link: URL(string: "http://example.com"), in: context)
@@ -276,7 +316,7 @@ struct LibraryTests {
             let rig = try Rig.add(trailer, to: context)
             let trip = try Trip.create(TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival), rig: rig, in: context)
             trip.steps(.setup)[0].status = .skipped
-            try StoredDocument.add(DocumentMetadata(title: "Card", category: .insurance), contents: (Self.pdf, try DocumentPolicy.inspect(Self.pdf, filename: "c.pdf")), rig: rig, in: context)
+            try StoredDocument.add(DocumentMetadata(title: "Card", category: .insurance), contents: DocumentPayload(bytes: Self.pdf, filename: "c.pdf"), rig: rig, in: context)
             try context.save()
         }
         // Keep the container alive while its models are read; a context doesn't own its container.
@@ -293,7 +333,7 @@ struct LibraryTests {
         _ = try trip(rig: rig)
         let file = try addFile(.insurance); file.rig = rig
         _ = try StoredDocument.add(DocumentMetadata(title: "Link"), link: URL(string: "https://example.com"), in: context)
-        let missing = try addFile(.manual); missing.content?.bytes = nil
+        let missing = try addFile(.manual); missing.content?.protectedBytes = nil
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let archive = directory.appending(path: "Export.zip")

@@ -16,7 +16,7 @@ The app targets iOS 27.0. The local Swift package uses Swift tools/language vers
 | --- | --- | --- |
 | `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, AI device policy, and campground identities. |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
-| `DocumentVault` | CryptoKit on Apple platforms; Apple's swift-crypto on Linux | Document types/import policy, SHA-256 integrity, and AES-GCM sealing. |
+| `DocumentVault` | CryptoKit on Apple platforms; Apple's swift-crypto on Linux | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
 
 The native app links these local products and Apple frameworks. There are no non-Apple runtime SDKs. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto) as an external package; its `Crypto` product is linked only on Linux. Package resolution may still fetch that dependency on a Mac.
@@ -66,16 +66,16 @@ Deleting a trip cascades to its steps, photos, and note revisions. Documents are
 | Weather | WeatherKit for location temperature and campground forecasts; saved readings have timestamps and work offline. |
 | Camping assistant | Bundled guidance plus Foundation Models after product/device and runtime availability checks. No remote question transfer in v1. |
 | Memories | Native camera, PhotosPicker, bounded image import, and system sharing. Cloud-only Photos items may need a download. |
-| Documents | System file import, Quick Look, HTTPS links, verified bytes, and optional/mandatory file sealing according to category. |
+| Documents | System file representations, bounded staging, Quick Look, HTTPS links, verified bytes, and Apple-managed encryption. |
 | Sync | SwiftData/CloudKit mirroring, enabled by configuration and a default-on launch preference. Apple owns its runtime lifecycle. |
 
 Connectivity indicates an available path, not successful service authorization or delivery. Local edits never wait for cloud transfer. Capability provisioning, real service reachability, and device behavior are separate acceptance concerns.
 
 ## Media and exports
 
-Rig/trip photos are resized to at most 2560 pixels and stored as JPEG data using SwiftData external storage. They travel with their model through mirroring and are deleted with it. Original imported photos remain in the photo library.
+Rig/trip photos are downsampled from picker file representations to at most 2560 pixels and stored as JPEG data using SwiftData external storage and cloud-encrypted fields. They travel with their model through mirroring and are deleted with it. Original imported photos remain in the photo library.
 
-Documents preserve original bytes up to 50 MB. Content and keys are separate from list metadata; reads verify size and SHA-256 after any decryption. Sensitive categories use AES-GCM before cloud transfer. See [document vault](document-vault.md).
+Documents preserve original bytes up to 50 MiB. Content is separate from list metadata and uses SwiftData external storage plus cloud-encrypted fields. Apple handles large-asset encryption and transfer; there are no new app encryption keys. Legacy encrypted files remain readable, and reads verify size and SHA-256. Import inspection and preview verification run off the UI thread. See [document vault](document-vault.md).
 
 Profile exports `RoamReady Export.zip`: `library.json`, `documents.json`, and verified original files under `Documents/`. Photo metadata/captions are included, not image bytes; photos are shared individually. Exported encrypted documents are readable originals. The export is an explicit user copy, not an implemented restore/import workflow.
 

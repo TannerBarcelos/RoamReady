@@ -28,6 +28,8 @@ public final class Rig: RigDetails {
     public var emoji: String = "🚐"
     /// A resized JPEG, or nil to show the emoji.
     @Attribute(.externalStorage) public var photo: Data?
+    /// New photos use Apple's encryption even when small enough to sync inline.
+    @Attribute(.externalStorage, .allowsCloudEncryption) public var protectedPhoto: Data?
     public var equipment: Equipment = Equipment()
     public var lengthFeet: Double?
     public var slideCount: Int?
@@ -98,10 +100,13 @@ public final class ChecklistStep {
 public final class TripPhoto {
     /// A resized JPEG.
     @Attribute(.externalStorage) public var image: Data?
+    @Attribute(.externalStorage, .allowsCloudEncryption) public var protectedImage: Data?
     public var caption: String = ""
     public var createdAt: Date = Date.now
     public var trip: Trip?
-    public init(image: Data) { self.image = image }
+    public init(image: Data) { self.protectedImage = image }
+
+    public var imageData: Data? { protectedImage ?? image }
 }
 
 /// A saved version of a trip's notes, so earlier text can be restored.
@@ -132,7 +137,7 @@ public final class SavedCampground {
 /// Personal text fields are end-to-end encrypted in iCloud; file bytes live in `content`.
 @Model
 public final class StoredDocument {
-    /// Binds sealed file bytes to this document (`DocumentSealing`) and names its cache copy.
+    /// Identifies this document, including legacy sealed files and exported copies.
     public var documentID: UUID = UUID()
     @Attribute(.allowsCloudEncryption) public var title: String = ""
     @Attribute(.allowsCloudEncryption) public var notes: String = ""
@@ -159,10 +164,13 @@ public final class StoredDocument {
 
 @Model
 public final class DocumentContent {
-    /// The original bytes, or their `DocumentSealing` box for end-to-end protected files.
+    /// Legacy bytes, retained so existing libraries and CloudKit schemas stay readable.
     @Attribute(.externalStorage) public var bytes: Data?
-    /// The file key for sealed bytes. CloudKit end-to-end encrypts it with the user's iCloud Keychain.
+    /// Legacy application-encrypted file key. New writes don't create their own keys.
     @Attribute(.allowsCloudEncryption) public var key: Data?
+    /// Apple manages both inline field encryption and large-asset encryption.
+    /// A new field avoids changing encryption on an existing CloudKit schema field.
+    @Attribute(.externalStorage, .allowsCloudEncryption) public var protectedBytes: Data?
     /// The file these bytes are, matched against `StoredDocument.checksum`.
     public var checksum: String = ""
     public var document: StoredDocument?

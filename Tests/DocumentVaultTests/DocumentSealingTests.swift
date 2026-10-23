@@ -1,43 +1,25 @@
 import XCTest
 @testable import DocumentVault
 
-/// Runs on Linux through swift-crypto as well as on Apple platforms through CryptoKit.
+/// A fixed AES-GCM fixture from the legacy format; production code can only read that format.
 final class DocumentSealingTests: XCTestCase {
-    private let plaintext = Data("%PDF-1.7\n".utf8) + Data((0..<4_096).map { UInt8(truncatingIfNeeded: $0 &* 31) })
-    private let document = UUID()
+    private let plaintext = Data("%PDF-1.7\nlegacy attachment\n".utf8)
+    private let document = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
+    private let key = Data(base64Encoded: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=")!
+    private let box = Data(base64Encoded: "AAECAwQFBgcICQoLYlKSXejU7CyHLfLs0IoBTeKi81WTEzIZVhPvIrYnY0tcLaHMOfhEUMhQNg==")!
     private var file: DocumentFile { try! DocumentPolicy.inspect(plaintext, filename: "Manual.pdf") }
 
-    func testStandardFilesAreStoredAsTheyAre() throws {
-        let sealed = try DocumentSealing.seal(plaintext, protection: .standard, documentID: document)
-        XCTAssertEqual(sealed.bytes, plaintext)
-        XCTAssertNil(sealed.key)
-        XCTAssertEqual(try DocumentSealing.open(sealed.bytes, key: nil, documentID: document, expecting: file), plaintext)
+    func testExistingSealedFilesOpenOnlyForTheirOwnDocument() throws {
+        XCTAssertEqual(try LegacyDocumentSealing.open(box, key: key, documentID: document, expecting: file), plaintext)
+        XCTAssertThrowsError(try LegacyDocumentSealing.open(box, key: key, documentID: UUID(), expecting: file))
     }
 
-    func testEndToEndFilesOpenOnlyForTheirOwnDocument() throws {
-        let sealed = try DocumentSealing.seal(plaintext, protection: .endToEnd, documentID: document)
-        XCTAssertNotEqual(sealed.bytes.prefix(64), plaintext.prefix(64))
-        XCTAssertEqual(sealed.bytes.count, plaintext.count + DocumentSealing.overhead)
-        XCTAssertEqual(sealed.key?.count, 32)
-        XCTAssertEqual(try DocumentSealing.open(sealed.bytes, key: sealed.key, documentID: document, expecting: file), plaintext)
-        XCTAssertThrowsError(try DocumentSealing.open(sealed.bytes, key: sealed.key, documentID: UUID(), expecting: file)) {
-            XCTAssertEqual($0 as? DocumentError, .contentIntegrity)
-        }
-    }
-
-    func testWrongKeyTamperingOrADifferentFileFailIntegrity() throws {
-        var sealed = try DocumentSealing.seal(plaintext, protection: .endToEnd, documentID: document)
-        let other = try DocumentSealing.seal(plaintext, protection: .endToEnd, documentID: document)
-        XCTAssertThrowsError(try DocumentSealing.open(sealed.bytes, key: other.key, documentID: document, expecting: file))
-        var bytes = sealed.bytes; bytes[bytes.count / 2] ^= 0x01
-        XCTAssertThrowsError(try DocumentSealing.open(bytes, key: sealed.key, documentID: document, expecting: file)) {
-            XCTAssertEqual($0 as? DocumentError, .contentIntegrity)
-        }
-        var altered = plaintext; altered[altered.count - 1] ^= 0x01
-        XCTAssertThrowsError(try DocumentSealing.open(altered, key: nil, documentID: document, expecting: file)) {
-            XCTAssertEqual($0 as? DocumentError, .contentIntegrity)
-        }
-        sealed = try DocumentSealing.seal(plaintext, protection: .endToEnd, documentID: document)
-        XCTAssertNotEqual(sealed.bytes, other.bytes, "Each seal uses a fresh key and nonce")
+    func testWrongKeysTamperingAndMismatchedPlaintextAreRejected() throws {
+        XCTAssertThrowsError(try LegacyDocumentSealing.open(box, key: Data(repeating: 0, count: 32), documentID: document, expecting: file))
+        var altered = box; altered[20] ^= 1
+        XCTAssertThrowsError(try LegacyDocumentSealing.open(altered, key: key, documentID: document, expecting: file))
+        var wrong = plaintext; wrong[0] ^= 1
+        XCTAssertThrowsError(try LegacyDocumentSealing.open(wrong, key: nil, documentID: document, expecting: file))
+        XCTAssertEqual(try LegacyDocumentSealing.open(plaintext, key: nil, documentID: document, expecting: file), plaintext)
     }
 }

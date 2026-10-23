@@ -14,7 +14,6 @@ public struct DocumentCategory: RawRepresentable, Hashable, Codable, Sendable, I
     public static let other = DocumentCategory(rawValue: "other")
     public static let standard: [DocumentCategory] = [.manual, .registration, .insurance, .warranty, .maintenance, .reservation, .other]
     /// Types that usually carry identity, policy, plate, VIN, address, or payment details.
-    /// Their files are always end-to-end encrypted in iCloud.
     public static let sensitive: Set<DocumentCategory> = [.registration, .insurance, .reservation]
     public var isSensitive: Bool { Self.sensitive.contains(self) }
     public var title: String {
@@ -90,12 +89,11 @@ public enum DocumentContentType: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// How a document's file is protected in iCloud. Document text fields are always end-to-end
-/// encrypted; this controls the file bytes.
+/// Retained for legacy metadata and exports. All new files use Apple-managed encryption.
 public enum DocumentProtection: String, Codable, CaseIterable, Comparable, Sendable {
-    /// Encrypted at rest by Apple (end-to-end only with Advanced Data Protection).
+    /// Legacy unmarked binary field; may be inline data or an automatically encrypted CKAsset.
     case standard
-    /// Encrypted on this device with a per-document key that only syncs end-to-end encrypted.
+    /// Apple-managed encrypted fields/assets, or an older application-encrypted file.
     case endToEnd
     public static func < (a: Self, b: Self) -> Bool { a == .standard && b == .endToEnd }
 }
@@ -108,11 +106,10 @@ public struct DocumentMetadata: Equatable, Codable, Sendable {
     public var issuedOn: Date?
     /// Expiration or renewal date, for example registration or insurance.
     public var expiresOn: Date?
-    /// The requested protection. Sensitive categories are raised to `.endToEnd` by validation,
-    /// and the store never lowers an existing document's protection.
+    /// Legacy metadata. Validation selects Apple-managed encryption for all new content.
     public var protection: DocumentProtection
     public init(title: String, category: DocumentCategory = .other, notes: String = "",
-                issuedOn: Date? = nil, expiresOn: Date? = nil, protection: DocumentProtection = .standard) {
+                issuedOn: Date? = nil, expiresOn: Date? = nil, protection: DocumentProtection = .endToEnd) {
         self.title = title; self.category = category; self.notes = notes; self.protection = protection
         self.issuedOn = issuedOn; self.expiresOn = expiresOn
     }
@@ -141,7 +138,7 @@ public enum DocumentAvailability: Equatable, Sendable {
 public enum DocumentError: Error, LocalizedError, Equatable, Sendable {
     case emptyFile, fileTooLarge(limit: Int), unsupportedFileType, missingTitle, titleTooLong, notesTooLong
     case invalidDates, invalidLink, insecureLink, linkOnly
-    case contentNotDownloaded, contentIntegrity, protectionNeedsContent
+    case contentNotDownloaded, contentIntegrity
     public var errorDescription: String? {
         switch self {
         case .emptyFile: "The file is empty."
@@ -156,7 +153,6 @@ public enum DocumentError: Error, LocalizedError, Equatable, Sendable {
         case .linkOnly: "This link isn’t saved for offline use. Connect to open it, or save a copy of its contents."
         case .contentNotDownloaded: "This document hasn’t downloaded to this device yet. Connect to iCloud and try again."
         case .contentIntegrity: "The saved file doesn’t match its original. It was not opened."
-        case .protectionNeedsContent: "Download this document to this device before changing it to a protected type, so its file can be encrypted."
         }
     }
 }

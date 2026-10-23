@@ -45,7 +45,7 @@ The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the off
 | --- | --- |
 | `CampCoreTests` | Rig policy/required details, trip dates/bookings, site details, checklist generation, campground identities, AI hardware eligibility, and time-zone/DST forecast dates. |
 | `CampgroundsTests` | Camp Finder place models, website/phone links, cleaned search text, and unique nearest-first result merging. |
-| `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, and AES-GCM sealing and integrity failures. |
+| `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
 | `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
 Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. It also runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
@@ -99,7 +99,7 @@ See [offline-storage.md](offline-storage.md) for new-container provisioning, def
 
 ## Camp Finder and account changes
 
-The portable suites cover AI hardware policy, campground identities, Camp Finder places, and the document cipher. Device acceptance must cover iCloud identity changes, iCloud preference changes and relaunches during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See the [identity/connectivity contract](account-and-offline-contract.md) for limits and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release) for discovery acceptance.
+The portable suites cover AI hardware policy, campground identities, Camp Finder places, file staging/streaming inspection, and legacy document decoding. Device acceptance must cover iCloud identity changes, iCloud preference changes and relaunches during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See the [identity/connectivity contract](account-and-offline-contract.md) for limits and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release) for discovery acceptance.
 
 ## Current trip and Assistant acceptance pass
 
