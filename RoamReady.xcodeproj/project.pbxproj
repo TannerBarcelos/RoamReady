@@ -5,6 +5,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		CB000000000000000000000A = {isa = PBXContainerItemProxy; containerPortal = CA0000000000000000000008; proxyType = 1; remoteGlobalIDString = CA0000000000000000000009; remoteInfo = Camp; };
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		CB000000000000000000000B = {isa = PBXTargetDependency; target = CA0000000000000000000009; targetProxy = CB000000000000000000000A; };
+/* End PBXTargetDependency section */
+
 /* Begin PBXBuildFile section */
 		CA0000000000000000000001 /* CampCore in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000012 /* CampCore */; };
 		CA0000000000000000000018 /* CampPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000019 /* CampPersistence */; };
@@ -14,6 +22,7 @@
 
 /* Begin PBXFileReference section */
 		CA0000000000000000000002 /* RoamReady.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RoamReady.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CB0000000000000000000001 /* RoamReadyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RoamReadyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +45,7 @@
 			path = Camp;
 			sourceTree = "<group>";
 		};
+		CB0000000000000000000002 /* RoamReadyUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = RoamReadyUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,17 +55,18 @@
 			files = (CA0000000000000000000001 /* CampCore in Frameworks */, CA0000000000000000000018 /* CampPersistence in Frameworks */, CA000000000000000000001A /* Campgrounds in Frameworks */, CA000000000000000000001C /* DocumentVault in Frameworks */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CB0000000000000000000003 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		CA0000000000000000000006 = {
 			isa = PBXGroup;
-			children = (CA0000000000000000000004 /* Camp */, CA0000000000000000000007 /* Products */,);
+			children = (CA0000000000000000000004 /* Camp */, CB0000000000000000000002 /* RoamReadyUITests */, CA0000000000000000000007 /* Products */,);
 			sourceTree = "<group>";
 		};
 		CA0000000000000000000007 /* Products */ = {
 			isa = PBXGroup;
-			children = (CA0000000000000000000002 /* RoamReady.app */,);
+			children = (CA0000000000000000000002 /* RoamReady.app */, CB0000000000000000000001 /* RoamReadyUITests.xctest */,);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -75,6 +86,18 @@
 			productReference = CA0000000000000000000002 /* RoamReady.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CB0000000000000000000006 /* RoamReadyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CB0000000000000000000007;
+			buildPhases = (CB0000000000000000000005, CB0000000000000000000003, CB0000000000000000000004,);
+			buildRules = ();
+			dependencies = (CB000000000000000000000B,);
+			fileSystemSynchronizedGroups = (CB0000000000000000000002,);
+			name = RoamReadyUITests;
+			productName = RoamReadyUITests;
+			productReference = CB0000000000000000000001;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -84,7 +107,7 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
-				TargetAttributes = {CA0000000000000000000009 = {CreatedOnToolsVersion = 16.0; }; };
+				TargetAttributes = {CA0000000000000000000009 = {CreatedOnToolsVersion = 16.0; }; CB0000000000000000000006 = {CreatedOnToolsVersion = 16.0; TestTargetID = CA0000000000000000000009; }; };
 			};
 			buildConfigurationList = CA0000000000000000000010 /* Build configuration list for PBXProject Camp */;
 			developmentRegion = en;
@@ -98,7 +121,7 @@
 			productRefGroup = CA0000000000000000000007 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (CA0000000000000000000009 /* Camp */,);
+			targets = (CA0000000000000000000009 /* Camp */, CB0000000000000000000006 /* RoamReadyUITests */,);
 		};
 /* End PBXProject section */
 
@@ -109,6 +132,7 @@
 			files = ();
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CB0000000000000000000004 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -118,6 +142,7 @@
 			files = ();
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CB0000000000000000000005 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -201,6 +226,34 @@
 			};
 			name = Release;
 		};
+		CB0000000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReadyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Camp;
+			};
+			name = Debug;
+		};
+		CB0000000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.RoamReadyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Camp;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -216,6 +269,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		CB0000000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (CB0000000000000000000008, CB0000000000000000000009,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */

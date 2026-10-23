@@ -13,6 +13,13 @@ public enum AssistantDevicePolicy {
         return generation >= 16
     }
 
+    /// The global chat tab requires Apple Intelligence hardware, so base iPhone 15/15 Plus
+    /// receive only the existing in-trip saved guidance. Apple's runtime check still applies.
+    public static func supportsGlobalChat(machineIdentifier: String) -> Bool {
+        permitsGenerativeAI(machineIdentifier: machineIdentifier)
+            && !["iPhone15,4", "iPhone15,5"].contains(machineIdentifier)
+    }
+
     /// `iPhone15,4` is the iPhone 15 and `iPhone15,5` the iPhone 15 Plus.
     private static let iPhone15Variants: Set<Int> = [4, 5]
 }

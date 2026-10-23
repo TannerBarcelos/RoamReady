@@ -2,6 +2,14 @@ import XCTest
 @testable import CampCore
 
 final class AssistantDevicePolicyTests: XCTestCase {
+    func testGlobalChatIsHiddenOnNonAIHardware() {
+        for machine in ["iPhone15,4", "iPhone15,5", "iPhone15,2", "iPhone14,7", "iPad17,1", "simulator", "", "iPhone17,0"] {
+            XCTAssertFalse(AssistantDevicePolicy.supportsGlobalChat(machineIdentifier: machine), machine)
+        }
+        for machine in ["iPhone16,1", "iPhone16,2", "iPhone17,1", "iPhone18,1"] {
+            XCTAssertTrue(AssistantDevicePolicy.supportsGlobalChat(machineIdentifier: machine), machine)
+        }
+    }
     func testIPhone15And15PlusPassTheProductGate() {
         // Apple's runtime check still reports deviceNotEligible on these; the app explains that.
         for machine in ["iPhone15,4", "iPhone15,5"] {

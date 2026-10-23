@@ -71,6 +71,13 @@ public extension TripDetails {
     /// campground (#31). Derived from the dates, so it needs no background work and syncs as is.
     func isCompleted(asOf now: Date = Date()) -> Bool { completedAt != nil || endedByDate(asOf: now) }
 
+    /// Home's current trip: includes the entire arrival and departure days at the campground.
+    /// Future, ended, invalid, and manually completed trips remain in Plan instead.
+    func isActive(asOf now: Date = Date()) -> Bool {
+        guard completedAt == nil, departure >= arrival, let window = forecastDayWindow else { return false }
+        return window.contains(campgroundCalendar.startOfDay(for: now))
+    }
+
     /// Ended by its dates, as opposed to marked complete early.
     func endedByDate(asOf now: Date = Date()) -> Bool {
         guard let lastDay = forecastDayWindow?.upperBound,

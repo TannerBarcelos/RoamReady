@@ -40,6 +40,13 @@ jobs:
           xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData \
             CODE_SIGNING_ALLOWED=NO build
+      - name: Assistant unavailable screens and text-only chat UI
+        run: |
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith("iPhone")))')"
+          xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath .derivedData \
+            -only-testing:RoamReadyUITests -parallel-testing-enabled NO \
+            CODE_SIGNING_ALLOWED=NO test
       - name: Show crash reports
         if: failure()
         run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec head -c 8000 {} \; || true
