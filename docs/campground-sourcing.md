@@ -48,14 +48,6 @@ RIDB's ordinary campsite endpoints describe sites; `Reservable` and a reservatio
 
 For this build, show site details with snapshot dates and open the official booking page when online. Do not mark dates available or promise a booking from the federal snapshot. A site can be seasonal, closed, reserved, offline-only, first-come or restricted even if present in the export.
 
-## API integration and secure deployment
+## Live refresh (post-v1, #18)
 
-The CampCore adapter is a **RIDB-shaped app proxy client**, with no RIDB key parameter or provider credential stored in the app. The production backend owns the RIDB key, allows only specific facility/site routes and bounded geographic queries, limits request/response sizes and aggregate traffic, caches provider results, honors 429/Retry-After and exposes only needed factual fields. It must not become an unrestricted public forwarding endpoint. App authentication uses short-lived app tokens and is separate from provider credentials.
-
-The bundled RIDB-derived snapshot already works without keys. A live proxy is an additional refresh path, not a dependency for saved trip access. Stage downloaded regional/index/site updates, validate schema/hash, and atomically replace while keeping the last known-good pack. Retain origin (`ridb`), provider ID, source update time, fetch time and export edition for deduplication and honest freshness labels. Failed network updates must leave cached trip/site details usable.
-
-No authenticated live RIDB/NPS query was completed. Adapter contract tests use explicit synthetic fixtures based on the inspected schema and are not represented as a production integration test. Credentials, a deployed allowlisted backend, release terms review, and a real authenticated response smoke test remain before live refresh can ship.
-
-Implemented files: `Sources/Campgrounds/CampgroundAPI.swift` and `Tests/CampgroundsTests/CampgroundAPITests.swift`. The client accepts an HTTPS app proxy base URL, rejects the direct RIDB API host, constructs only bounded facilities/sites routes, and accepts an injectable transport so app authentication can be applied by the caller. It decodes collection pagination and individual records, retains duplicate attribute records, leaves absent values unknown, and returns explicit HTTP errors rather than empty success on rate limiting. It does not yet perform automatic retries or persist provider results.
-
-Validation: Swift 6.0.3 compiled CampCore and all three targeted `CampgroundAPITests` passed with zero failures. Tests cover query encoding and geographic bounds, provider-key omission and path injection rejection, source attribute conflicts and zero lengths, collection pagination, single-record decoding and HTTP 429. The tests do not contact a provider or claim a deployed proxy exists.
+No live provider client ships. The bundled and downloaded RIDB snapshots need no key. A future live refresh needs a bounded backend that owns the RIDB key (allowlisted routes, geographic bounds, size and rate limits, caching); never ship provider keys in the app. The client prototyped earlier is in git history.

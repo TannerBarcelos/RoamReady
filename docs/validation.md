@@ -4,7 +4,7 @@
 
 Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone and iPad, portrait and landscape, with automatic system light/dark appearance. The local `CampCore` Swift package resolves from this repository; there are no third-party package downloads.
 
-The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files and bundled JSON beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying. `project.yml` is an optional XcodeGen regeneration specification; XcodeGen is not required to open or build the project.
+The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files and bundled JSON beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
 Swift language mode is 6.0 with strict concurrency. Default MainActor inference is deliberately not enabled: isolation belongs on the app's state-owning declarations. `CampCore` is a Foundation-only package with a lower platform floor so its tests also run on Linux and macOS; the app's deployment target remains iOS 27.0.
 
@@ -19,7 +19,7 @@ cd Camp
 
 Requirements: Swift 6+, Bash, and Python 3. If Swift is not on PATH, use `SWIFT_BIN=/absolute/path/to/swift ./scripts/check.sh`.
 
-The script runs the `CampCore` tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, validates the research rig catalog in `data/catalog/` and confirms no rig catalog is bundled in the app, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
+The script runs the Swift package tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, validates the campground snapshot and importer, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
 
 On a Mac with the required SDK:
 
@@ -78,4 +78,4 @@ See [offline-storage.md](offline-storage.md) for new-container provisioning, def
 
 ## Dataset and account checks
 
-`check.sh` also verifies the public campground snapshot hashes/counts/shards and runs importer fixture tests. The portable suites cover AI hardware policy, site unknown-length semantics, sharding, the future provider-proxy contract, and the document cipher. Device acceptance must cover iCloud identity changes, sync toggling during transfers, Erase all data, offline trip camera capture, and public directory/site downloads. See account-and-offline-contract.md for limits.
+`check.sh` also verifies the public campground snapshot hashes/counts/shards and runs importer fixture tests. The portable suites cover AI hardware policy, site unknown-length semantics, sharding, and the document cipher. Device acceptance must cover iCloud identity changes, sync toggling during transfers, Erase all data, offline trip camera capture, and public directory/site downloads. See account-and-offline-contract.md for limits.

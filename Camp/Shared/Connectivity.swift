@@ -1,9 +1,22 @@
 import Foundation
+import Network
+import Observation
 import SwiftUI
 
-// Share the existing NWPathMonitor-backed status throughout the application.
-typealias Connectivity = ConnectionStatus
-extension ConnectionStatus { var isOnline: Bool { connected } }
+/// Whether the device has a usable network path, from `NWPathMonitor`. Shared through the environment.
+@MainActor @Observable
+final class Connectivity {
+    private(set) var isOnline = false
+    @ObservationIgnored private let monitor = NWPathMonitor()
+    init() {
+        monitor.pathUpdateHandler = { [weak self] path in
+            let online = path.status == .satisfied
+            Task { @MainActor [weak self] in self?.isOnline = online }
+        }
+        monitor.start(queue: DispatchQueue(label: "RoamReady.Connectivity"))
+    }
+    deinit { monitor.cancel() }
+}
 
 /// A network path is a prerequisite, not proof that a remote service is reachable.
 struct OnlineFeatureGate<Content: View>: View {

@@ -20,11 +20,11 @@ v1 has no hosted AI. The only generative route is Apple's on-device Foundation M
 
 The RIDB public bulk export supports a real federal campground and site snapshot without an API key. `scripts/import_ridb.py` builds dated factual index/site shards, and the app downloads them over HTTPS from configurable public snapshot hosting. Development hosting points to this repository branch through Info.plist; production should use an owned CDN/versioned snapshot endpoint with an update owner and measured traffic budget. Static directory facts are not live booking availability.
 
-A tested RIDB-shaped proxy client is ready for future live provider refresh. A deployed bounded backend and registered RIDB API key are still needed for that path; never ship provider keys in the app. NPS, state/local/private coverage, broader regional datasets, and any reservation availability require separate integrations/agreements. See [source report](campground-sourcing.md).
+A future live refresh (#18) needs a bounded backend and a registered RIDB API key; never ship provider keys in the app. NPS, state/local/private coverage, broader regional datasets, and any reservation availability require separate integrations/agreements. See [source report](campground-sourcing.md).
 
 ## Rig catalog
 
-Deferred. v1 uses owner-entered rig details (required year, make, model, and length for RVs). If a lookup is revisited, these rules apply: Keep sourced brochure records and explicit make/model/year government evidence with per-record provenance. The importer must not treat regulatory vPIC chassis/trailer labels as comprehensive retail RV models. Exact model-year tuples and explicitly evidenced rig categories are required. No guessed year ranges or unsupported floorplans should enter onboarding. Official images/manual redistribution need separate rights. See [catalog sourcing](catalog-sourcing.md).
+Deferred (#21). v1 uses owner-entered rig details (required year, make, model, and length for RVs). A lookup needs a licensed or permitted source with per-record provenance; no guessed year ranges or floorplans in onboarding.
 
 ## Native release gate
 

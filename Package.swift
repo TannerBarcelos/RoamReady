@@ -17,7 +17,7 @@ let package = Package(
     targets: [
         /// Rigs, trips, checklists, saved campgrounds, and the rules that govern them. Foundation only.
         .target(name: "CampCore"),
-        /// Federal campground snapshot, site shards, filters, and the future provider-proxy client.
+        /// Federal campground snapshot, site shards, and filters.
         .target(name: "Campgrounds", dependencies: ["CampCore"]),
         /// Document types, policy, the repository contract, SHA-256 digests, and the chunk cipher.
         .target(name: "DocumentVault", dependencies: [

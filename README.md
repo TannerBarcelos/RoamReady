@@ -10,7 +10,7 @@ A native SwiftUI iOS app following the approved **A · System-first** design: sy
 2. Select the shared **RoamReady** scheme and an iOS 27 simulator.
 3. Build and run. On a physical device, choose your development team and replace `com.example.RoamReady` with your registered bundle identifier.
 
-There are no third-party dependencies. The Xcode project references the local `CampCore` Swift package; its only external package is Apple's [swift-crypto](https://github.com/apple/swift-crypto), linked on Linux only so CryptoKit-based code is tested there too. XcodeGen is optional; the checked-in project opens directly. See [build and validation instructions](docs/validation.md).
+There are no third-party dependencies. The Xcode project references the local `CampCore` Swift package; its only external package is Apple's [swift-crypto](https://github.com/apple/swift-crypto), linked on Linux only so CryptoKit-based code is tested there too. See [build and validation instructions](docs/validation.md).
 
 ## Implemented in this iteration
 
@@ -34,10 +34,7 @@ Each trip references its rig, so rig edits show on every trip that uses it; repl
 
 **Rigs are entered by their owners in v1.** The app does not ship or query a rig catalog. RV makes, models, years, and floorplans number in the tens of thousands, and no investigated free source covers them, so a partial picker would mostly send people to manual entry anyway. Owner-entered details are stored in Core Data as rig records, and trips reference their rig. Older profiles saved without a length still open; the next profile edit asks for the missing required fields. Camp Finder's "Use my rig" fills the minimum site length from the rig's length.
 
-The 331-record source-backed research catalog (82 manufacturer-brochure records plus 249 exact federal model-year identities, 2015–2026, eight makes) remains in `data/catalog/` as research for a possible future lookup. It is not complete and is not used by the app.
-
 The online Camp Finder downloads a dated federal snapshot containing **5,260 campgrounds and 111,647 overnight sites**. Facts come from RIDB's public daily export. Site details include loops, equipment/length limits and selected factual attributes where published. This is federal coverage, not every campground or live booking availability. Development snapshot hosting uses this public repository; production CDN/refresh ownership remains to be configured. The bundled three-campground starter remains an explicitly labeled network-error fallback.
-The [catalog sourcing report](docs/catalog-sourcing.md) records manufacturer archives, J.D. Power/Black Book/RVUSA licensing leads, scraping/terms findings, and image rights, for the case where a lookup is revisited. [Campground source notes](docs/campground-sourcing.md) document the smaller Finder dataset.
 
 Checklist wording is original, with the [Camping World setup and teardown article](https://blog.campingworld.com/learn-to-rv/rv-setup-checklist/) as a background reference. It is not a licensed reproduction of their full article or an endorsement. Equipment-specific ordering and procedures remain subject to the rig manufacturer's manuals.
 
@@ -46,8 +43,8 @@ Checklist wording is original, with the [Camping World setup and teardown articl
 - **iCloud/CloudKit provisioning and acceptance:** automatic private CloudKit mirroring is implemented behind configuration and is **on by default** once a container is configured. The first sync binds the library to the signed-in iCloud account without a prompt; a different account never syncs into it. A "Sync with iCloud" toggle in onboarding and Profile turns it off or on immediately (no restart); turning it off deletes nothing locally or in iCloud. The default build has no container and stays local-only. Register/provision a new dedicated Apple container, deploy its schema, and pass two-device, account-change, interrupted-transfer, and quota tests before shipping cloud sync. See [storage architecture and setup](docs/offline-storage.md).
 - **No accounts in v1:** there is no sign-up or Sign in with Apple; the library belongs to the device and the person's iCloud. Profile › Erase all data deletes the iCloud copy and everything on the device. See [identity contract](docs/account-and-offline-contract.md) and [erasing data](docs/erase-data.md).
 - **AI device acceptance:** Apple Foundation Models is the only generative provider. The product gate admits iPhone 15 or newer (`iPhone15,4`, `iPhone15,5`, and `iPhone16,*` and later; the iPhone 14 Pro's `iPhone15,2`/`15,3` are excluded), and Apple's runtime availability is checked separately. Apple Intelligence requires iPhone 15 Pro or later. Test the base iPhone 15 explanation, disabled/not-ready model states, supported language/region behavior, and saved-guidance fallback on devices. Remote models are planned for v2 (#34), not v1.
-- **Production campground finder:** a real federal snapshot and individual-site browsing are implemented; broader private/state/local coverage, production snapshot hosting/refreshes, and any live booking availability remain outstanding. A tested RIDB-shaped proxy client is prepared, but no live provider backend/key is deployed. Offline maps are not implemented.
-- **Rig catalog lookup (deferred):** v1 uses owner entry. A future lookup needs a licensed or permitted data source, independent review, and update ownership; see the sourcing report. No vendor has been contacted or contracted.
+- **Production campground finder:** a real federal snapshot and individual-site browsing are implemented; broader private/state/local coverage, production snapshot hosting/refreshes, and any live booking availability remain outstanding. Offline maps are not implemented.
+- **Rig catalog lookup (deferred, #21):** v1 uses owner entry. A future lookup needs a licensed or permitted data source. The earlier source research lives in git history (removed in this cleanup).
 - **Release validation:** iOS 27 build/runtime acceptance, real-device Foundation Models behavior, WeatherKit entitlement/attribution verification, accessibility and large-text checks, photos/iCloud Photos edge cases, and full airplane-mode acceptance pass.
 
 The default build declares no entitlements; cloud and weather are separately configured. [Validation notes](docs/validation.md#apple-capability-configuration) explain the future Apple capability setup. Enabling an entitlement alone does not implement its service.
@@ -58,7 +55,7 @@ The default build declares no entitlements; cloud and weather are separately con
 ./scripts/check.sh
 ```
 
-Runs the Swift core tests, research-catalog provenance validator, plist/JSON and Xcode project checks, and syntax parsing of native Swift files. Syntax parsing does **not** type-check Apple SDK APIs. Set `SWIFT_BIN=/path/to/swift` if necessary.
+Runs the Swift tests, campground snapshot validator and importer tests, plist/JSON and Xcode project checks, and syntax parsing of native Swift files. Syntax parsing does **not** type-check Apple SDK APIs. Set `SWIFT_BIN=/path/to/swift` if necessary.
 
 On a Mac with the iOS 27 SDK:
 
@@ -66,7 +63,7 @@ On a Mac with the iOS 27 SDK:
 ./scripts/check.sh --native
 ```
 
-The portable suites (`CampCore`, `Campgrounds`, `DocumentVault`, and the record projection in `CampPersistence`) currently have **79 tests** and run on Linux and macOS; Apple-only Core Data persistence tests additionally run on macOS. They cover trip snapshot isolation, rig policy and required details, checklist generation, invalid dates/coordinates, booking validation, completed trips and saved-campground lists, campground unknown-value and length filtering, site shards, the provider-proxy contract, document type detection/validation/link rules, SHA-256 and AES-GCM chunk sealing, the record projection round trip and partial-import detection, default-on iCloud sync and account pinning decisions, and cross-time-zone/DST forecast dates.
+The portable suites (`CampCore`, `Campgrounds`, `DocumentVault`, and the record projection in `CampPersistence`) currently have **76 tests** and run on Linux and macOS; Apple-only Core Data persistence tests additionally run on macOS. They cover trip snapshot isolation, rig policy and required details, checklist generation, invalid dates/coordinates, booking validation, completed trips and saved-campground lists, campground unknown-value and length filtering, site shards, document type detection/validation/link rules, SHA-256 and AES-GCM chunk sealing, the record projection round trip and partial-import detection, default-on iCloud sync and account pinning decisions, and cross-time-zone/DST forecast dates.
 
 ## Source layout
 
@@ -75,7 +72,7 @@ Swift package modules (`Package.swift`), each with its own test target:
 | Module | Depends on | Contents |
 | --- | --- | --- |
 | `CampCore` | Foundation | Rigs, trips and bookings, checklists and templates, profile, saved-campground lists, the library value type, trip dates, AI device policy, iCloud sync policy. |
-| `Campgrounds` | `CampCore` | Federal campground snapshot, campsite shards, filters, and the future provider-proxy client. |
+| `Campgrounds` | `CampCore` | Federal campground snapshot, campsite shards, and filters. |
 | `DocumentVault` | CryptoKit (swift-crypto on Linux) | Document types and policy, the `DocumentRepository` contract and in-memory implementation, SHA-256 digests, and the chunk cipher. |
 | `CampPersistence` | `CampCore`, `DocumentVault` | `RecordProjection` (portable) and the Core Data/CloudKit `LibraryStore`, its model, the document vault store, and the zip export (Apple-only). |
 
@@ -86,7 +83,7 @@ The app (`Camp/`) is organized by feature:
 - `Shared/`: connectivity gate and small shared views.
 - `Resources/`: the bundled starter campground directory.
 
-Other folders: `docs/` (acquisition research, build instructions, source coverage, integration plan), `scripts/` (repeatable validation and the RIDB importer), `data/` (the published campground snapshot and the deferred rig-catalog research).
+Other folders: `docs/` (acquisition research, build instructions, source coverage, integration plan), `scripts/` (repeatable validation and the RIDB importer), `data/` (the published campground snapshot).
 
 The app uses Core Data with SQLite. SQLite holds individual trips, checklist steps, photos, rigs, favorites, note versions, and sync metadata. Local saves never require a network or account. See [offline storage and sync](docs/offline-storage.md) for conflict rules, setup, limitations, and release gates.
 

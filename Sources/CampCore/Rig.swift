@@ -70,12 +70,6 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
         self.axleCount = axleCount; self.hasBunkhouse = hasBunkhouse; self.archivedAt = archivedAt
     }
     public var isArchived: Bool { archivedAt != nil }
-    /// Same owner-entered details, ignoring identity and archive state.
-    public func hasSameDetails(as other: Rig) -> Bool {
-        var copy = other
-        copy.id = id; copy.archivedAt = archivedAt
-        return copy == self
-    }
     public var displayName: String {
         let name = [make, model, floorplan].filter { !$0.isEmpty }.joined(separator: " ")
         return name.isEmpty ? type.title : name

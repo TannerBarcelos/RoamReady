@@ -42,7 +42,7 @@ struct CampFinderView: View {
                         .labelStyle(.iconOnly).buttonStyle(.bordered)
                 }
                 if showMap {
-                    if connection.connected {
+                    if connection.isOnline {
                         Map(position: $camera) {
                             ForEach(Array(results.prefix(200))) { place in
                                 Annotation(place.name, coordinate: place.coordinate) {

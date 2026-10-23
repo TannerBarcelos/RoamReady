@@ -2,8 +2,6 @@ import Foundation
 import CampCore
 import Campgrounds
 import MapKit
-import Observation
-import Network
 
 enum CampgroundLibrary {
     static let directory: CampgroundDirectory? = {
@@ -18,18 +16,4 @@ enum CampgroundLibrary {
 extension Campground {
     var coordinate: CLLocationCoordinate2D { CLLocationCoordinate2D(latitude: latitude, longitude: longitude) }
     var availableAmenities: [CampAmenity] { CampAmenity.allCases.filter { availability(of: $0) == true } }
-}
-
-@MainActor @Observable
-final class ConnectionStatus {
-    private(set) var connected = false
-    @ObservationIgnored private let monitor = NWPathMonitor()
-    init() {
-        monitor.pathUpdateHandler = { [weak self] path in
-            let connected = path.status == .satisfied
-            Task { @MainActor [weak self] in self?.connected = connected }
-        }
-        monitor.start(queue: DispatchQueue(label: "Camp.Connection"))
-    }
-    deinit { monitor.cancel() }
 }

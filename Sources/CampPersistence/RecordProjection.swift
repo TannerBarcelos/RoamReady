@@ -50,8 +50,6 @@ public struct StoredRecord: Codable, Equatable, Sendable {
 /// `trip:<trip id>` with a `rigID` reference; `photo:<id>` and `checklistItem:<owner>:<phase>:<id>`
 /// owned by their trip or templates; `favorite:<campground id>` per saved campground.
 public enum RecordProjection {
-    public static func rigKey(_ id: UUID) -> String { "rig:\(id)" }
-    public static func defaultsKey(rigID: UUID) -> String { "templates:rig:\(rigID)" }
 
     /// Trip fields that are optional values on `Trip` and stored as-is.
     static let optionalTripStrings = ["campgroundID", "planningTimeZoneIdentifier", "campgroundTimeZoneIdentifier",
@@ -73,10 +71,10 @@ public enum RecordProjection {
         }
         if let profile = snapshot.state.profile { add("profile:current", .profile, try fields(profile)) }
         // `archivedAt` encodes as reference-date seconds, Date's default Codable form.
-        for rig in snapshot.state.rigs { add(rigKey(rig.id), .rig, try fields(rig)) }
+        for rig in snapshot.state.rigs { add("rig:\(rig.id)", .rig, try fields(rig)) }
         for templates in snapshot.state.rigDefaults {
             guard let rigID = templates.rigID else { throw LibraryError.invalidRecord }
-            add(defaultsKey(rigID: rigID), .templates, ["id": .string(templates.id.uuidString), "version": .number(Double(templates.version)),
+            add("templates:rig:\(rigID)", .templates, ["id": .string(templates.id.uuidString), "version": .number(Double(templates.version)),
                                                         "sourceURL": .string(templates.sourceURL), "rigID": .string(rigID.uuidString)])
             try items(templates.setup, owner: "templates:\(templates.id)", phase: "setup")
             try items(templates.teardown, owner: "templates:\(templates.id)", phase: "teardown")

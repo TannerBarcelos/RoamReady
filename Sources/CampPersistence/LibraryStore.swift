@@ -110,11 +110,8 @@ public final class LibraryStore: @unchecked Sendable {
     private func coherentDocuments(_ actual: [StoredRecord], previous: LibrarySnapshot?) throws -> [StoredRecord] {
         let cached = try previous.map { try RecordProjection.documents($0) } ?? [:]
         var candidate = Dictionary(uniqueKeysWithValues: actual.map { ($0.key, $0) })
-        for parent in actual where !parent.isDeleted && [.profile, .templates, .trip].contains(parent.kind) {
+        for parent in actual where !parent.isDeleted && (parent.kind == .templates || parent.kind == .trip) {
             var incomplete = false
-            if let key = parent.fields["rigKey"]?.string, candidate[key] == nil || candidate[key]?.isDeleted == true {
-                if let old = cached[key] { candidate[key] = old } else { incomplete = true }
-            }
             if case .array(let required) = parent.fields["initialChecklistKeys"] {
                 for value in required {
                     guard let key = value.string else { throw LibraryError.invalidRecord }
@@ -128,7 +125,6 @@ public final class LibraryStore: @unchecked Sendable {
                 if let old = cached[parent.key] {
                     let owner = parent.kind == .templates ? "templates:\(old.fields["id"]?.string ?? "")" : old.key
                     for doc in cached.values where doc.fields["owner"]?.string == owner { candidate[doc.key] = doc }
-                    if let key = old.fields["rigKey"]?.string { candidate[key] = cached[key] }
                 }
             }
         }
