@@ -1,0 +1,47 @@
+# Interface design
+
+[Documentation index](README.md) · [Architecture](architecture.md)
+
+## System-first direction
+
+RoamReady follows the approved **A · System-first** design. The interface uses native SwiftUI lists, forms, navigation stacks, and tab controls, with semantic colors and a default System appearance with device-local Light/Dark overrides in Profile. Standard navigation and tabs receive the operating system's Liquid Glass styling at the app's iOS 27 deployment target.
+
+The [approved visual reference](design-A.png) records the design direction. Current behavior and labels are defined by the SwiftUI source; the image is not a complete feature specification.
+
+## Navigation and information hierarchy
+
+The root view shows onboarding when there is no profile, then four tabs:
+
+| Tab | Primary responsibility |
+| --- | --- |
+| Home | A featured trip, checklist progress, memories, quick trip creation, and local temperature. |
+| Plan | Upcoming/past trips and their booking, checklist, weather, and memory details. |
+| Camp Finder | Online campground/RV park map and search, place details, and saved lists. |
+| Profile | Rig/profile settings, default lists, documents, storage/sync, and library management. |
+
+Trip details keep booking information together and link to setup/teardown, **Photos & site notes**, documents, and camping help. Forms group campground, rig, dates, optional site details, booking, timing, and cost so users can save a minimal trip before adding paperwork.
+
+## Interaction rules
+
+- Use standard list/form controls and system sheets for editing, document preview, camera/photo import, and sharing.
+- Edit drafts in forms so **Cancel** discards edits before save.
+- Keep checklist progress visible and make complete, skip, reorder, and customization actions available near the relevant steps.
+- Keep optional booking/site fields optional; show length warnings near site details.
+- Explain permanent deletion before confirming it, including what is deleted and what is kept.
+- Distinguish a local save from cloud delivery and show save failures with retry.
+- Explain network and AI unavailability at the affected feature, while local workflows remain available.
+- Show forecast retrieval times and explain Apple Maps coverage and missing place details so users can judge the data.
+
+These patterns support the core use case: opening a saved trip at a campground with limited connectivity.
+
+## Privacy and permissions in the interface
+
+Onboarding asks for rig details without sign-up. Home weather and Camp Finder's Near me request location only when invoked, with approximate location supported. Text search and manual trip entry do not require location permission. PhotosPicker provides access to selected items; camera capture uses the system permission prompt. Document categories determine protection, so the user explicitly chooses one before saving.
+
+Sync is configured through the onboarding/Profile toggle. Export copy explains that documents leave iCloud protection as readable originals. Full-library erase and trip deletion have separate confirmation flows. See the [identity contract](account-and-offline-contract.md) and [document vault](document-vault.md).
+
+## Accessibility and adaptive layout
+
+The app targets iPhone and iPad in portrait and landscape and defaults to system appearance, with explicit Light/Dark choices applied at the window root. Native controls provide the starting point for Dynamic Type, VoiceOver, and platform interaction conventions.
+
+Release acceptance must still verify large text, VoiceOver labels and order, reduced motion/transparency, light/dark contrast, rotation, iPad split view, long campground names, and outdoor readability. Treat these as validation requirements, not completed accessibility certification. The [validation guide](validation.md#airplane-mode-acceptance-pass) includes the device checklist.

@@ -1,5 +1,7 @@
 # Monetization plan (#33)
 
+[Documentation index](README.md)
+
 **Status: draft for decision.** v1 ships with no payments. This document recommends an answer to each question in #33. Every item marked **Decision** is yours to confirm or change before any paid feature is built. Prices are proposals, not research-backed price points.
 
 ## Recommendation in one paragraph

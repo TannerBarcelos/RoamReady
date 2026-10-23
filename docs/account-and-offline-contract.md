@@ -1,5 +1,7 @@
 # Identity, connectivity, and AI contract
 
+[Documentation index](README.md)
+
 ## Product behavior
 
 RoamReady has **no accounts** in v1: no sign-up, no Sign in with Apple, and no server holding user data. The library belongs to the device and, when sync is on, to the person's own iCloud. First launch goes straight to rig/profile onboarding, which works offline.

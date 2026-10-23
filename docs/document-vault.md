@@ -1,5 +1,7 @@
 # Document vault
 
+[Documentation index](README.md)
+
 RoamReady stores rig manuals, registration, insurance, warranties, service records, reservation confirmations, and other paperwork as `StoredDocument` models in the SwiftData library. Any feature that needs attachments uses these models; it does not add its own storage, file cache, or transfer path.
 
 ## What users can do

@@ -1,5 +1,7 @@
 # Camp Finder data source
 
+[Documentation index](README.md)
+
 Camp Finder (#26) finds campgrounds and RV parks with **Apple Maps (MapKit)**, online only. There is no server, API key, paid provider, scraping, or owned campground catalog. Offline maps and offline campground lists are v2 (#20).
 
 ## How it works

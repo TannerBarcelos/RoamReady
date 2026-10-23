@@ -1,5 +1,7 @@
 # RoamReady offline storage and synchronization
 
+[Documentation index](README.md)
+
 ## SwiftData library
 
 The library is a SwiftData store (`Library/RoamReady.store` in Application Support). SwiftData owns the SQLite file, external binary files, persistent history, and, in a provisioned build, private CloudKit mirroring through Apple's `NSPersistentCloudKitContainer`. The app never executes SQL, and there is no custom record transport, upload queue, change token, polling loop, or retry scheduler.

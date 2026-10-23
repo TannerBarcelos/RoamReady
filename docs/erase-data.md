@@ -1,5 +1,7 @@
 # Erasing data
 
+[Documentation index](README.md)
+
 RoamReady has no accounts (see [identity contract](account-and-offline-contract.md)), so there is no account to delete and App Store Guideline 5.1.1(v) doesn't apply. The owner can still remove everything: Profile › **Erase all data** (`EraseDataView`, `LibraryErase`).
 
 1. The screen lists everything that is erased; the owner turns on "I understand this can't be undone" and confirms.
