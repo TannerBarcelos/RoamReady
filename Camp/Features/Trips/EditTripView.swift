@@ -8,6 +8,7 @@ struct EditTripView: View {
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    @Query private var trips: [Trip]
     let trip: Trip
     @State private var draft: TripDraft
     @State private var rig: Rig?
@@ -24,9 +25,11 @@ struct EditTripView: View {
                 Section("Campground") {
                     TextField("Campground", text: $draft.campgroundName)
                         .onChange(of: draft.campgroundName) { _, name in
-                            // Renamed by hand: the old listing's location no longer applies.
+                            // Renamed by hand: the old place's location and time zone no longer apply, and
+                            // the trip becomes a campground entered by name.
                             if draft.campgroundID != nil, name != trip.campgroundName, draft.campgroundID == trip.campgroundID {
-                                draft.setCampground(id: nil, name: nil, latitude: nil, longitude: nil, timeZoneIdentifier: nil)
+                                let local = CampgroundIdentity.local(named: name, among: trips.filter { $0.persistentModelID != trip.persistentModelID }.map { ($0.campgroundID, $0.campgroundName) })
+                                draft.setCampground(id: local, name: nil, latitude: nil, longitude: nil, timeZoneIdentifier: nil)
                             }
                         }
                     Button("Choose from Camp Finder", systemImage: "map") { choosing = true }.disabled(!connectivity.isOnline)

@@ -10,10 +10,11 @@ struct NewTripView: View {
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
-    var initialCampground: Campground? = nil
+    @Query private var trips: [Trip]
+    var initialListing: CampgroundListing? = nil
     @State private var draft = TripDraft.new()
     @State private var rig: Rig?
-    @State private var selected: Campground?
+    @State private var selected: CampgroundListing?
     @State private var choosing = false
     @State private var failure: String?
     var body: some View {
@@ -46,7 +47,13 @@ struct NewTripView: View {
                     Button("Save") {
                         do {
                             guard let rig else { throw CampUIError.missingRig }
-                            try Trip.create(draft, rig: rig, in: context)
+                            var trip = draft
+                            // Entered by name: a local identity, shared with earlier trips to the same place.
+                            if trip.campgroundID == nil {
+                                trip.campgroundID = CampgroundIdentity.local(named: trip.campgroundName,
+                                                                             among: trips.map { ($0.campgroundID, $0.campgroundName) })
+                            }
+                            try Trip.create(trip, rig: rig, in: context)
                             library.save()
                             dismiss()
                         } catch { failure = error.localizedDescription }
@@ -58,11 +65,13 @@ struct NewTripView: View {
             }
             .onAppear {
                 if rig == nil { rig = rigs.active.first }
-                if let initialCampground, selected == nil { select(initialCampground) }
+                if let initialListing, selected == nil { select(initialListing) }
             }
         }
     }
-    private func select(_ place: Campground?) {
+    /// Prefills the Apple Maps identity, name, location, and time zone. The name becomes the
+    /// owner's own record and stays readable even if Apple Maps stops listing the place.
+    private func select(_ place: CampgroundListing?) {
         selected = place
         draft.setCampground(id: place?.id, name: place?.name, latitude: place?.latitude, longitude: place?.longitude,
                             timeZoneIdentifier: place?.timeZoneIdentifier)

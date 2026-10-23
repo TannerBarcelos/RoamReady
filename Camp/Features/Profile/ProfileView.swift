@@ -57,7 +57,7 @@ struct ProfileView: View {
                 Text("Saved guidance is always available. AI explanations use Apple’s on-device model on iPhones that support Apple Intelligence (iPhone 15 Pro or later) when it’s turned on and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
-                Text("Camp Finder downloads a dated federal campground and campsite snapshot from RIDB. It does not show live booking availability.").font(.footnote).foregroundStyle(.secondary)
+                Text("Camp Finder searches campgrounds and RV parks in Apple Maps, online only. Apple Maps doesn’t list every campground, and RoamReady doesn’t book or show availability.").font(.footnote).foregroundStyle(.secondary)
                 if let url = URL(string: ChecklistFactory.sourceURL) { Link("Checklist reference: Camping World", destination: url) }
             } header: { Text("Sources & coverage") } footer: {
                 Text("RoamReady · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")

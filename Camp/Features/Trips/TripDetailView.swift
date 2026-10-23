@@ -48,7 +48,7 @@ struct TripDetailView: View {
                 }
                 Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
             } footer: {
-                Text("Trips complete on their own the day after departure. Completed trips at a Camp Finder campground add it to Been here.")
+                Text("Trips complete on their own the day after departure. Completed trips add their campground to Have been.")
             }
         }
         .navigationTitle(trip.campgroundName)

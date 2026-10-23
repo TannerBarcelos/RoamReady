@@ -13,7 +13,7 @@ Keep everything RoamReady does today **free forever**: trips and bookings, check
 | Trips/bookings, checklists, notes, photos, documents | The core product; zero marginal cost (on device + the user's own iCloud) |
 | Offline use everywhere it works today | The product promise |
 | On-device Apple AI (#32) | Runs on the user's iPhone; costs us nothing |
-| Camp Finder (federal RIDB) and weather | Low hosting cost; WeatherKit has a free monthly allowance (check the current quota under #6) |
+| Camp Finder (Apple Maps) and weather | Apple Maps is free and needs no server; WeatherKit has a free monthly allowance (check the current quota under #6) |
 | One active rig | `RigPolicy.maxActiveRigs = 1` today |
 
 ## Paid: RoamReady Plus (subscription)
@@ -24,7 +24,7 @@ Keep everything RoamReady does today **free forever**: trips and bookings, check
 |---|---|
 | Remote AI models with the model selector (#34) | Real, per question (below) |
 | Additional active rigs (raise `RigPolicy.maxActiveRigs`, e.g. to 5) | ~None |
-| Later: offline maps (#20), expanded campground coverage (#18) | Storage/licensing, if adopted |
+| Later: offline maps (#20) | Storage/licensing, if adopted |
 
 **Decision: price.** Proposed: $2.99/month or $24.99/year, with a 1-week free trial for new subscribers (an introductory offer). The cost math below leaves wide margin even for heavy users on the cheaper model.
 

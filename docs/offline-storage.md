@@ -14,7 +14,7 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | `ChecklistStep` | title, detail, section, status, phase, position | its trip, or its rig for default lists |
 | `TripPhoto` | resized JPEG (external storage), caption | trip |
 | `NoteRevision` | a saved version of a trip's notes | trip |
-| `SavedCampground` | Camp Finder lists (want to go, favorite, been here) | — |
+| `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
 | `DocumentContent` | the file bytes (external storage) and its file key (cloud-encrypted) | document |
 

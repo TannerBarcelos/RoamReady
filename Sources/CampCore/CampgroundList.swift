@@ -7,12 +7,12 @@ public enum CampgroundList: String, CaseIterable, Identifiable, Sendable {
     public var title: String {
         switch self {
         case .wantToGo: "Want to go"
-        case .beenTo: "Been here"
+        case .beenTo: "Have been"
         case .favorite: "Favorites"
         }
     }
 
-    /// Whether a campground is on this list. "Been here" follows completed trips at the campground
+    /// Whether a campground is on this list. "Have been" follows completed trips at the campground
     /// unless the owner chose explicitly (`beenTo` true or false).
     public func includes(wantToGo: Bool, favorite: Bool, beenTo: Bool?, hasCompletedTrip: Bool) -> Bool {
         switch self {

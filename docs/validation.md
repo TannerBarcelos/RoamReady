@@ -19,7 +19,7 @@ cd Camp
 
 Requirements: Swift 6+, Bash, and Python 3. If Swift is not on PATH, use `SWIFT_BIN=/absolute/path/to/swift ./scripts/check.sh`.
 
-The script runs the Swift package tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, validates the campground snapshot and importer, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
+The script runs the Swift package tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, checks that Camp Finder's location prompt is declared and no campground data is bundled, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
 
 On a Mac with the required SDK:
 
@@ -52,7 +52,7 @@ Cloud sync is not established by local persistence tests. Validate multi-device 
 
 The default `Camp.entitlements` declares no capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. User location is not requested.
 
-`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync preference (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures for the public campground snapshot host, optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
+`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync preference (reason CA92.1), no tracking, and no collected data: Camp Finder's searches go to Apple Maps through MapKit, and RoamReady doesn't store or send the location itself. Reassess the manifest and App Store privacy disclosures for optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
 
 Add capabilities through Xcode only when their corresponding integration is ready and your Apple Developer identifiers/profiles are configured. Optional weather/cloud examples require provisioning:
 
@@ -78,4 +78,4 @@ See [offline-storage.md](offline-storage.md) for new-container provisioning, def
 
 ## Dataset and account checks
 
-`check.sh` also verifies the public campground snapshot hashes/counts/shards and runs importer fixture tests. The portable suites cover AI hardware policy, site unknown-length semantics, sharding, and the document cipher. Device acceptance must cover iCloud identity changes, sync toggling during transfers, Erase all data, offline trip camera capture, and public directory/site downloads. See account-and-offline-contract.md for limits.
+The portable suites cover AI hardware policy, campground identities, Camp Finder places, and the document cipher. Device acceptance must cover iCloud identity changes, sync toggling during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See account-and-offline-contract.md for limits.
