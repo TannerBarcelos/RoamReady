@@ -171,7 +171,7 @@ struct RigFormSections: View {
                     VStack(alignment: .leading, spacing: 10) {
                         // The picker's label closure is Sendable; capture a value, not the binding.
                         let photoTitle = rig.photo == nil ? "Add a photo" : "Change photo"
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        PhotosPicker(selection: $selectedPhoto, matching: .images, preferredItemEncoding: .current) {
                             Label(photoTitle, systemImage: "photo")
                         }.disabled(importing)
                         if importing { ProgressView("Saving photo…") }
@@ -207,8 +207,7 @@ struct RigFormSections: View {
                 importing = true
                 defer { importing = false; selectedPhoto = nil }
                 do {
-                    guard let data = try await selection.loadTransferable(type: Data.self) else { throw CampUIError.unreadablePhoto }
-                    rig.photo = try await PhotoImport.jpeg(from: data)
+                    rig.photo = try await PhotoImport.jpeg(from: selection)
                     photoError = nil
                 } catch { photoError = error.localizedDescription }
             }

@@ -31,9 +31,9 @@ enum DocumentOwner {
 }
 
 /// A selected file awaiting details, already inspected.
-struct PendingDocumentFile: Identifiable {
+struct PendingDocumentFile: Identifiable, Sendable {
     let id = UUID()
-    let bytes: Data
+    let imported: ImportFile
     let file: DocumentFile
 }
 
@@ -76,22 +76,24 @@ struct DocumentVaultSection: View {
             guard let selection else { return }
             photoSelection = nil
             read {
-                guard let bytes = try await selection.loadTransferable(type: Data.self) else { throw DocumentError.unsupportedFileType }
-                return (bytes, "Photo")
+                guard let picked = try await selection.loadTransferable(type: PickedImage.self) else { throw DocumentError.unsupportedFileType }
+                return picked.file
             }
         }
         .sheet(item: $pendingFile) { pending in DocumentEditorView(mode: .newFile(owner, pending)) }
         .sheet(isPresented: $addingLink) { DocumentEditorView(mode: .newLink(owner)) }
     }
 
-    private func read(_ load: @escaping @MainActor () async throws -> (bytes: Data, filename: String)) {
+    private func read(_ load: @escaping @MainActor () async throws -> ImportFile) {
         Task {
             reading = true; failure = nil
             defer { reading = false }
             do {
-                let (bytes, filename) = try await load()
+                let imported = try await load()
                 // Validate before asking for details so unsupported files fail immediately.
-                pendingFile = PendingDocumentFile(bytes: bytes, file: try DocumentPolicy.inspect(bytes, filename: filename))
+                let file = try await Task.detached(priority: .userInitiated) { try imported.inspectDocument() }.value
+                try Task.checkCancellation()
+                pendingFile = PendingDocumentFile(imported: imported, file: file)
             } catch { failure = error.localizedDescription }
         }
     }

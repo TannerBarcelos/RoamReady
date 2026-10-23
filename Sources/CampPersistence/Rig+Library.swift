@@ -5,12 +5,13 @@ import CampCore
 
 /// Rig rules. Every rule is enforced here, not only in the UI.
 public extension Rig {
+    var photoData: Data? { protectedPhoto ?? photo }
     var isArchived: Bool { archivedAt != nil }
     var activeTrips: [Trip] { (trips ?? []).filter { !$0.isDeleted } }
     var attachedDocuments: [StoredDocument] { (documents ?? []).filter { !$0.isDeleted }.sorted { $0.createdAt > $1.createdAt } }
 
     var draft: RigDraft {
-        RigDraft(type: type, make: make, model: model, year: year, floorplan: floorplan, emoji: emoji, photo: photo,
+        RigDraft(type: type, make: make, model: model, year: year, floorplan: floorplan, emoji: emoji, photo: photoData,
                  equipment: equipment, lengthFeet: lengthFeet, slideCount: slideCount, axleCount: axleCount, hasBunkhouse: hasBunkhouse)
     }
 
@@ -83,7 +84,7 @@ public extension Rig {
 
     private func apply(_ draft: RigDraft) {
         type = draft.type; make = draft.make; model = draft.model; year = draft.year
-        floorplan = draft.floorplan; emoji = draft.emoji; photo = draft.photo; equipment = draft.equipment
+        floorplan = draft.floorplan; emoji = draft.emoji; protectedPhoto = draft.photo; photo = nil; equipment = draft.equipment
         lengthFeet = draft.lengthFeet; slideCount = draft.slideCount; axleCount = draft.axleCount
         hasBunkhouse = draft.hasBunkhouse
     }
