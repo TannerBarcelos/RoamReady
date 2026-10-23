@@ -3,12 +3,12 @@ import SwiftUI
 /// Erase all data. Explicit about what goes, confirmed twice, and honest about which step failed.
 struct EraseDataView: View {
     @Environment(Connectivity.self) private var connectivity
-    @Environment(CampStore.self) private var store
+    @Environment(LibraryController.self) private var library
     @State private var understood = false
     @State private var confirming = false
     @State private var step: LibraryErase.Step?
     @State private var failure: String?
-    private var blockedOffline: Bool { LibraryErase.needsConnection(store) && !connectivity.isOnline }
+    private var blockedOffline: Bool { library.sync.configured && !connectivity.isOnline }
     var body: some View {
         Form {
             Section {
@@ -50,11 +50,11 @@ struct EraseDataView: View {
 
     private func erase() async {
         failure = nil
-        await store.flushForBackground()
-        do { try await LibraryErase.run(store: store) { step = $0 } }
+        library.save()
+        do { try await LibraryErase.run(library: library) { step = $0 } }
         catch { failure = error.localizedDescription }
         step = nil
         // After a successful erase the library reopens empty, which starts onboarding again.
-        if failure == nil { await store.load(online: connectivity.isOnline) }
+        if failure == nil { await library.open(online: connectivity.isOnline) }
     }
 }

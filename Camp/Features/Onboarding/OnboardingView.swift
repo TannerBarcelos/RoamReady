@@ -1,13 +1,20 @@
 import SwiftUI
 import PhotosUI
+import SwiftData
 import CampCore
-import DocumentVault
+import CampPersistence
 
 struct OnboardingView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(\.modelContext) private var context
+    @Environment(LibraryController.self) private var library
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @State private var step = 0
-    @State private var profile = CamperProfile()
-    @State private var rig = Rig()
+    @State private var name = ""
+    @State private var experience = Experience.new
+    @State private var draft = RigDraft()
+    /// Created when the owner continues past the rig step, so documents can attach to it. A rig left
+    /// by an onboarding that didn't finish is picked up again.
+    @State private var rig: Rig?
     @State private var failure: String?
     var body: some View {
         NavigationStack {
@@ -21,33 +28,34 @@ struct OnboardingView: View {
                                 .foregroundStyle(.secondary)
                         }.padding(.vertical)
                     }
-                    if store.sync.configured { CloudSyncSection() }
+                    if library.sync.configured { CloudSyncSection() }
                     Section("What do you camp in?") {
                         ForEach(RigType.allCases) { type in
                             Button {
-                                rig.type = type
-                                rig.emoji = type.defaultEmoji
-                                rig.equipment = type.isRV ? Equipment() : .none
+                                draft.type = type
+                                draft.resetDetailsForType()
                             } label: {
                                 HStack {
                                     Text(type.defaultEmoji)
                                     Text(type.title).foregroundStyle(.primary)
                                     Spacer()
-                                    if rig.type == type { Image(systemName: "checkmark").foregroundStyle(.blue) }
+                                    if draft.type == type { Image(systemName: "checkmark").foregroundStyle(.blue) }
                                 }.padding(.vertical, 4)
                             }
                         }
                     }
                 } else if step == 1 {
-                    RigFormSections(rig: $rig)
-                    DocumentVaultSection(owner: .rig(rig.id), header: "Manuals & paperwork (optional)",
-                                         footer: "Add owner’s manuals, registration, insurance, or anything else now or later from Profile. Files open offline; links need a connection.")
+                    RigFormSections(rig: $draft)
                 } else {
                     Section("A little about you") {
-                        TextField("First name (optional)", text: $profile.name).textContentType(.givenName)
-                        Picker("Camping experience", selection: $profile.experience) {
+                        TextField("First name (optional)", text: $name).textContentType(.givenName)
+                        Picker("Camping experience", selection: $experience) {
                             ForEach(Experience.allCases) { Text($0.title).tag($0) }
                         }.pickerStyle(.inline)
+                    }
+                    if let rig {
+                        DocumentVaultSection(owner: .rig(rig), header: "Manuals & paperwork (optional)",
+                                             footer: "Add owner’s manuals, registration, insurance, or anything else now or later from Profile. Files open offline; links need a connection.")
                     }
                     Section {
                         Label("Your trips stay on this iPhone", systemImage: "iphone")
@@ -56,8 +64,8 @@ struct OnboardingView: View {
                     } footer: {
                         Text("No account needed. Everything works offline except Camp Finder and fresh weather. Optional iCloud sync keeps a private copy in your iCloud and can be managed from Profile.")
                     }
-                    if let failure { Section { Text(failure).foregroundStyle(.red) } }
                 }
+                if let failure { Section { Text(failure).foregroundStyle(.red) } }
             }
             .navigationTitle(step == 0 ? "Welcome to RoamReady" : step == 1 ? "Your rig" : "Make it yours")
             .navigationBarTitleDisplayMode(step == 0 ? .inline : .large)
@@ -66,23 +74,35 @@ struct OnboardingView: View {
                 ToolbarItem(placement: .topBarTrailing) { Text("\(step + 1) of 3").font(.caption).foregroundStyle(.secondary) }
             }
             .safeAreaInset(edge: .bottom) {
-                Button(step < 2 ? "Continue" : "Start camping") {
-                    guard step != 1 || rig.hasRequiredDetails else { return }
-                    if step < 2 { step += 1 } else {
-                        do { try store.finishOnboarding(profile, rig: rig) } catch { failure = error.localizedDescription }
-                    }
-                }
-                .disabled(step == 1 && !rig.hasRequiredDetails)
-                .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
-                .padding().background(.bar)
+                Button(step < 2 ? "Continue" : "Start camping") { advance() }
+                    .disabled(step == 1 && !draft.hasRequiredDetails)
+                    .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
+                    .padding().background(.bar)
+            }
+            .onAppear {
+                if rig == nil, let unfinished = rigs.active.first { rig = unfinished; draft = unfinished.draft }
             }
         }
+    }
+
+    private func advance() {
+        do {
+            switch step {
+            case 0: step = 1
+            case 1:
+                if let rig { try rig.update(draft, regenerateDefaults: true) } else { rig = try Rig.add(draft, to: context) }
+                library.save(); step = 2
+            default:
+                context.insert(CamperProfile(name: name.trimmingCharacters(in: .whitespacesAndNewlines), experience: experience))
+                library.save()
+            }
+            failure = nil
+        } catch { failure = error.localizedDescription }
     }
 }
 
 struct RigFormSections: View {
-    @Environment(CampStore.self) private var store
-    @Binding var rig: Rig
+    @Binding var rig: RigDraft
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var importing = false
     @State private var photoError: String?
@@ -95,7 +115,7 @@ struct RigFormSections: View {
                 }.onChange(of: rig.type) { _, _ in rig.resetDetailsForType() }
                 if rig.type.isRV {
                     LabeledContent("Year") {
-                        TextField("2024", text: Binding(get: { rig.yearText }, set: { rig.year = Rig.parseYear($0) }))
+                        TextField("2024", text: Binding(get: { rig.yearText }, set: { rig.year = RigDraft.parseYear($0) }))
                             .keyboardType(.numberPad).multilineTextAlignment(.trailing)
                     }
                     LabeledContent("Make") {
@@ -107,7 +127,7 @@ struct RigFormSections: View {
                             .textInputAutocapitalization(.words).multilineTextAlignment(.trailing)
                     }
                     LabeledContent("Length (ft)") {
-                        TextField("19.5", text: Binding(get: { rig.lengthText }, set: { rig.lengthFeet = Rig.parseLength($0) }))
+                        TextField("19.5", text: Binding(get: { rig.lengthText }, set: { rig.lengthFeet = RigDraft.parseLength($0) }))
                             .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
                     }
                 } else {
@@ -129,12 +149,12 @@ struct RigFormSections: View {
                     Picker("Slide-outs", selection: Binding(get: { rig.slideCount }, set: { rig.setSlideCount($0) })) {
                         Text("Not specified").tag(Int?.none)
                         Text("None").tag(Int?.some(0))
-                        ForEach(1...Rig.slideRange.upperBound, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                        ForEach(1...RigDraft.slideRange.upperBound, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
                     }
                     if rig.type.isTowable {
                         Picker("Axles", selection: $rig.axleCount) {
                             Text("Not specified").tag(Int?.none)
-                            ForEach(Array(Rig.axleRange), id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                            ForEach(Array(RigDraft.axleRange), id: \.self) { Text(String($0)).tag(Int?.some($0)) }
                         }
                     }
                     Toggle("Bunkhouse", isOn: Binding(get: { rig.hasBunkhouse ?? false }, set: { rig.hasBunkhouse = $0 }))
@@ -147,20 +167,20 @@ struct RigFormSections: View {
             }
             Section {
                 HStack(spacing: 16) {
-                    RigImage(rig: rig, size: 72)
+                    RigImage(type: rig.type, emoji: rig.emoji, photo: rig.photo, size: 72)
                     VStack(alignment: .leading, spacing: 10) {
                         // The picker's label closure is Sendable; capture a value, not the binding.
-                        let photoTitle = rig.photoFilename == nil ? "Add a photo" : "Change photo"
+                        let photoTitle = rig.photo == nil ? "Add a photo" : "Change photo"
                         PhotosPicker(selection: $selectedPhoto, matching: .images) {
                             Label(photoTitle, systemImage: "photo")
                         }.disabled(importing)
                         if importing { ProgressView("Saving photo…") }
-                        if rig.photoFilename != nil {
-                            Button("Use emoji instead") { rig.photoFilename = nil }
+                        if rig.photo != nil {
+                            Button("Use emoji instead") { rig.photo = nil }
                         }
                     }
                 }
-                if rig.photoFilename == nil {
+                if rig.photo == nil {
                     LabeledContent("Emoji") {
                         TextField("🚐", text: $rig.emoji).multilineTextAlignment(.trailing)
                             .onChange(of: rig.emoji) { _, value in if value.count > 2 { rig.emoji = String(value.prefix(2)) } }
@@ -168,7 +188,7 @@ struct RigFormSections: View {
                 }
                 if let photoError { Text(photoError).font(.caption).foregroundStyle(.red) }
             } header: { Text("Make it recognizable") } footer: {
-                Text("Your rig photo is saved on this iPhone and included in iCloud sync when you turn it on.")
+                Text("Your rig photo is saved in RoamReady and syncs with your rig when iCloud sync is on.")
             }
             if rig.type.isRV {
                 Section {
@@ -188,7 +208,7 @@ struct RigFormSections: View {
                 defer { importing = false; selectedPhoto = nil }
                 do {
                     guard let data = try await selection.loadTransferable(type: Data.self) else { throw CampUIError.unreadablePhoto }
-                    rig.photoFilename = try await store.media.importPhoto(data)
+                    rig.photo = try await PhotoImport.jpeg(from: data)
                     photoError = nil
                 } catch { photoError = error.localizedDescription }
             }
