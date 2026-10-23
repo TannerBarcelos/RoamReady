@@ -4,6 +4,7 @@ import CampPersistence
 
 @main
 struct RoamReadyApp: App {
+    @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
     @State private var library = LibraryController()
     @State private var connectivity = Connectivity()
     @State private var campFinder = CampFinder()
@@ -28,6 +29,7 @@ struct RoamReadyApp: App {
             .environment(connectivity)
             .environment(campFinder)
             .tint(.blue)
+            .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
             .task { await library.open(online: connectivity.isOnline) }
             .task(id: connectivity.isOnline) {

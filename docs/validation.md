@@ -48,11 +48,27 @@ Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigne
 
 Cloud sync is not established by local persistence tests. Validate multi-device conflicts, account changes, asset upload interruption, and background delivery using a provisioned CloudKit container. Apple manages mirroring scheduling; background push delivery still requires signed-device provisioning and acceptance.
 
+## Appearance acceptance pass
+
+Profile › Appearance offers **System** (the default), **Light**, and **Dark**. The selection is saved on this device, works offline, and applies at the window root so navigation, sheets, alerts, onboarding, and loading/error screens share it. Native semantic colors provide dark grouped backgrounds, elevated rows, readable primary/secondary text, and adaptive blue accents without changing the light layout. Photos and documents retain their original colors; Apple's camera and document viewers keep their system-provided presentation.
+
+On an iOS simulator or device:
+
+1. With no saved preference, switch the device between Light and Dark and verify all four tabs follow it, including Camp Finder's map.
+2. Select **Dark** while the device is in Light. Check Home, Plan, a trip's booking/checklists/memories/weather, Camp Finder's listings and details, and Profile. Open an editor sheet, photo/document preview, and a delete confirmation; check text, fields, separators, blue actions, and destructive actions remain readable. Weather attribution must use the dark mark.
+3. Select **Light** while the device is in Dark. Confirm the existing light interface returns throughout the app, including sheets and the map, and weather attribution uses the light mark.
+4. Select **System** again. Change the device appearance while RoamReady is open and confirm it follows immediately; repeat with a sheet open. Explicit Light and Dark choices must stay fixed when the device setting changes.
+5. Force-quit and relaunch in each mode, including in airplane mode; the selection must persist. Selecting a mode must preserve the current tab, navigation, and in-progress edits.
+6. Check the picker with VoiceOver and the largest Dynamic Type sizes, and review each mode with Increase Contrast, Reduce Transparency, and Reduce Motion enabled.
+7. On a disposable test library, use Erase all data. The appearance preference resets to System with the other device settings, and onboarding follows the device appearance.
+
+These visual checks require Apple SDKs and are not covered by the portable package tests.
+
 ## Apple capability configuration
 
 The default `Camp.entitlements` declares no capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. Location (when in use, approximate by default) is requested when the owner taps Home weather or Camp Finder’s Near me. Weather requests round it to about 1 km; Camp Finder uses it to search Apple Maps. Manual trip entry and text search work without location permission.
 
-`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync preference (reason CA92.1), no tracking, and coarse location (not linked, app functionality) for the Home weather reading. Camp Finder's search region goes to Apple Maps through MapKit; the device's location is not stored in the library. A chosen campground's coordinates and time zone are saved with its trip. Reassess the manifest and App Store privacy disclosures for optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
+`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync and appearance preferences (reason CA92.1), no tracking, and coarse location (not linked, app functionality) for the Home weather reading. Camp Finder's search region goes to Apple Maps through MapKit; the device's location is not stored in the library. A chosen campground's coordinates and time zone are saved with its trip. Reassess the manifest and App Store privacy disclosures for optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
 
 Signed builds use `Config/Cloud.entitlements` through a local xcconfig made from `Config/Cloud.xcconfig.example` (see #6). It declares CloudKit for `$(ROAMREADY_MIRRORING_CONTAINER)` and WeatherKit (`com.apple.developer.weatherkit`); `check.sh` fails if either is removed. Enable iCloud (CloudKit), Push Notifications, and WeatherKit on the App ID to match. Without WeatherKit, weather refresh fails and shows any saved forecast.
 

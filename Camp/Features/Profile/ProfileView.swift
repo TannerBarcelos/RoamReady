@@ -27,6 +27,7 @@ struct ProfileView: View {
                 .sheet(isPresented: $editing) { EditProfileView(profile: profile) }
             }
             RigsSection()
+            AppearanceSection()
             if !unattached.isEmpty {
                 Section {
                     NavigationLink { UnattachedDocumentsView() } label: {
@@ -60,7 +61,7 @@ struct ProfileView: View {
                 Text("Camp Finder searches campgrounds and RV parks in Apple Maps, online only. Apple Maps doesn’t list every campground, and RoamReady doesn’t book or show availability.").font(.footnote).foregroundStyle(.secondary)
                 if let url = URL(string: ChecklistFactory.sourceURL) { Link("Checklist reference: Camping World", destination: url) }
             } header: { Text("Sources & coverage") } footer: {
-                Text("RoamReady · Development build 0.1 · Design A\nAppearance follows your iPhone’s system settings.")
+                Text("RoamReady · Development build 0.1 · Design A")
             }
         }
         .navigationTitle("Profile")

@@ -18,6 +18,7 @@
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
         <dict>
+            <!-- Device-local iCloud sync and appearance preferences. -->
             <key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategoryUserDefaults</string>
             <key>NSPrivacyAccessedAPITypeReasons</key>
             <array><string>CA92.1</string></array>
