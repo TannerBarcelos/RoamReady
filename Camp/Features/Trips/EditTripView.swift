@@ -1,78 +1,65 @@
 import SwiftUI
-import MapKit
+import SwiftData
 import CampCore
-import Campgrounds
+import CampPersistence
 
 struct EditTripView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(LibraryController.self) private var library
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
-    @State var trip: Trip
-    @State private var rigID: UUID?
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    let trip: Trip
+    @State private var draft: TripDraft
+    @State private var rig: Rig?
     @State private var choosing = false
-    @State private var error: String?
+    @State private var failure: String?
+    init(trip: Trip) {
+        self.trip = trip
+        _draft = State(initialValue: TripDraft(trip))
+        _rig = State(initialValue: trip.rig)
+    }
     var body: some View {
         NavigationStack {
             Form {
                 Section("Campground") {
-                    TextField("Campground", text: $trip.campgroundName)
+                    TextField("Campground", text: $draft.campgroundName)
+                        .onChange(of: draft.campgroundName) { _, name in
+                            // Renamed by hand: the old listing's location no longer applies.
+                            if draft.campgroundID != nil, name != trip.campgroundName, draft.campgroundID == trip.campgroundID {
+                                draft.setCampground(id: nil, name: nil, latitude: nil, longitude: nil, timeZoneIdentifier: nil)
+                            }
+                        }
                     Button("Choose from Camp Finder", systemImage: "map") { choosing = true }.disabled(!connectivity.isOnline)
                 }
-                RigPickerSection(rigID: $rigID, includeArchived: trip.rigID)
-                Section("Dates") {
-                    DatePicker("Arrival", selection: $trip.arrival, displayedComponents: .date)
-                        .onChange(of: trip.arrival) { _, value in if trip.departure < value { trip.departure = value } }
-                    DatePicker("Departure", selection: $trip.departure, in: trip.arrival..., displayedComponents: .date)
-                }
-                BookingFormSections(trip: $trip)
+                RigPickerSection(rig: $rig, rigs: rigs.filter { !$0.isArchived || $0 == trip.rig })
+                TripDatesSection(draft: $draft)
+                BookingFormSections(trip: $draft, rig: rig)
                 Section {
                     Text("Editing never resets checklists, progress, notes, photos, or memories. Changing the rig doesn’t replace this trip’s checklists.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                if let error { Text(error).foregroundStyle(.red) }
+                if let failure { Text(failure).foregroundStyle(.red) }
             }
             .navigationTitle("Edit trip").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        do {
-                            var edited = trip
-                            edited.copyBookingDetails(from: trip)
-                            edited.rigID = rigID
-                            try edited.validate()
-                            try edited.validateBooking()
-                            let original = store.trip(trip.id)
-                            store.editTrip(trip.id) { current in
-                                if current.campgroundName != edited.campgroundName && original?.campgroundID == edited.campgroundID {
-                                    // Renamed by hand: the old listing's location no longer applies.
-                                    edited.latitude = nil; edited.longitude = nil
-                                    edited.campgroundID = nil; edited.campgroundTimeZoneIdentifier = nil
-                                }
-                                current.campgroundName = edited.campgroundName
-                                current.latitude = edited.latitude; current.longitude = edited.longitude
-                                current.campgroundID = edited.campgroundID; current.campgroundTimeZoneIdentifier = edited.campgroundTimeZoneIdentifier
-                                current.arrival = edited.arrival; current.departure = edited.departure
-                                current.rigID = edited.rigID
-                                current.copyBookingDetails(from: edited)
-                            }
-                            dismiss()
-                        } catch { self.error = error.localizedDescription }
-                    }.disabled(trip.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        do { try trip.update(draft, rig: rig); library.save(); dismiss() }
+                        catch { failure = error.localizedDescription }
+                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
             .sheet(isPresented: $choosing) {
                 NavigationStack {
                     CampgroundPicker { place in
-                        trip.campgroundName = place.name; trip.campgroundID = place.id
-                        trip.latitude = place.latitude; trip.longitude = place.longitude
-                        trip.campgroundTimeZoneIdentifier = place.timeZoneIdentifier
+                        draft.setCampground(id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude,
+                                            timeZoneIdentifier: place.timeZoneIdentifier)
                         choosing = false
                     }
                 }
             }
-            .onAppear { if rigID == nil { rigID = trip.rigID } }
-            .environment(\.timeZone, trip.planningTimeZone)
+            .environment(\.timeZone, draft.planningTimeZone)
         }
     }
 }

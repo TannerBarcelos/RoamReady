@@ -1,17 +1,18 @@
 import SwiftUI
-import MapKit
+import SwiftData
 import CampCore
 import Campgrounds
+import CampPersistence
 
 struct NewTripView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(\.modelContext) private var context
+    @Environment(LibraryController.self) private var library
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     var initialCampground: Campground? = nil
-    @State private var draft = Trip(campgroundName: "", arrival: Calendar.current.startOfDay(for: .now),
-                                    departure: Calendar.current.date(byAdding: .day, value: 2, to: Calendar.current.startOfDay(for: .now)) ?? .now,
-                                    planningTimeZoneIdentifier: TimeZone.current.identifier)
-    @State private var rigID: UUID?
+    @State private var draft = TripDraft.new()
+    @State private var rig: Rig?
     @State private var selected: Campground?
     @State private var choosing = false
     @State private var failure: String?
@@ -28,22 +29,14 @@ struct NewTripView: View {
                          ? "Reserve with the campground or its provider first, then enter the booking here. RoamReady never books."
                          : "You’re offline, so enter the campground by name. Camp Finder needs a connection.")
                 }
-                RigPickerSection(rigID: $rigID, includeArchived: nil)
-                Section("Dates") {
-                    DatePicker("Arrival", selection: $draft.arrival, displayedComponents: .date)
-                        .onChange(of: draft.arrival) { _, value in if draft.departure < value { draft.departure = value } }
-                    DatePicker("Departure", selection: $draft.departure, in: draft.arrival..., displayedComponents: .date)
-                }
-                BookingFormSections(trip: $draft, includesSiteNotes: true)
+                RigPickerSection(rig: $rig, rigs: rigs.active)
+                TripDatesSection(draft: $draft)
+                BookingFormSections(trip: $draft, rig: rig, includesSiteNotes: true)
                 Section {
                     Label("Setup & teardown included", systemImage: "checklist")
                     Text("The trip gets its own copy of your rig’s default checklists. Changing it never changes your defaults.").foregroundStyle(.secondary)
                 }
-                if let selected {
-                    WeatherSection(trip: Trip(campgroundName: draft.campgroundName, latitude: selected.latitude, longitude: selected.longitude,
-                        arrival: draft.arrival, departure: draft.departure, planningTimeZoneIdentifier: TimeZone.current.identifier,
-                        campgroundTimeZoneIdentifier: selected.timeZoneIdentifier))
-                }
+                if selected != nil { WeatherSection(trip: draft) }
                 if let failure { Section { Text(failure).foregroundStyle(.red) } }
             }
             .navigationTitle("Add trip").navigationBarTitleDisplayMode(.inline)
@@ -52,58 +45,67 @@ struct NewTripView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         do {
-                            guard let rigID else { throw CampUIError.missingRig }
-                            try store.createTrip(from: draft, rigID: rigID)
+                            guard let rig else { throw CampUIError.missingRig }
+                            try Trip.create(draft, rig: rig, in: context)
+                            library.save()
                             dismiss()
                         } catch { failure = error.localizedDescription }
-                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || rigID == nil)
+                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || rig == nil)
                 }
             }
             .sheet(isPresented: $choosing) {
                 NavigationStack { CampgroundPicker { place in select(place); choosing = false } }
             }
             .onAppear {
-                if rigID == nil { rigID = store.activeRig?.id }
+                if rig == nil { rig = rigs.active.first }
                 if let initialCampground, selected == nil { select(initialCampground) }
             }
         }
     }
     private func select(_ place: Campground?) {
         selected = place
-        if let place { draft.campgroundName = place.name }
-        draft.campgroundID = place?.id; draft.latitude = place?.latitude; draft.longitude = place?.longitude
-        draft.campgroundTimeZoneIdentifier = place?.timeZoneIdentifier
+        draft.setCampground(id: place?.id, name: place?.name, latitude: place?.latitude, longitude: place?.longitude,
+                            timeZoneIdentifier: place?.timeZoneIdentifier)
     }
 }
 
-/// The rig picker. v1 allows one active rig, so it lists that rig, pre-selected.
-/// `includeArchived` keeps a trip's current archived rig selectable when editing.
+/// The rig picker. v1 allows one active rig, so it lists that rig, pre-selected. Editing a trip
+/// also lists the trip's own rig when it's archived.
 struct RigPickerSection: View {
-    @Environment(CampStore.self) private var store
-    @Binding var rigID: UUID?
-    let includeArchived: UUID?
-    var choices: [Rig] {
-        store.state.activeRigs + store.state.archivedRigs.filter { $0.id == includeArchived }
-    }
+    @Binding var rig: Rig?
+    let rigs: [Rig]
     var body: some View {
         Section {
-            if choices.isEmpty {
+            if rigs.isEmpty {
                 Text("Add a rig in Profile before adding a trip.").foregroundStyle(.secondary)
             } else {
-                Picker("Rig", selection: $rigID) {
-                    ForEach(choices) { rig in
-                        Text(rig.isArchived ? "\(rig.displayName) (archived)" : rig.displayName).tag(Optional(rig.id))
+                Picker("Rig", selection: $rig) {
+                    ForEach(rigs) { choice in
+                        Text(choice.isArchived ? "\(choice.displayName) (archived)" : choice.displayName).tag(Optional(choice))
                     }
-                    if rigID != nil && store.state.rig(rigID) == nil { Text("Rig unavailable").tag(rigID) }
+                    if rig == nil { Text("Rig unavailable").tag(Rig?.none) }
                 }
             }
         } header: { Text("Rig") }
     }
 }
 
-/// Booking fields, all optional so walk-up and first-come sites work. Editable at any time.
+struct TripDatesSection: View {
+    @Binding var draft: TripDraft
+    var body: some View {
+        Section("Dates") {
+            DatePicker("Arrival", selection: $draft.arrival, displayedComponents: .date)
+                .onChange(of: draft.arrival) { _, value in if draft.departure < value { draft.departure = value } }
+            DatePicker("Departure", selection: $draft.departure, in: draft.arrival..., displayedComponents: .date)
+        }
+    }
+}
+
+/// Site and booking fields, all optional so walk-up and first-come sites work. Editable at any time.
 struct BookingFormSections: View {
-    @Binding var trip: Trip
+    @Binding var trip: TripDraft
+    /// The trip's rig, to warn when it's longer than the site.
+    let rig: Rig?
     /// Adding a trip also takes first site notes; after that, notes and photos live in Photos & site notes.
     var includesSiteNotes = false
     var body: some View {
@@ -127,6 +129,8 @@ struct BookingFormSections: View {
         } header: { Text("Site (optional)") } footer: {
             if let details = trip.site, (try? details.validate()) == nil {
                 Text(CampError.invalidSiteLength.localizedDescription).foregroundStyle(.red)
+            } else if let rig, let details = trip.site, details.isTooShort(for: rig), let limit = details.maxLengthFeet {
+                Text("\(rig.displayName) is longer than this site’s \(limit.formatted()) ft limit.").foregroundStyle(.orange)
             } else {
                 Text("Campground listings don’t include site details. Copy them from your reservation or add them when you arrive. Add photos and more notes any time from Photos & site notes.")
             }
@@ -148,7 +152,7 @@ struct BookingFormSections: View {
             TimeOfDayRow(title: "Check-in time", minutes: $trip.checkInMinutes)
             TimeOfDayRow(title: "Check-out time", minutes: $trip.checkOutMinutes)
         } header: { Text("Check-in & check-out") } footer: {
-            if (try? trip.validateBooking()) == nil, trip.checkInMinutes != nil, trip.checkOutMinutes != nil {
+            if let checkIn = trip.checkInDate, let checkOut = trip.checkOutDate, checkOut <= checkIn {
                 Text(CampError.invalidCheckTimes.localizedDescription).foregroundStyle(.red)
             } else {
                 Text("Times are in the campground’s local time zone.")
@@ -166,7 +170,7 @@ struct BookingFormSections: View {
         }
     }
     private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
-    private func text(_ keyPath: WritableKeyPath<Trip, String?>) -> Binding<String> {
+    private func text(_ keyPath: WritableKeyPath<TripDraft, String?>) -> Binding<String> {
         Binding(get: { trip[keyPath: keyPath] ?? "" }, set: { trip[keyPath: keyPath] = $0.isEmpty ? nil : $0 })
     }
     /// Edits one site field; the trip stores no site details until one is entered.

@@ -1,152 +1,138 @@
 import SwiftUI
+import SwiftData
 import CampCore
+import CampPersistence
 
-enum ChecklistPhase: String, CaseIterable, Identifiable {
-    case setup = "Setup", teardown = "Teardown"
-    var id: String { rawValue }
-}
-
+/// A trip's checklist. Steps are edited in place; the rig's defaults never change unless the owner
+/// saves this trip's lists as defaults.
 struct ChecklistView: View {
-    @Environment(CampStore.self) private var store
-    let tripID: UUID
+    @Environment(LibraryController.self) private var library
+    let trip: Trip
     @State private var phase: ChecklistPhase
     @State private var editing = EditMode.inactive
-    @State private var editedItem: ChecklistItem?
+    @State private var editedStep: ChecklistStep?
     @State private var adding = false
-    @State private var templateConfirmation = false
-    @State private var templateSaved = false
-    @State private var templateFailure: String?
-    private var rigName: String { store.trip(tripID).flatMap(store.rig(for:))?.displayName ?? "this rig" }
+    @State private var confirmingDefaults = false
+    @State private var defaultsSaved = false
+    @State private var failure: String?
     @State private var showAssistant = false
-    @State private var helpItem: ChecklistItem?
+    @State private var helpStep: ChecklistStep?
     @State private var helpAfterDismiss = false
 
-    init(tripID: UUID, initialPhase: ChecklistPhase = .setup) {
-        self.tripID = tripID
+    init(trip: Trip, initialPhase: ChecklistPhase = .setup) {
+        self.trip = trip
         _phase = State(initialValue: initialPhase)
     }
-    var items: [ChecklistItem] {
-        guard let trip = store.trip(tripID) else { return [] }
-        return phase == .setup ? trip.setup : trip.teardown
-    }
-    func changeItems(_ change: (inout [ChecklistItem]) -> Void) {
-        store.editTrip(tripID) { trip in
-            if phase == .setup { change(&trip.setup) } else { change(&trip.teardown) }
-        }
-    }
+    private var steps: [ChecklistStep] { trip.steps(phase) }
+    private var rigName: String { trip.rig?.displayName ?? "this rig" }
+
     var body: some View {
         List {
             Section {
                 Picker("Checklist", selection: $phase) {
-                    ForEach(ChecklistPhase.allCases) { Text($0.rawValue).tag($0) }
+                    ForEach(ChecklistPhase.allCases) { Text($0.title).tag($0) }
                 }.pickerStyle(.segmented)
-                ProgressSummary(items: items)
+                ProgressSummary(steps: steps)
                 SaveStatus()
             }
             Section {
-                ForEach(items) { item in
+                ForEach(steps) { step in
                     HStack(alignment: .top, spacing: 14) {
                         Button {
-                            changeItems { list in
-                                if let index = list.firstIndex(where: { $0.id == item.id }) {
-                                    list[index].status = item.status == .completed ? .pending : .completed
-                                }
-                            }
+                            step.status = step.status == .completed ? .pending : .completed
+                            library.save()
                         } label: {
-                            Image(systemName: item.status == .completed ? "checkmark.circle.fill" : item.status == .skipped ? "minus.circle" : "circle")
-                                .font(.title2).foregroundStyle(item.status == .completed ? Color.blue : .secondary)
+                            Image(systemName: step.status == .completed ? "checkmark.circle.fill" : step.status == .skipped ? "minus.circle" : "circle")
+                                .font(.title2).foregroundStyle(step.status == .completed ? Color.blue : .secondary)
                                 .frame(width: 32, height: 44)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("\(item.title), \(item.status.title). \(item.status == .completed ? "Mark pending" : "Mark complete")")
+                        .accessibilityLabel("\(step.title), \(step.status.title). \(step.status == .completed ? "Mark pending" : "Mark complete")")
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title).foregroundStyle(item.status == .skipped ? .secondary : .primary)
-                            Text(item.status == .skipped ? "Skipped · \(item.section)" : item.section)
+                            Text(step.title).foregroundStyle(step.status == .skipped ? .secondary : .primary)
+                            Text(step.status == .skipped ? "Skipped · \(step.section)" : step.section)
                                 .font(.caption).foregroundStyle(.secondary)
                         }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5)
-                        Button {
-                            editedItem = item
-                        } label: { Image(systemName: editing.isEditing ? "pencil" : "info.circle").frame(width: 36, height: 44) }
-                            .buttonStyle(.borderless).accessibilityLabel("Details and edit \(item.title)")
+                        Button { editedStep = step } label: { Image(systemName: editing.isEditing ? "pencil" : "info.circle").frame(width: 36, height: 44) }
+                            .buttonStyle(.borderless).accessibilityLabel("Details and edit \(step.title)")
                     }
                     .contextMenu {
-                        Button("Ask about this step", systemImage: "sparkles") { helpItem = item; showAssistant = true }
-                        Button(item.status == .skipped ? "Mark pending" : "Skip this step", systemImage: "arrow.uturn.right") {
-                            changeItems { list in
-                                if let index = list.firstIndex(where: { $0.id == item.id }) { list[index].status = item.status == .skipped ? .pending : .skipped }
-                            }
+                        Button("Ask about this step", systemImage: "sparkles") { helpStep = step; showAssistant = true }
+                        Button(step.status == .skipped ? "Mark pending" : "Skip this step", systemImage: "arrow.uturn.right") {
+                            step.status = step.status == .skipped ? .pending : .skipped
+                            library.save()
                         }
                     }
                 }
-                .onMove { offsets, destination in changeItems { $0.move(fromOffsets: offsets, toOffset: destination) } }
-                .onDelete { offsets in changeItems { $0.remove(atOffsets: offsets) } }
+                .onMove { offsets, destination in
+                    var ordered = steps; ordered.move(fromOffsets: offsets, toOffset: destination)
+                    trip.reorder(ordered); library.save()
+                }
+                .onDelete { offsets in trip.removeSteps(offsets.map { steps[$0] }); library.save() }
                 Button("Add a step", systemImage: "plus") { adding = true }
             } header: { Text("Your flow") } footer: {
                 Text("Tap a circle to finish a step. Use Edit to reorder or remove steps. Follow your rig’s manuals for equipment-specific procedures.")
             }
             Section {
-                Button("Ask about this checklist", systemImage: "sparkles") { helpItem = nil; showAssistant = true }
-                Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { templateConfirmation = true }
-                    .disabled(store.trip(tripID).flatMap(store.rig(for:)) == nil)
-                if templateSaved { Label("Defaults updated for \(rigName)", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
-                if let templateFailure { Text(templateFailure).font(.caption).foregroundStyle(.red) }
+                Button("Ask about this checklist", systemImage: "sparkles") { helpStep = nil; showAssistant = true }
+                Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { confirmingDefaults = true }
+                    .disabled(trip.rig == nil)
+                if defaultsSaved { Label("Defaults updated for \(rigName)", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
+                if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
                 if let url = URL(string: ChecklistFactory.sourceURL) {
                     Link("Reference: Camping World", destination: url).font(.footnote)
                 }
             }
         }
-        .navigationTitle(phase.rawValue)
+        .navigationTitle(phase.title)
         .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
         .environment(\.editMode, $editing)
-        .sensoryFeedback(.success, trigger: items.filter { $0.status == .completed }.count)
-        .sheet(item: $editedItem, onDismiss: {
+        .sensoryFeedback(.success, trigger: steps.filter { $0.status == .completed }.count)
+        .sheet(item: $editedStep, onDismiss: {
             if helpAfterDismiss { helpAfterDismiss = false; showAssistant = true }
-        }) { item in
-            ChecklistItemEditor(item: item) { replacement in
-                changeItems { list in if let index = list.firstIndex(where: { $0.id == replacement.id }) { list[index] = replacement } }
-            } onHelp: { helpItem = item; helpAfterDismiss = true; editedItem = nil }
+        }) { step in
+            ChecklistStepEditor(step: step.draft, onSave: { edited in step.apply(edited); library.save() },
+                                onHelp: { helpStep = step; helpAfterDismiss = true; editedStep = nil })
         }
         .sheet(isPresented: $adding) {
-            ChecklistItemEditor(item: ChecklistItem(title: "")) { item in changeItems { $0.append(item) } }
+            ChecklistStepEditor(step: ChecklistStepDraft(title: "")) { step in trip.addStep(step, to: phase); library.save() }
         }
-        .sheet(isPresented: $showAssistant) {
-            if let trip = store.trip(tripID) { AssistantView(trip: trip, step: helpItem) }
-        }
-        .confirmationDialog("Save as defaults for \(rigName)?", isPresented: $templateConfirmation, titleVisibility: .visible) {
+        .sheet(isPresented: $showAssistant) { AssistantView(trip: trip, step: helpStep) }
+        .confirmationDialog("Save as defaults for \(rigName)?", isPresented: $confirmingDefaults, titleVisibility: .visible) {
             Button("Save as defaults") {
-                do { try store.saveAsDefaults(tripID); templateSaved = true; templateFailure = nil }
-                catch { templateFailure = error.localizedDescription }
+                do { try trip.saveChecklistsAsDefaults(); library.save(); defaultsSaved = true; failure = nil }
+                catch { failure = error.localizedDescription }
             }
         } message: { Text("Both of this trip’s checklists become the default lists for \(rigName), with every step unchecked. Only future trips with this rig use them; other trips keep their own lists.") }
     }
 }
 
-struct ChecklistItemEditor: View {
+/// Edits a copy of a step, so Cancel discards the changes.
+struct ChecklistStepEditor: View {
     @Environment(\.dismiss) private var dismiss
-    @State var item: ChecklistItem
-    let onSave: (ChecklistItem) -> Void
+    @State var step: ChecklistStepDraft
+    let onSave: (ChecklistStepDraft) -> Void
     var onHelp: (() -> Void)? = nil
     var body: some View {
         NavigationStack {
             Form {
                 Section("Step") {
-                    TextField("Title", text: $item.title, axis: .vertical)
-                    TextField("Section", text: $item.section)
-                    TextField("Guidance or your own notes", text: $item.detail, axis: .vertical).lineLimit(4...12)
+                    TextField("Title", text: $step.title, axis: .vertical)
+                    TextField("Section", text: $step.section)
+                    TextField("Guidance or your own notes", text: $step.detail, axis: .vertical).lineLimit(4...12)
                 }
                 Section("Progress") {
-                    Picker("Status", selection: $item.status) {
+                    Picker("Status", selection: $step.status) {
                         ForEach(ChecklistStatus.allCases) { Text($0.title).tag($0) }
                     }
                 }
                 if let onHelp { Button("Ask about this step", systemImage: "sparkles") { onHelp() } }
             }
-            .navigationTitle(item.title.isEmpty ? "New step" : "Step details").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(step.title.isEmpty ? "New step" : "Step details").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { onSave(item); dismiss() }
-                        .disabled(item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Save") { onSave(step); dismiss() }.disabled(!step.hasTitle)
                 }
             }
         }

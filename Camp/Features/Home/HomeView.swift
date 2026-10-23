@@ -1,55 +1,55 @@
 import SwiftUI
-import MapKit
+import SwiftData
 import CampCore
-import Campgrounds
+import CampPersistence
 
 struct HomeView: View {
-    @Environment(CampStore.self) private var store
+    @Query private var profiles: [CamperProfile]
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var planning = false
-    var featured: Trip? {
-        store.state.trips.filter { !$0.isCompleted() }.sorted { $0.arrival < $1.arrival }.first
-            ?? store.state.trips.sorted { $0.arrival > $1.arrival }.first
-    }
+    /// The next trip that isn't over, or else the most recent one.
+    private var featured: Trip? { trips.first { !$0.isCompleted() } ?? trips.last }
+
     var body: some View {
         List {
-            if let profile = store.state.profile {
+            if let profile = profiles.first {
                 Section {
                     HStack(spacing: 16) {
-                        if let rig = store.activeRig { RigImage(rig: rig) }
+                        if let rig = rigs.active.first { RigImage(rig: rig) }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(profile.name.isEmpty ? "Welcome back" : "Hello, \(profile.name)").font(.title3.bold())
-                            if let rig = store.activeRig { Text(rig.displayName).font(.subheadline).foregroundStyle(.secondary) }
+                            if let rig = rigs.active.first { Text(rig.displayName).font(.subheadline).foregroundStyle(.secondary) }
                         }
                     }.padding(.vertical, 4)
                 }
             }
             if let trip = featured {
                 Section {
-                    NavigationLink { TripDetailView(tripID: trip.id) } label: {
+                    NavigationLink { TripDetailView(trip: trip) } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(trip.campgroundName).font(.title2.bold())
                             Text(trip.dateSummary).font(.subheadline).foregroundStyle(.secondary)
-                            if !trip.siteNumber.isEmpty { Label("Site \(trip.siteNumber)", systemImage: "mappin") .font(.subheadline) }
+                            if !trip.siteNumber.isEmpty { Label("Site \(trip.siteNumber)", systemImage: "mappin").font(.subheadline) }
                             SaveStatus()
                         }.padding(.vertical, 6)
                     }
-                    NavigationLink { ChecklistView(tripID: trip.id) } label: {
+                    NavigationLink { ChecklistView(trip: trip) } label: {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Continue setup").font(.headline)
-                            ProgressSummary(items: trip.setup)
+                            ProgressSummary(steps: trip.steps(.setup))
                         }.padding(.vertical, 4)
                     }
                 } header: { Text(trip.isCompleted() ? "Latest trip" : "Your next adventure") }
                 Section("Your trip") {
-                    NavigationLink { ChecklistView(tripID: trip.id) } label: {
-                        Label("Setup checklist", systemImage: "checklist")
-                        Spacer(); Text("\(trip.setupFinished) / \(trip.setup.count)").foregroundStyle(.secondary)
+                    ForEach(ChecklistPhase.allCases) { phase in
+                        NavigationLink { ChecklistView(trip: trip, initialPhase: phase) } label: {
+                            let steps = trip.steps(phase)
+                            Label("\(phase.title) checklist", systemImage: "checklist")
+                            Spacer(); Text("\(steps.filter(\.isFinished).count) / \(steps.count)").foregroundStyle(.secondary)
+                        }
                     }
-                    NavigationLink { ChecklistView(tripID: trip.id, initialPhase: .teardown) } label: {
-                        Label("Teardown checklist", systemImage: "checklist")
-                        Spacer(); Text("\(trip.teardownFinished) / \(trip.teardown.count)").foregroundStyle(.secondary)
-                    }
-                    NavigationLink { MemoriesView(tripID: trip.id) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
+                    NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
                 }
             } else {
                 ContentUnavailableView {
