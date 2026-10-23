@@ -200,6 +200,15 @@ struct LibraryTests {
         #expect(try lists().entry("ridb-2") == nil, "An entry on no list is deleted")
     }
 
+    @Test func anAppleMapsPlaceIsSavedByItsIdentifierOnly() throws {
+        try SavedCampground.set("apple:I6FD7682FD36BB3BE", name: "Pine Flat", region: "Sonora, CA", on: .wantToGo, true, in: context)
+        let lists = CampgroundLists(saved: try context.fetch(FetchDescriptor<SavedCampground>()), trips: [])
+        let entry = try #require(lists.entry("apple:I6FD7682FD36BB3BE"))
+        #expect(entry.name.isEmpty && entry.region.isEmpty, "Apple Maps' details are looked up when shown, never stored")
+        #expect(lists.contains("apple:I6FD7682FD36BB3BE", on: .wantToGo))
+        #expect(lists.name("apple:I6FD7682FD36BB3BE") == nil)
+    }
+
     // MARK: Documents
 
     static let pdf = Data("%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF\n".utf8) + Data((0..<10_000).map { UInt8(truncatingIfNeeded: $0) })

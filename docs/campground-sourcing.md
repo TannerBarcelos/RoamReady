@@ -1,53 +1,56 @@
-# Campground and individual-site sources
+# Camp Finder data source
 
-Research checked 2026-10-19. Scope: North America initially, with the implemented federal snapshot limited to the United States. No accounts were created, keys obtained, or paid services purchased. No endpoint access controls were bypassed.
+Camp Finder (#26) finds campgrounds and RV parks with **Apple Maps (MapKit)**, online only. There is no server, API key, paid provider, scraping, or owned campground catalog. Offline maps and offline campground lists are v2 (#20).
 
-## Recommendation and actual acquisition
+## How it works
 
-Use **RIDB federal campground + individual-campsite data** as the first substantial source, supplement NPS structured campground details, and evaluate OpenStreetMap for broader campground discovery and selected mapped pitches. None is a complete source of private/state/local campgrounds, real-time occupancy, bookable dates, or trustworthy equipment compatibility for every numbered site.
+- **The map shows only campgrounds and RV parks.** `mapStyle(.standard(pointsOfInterest: .including([.campground, .rvPark])))` hides every other kind of place, so campgrounds appear as the person pans with no searching. Tapping one looks it up (`MKMapItemRequest(feature:)`) and opens its detail.
+- **Near me / Search this area** list the campgrounds in a region with `MKLocalPointsOfInterestRequest`, filtered to campgrounds and RV parks. Location permission is optional.
+- **Typed text** (a campground's name, a city, a park, a ZIP code) runs two lookups:
+  - an `MKLocalSearch` for campgrounds matching the text;
+  - an address search for the place it names, then the campgrounds within about 25 km of it.
+  The results are merged, each place once, nearest first. Searches run when the person submits, never on every keystroke.
+- **Cost and limits.** MapKit is free to use from an iOS app and needs no key. Apple throttles requests per device (`MKError.loadingThrottled`), which the app explains ("Apple Maps is limiting searches from this iPhone for a moment"). There is no shared quota that one person, or an abuser, can use up for everyone.
 
-The official RIDB [download page](https://ridb.recreation.gov/download) offers “all the RIDB recreation area, facility, and site level data” in CSV/JSON, marked **Updated Daily**. Exact publicly offered compressed exports:
+## What is shown
 
-- [JSON ZIP](https://ridb.recreation.gov/downloads/RIDBFullExport_V1_JSON.zip)
-- [CSV ZIP](https://ridb.recreation.gov/downloads/RIDBFullExport_V1_CSV.zip)
+| From Apple Maps | Never shown or inferred |
+| --- | --- |
+| Name, campground or RV park, address | Nightly prices |
+| Phone (Call) | Hookups, amenities, accessibility, rig or site-length limits |
+| The business's website (Website): where people book | Site availability or booking |
+| Location (Directions in Apple Maps) | Rig compatibility ("Use my rig" and the amenity filters were removed) |
+| Time zone (prefills Add trip) | |
+| Apple's place card: photos, ratings, and hours where Apple has them | |
 
-A keyless HEAD request to the JSON archive returned HTTP 200, `application/zip`, **572,761,198 bytes** (about 546 MiB), last modified 2026-10-18 18:46:40 GMT. The root implementation downloaded and inspected it, finding **15,432 facilities**, **5,803 explicitly classified Campground**, and **130,856 campsite records** attached to 4,965 facilities. These are export counts, not complete national coverage.
+MapKit gives the app no rating numbers, so list rows don't show ratings. **Photos, ratings & hours** opens Apple's own place card (`mapItemDetailSheet`), which shows whatever Apple Maps has for the place, attributed and rendered by Apple.
 
-The app import subsequently retains **5,260 enabled Campground facilities with valid coordinates** and **111,647 overnight, non-management sites**, using a campground index plus 64 site shards. See the importer and generated manifest for the authoritative build counts. The snapshot excludes photographs and long narrative descriptions. This is actual published site-level data, not a fabricated example database. Its date must remain visible: downloading an export does not make it live reservation inventory.
+The booking flow: find a campground → **Website** (or **Call**) → book with the campground → come back → **Add trip** with the booking details.
 
-## Source comparison
+Apple Maps doesn't list every campground, especially primitive or dispersed sites, so an empty search says so and points to adding a trip by name.
 
-| Source | Access/cost evidence | Useful details and limits | Reuse/offline implications |
-| --- | --- | --- | --- |
-| **RIDB / Recreation.gov** | Public daily bulk ZIP requires no key. API requires registered key; unauthenticated `/api/v1/facilities?limit=1` returned 401. Public portal/docs inspected; no paid subscription was required for bulk access. API spec documents 50 requests/second and 50 records maximum per page; actual enforced quotas can differ. | Federal facilities and individual sites: stable FacilityID/CampsiteID, name/number, loop, site type, overnight/day use, coordinates, attributes, permitted equipment and maximum lengths where present, source update date. Agencies supply data and may omit or misstate fields. Federal scope does not mean every federal campsite is represented. | Preserve RIDB/agency attribution and source IDs. Portal terms distinguish API/documentation/key (“API Vendor Materials”) from government-provided responses; do not redistribute keys or expose a general substitute API. Public bulk export is intentionally downloadable. No blanket photo/image license was established; omit images and expressive descriptions from the app snapshot. Commercial release should retain the export provenance and review applicable provider/agency terms rather than claim all content is unrestricted. |
-| **NPS API** | [Get started](https://www.nps.gov/subjects/developer/get-started.htm) explicitly says API key acquisition is “free and easy.” [Guides](https://www.nps.gov/subjects/developer/guides.htm) and [API docs](https://www.nps.gov/subjects/developer/api-documentation.htm). Keyless test returned HTTP 403, so no authenticated live response was verified here. | `/api/v1/campgrounds` gives campground descriptions, coordinates, fees, reservation links, aggregate site counts by accommodation type, amenities and accessibility information. It is **not** a directory of every numbered pitch or site-level availability. National Park Service scope only. | [NPS disclaimer/copyright](https://www.nps.gov/aboutus/disclaimer.htm): much NPS-created material is public domain but third-party contributions can be protected; government marks and photographs require per-asset review. Retain attribution and refresh dates. Do not infer individual-site attributes from campground-wide summaries. |
-| **OpenStreetMap** | Free ODbL map database; no key on common community Overpass endpoints, whose capacity is shared. [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) documents appropriate use and individual instance policies. | `tourism=camp_site`, `tourism=caravan_site` locate campgrounds/RV parks; `tourism=camp_pitch` can identify individual sites with `ref`, equipment and power-supply tags. Global coverage and varying completeness. Pitch polygons/nodes may lack a reliable parent relation or official site number. Do not equate unmapped with nonexistent. | [Copyright/ODbL](https://www.openstreetmap.org/copyright) requires OpenStreetMap contributor attribution and license obligations; derived databases may trigger share-alike. Keep provenance/layer separable and evaluate release obligations before merging into a proprietary catalog. Do not use public Overpass servers as every user's unbounded live backend; generate regional packs or use suitable hosting/extracts. Tile use has separate terms and is not permission to bulk-download standard map tiles. |
-| **US Forest Service** | Official [Interactive Visitor Map](https://www.fs.usda.gov/ivm/) and [USFS geospatial data entrypoint](https://data.fs.usda.gov/geodata/) are discovery candidates. IVM and tested USFS pages returned HTTP 403 in this environment; no access controls were bypassed and no independent USFS endpoint schema/throughput guarantee is asserted here. | Strong recreation-site/trail/facility information, generally campground/recreation-facility scale. No verified nationwide API for every numbered campsite in this pass. Many USFS reservable sites are already represented in RIDB. | Use RIDB USFS records first to avoid duplicate providers/IDs. Audit each USFS layer's metadata, currency, license and coordinates before adding it; do not assume one agency-wide data standard or that facility features are individual sites. |
+## Identity and storage
 
-## RIDB endpoints and documented schema
+- Trips and saved lists refer to a Camp Finder place as `apple:<MKMapItem.Identifier>`. Apple provides this identifier so apps can store it and look the place up again (`MKMapItemRequest(mapItemIdentifier:)`).
+- Saved lists (Want to go, Have been, Favorites) store **only the identifier** for Apple Maps places. Their details are never copied into the library. The saved-campgrounds screen:
+  - shows the name from a trip there (the owner's own record), or
+  - looks the place up in Apple Maps as each row comes into view while online (one lookup per visible row, never the whole list at once), or
+  - shows "Saved campground" offline.
+- Places found this session are kept in memory only, for showing details and directions; search results and place cards are not persisted. Adding a trip stores its chosen name, coordinates, and time zone in the booking record.
+- **Add trip** prefills the identifier, name, location, and the campground's time zone from Apple Maps. The time zone is always shown in the form so it can be checked or set by hand. The trip's name and dates are the owner's record and stay readable if Apple Maps stops listing the place.
+- Campgrounds entered by name get a local identity, `local:<uuid>`, reused for later trips with the same name, so they appear in Have been after a completed trip.
+- References from the retired RIDB snapshot (`ridb-<facility id>`) stay unchanged on existing trips and lists. Their saved names still show; they no longer open a listing.
 
-Primary source: current [OpenAPI YAML](https://ridb.recreation.gov/shared/swagger/ridb.yaml), linked by the official [API docs](https://ridb.recreation.gov/docs). Inspected the real specification, not inferred endpoint names.
+## To check before release
 
-- `GET https://ridb.recreation.gov/api/v1/facilities` — `query`, `state`, `latitude`, `longitude`, `radius` (miles, maximum 25), `limit` (1–50), `offset`, `full`, activity and update filters.
-- `GET .../facilities/{facilityId}` — one facility; `full=true` for related information.
-- `GET .../facilities/{facilityId}/campsites` — individual sites for that campground; paginated `limit` / `offset`.
-- `GET .../campsites/{campsiteId}` — one site's current descriptive record.
-- `GET .../campsites/{campsiteId}/attributes` — attributes; also present in site records as `ATTRIBUTES`.
+Tracked in the Camp Finder simulator and device sections of #10:
 
-Header authentication is `apikey: <registered key>`. Collection responses contain `RECDATA` and `METADATA.RESULTS.CURRENT_COUNT/TOTAL_COUNT`, with paging parameters under `METADATA.PARAMETERS`. Single-record endpoints return an object rather than the collection envelope.
+1. **Coverage where people camp:** national forest, BLM/desert, state park, and town RV park searches return sensible places, and tapping campgrounds on the map opens them.
+2. **Place details:** how often Apple Maps has a website, a phone number, and a time zone for campgrounds. Each is optional in the app; a missing time zone leaves the device's zone selected in the trip form for the person to change.
+3. **Throttling:** rapid searches show the throttling message rather than a generic failure.
+4. **Place card:** Photos, ratings & hours opens Apple's card and returns to the app.
 
-Site fields include `CampsiteID`, `FacilityID`, `CampsiteName`, `CampsiteType`, `TypeOfUse`, `Loop`, `CampsiteAccessible`, latitude/longitude, `LastUpdatedDate`, `ATTRIBUTES` (`AttributeName`/`AttributeValue`) and `PERMITTEDEQUIPMENT` (`EquipmentName`/`MaxLength`). Source casing/types must be preserved at the adapter boundary. Raw attribute strings are not an enumerated stable amenity contract.
+## History
 
-**Critical interpretation:** the current spec describes `CampsiteAccessible` as **“Is the campsite accessible by vehicle.”** It must not automatically be shown as wheelchair/ADA accessibility. Use specifically identified accessibility attributes, descriptive text and operator verification. A campground may have accessible restrooms while its individual sites do not meet a user's access needs.
-
-Zero/absent equipment lengths mean unknown, not unlimited or unsuitable. Do not replace trailer limits with motorhome limits. Treat an omitted electrical/water/pet field as unknown. Raw attributes and equipment names need a reviewed normalization dictionary, and a site with multiple attribute records should retain conflicting values for review rather than silently claim certainty.
-
-## Availability and booking are separate
-
-RIDB's ordinary campsite endpoints describe sites; `Reservable` and a reservation URL are not current availability. The current portal exposes a separate [Availability API specification](https://ridb.recreation.gov/shared/swagger/availability.yaml), but its documentation tab is gated by tier1/admin access in the public app code. Public visibility of the YAML does not establish eligibility or authorization to call that service. Do not scrape or rely on undocumented Recreation.gov reservation inventory endpoints.
-
-For this build, show site details with snapshot dates and open the official booking page when online. Do not mark dates available or promise a booking from the federal snapshot. A site can be seasonal, closed, reserved, offline-only, first-come or restricted even if present in the export.
-
-## Live refresh (post-v1, #18)
-
-No live provider client ships. The bundled and downloaded RIDB snapshots need no key. A future live refresh needs a bounded backend that owns the RIDB key (allowlisted routes, geographic bounds, size and rate limits, caching); never ship provider keys in the app. The client prototyped earlier is in git history.
+- **Yelp (dropped).** An earlier version of #26 used the Yelp Places API through a Cloudflare Worker. It was dropped before release for its cost, server, API key, rate-limit design, and 24-hour content rules. Apple Maps covers the same flow without them. Git history keeps that work.
+- **RIDB federal snapshot (retired).** v1 previously shipped a dated federal snapshot built from RIDB's public bulk export (5,260 campgrounds, 111,647 sites), with site-level browsing and amenity, length, and budget filters. Git history keeps the importer, validator, snapshot, and the earlier source comparison (RIDB, NPS, OpenStreetMap, USFS).

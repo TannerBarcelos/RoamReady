@@ -10,10 +10,11 @@ struct NewTripView: View {
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
-    var initialCampground: Campground? = nil
+    @Query private var trips: [Trip]
+    var initialListing: CampgroundListing? = nil
     @State private var draft = TripDraft.new()
     @State private var rig: Rig?
-    @State private var selected: Campground?
+    @State private var selected: CampgroundListing?
     @State private var choosing = false
     @State private var failure: String?
     var body: some View {
@@ -46,7 +47,13 @@ struct NewTripView: View {
                     Button("Save") {
                         do {
                             guard let rig else { throw CampUIError.missingRig }
-                            try Trip.create(draft, rig: rig, in: context)
+                            var trip = draft
+                            // Entered by name: a local identity, shared with earlier trips to the same place.
+                            if trip.campgroundID == nil {
+                                trip.campgroundID = CampgroundIdentity.local(named: trip.campgroundName,
+                                                                             among: trips.map { ($0.campgroundID, $0.campgroundName) })
+                            }
+                            try Trip.create(trip, rig: rig, in: context)
                             library.save()
                             dismiss()
                         } catch { failure = error.localizedDescription }
@@ -58,11 +65,13 @@ struct NewTripView: View {
             }
             .onAppear {
                 if rig == nil { rig = rigs.active.first }
-                if let initialCampground, selected == nil { select(initialCampground) }
+                if let initialListing, selected == nil { select(initialListing) }
             }
         }
     }
-    private func select(_ place: Campground?) {
+    /// Prefills the Apple Maps identity, name, location, and time zone. The name becomes the
+    /// owner's own record and stays readable even if Apple Maps stops listing the place.
+    private func select(_ place: CampgroundListing?) {
         selected = place
         draft.setCampground(id: place?.id, name: place?.name, latitude: place?.latitude, longitude: place?.longitude,
                             timeZoneIdentifier: place?.timeZoneIdentifier)
@@ -149,13 +158,21 @@ struct BookingFormSections: View {
             }
         }
         Section {
+            Picker("Campground time zone", selection: Binding(
+                get: { trip.campgroundCalendar.timeZone.identifier },
+                set: { trip.campgroundTimeZoneIdentifier = $0 })) {
+                ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { identifier in
+                    Text(identifier.replacingOccurrences(of: "_", with: " ")).tag(identifier)
+                }
+            }
+            .pickerStyle(.navigationLink)
             TimeOfDayRow(title: "Check-in time", minutes: $trip.checkInMinutes)
             TimeOfDayRow(title: "Check-out time", minutes: $trip.checkOutMinutes)
         } header: { Text("Check-in & check-out") } footer: {
             if let checkIn = trip.checkInDate, let checkOut = trip.checkOutDate, checkOut <= checkIn {
                 Text(CampError.invalidCheckTimes.localizedDescription).foregroundStyle(.red)
             } else {
-                Text("Times are in the campground’s local time zone.")
+                Text("Times use \(trip.campgroundCalendar.timeZone.identifier.replacingOccurrences(of: "_", with: " ")). Check the time zone against your reservation, especially when entering a campground by name.")
             }
         }
         Section("Cost") {

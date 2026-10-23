@@ -17,7 +17,7 @@ let package = Package(
     targets: [
         /// The rig and trip rules shared by the models and the forms' drafts, checklists, and policies. Foundation only.
         .target(name: "CampCore"),
-        /// Federal campground snapshot, site shards, and filters.
+        /// Camp Finder: the Apple Maps place model, links, and result merging. Foundation only, so it tests on Linux.
         .target(name: "Campgrounds", dependencies: ["CampCore"]),
         /// Document types and import policy, SHA-256 digests, and AES-GCM sealing.
         .target(name: "DocumentVault", dependencies: [

@@ -8,6 +8,7 @@ struct EditTripView: View {
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    @Query private var trips: [Trip]
     let trip: Trip
     @State private var draft: TripDraft
     @State private var rig: Rig?
@@ -22,13 +23,11 @@ struct EditTripView: View {
         NavigationStack {
             Form {
                 Section("Campground") {
-                    TextField("Campground", text: $draft.campgroundName)
-                        .onChange(of: draft.campgroundName) { _, name in
-                            // Renamed by hand: the old listing's location no longer applies.
-                            if draft.campgroundID != nil, name != trip.campgroundName, draft.campgroundID == trip.campgroundID {
-                                draft.setCampground(id: nil, name: nil, latitude: nil, longitude: nil, timeZoneIdentifier: nil)
-                            }
-                        }
+                    TextField("Campground", text: Binding(
+                        get: { draft.campgroundName },
+                        set: { name in
+                            draft.setCampground(id: nil, name: name, latitude: nil, longitude: nil, timeZoneIdentifier: nil)
+                        }))
                     Button("Choose from Camp Finder", systemImage: "map") { choosing = true }.disabled(!connectivity.isOnline)
                 }
                 RigPickerSection(rig: $rig, rigs: rigs.filter { !$0.isArchived || $0 == trip.rig })
@@ -45,7 +44,16 @@ struct EditTripView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        do { try trip.update(draft, rig: rig); library.save(); dismiss() }
+                        do {
+                            var details = draft
+                            if details.campgroundID == nil {
+                                details.campgroundID = CampgroundIdentity.local(named: details.campgroundName,
+                                    among: trips.filter { $0.persistentModelID != trip.persistentModelID }.map { ($0.campgroundID, $0.campgroundName) })
+                            }
+                            try trip.update(details, rig: rig)
+                            library.save()
+                            dismiss()
+                        }
                         catch { failure = error.localizedDescription }
                     }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }

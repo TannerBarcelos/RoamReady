@@ -16,12 +16,16 @@ final class Connectivity {
         monitor.start(queue: DispatchQueue(label: "RoamReady.Connectivity"))
     }
     deinit { monitor.cancel() }
+    /// Reads the current path again, for a Try again button.
+    func recheck() { isOnline = monitor.currentPath.status == .satisfied }
 }
 
 /// A network path is a prerequisite, not proof that a remote service is reachable.
 struct OnlineFeatureGate<Content: View>: View {
     @Environment(Connectivity.self) private var connectivity
     let feature: String
+    /// Runs when the person taps Try again; the gate itself reopens as soon as a path returns.
+    var retry: (() -> Void)? = nil
     @ViewBuilder let content: () -> Content
     var body: some View {
         if connectivity.isOnline {
@@ -30,7 +34,9 @@ struct OnlineFeatureGate<Content: View>: View {
             ContentUnavailableView {
                 Label("Connection needed", systemImage: "wifi.slash")
             } description: {
-                Text("\(feature) needs an internet connection. Your planned trips, checklists, photos, and notes remain available offline.")
+                Text("\(feature) needs an internet connection. Your planned trips, checklists, photos, notes, and saved campgrounds remain available offline.")
+            } actions: {
+                Button("Try again") { connectivity.recheck(); retry?() }
             }
         }
     }
