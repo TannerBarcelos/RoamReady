@@ -2,7 +2,7 @@
 
 ## Established account, then offline trips
 
-There are no accounts; first launch and onboarding work offline, and local Core Data writes never wait for cloud delivery. Camp Finder and fresh weather need connectivity. Camera capture, imported photos, checklist edits, site notes, ratings, and manual trip creation from known details remain local. See [account/offline contract](account-and-offline-contract.md).
+There are no accounts; first launch and onboarding work offline, and local SwiftData saves never wait for cloud delivery. Camp Finder and fresh weather need connectivity. Camera capture, imported photos, checklist edits, site notes, ratings, and manual trip creation from known details remain local. See [account/offline contract](account-and-offline-contract.md).
 
 There is no sign-in and no server account/session service. Profile › Erase all data deletes the CloudKit zone and everything on the device (see [erasing data](erase-data.md)). Multiple libraries per device are not planned.
 
