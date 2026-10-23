@@ -39,7 +39,6 @@ Apple Maps doesn't list every campground, especially primitive or dispersed site
 - Places found this session are kept in memory only, for showing details and directions; search results and place cards are not persisted. Adding a trip stores its chosen name, coordinates, and time zone in the booking record.
 - **Add trip** prefills the identifier, name, location, and the campground's time zone from Apple Maps. The time zone is always shown in the form so it can be checked or set by hand. The trip's name and dates are the owner's record and stay readable if Apple Maps stops listing the place.
 - Campgrounds entered by name get a local identity, `local:<uuid>`, reused for later trips with the same name, so they appear in Have been after a completed trip.
-- References from the retired RIDB snapshot (`ridb-<facility id>`) stay unchanged on existing trips and lists. Their saved names still show; they no longer open a listing.
 
 ## To check before release
 
@@ -49,8 +48,3 @@ Tracked in the Camp Finder simulator and device sections of #10:
 2. **Place details:** how often Apple Maps has a website, a phone number, and a time zone for campgrounds. Each is optional in the app; a missing time zone leaves the device's zone selected in the trip form for the person to change.
 3. **Throttling:** rapid searches show the throttling message rather than a generic failure.
 4. **Place card:** Photos, ratings & hours opens Apple's card and returns to the app.
-
-## History
-
-- **Yelp (dropped).** An earlier version of #26 used the Yelp Places API through a Cloudflare Worker. It was dropped before release for its cost, server, API key, rate-limit design, and 24-hour content rules. Apple Maps covers the same flow without them. Git history keeps that work.
-- **RIDB federal snapshot (retired).** v1 previously shipped a dated federal snapshot built from RIDB's public bulk export (5,260 campgrounds, 111,647 sites), with site-level browsing and amenity, length, and budget filters. Git history keeps the importer, validator, snapshot, and the earlier source comparison (RIDB, NPS, OpenStreetMap, USFS).

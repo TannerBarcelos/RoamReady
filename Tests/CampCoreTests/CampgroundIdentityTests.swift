@@ -8,11 +8,11 @@ final class CampgroundIdentityTests: XCTestCase {
         XCTAssertEqual(CampgroundIdentity.appleMaps("I6FD7682FD36BB3BE").campgroundID, "apple:I6FD7682FD36BB3BE")
         let local = UUID()
         XCTAssertEqual(CampgroundIdentity("local:\(local.uuidString)"), .local(local))
-        XCTAssertEqual(CampgroundIdentity("ridb-232447"), .legacy("ridb-232447"))
+        XCTAssertEqual(CampgroundIdentity("previous-place"), .legacy("previous-place"))
         XCTAssertEqual(CampgroundIdentity("apple:"), .legacy("apple:"))
         XCTAssertEqual(CampgroundIdentity("local:not-a-uuid"), .legacy("local:not-a-uuid"))
         XCTAssertTrue(CampgroundIdentity("apple:x").isAppleMapsPlace)
-        XCTAssertFalse(CampgroundIdentity("ridb-1").isAppleMapsPlace)
+        XCTAssertFalse(CampgroundIdentity("previous-place").isAppleMapsPlace)
     }
 
     func testCampgroundsEnteredByNameShareALocalIdentityAcrossTrips() {

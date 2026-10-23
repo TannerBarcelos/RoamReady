@@ -66,7 +66,7 @@ struct SavedCampgroundsView: View {
     }
 
     /// Apple Maps' name while looked up this session, then the owner's own name from a trip or the
-    /// saved entry (campgrounds entered by name or from the earlier directory).
+    /// saved entry (campgrounds entered by name or previously saved).
     private func name(_ id: String, lists: CampgroundLists) -> String? {
         finder.cachedListing(for: id)?.name ?? lists.name(id)
     }

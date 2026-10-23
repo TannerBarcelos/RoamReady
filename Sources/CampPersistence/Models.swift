@@ -114,7 +114,7 @@ public final class NoteRevision {
 }
 
 /// A campground on the owner's lists (#30). Name and region are kept for campgrounds entered by name
-/// or from the earlier directory, so the lists work offline; an Apple Maps place keeps only its ID.
+/// or previously saved places, so the lists work offline; an Apple Maps place keeps only its ID.
 @Model
 public final class SavedCampground {
     public var campgroundID: String = ""
