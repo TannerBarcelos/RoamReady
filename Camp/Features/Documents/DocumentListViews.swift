@@ -1,8 +1,8 @@
 import SwiftUI
+import SwiftData
 import PhotosUI
-import QuickLook
 import UniformTypeIdentifiers
-import CampCore
+import CampPersistence
 import DocumentVault
 
 extension DocumentCategory {
@@ -19,16 +19,26 @@ extension DocumentCategory {
     }
 }
 
-/// A selected file awaiting details: a temporary byte-for-byte copy, already inspected.
-struct PendingDocumentFile: Identifiable, Sendable {
+/// The rig or trip a document belongs to.
+enum DocumentOwner {
+    case rig(Rig), trip(Trip)
+    var documents: [StoredDocument] {
+        switch self {
+        case .rig(let rig): rig.attachedDocuments
+        case .trip(let trip): trip.attachedDocuments
+        }
+    }
+}
+
+/// A selected file awaiting details, already inspected.
+struct PendingDocumentFile: Identifiable {
     let id = UUID()
-    let url: URL
+    let bytes: Data
     let file: DocumentFile
 }
 
 /// Reusable list + add controls for any owner. Embed in a Form or List (onboarding, rig, trip).
 struct DocumentVaultSection: View {
-    @Environment(CampStore.self) private var store
     let owner: DocumentOwner
     var header = "Documents"
     var footer = "PDFs and images are saved on this iPhone and open offline. Links need a connection unless you save a copy."
@@ -42,8 +52,8 @@ struct DocumentVaultSection: View {
 
     var body: some View {
         Section {
-            ForEach(store.documents(for: owner)) { document in
-                NavigationLink { DocumentDetailView(documentID: document.id) } label: { DocumentRow(document: document) }
+            ForEach(owner.documents) { document in
+                NavigationLink { DocumentDetailView(document: document) } label: { DocumentRow(document: document) }
             }
             Menu {
                 Button("Import PDF or image file", systemImage: "doc.badge.plus") { importingFile = true }
@@ -56,7 +66,7 @@ struct DocumentVaultSection: View {
         } header: { Text(header) } footer: { Text(footer) }
         .fileImporter(isPresented: $importingFile, allowedContentTypes: [.pdf, .image]) { result in
             switch result {
-            case .success(let url): read { try await DocumentImport.copy(pickedURL: url) }
+            case .success(let url): read { try await DocumentImport.read(pickedURL: url) }
             case .failure(let error): failure = error.localizedDescription
             }
         }
@@ -66,28 +76,23 @@ struct DocumentVaultSection: View {
             guard let selection else { return }
             photoSelection = nil
             read {
-                guard let photo = try await selection.loadTransferable(type: ImportedPhotoFile.self) else { throw DocumentError.unsupportedFileType }
-                return photo.url
+                guard let bytes = try await selection.loadTransferable(type: Data.self) else { throw DocumentError.unsupportedFileType }
+                return (bytes, "Photo")
             }
         }
         .sheet(item: $pendingFile) { pending in DocumentEditorView(mode: .newFile(owner, pending)) }
         .sheet(isPresented: $addingLink) { DocumentEditorView(mode: .newLink(owner)) }
     }
 
-    private func read(_ load: @escaping @MainActor () async throws -> URL) {
+    private func read(_ load: @escaping @MainActor () async throws -> (bytes: Data, filename: String)) {
         Task {
             reading = true; failure = nil
             defer { reading = false }
-            var copied: URL?
             do {
-                let url = try await load(); copied = url
+                let (bytes, filename) = try await load()
                 // Validate before asking for details so unsupported files fail immediately.
-                let file = try await Task.detached(priority: .userInitiated) { try DocumentPolicy.inspect(.file(url), filename: url.lastPathComponent) }.value
-                pendingFile = PendingDocumentFile(url: url, file: file)
-            } catch {
-                if let copied { DocumentImport.discard(copied) }
-                failure = error.localizedDescription
-            }
+                pendingFile = PendingDocumentFile(bytes: bytes, file: try DocumentPolicy.inspect(bytes, filename: filename))
+            } catch { failure = error.localizedDescription }
         }
     }
 }
@@ -97,18 +102,17 @@ struct DocumentsView: View {
     let owner: DocumentOwner
     let title: String
     var body: some View {
-        List { DocumentVaultSection(owner: owner) }
-            .navigationTitle(title)
+        List { DocumentVaultSection(owner: owner) }.navigationTitle(title)
     }
 }
 
 struct UnattachedDocumentsView: View {
-    @Environment(CampStore.self) private var store
+    @Query(sort: \StoredDocument.createdAt, order: .reverse) private var documents: [StoredDocument]
     var body: some View {
         List {
             Section {
-                ForEach(store.unattachedDocuments) { document in
-                    NavigationLink { DocumentDetailView(documentID: document.id) } label: { DocumentRow(document: document) }
+                ForEach(documents.filter { $0.rig == nil && $0.trip == nil }) { document in
+                    NavigationLink { DocumentDetailView(document: document) } label: { DocumentRow(document: document) }
                 }
             } footer: {
                 Text("Documents from deleted trips or a previous rig stay here until you delete them.")
@@ -119,15 +123,15 @@ struct UnattachedDocumentsView: View {
 }
 
 struct DocumentRow: View {
-    let document: ManagedDocument
+    let document: StoredDocument
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: document.metadata.category.systemImage).foregroundStyle(.blue).frame(width: 28)
+            Image(systemName: document.category.systemImage).foregroundStyle(.blue).frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
-                Text(document.metadata.title).foregroundStyle(.primary)
+                Text(document.title).foregroundStyle(.primary)
                 HStack(spacing: 6) {
-                    Text(document.metadata.category.title)
-                    if let expires = document.metadata.expiresOn {
+                    Text(document.category.title)
+                    if let expires = document.expiresOn {
                         Text("·")
                         Text(expires < .now ? "Expired" : "Expires \(expires.formatted(date: .abbreviated, time: .omitted))")
                             .foregroundStyle(expires < .now ? Color.orange : .secondary)
@@ -135,7 +139,7 @@ struct DocumentRow: View {
                 }.font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            if document.metadata.protection == .endToEnd {
+            if document.protection == .endToEnd {
                 Image(systemName: "lock.fill").foregroundStyle(.green).accessibilityLabel("End-to-end encrypted")
             }
             DocumentAvailabilityIcon(availability: document.availability)

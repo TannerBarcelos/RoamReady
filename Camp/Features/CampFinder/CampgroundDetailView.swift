@@ -1,17 +1,21 @@
 import SwiftUI
 import MapKit
+import SwiftData
 import CampCore
 import Campgrounds
+import CampPersistence
 
 struct CampgroundDetailView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(\.modelContext) private var context
+    @Environment(LibraryController.self) private var library
+    @Query private var saved: [SavedCampground]
+    @Query(sort: \Trip.arrival, order: .reverse) private var trips: [Trip]
     let campground: Campground
     @State private var planning = false
     var previousTrips: [Trip] {
-        store.state.trips.filter {
+        trips.filter {
             $0.campgroundID == campground.id || ($0.campgroundID == nil && $0.campgroundName.localizedCaseInsensitiveCompare(campground.name) == .orderedSame)
         }
-            .sorted { $0.arrival > $1.arrival }
     }
     var body: some View {
         OnlineFeatureGate(feature: "Campground discovery") { onlineContent }
@@ -24,8 +28,11 @@ struct CampgroundDetailView: View {
             }
             Section {
                 ForEach(CampgroundList.allCases) { list in
-                    Toggle(isOn: Binding(get: { store.isCampground(campground.id, on: list) },
-                                         set: { store.setCampground(campground.id, name: campground.name, region: campground.region, on: list, $0) })) {
+                    Toggle(isOn: Binding(get: { CampgroundLists(saved: saved, trips: trips).contains(campground.id, on: list) },
+                                         set: { included in
+                                             try? SavedCampground.set(campground.id, name: campground.name, region: campground.region, on: list, included, in: context)
+                                             library.save()
+                                         })) {
                         Label(list.title, systemImage: list.symbol)
                     }
                 }
@@ -69,7 +76,7 @@ struct CampgroundDetailView: View {
             if !previousTrips.isEmpty {
                 Section("Your memories here") {
                     ForEach(previousTrips) { trip in
-                        NavigationLink { MemoriesView(tripID: trip.id) } label: {
+                        NavigationLink { MemoriesView(trip: trip) } label: {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(trip.siteNumber.isEmpty ? "Your visit" : "Site \(trip.siteNumber)")
                                 Text(trip.dateSummary).font(.caption).foregroundStyle(.secondary)

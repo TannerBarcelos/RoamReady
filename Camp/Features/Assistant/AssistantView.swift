@@ -1,11 +1,11 @@
 import SwiftUI
 import CampCore
+import CampPersistence
 
 struct AssistantView: View {
-    @Environment(CampStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     let trip: Trip
-    let step: ChecklistItem?
+    let step: ChecklistStep?
     @State private var question = ""
     @State private var response: CampingAnswer?
     @State private var answering = false
@@ -21,7 +21,8 @@ struct AssistantView: View {
                     Button {
                         answering = true
                         task = Task {
-                            let answer = await CampingAssistant.answer(question: question, trip: trip, rig: store.rig(for: trip), step: step)
+                            let steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
+                            let answer = await CampingAssistant.answer(question: question, steps: steps, rigType: trip.rig?.type, step: step?.draft)
                             if !Task.isCancelled { response = answer; answering = false }
                         }
                     } label: {

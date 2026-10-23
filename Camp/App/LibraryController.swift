@@ -53,7 +53,7 @@ final class LibraryController {
     func eraseDevice() async throws {
         await close()
         let fileManager = FileManager.default
-        for location in [Self.directory, documentFiles.directory, DocumentImport.directory, WeatherStore.directory]
+        for location in [Self.directory, documentFiles.directory, WeatherStore.directory]
         where fileManager.fileExists(atPath: location.path) {
             try fileManager.removeItem(at: location)
         }

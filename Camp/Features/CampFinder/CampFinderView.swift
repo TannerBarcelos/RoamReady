@@ -1,10 +1,13 @@
 import SwiftUI
 import MapKit
+import SwiftData
 import CampCore
 import Campgrounds
+import CampPersistence
 
 struct CampFinderView: View {
-    @Environment(CampStore.self) private var store
+    @Query private var saved: [SavedCampground]
+    @Query private var trips: [Trip]
     @State private var filter = CampgroundFilter()
     @State private var showFilters = false
     @State private var showMap = true
@@ -13,8 +16,10 @@ struct CampFinderView: View {
     @Environment(Connectivity.self) private var connection
     @State private var directory = OnlineCampgroundDirectory()
 
+    private var lists: CampgroundLists { CampgroundLists(saved: saved, trips: trips) }
     var results: [Campground] {
-        directory.campgrounds.filter { place in filter.matches(place) && (list.map { store.isCampground(place.id, on: $0) } ?? true) }
+        let lists = lists
+        return directory.campgrounds.filter { place in filter.matches(place) && (list.map { lists.contains(place.id, on: $0) } ?? true) }
     }
     var activeFilters: Int {
         filter.requiredAmenities.count + (filter.noElectricHookups ? 1 : 0) + (filter.rigType == nil ? 0 : 1)
@@ -73,7 +78,7 @@ struct CampFinderView: View {
                         VStack(alignment: .leading, spacing: 7) {
                             HStack(alignment: .firstTextBaseline) {
                                 Text(campground.name).font(.headline)
-                                let lists = CampgroundList.allCases.filter { store.isCampground(campground.id, on: $0) }
+                                let lists = CampgroundList.allCases.filter { self.lists.contains(campground.id, on: $0) }
                                 if !lists.isEmpty {
                                     Image(systemName: lists.contains(.favorite) ? "star.fill" : "bookmark.fill").foregroundStyle(.blue)
                                         .accessibilityLabel(lists.map(\.title).joined(separator: ", "))
@@ -100,7 +105,7 @@ struct CampFinderView: View {
 }
 
 struct CampgroundFiltersView: View {
-    @Environment(CampStore.self) private var store
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Environment(\.dismiss) private var dismiss
     @Binding var filter: CampgroundFilter
     var body: some View {
@@ -113,7 +118,7 @@ struct CampgroundFiltersView: View {
                     }.onChange(of: filter.rigType) { _, type in
                         if type == nil || type == .tent || type == .carCamping { filter.minimumRigLengthFeet = nil }
                     }
-                    if let rig = store.activeRig {
+                    if let rig = rigs.active.first {
                         Button("Use my \(rig.type.title.lowercased())") { filter.use(rig) }
                     }
                     if let type = filter.rigType, type.isRV {
