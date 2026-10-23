@@ -124,7 +124,6 @@ struct AssistantView: View {
                             Text(generationFailure.localizedDescription).foregroundStyle(.secondary)
                             Button("Try again", action: ask).disabled(!canSend)
                         }
-                        .accessibilityIdentifier("assistantGenerationFailure")
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -140,7 +139,6 @@ struct AssistantView: View {
                 withAnimation { scroll.scrollTo("bottom", anchor: .bottom) }
             }
         }
-        .accessibilityIdentifier("assistantConversation")
     }
 
     private func userMessage(_ text: String) -> some View {

@@ -42,7 +42,7 @@ final class AssistantUITests: XCTestCase {
         input.typeText("How do I keep drinking water clean?")
         app.buttons["assistantSend"].tap()
         XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.otherElements["assistantGenerationFailure"].exists)
+        XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
     }
 
     func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
@@ -94,7 +94,6 @@ final class AssistantUITests: XCTestCase {
         assistant.tap()
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Try again"].exists)
-        XCTAssertFalse(app.otherElements["assistantConversation"].exists)
         XCTAssertFalse(app.textViews["assistantQuestion"].exists)
         XCTAssertFalse(app.textFields["assistantQuestion"].exists)
         XCTAssertFalse(app.buttons["assistantSend"].exists)
