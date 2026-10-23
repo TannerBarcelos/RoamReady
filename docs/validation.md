@@ -1,8 +1,16 @@
 # Build and validation
 
+[Documentation index](README.md) · [Architecture](architecture.md) · [Release plan](integration-plan.md)
+
+## Requirements
+
+Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27 with the iOS 27 SDK.
+
+The native app uses the local Swift package and Apple frameworks. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto), whose `Crypto` product is linked only on Linux for CryptoKit-compatible tests. Initial package resolution may require internet access, including on macOS. There are no non-Apple runtime SDKs.
+
 ## Open the native project
 
-Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone and iPad, portrait and landscape, with automatic system light/dark appearance. The local `CampCore` Swift package resolves from this repository; the only external package is Apple's swift-crypto, used for Linux tests.
+Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone and iPad, portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository; the only external package is Apple's swift-crypto, used for Linux tests.
 
 The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
@@ -29,9 +37,16 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
 
 Derived data is written to `.derivedData/`. The shared scheme runs the app; package tests, including SwiftData on macOS, run separately with `swift test`. The [Apple validation workflow](../.github/workflows/apple-validation.yml) runs these commands directly, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
 
-## Validation completed in the development environment
+## Test coverage and CI
 
 The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
+
+| Suite | Coverage |
+| --- | --- |
+| `CampCoreTests` | Rig policy/required details, trip dates/bookings, site details, checklist generation, campground identities, AI hardware eligibility, default-on iCloud sync/account pinning, and time-zone/DST forecast dates. |
+| `CampgroundsTests` | Camp Finder place models, website/phone links, cleaned search text, and unique nearest-first result merging. |
+| `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, and AES-GCM sealing and integrity failures. |
+| `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
 Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. This verifies compilation, not runtime behavior on physical devices. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
@@ -82,4 +97,4 @@ See [offline-storage.md](offline-storage.md) for new-container provisioning, def
 
 ## Camp Finder and account checks
 
-The portable suites cover AI hardware policy, campground identities, Camp Finder places, and the document cipher. Device acceptance must cover iCloud identity changes, sync toggling during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See account-and-offline-contract.md for limits.
+The portable suites cover AI hardware policy, campground identities, Camp Finder places, and the document cipher. Device acceptance must cover iCloud identity changes, sync toggling during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See the [identity/connectivity contract](account-and-offline-contract.md) for limits and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release) for discovery acceptance.
