@@ -52,7 +52,7 @@ Document data lives in the existing `NSPersistentCloudKitContainer` **Library** 
 
 Core Data decides whether a given `bytes` value stays inline in SQLite or moves to its private external-storage directory, and CloudKit mirroring decides how it transfers (typically as a `CKAsset`). **Do not assume any particular binary is outside SQLite**, and never read or modify Core Data's external files directly.
 
-**End-to-end encrypted metadata.** `title`, `notes`, `linkURL`, and `filename` set `allowsCloudEncryption`. CloudKit stores them in `encryptedValues`, encrypted with keys in the user's iCloud Keychain, so they are end-to-end encrypted even without Advanced Data Protection. CloudKit can't change a field's encryption after the schema is deployed to production, so this set is part of v4's contract once deployed; changing it later means new fields in a new model version.
+**End-to-end encrypted metadata.** `title`, `notes`, `linkURL`, and `filename` set `allowsCloudEncryption`. CloudKit stores them in `encryptedValues`, encrypted with keys in the user's iCloud Keychain, so they are end-to-end encrypted even without Advanced Data Protection. CloudKit can't change a field's encryption after the schema is deployed to production, so this set is fixed once the schema reaches Production; changing it later means new fields.
 
 These metadata fields are not readable in the CloudKit Console, and they can't be queried server-side; mirroring doesn't need that. If the user's iCloud Keychain is reset, CloudKit can't decrypt the existing encrypted values; on-device copies are unaffected. Validate that recovery path on devices.
 
@@ -66,7 +66,7 @@ CloudKit's field encryption does not cover assets, and Core Data mirrors large b
 | `.standard` | Other types, unless the user opts in. | Encrypted at rest by Apple; end to end only with Advanced Data Protection. |
 
 How `.endToEnd` works:
-- `DocumentCipher` (`aes256gcm-chunks-v1`) seals each 1 MiB chunk row with AES-256-GCM, using a random key for each stored file version.
+- `DocumentCipher` (`aes256gcm-chunks-v1`, in the `DocumentVault` module) seals each 1 MiB chunk row with CryptoKit's AES-256-GCM, using a random key for each stored file version. The cipher is Apple's; the app only chooses the key scope and the authenticated data.
 - Each chunk's authenticated data binds the document ID, the chunk index, and a final-chunk flag. A chunk moved between documents, reordered, or truncated at a chunk boundary therefore fails, as does any flipped bit or wrong key. This is tested.
 - The 32-byte key is stored in `RR_documentContent.contentKey`, marked `allowsCloudEncryption`. CloudKit end-to-end encrypts it with the user's iCloud Keychain.
 - There is therefore no separate key management, and no new way to lose data beyond the iCloud Keychain reset that already applies to encrypted fields.
@@ -90,38 +90,15 @@ Both entities follow the mirrored-model rules: every attribute is optional or ha
 
 On a new device, document metadata can arrive before its content row. That document reports `availability == .awaitingDownload`, and `contents` throws `contentNotDownloaded` until Core Data imports the bytes. A remote-change notification refreshes the list.
 
-## Schema versions and migration
+## Schema
 
-`Sources/CampPersistence/ManagedStoreModel.swift` holds versioned, code-built models:
+`Sources/CampPersistence/LibraryModel.swift` builds the model in code. `RR_document` and `RR_documentContent` sit beside the library's record entities in the mirrored `Library` configuration. `LibraryStoreDocumentTests.testRecordEntitiesStoreExactlyTheirDeclaredFields` and `testDocumentEntitiesAreCloudKitCompatibleAndMirrored` pin the attribute set, the CloudKit rules, and exactly which fields are cloud-encrypted.
 
-| Version | Contents | Status |
-| --- | --- | --- |
-| `v2()` | First managed-mirroring model. `v2RecordKinds` is a literal list, so adding a `RecordKind` case cannot alter it. | **Frozen** |
-| `v3()` | v2 plus optional rig details (`lengthFeet`, `slideCount`, `axleCount`, `hasBunkhouse`) from the rig-details work on `main`. Built from a frozen copy of those fields, not from the evolving `LegacyStoreModel.managedFields`. | **Frozen** |
-| `v4()` | v3 plus `RR_document` and the chunked `RR_documentContent`. | Current (`make()`) |
-
-`DocumentVaultTests.testFrozenV2ModelShapeIsUnchanged` pins every entity, attribute, and type of v2 and v3. It also checks that v4 keeps every v3 entity hash, that `LegacyStoreModel.managedFields` describes exactly v4's record attributes, and that checksums are stable. `LegacyStoreModel.v1()` remains frozen for the earlier custom-sync store.
-
-`ManagedStoreMigration` migrates explicitly. Before the Library store loads:
-
-1. It reads the store metadata and finds the newest frozen version the store matches. If that is v4, nothing happens. If it is v2 or v3, the store migrates. **Anything else is refused** (`unrecognizedStoreVersion`), and nothing is inferred or changed.
-2. It confirms that an inferred mapping exists for every stage from the source to v4 before touching anything.
-3. It opens the store read-only with the source model and fingerprints every row and attachment byte, including existing photo assets.
-4. It copies the store to `Backups/RoamReadyManaged-<source version>.sqlite` using `replacePersistentStore`, which includes WAL and external-storage files.
-5. Core Data performs an **in-place** lightweight migration through an `NSStagedMigrationManager` with one stage per neighbouring pair (v2→v3, v3→v4), each handed the frozen models directly. The models are built in code, so there is no compiled `.momd` for Core Data to discover. In-place migration keeps persistent history and CloudKit mirroring metadata. A copy-to-new-store migration would discard them and force a full re-upload.
-6. It re-fingerprints the migrated store using the source model's attributes and records `managedSchemaVersion = migrated-from-<source version>` in device-only metadata.
-
-Migration always runs during the local-only bootstrap open, before mirroring can start.
-
-If the app stops after step 5, the next launch re-verifies the converted store against the newest preserved backup. If verification ever fails, the marker becomes `verification-failed` and the library refuses to open on every launch. A damaged library is never mirrored, and the backup is kept for recovery.
-
-Before testing or shipping cloud sync with this build, re-run the developer-only `initializeCloudKitSchema` harness and deploy the two new record types to production (see [offline-storage.md](offline-storage.md#icloud-setup)). Additive entities are compatible with existing mirrored records.
-
-**Adding a version later:** add `v5()` and append it to `ManagedStoreModel.versions`. That alone adds the v4→v5 stage and lets `prepare` recognize v4 stores. Then freeze v4 in the shape test, keep `managedFields` in step with v5, and add a fixture-based migration test from v4.
+The schema can change freely until it is promoted to CloudKit Production (#6); after that, follow the additive-only rules in [offline-storage.md](offline-storage.md#managed-persistence). In particular, the set of `allowsCloudEncryption` fields can never change once deployed. Before testing cloud sync, run the developer-only `initializeCloudKitSchema` harness (see [offline-storage.md](offline-storage.md#icloud-setup)).
 
 ## API for other work orders
 
-The contract is `CampCore.DocumentRepository`. It is portable and Foundation-only. `CampPersistence.SQLiteStore` conforms with the Core Data implementation. `InMemoryDocumentRepository` applies the same `DocumentPolicy`, for previews and portable tests.
+The contract is `DocumentVault.DocumentRepository`. It is portable and Foundation-only. `CampPersistence.LibraryStore` conforms with the Core Data implementation. `InMemoryDocumentRepository` applies the same `DocumentPolicy`, for previews and portable tests.
 
 ```swift
 public protocol DocumentRepository: Sendable {
@@ -187,7 +164,7 @@ try await repository.addDocument(DocumentDraft(id: archived.id, owner: archived.
 
 A deleted document's identifier is tombstoned, so restoring it returns `duplicateDocument`. Recovery should report that rather than work around it. ### Export
 
-Profile › **Prepare export** creates `RoamReady Export.zip` using `SQLiteStore.exportArchive(to:)`. It contains:
+Profile › **Prepare export** creates `RoamReady Export.zip` using `LibraryStore.exportArchive(to:)`. It contains:
 
 | Path | Contents |
 | --- | --- |
@@ -201,12 +178,12 @@ The archive is a portable copy. Importing it back (recovery) belongs to the back
 
 ## Tests
 
-- Portable (`Tests/CampCoreTests/ManagedDocumentTests.swift`, Linux and macOS): SHA-256 vectors and chunked hashing, streamed file inspection, the fixed-size chunk reader, sensitive-type protection rules, signature detection, invalid imports (empty, oversized, renamed non-documents), filename sanitizing, HTTPS link rules, the bounded download buffer (declared or actual size over the limit, early rejection of web pages, chunked bytes kept intact), metadata validation, unknown categories, and the in-memory repository contract (including missing content).
-- Core Data (`Tests/CampPersistenceTests/DocumentVaultTests.swift`, macOS CI): frozen v2 and v3 shapes, v4 additive hashes, the runtime field mapping, stable checksums for the frozen models, CloudKit model rules and the encrypted-field set, 3 MB original-byte round trip across close/reopen with no network, metadata edits and owner separation, link-only until import and re-import replacement, invalid imports leaving the store unchanged, metadata without downloaded content, tamper detection, deletion and tombstones, duplicate-row reconciliation, explicit v2→v4 and v3→v4 migrations preserving rig details, photos, and assets with a backup, interrupted-migration re-verification and fail-closed behavior, refusal of unknown store versions, the new-store marker, sensitive types encrypted in the store with no plaintext in the mirrored attribute, a 30 MB streamed file export, re-encryption when protection is raised and refusal to lower it, detection of flipped, truncated, reordered, cross-document, and wrong-key ciphertext, encrypted link imports, files stored as bounded chunk rows, missing chunks reported as not downloaded, interrupted writes removed only by the device that started them, secure delete enabled, and the zip export's manifest and verified files.
+- Portable (`Tests/DocumentVaultTests/`, Linux and macOS): SHA-256 vectors and chunked hashing (CryptoKit on Apple platforms, Apple's swift-crypto on Linux), AES-GCM chunk sealing bound to document, position, and final flag (`DocumentCipherTests`), streamed file inspection, the fixed-size chunk reader, sensitive-type protection rules, signature detection, invalid imports (empty, oversized, renamed non-documents), filename sanitizing, HTTPS link rules, the bounded download buffer (declared or actual size over the limit, early rejection of web pages, chunked bytes kept intact), metadata validation, unknown categories, and the in-memory repository contract (including missing content).
+- Core Data (`Tests/CampPersistenceTests/LibraryStoreDocumentTests.swift`, macOS CI): the declared field mapping, CloudKit model rules and the encrypted-field set, 3 MB original-byte round trip across close/reopen with no network, metadata edits and owner separation, link-only until import and re-import replacement, invalid imports leaving the store unchanged, metadata without downloaded content, tamper detection, deletion and tombstones, duplicate-row reconciliation, sensitive types encrypted in the store with no plaintext in the mirrored attribute, a 30 MB streamed file export, re-encryption when protection is raised and refusal to lower it, detection of flipped, truncated, reordered, cross-document, and wrong-key ciphertext, encrypted link imports, files stored as bounded chunk rows, missing chunks reported as not downloaded, interrupted writes removed only by the device that started them, secure delete enabled, and the zip export's manifest and verified files.
 
 ## iCloud status per document
 
-`SQLiteStore.cloudStatus(ofDocument:)` returns one of three values:
+`LibraryStore.cloudStatus(ofDocument:)` returns one of three values:
 - `.localOnly`: sync is off.
 - `.inICloud`: the document row and every chunk of its current file have CloudKit records, per `NSPersistentCloudKitContainer.records(for:)`.
 - `.waitingToUpload`: otherwise.

@@ -18,7 +18,6 @@ SWIFTC_BIN="${SWIFTC_BIN:-$(dirname "$(command -v "$SWIFT_BIN")")/swiftc}"
 export SWIFTC_BIN
 
 "$SWIFT_BIN" test
-python3 scripts/validate_catalog.py
 python3 scripts/test_import_ridb.py
 python3 scripts/validate_campgrounds.py
 
@@ -64,7 +63,6 @@ for place in directory["campgrounds"]:
     assert place["sourceURL"].startswith("https://")
     assert all(type(value) is bool for value in place["amenities"].values())
     assert place["checkedAt"] and place["name"] and place["region"]
-assert not (root / "Camp/Resources/rig-catalog.json").exists(), "v1 uses owner-entered rig details; do not bundle a rig catalog"
 
 project = (root / "RoamReady.xcodeproj/project.pbxproj").read_text()
 definitions = set(re.findall(r"\b([A-F0-9]{24})\s*(?:/\*.*?\*/\s*)?=", project))

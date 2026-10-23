@@ -1,5 +1,0 @@
-{
-  "sourceURL": "https://api.nhtsa.gov/recalls/recallsByVehicle?make=TIFFIN&model=ALLEGRO+RED&modelYear=2024",
-  "retrievedAt": "2026-10-19T20:01:51.659068+00:00",
-  "error": "HTTP 400: Bad Request"
-}

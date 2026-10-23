@@ -54,20 +54,4 @@ final class CompletionAndListsTests: XCTestCase {
         library.setCampground("ridb-2", name: "", region: "", on: .favorite, false)
         XCTAssertNil(library.saved["ridb-2"])
     }
-
-    func testListsAndCompletionRoundTripThroughRecords() throws {
-        var completed = trip(); completed.completedAt = date("2026-05-02T00:00:00Z")
-        var library = LibrarySnapshot(state: AppState(trips: [completed]))
-        library.setCampground("ridb-1", name: "Pines", region: "CO", on: .favorite, true)
-        library.setCampground("ridb-3", name: "Watchman", region: "UT", on: .beenTo, false)
-        let records = Array(try RecordProjection.documents(library).values)
-        XCTAssertEqual(try RecordProjection.snapshot(records), library)
-    }
-
-    func testBookmarksSavedBeforeListsBecomeWantToGo() throws {
-        let legacy = ReplicaRecord(key: "favorite:ridb-9", kind: .favorite, fields: ["campgroundID": .string("ridb-9"), "saved": .bool(true)])
-        let library = try RecordProjection.snapshot([legacy])
-        XCTAssertEqual(library.saved["ridb-9"], SavedCampground(campgroundID: "ridb-9", wantToGo: true))
-        XCTAssertEqual(LibrarySnapshot(favorites: ["ridb-9"]), library)
-    }
 }

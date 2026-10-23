@@ -8,6 +8,8 @@
 /* Begin PBXBuildFile section */
 		CA0000000000000000000001 /* CampCore in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000012 /* CampCore */; };
 		CA0000000000000000000018 /* CampPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000019 /* CampPersistence */; };
+		CA000000000000000000001A /* Campgrounds in Frameworks */ = {isa = PBXBuildFile; productRef = CA000000000000000000001B /* Campgrounds */; };
+		CA000000000000000000001C /* DocumentVault in Frameworks */ = {isa = PBXBuildFile; productRef = CA000000000000000000001D /* DocumentVault */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,7 +42,7 @@
 		CA0000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = (CA0000000000000000000001 /* CampCore in Frameworks */, CA0000000000000000000018 /* CampPersistence in Frameworks */,);
+			files = (CA0000000000000000000001 /* CampCore in Frameworks */, CA0000000000000000000018 /* CampPersistence in Frameworks */, CA000000000000000000001A /* Campgrounds in Frameworks */, CA000000000000000000001C /* DocumentVault in Frameworks */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -68,7 +70,7 @@
 			dependencies = ();
 			fileSystemSynchronizedGroups = (CA0000000000000000000004 /* Camp */,);
 			name = Camp;
-			packageProductDependencies = (CA0000000000000000000012 /* CampCore */, CA0000000000000000000019 /* CampPersistence */,);
+			packageProductDependencies = (CA0000000000000000000012 /* CampCore */, CA0000000000000000000019 /* CampPersistence */, CA000000000000000000001B /* Campgrounds */, CA000000000000000000001D /* DocumentVault */,);
 			productName = "RoamReady";
 			productReference = CA0000000000000000000002 /* RoamReady.app */;
 			productType = "com.apple.product-type.application";
@@ -233,6 +235,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference . */;
 			productName = CampPersistence;
+		};
+		CA000000000000000000001B /* Campgrounds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference . */;
+			productName = Campgrounds;
+		};
+		CA000000000000000000001D /* DocumentVault */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference . */;
+			productName = DocumentVault;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

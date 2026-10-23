@@ -6,5 +6,5 @@ ROAMREADY_MIRRORING_CONTAINER = iCloud.com.yourcompany.RoamReadyManaged
 CODE_SIGN_ENTITLEMENTS = Config/Cloud.entitlements
 // CloudKit uses the device's iCloud account; the app has no accounts of its own.
 
-// Use a NEW container for Core Data mirroring; do not reuse the former custom-sync container.
+// Use a dedicated container for Core Data mirroring.
 // Enable Push Notifications for this App ID; Xcode signing supplies aps-environment.
