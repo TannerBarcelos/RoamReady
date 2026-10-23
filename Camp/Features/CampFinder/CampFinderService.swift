@@ -2,6 +2,8 @@ import Foundation
 import Observation
 import CoreLocation
 import MapKit
+// MapFeature (a place tapped on the map) is MapKit's SwiftUI type.
+import SwiftUI
 import CampCore
 import Campgrounds
 
