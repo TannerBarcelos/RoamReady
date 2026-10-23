@@ -16,68 +16,134 @@ struct OnboardingView: View {
     /// by an onboarding that didn't finish is picked up again.
     @State private var rig: Rig?
     @State private var failure: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var stageTitle: String {
+        ["Your kind of camping", "Meet your rig", "Ready for what’s next"][step]
+    }
+
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if step == 0 { welcomeArtwork }
+                        Text(stageTitle).font(.largeTitle.bold()).accessibilityAddTraits(.isHeader)
+                        Text(step == 0 ? "A little preparation. A lot more camping. Choose your setup and we’ll make it feel like yours."
+                             : step == 1 ? "A few details now, a smoother arrival later. We’ll tailor your starting checklists to your setup."
+                             : "Your first rig is ready. Add a personal touch, then make room for your next adventure.")
+                            .font(.body).foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
                 if step == 0 {
                     Section {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Image(systemName: "tent.2").font(.system(size: 44)).foregroundStyle(.blue)
-                            Text("A little preparation.\nA lot more camping.").font(.largeTitle.bold())
-                            Text("Your setup, your trips, and your memories—ready when reception isn’t.")
-                                .foregroundStyle(.secondary)
-                        }.padding(.vertical)
-                    }
-                    if library.iCloud.configured { ICloudSection() }
-                    Section("What do you camp in?") {
                         ForEach(RigType.allCases) { type in
                             Button {
+                                guard draft.type != type else { return }
                                 draft.type = type
                                 draft.resetDetailsForType()
                             } label: {
-                                HStack {
-                                    Text(type.defaultEmoji)
-                                    Text(type.title).foregroundStyle(.primary)
-                                    Spacer()
-                                    if draft.type == type { Image(systemName: "checkmark").foregroundStyle(.blue) }
-                                }.padding(.vertical, 4)
+                                HStack(spacing: 16) {
+                                    Text(type.defaultEmoji).font(.title).accessibilityHidden(true)
+                                        .frame(width: 48, height: 48)
+                                        .background(.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+                                    Text(type.title).font(.headline).foregroundStyle(.primary)
+                                    Spacer(minLength: 8)
+                                    Image(systemName: draft.type == type ? "checkmark.circle.fill" : "circle")
+                                        .font(.title2).foregroundStyle(draft.type == type ? Color.blue : Color.secondary)
+                                        .accessibilityHidden(true)
+                                }
+                                .padding(.vertical, 6)
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(draft.type == type ? [.isSelected] : [])
                         }
-                    }
+                    } header: { Text("What do you camp in?") }
+                    Section {
+                        Label("No account. No signal required.", systemImage: "wifi.slash")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }.listRowBackground(Color.clear)
                 } else if step == 1 {
                     RigFormSections(rig: $draft)
                 } else {
-                    Section("A little about you") {
+                    Section {
+                        HStack(spacing: 16) {
+                            RigImage(type: draft.type, emoji: draft.emoji, photo: draft.photo, size: 64)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(draft.displayName).font(.headline)
+                                Label("Setup & teardown lists prepared", systemImage: "checkmark.circle.fill")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }.padding(.vertical, 8)
+                    }
+                    Section {
                         TextField("First name (optional)", text: $name).textContentType(.givenName)
+                            .textInputAutocapitalization(.words).submitLabel(.done)
                         Picker("Camping experience", selection: $experience) {
                             ForEach(Experience.allCases) { Text($0.title).tag($0) }
-                        }.pickerStyle(.inline)
+                        }
+                    } header: { Text("Make yourself at home") } footer: {
+                        Text("Just for you. You can change these details in Profile anytime.")
                     }
                     if let rig {
                         DocumentVaultSection(owner: .rig(rig), header: "Manuals & paperwork (optional)",
-                                             footer: "Add owner’s manuals, registration, insurance, or anything else now or later from Profile. Files open offline; links need a connection.")
+                                             footer: "Bring a manual, registration, or insurance along now, or add it later in Profile. Saved files open offline; links need a connection.")
                     }
+                    if library.iCloud.configured { ICloudSection() }
                     Section {
-                        Label("Your trips stay on this iPhone", systemImage: "iphone")
-                        Text("Once setup is complete, your planned trips, checklists, photos, and notes work without an internet connection.")
+                        Label("Ready beyond reception", systemImage: "mountain.2")
+                            .font(.headline)
+                        Text("Your saved trips, checklists, photos, and notes go with you. Camp Finder and fresh weather need a connection.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("No account needed. Everything works offline except Camp Finder and fresh weather. Optional iCloud sync keeps a private copy in your iCloud and can be managed from Profile.")
+                        Text("No account needed. Optional iCloud sync keeps a private copy in your iCloud when configured.")
                     }
                 }
-                if let failure { Section { Text(failure).foregroundStyle(.red) } }
+                if let failure {
+                    Section { Label(failure, systemImage: "exclamationmark.circle").foregroundStyle(.red) }
+                }
             }
-            .navigationTitle(step == 0 ? "Welcome to RoamReady" : step == 1 ? "Your rig" : "Make it yours")
-            .navigationBarTitleDisplayMode(step == 0 ? .inline : .large)
+            .id(step)
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle("RoamReady")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if step > 0 { ToolbarItem(placement: .topBarLeading) { Button("Back", systemImage: "chevron.left") { step -= 1 } } }
-                ToolbarItem(placement: .topBarTrailing) { Text("\(step + 1) of 3").font(.caption).foregroundStyle(.secondary) }
+                if step > 0 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Back", systemImage: "chevron.left") { changeStep(to: step - 1) }
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Text("\(step + 1) of 3").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                        .accessibilityLabel("Step \(step + 1) of 3")
+                }
             }
-            .safeAreaInset(edge: .bottom) {
-                Button(step < 2 ? "Continue" : "Start camping") { advance() }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 12) {
+                    ProgressView(value: Double(step + 1), total: 3)
+                        .accessibilityLabel("Setup progress")
+                    Button(action: advance) {
+                        HStack {
+                            Spacer()
+                            Text(step == 0 ? "Set up my \(draft.type.title.lowercased())" : step == 1 ? "Looks like home" : "Let’s go camping")
+                            Image(systemName: step == 2 ? "checkmark" : "arrow.right")
+                            Spacer()
+                        }.padding(.vertical, 6)
+                    }
                     .disabled(step == 1 && !draft.hasRequiredDetails)
-                    .buttonStyle(.borderedProminent).controlSize(.large).frame(maxWidth: .infinity)
-                    .padding().background(.bar)
+                    .buttonStyle(.borderedProminent).controlSize(.large)
+                    if step == 1 && !draft.hasRequiredDetails {
+                        Text("Add year, make, model, and length to continue.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .padding().frame(maxWidth: 640).frame(maxWidth: .infinity).background(.bar)
             }
             .onAppear {
                 if rig == nil, let unfinished = rigs.active.first { rig = unfinished; draft = unfinished.draft }
@@ -85,16 +151,39 @@ struct OnboardingView: View {
         }
     }
 
+    private var welcomeArtwork: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 28).fill(.blue.opacity(0.08))
+            Image(systemName: "mountain.2.fill")
+                .font(.system(size: 100)).foregroundStyle(.blue.opacity(0.16))
+                .offset(x: 35, y: 12)
+            Image(systemName: "sun.max.fill")
+                .font(.system(size: 32)).foregroundStyle(.orange).offset(x: 78, y: -42)
+            Image(systemName: "tent.2.fill")
+                .font(.system(size: 64)).foregroundStyle(.blue).offset(x: -32, y: 28)
+        }
+        .frame(height: 180).clipped().accessibilityHidden(true)
+    }
+
+    private func changeStep(to value: Int) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { step = value }
+    }
+
     private func advance() {
         do {
             switch step {
-            case 0: step = 1
+            case 0: changeStep(to: 1)
             case 1:
                 if let rig { try rig.update(draft, regenerateDefaults: true) } else { rig = try Rig.add(draft, to: context) }
-                library.save(); step = 2
+                try context.save(); changeStep(to: 2)
             default:
-                context.insert(CamperProfile(name: name.trimmingCharacters(in: .whitespacesAndNewlines), experience: experience))
-                library.save()
+                let camper = CamperProfile(name: name.trimmingCharacters(in: .whitespacesAndNewlines), experience: experience)
+                context.insert(camper)
+                do { try context.save() }
+                catch {
+                    context.delete(camper)
+                    throw error
+                }
             }
             failure = nil
         } catch { failure = error.localizedDescription }

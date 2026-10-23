@@ -45,3 +45,11 @@ Sync is configured through the onboarding/Profile toggle, which works offline an
 The app targets iPhone and iPad in portrait and landscape and defaults to system appearance, with explicit Light/Dark choices applied at the window root. Native controls provide the starting point for Dynamic Type, VoiceOver, and platform interaction conventions.
 
 Release acceptance must still verify large text, VoiceOver labels and order, reduced motion/transparency, light/dark contrast, rotation, iPad split view, long campground names, and outdoor readability. Treat these as validation requirements, not completed accessibility certification. The [validation guide](validation.md#airplane-mode-acceptance-pass) includes the device checklist.
+
+## First-rig onboarding
+
+Three native form screens introduce the setup, collect rig details, and personalize the library. The welcome uses an SF Symbols campsite illustration and full-width rig choices with explicit selection indicators. A persistent bottom action and labeled step progress keep the next action visible. Each stage opens at the top; transitions respect Reduce Motion. Semantic colors, system typography, and standard navigation/materials follow the system appearance.
+
+Required RV details stay enforced; tent and car camping can continue without them. The last screen previews the saved rig and prepared checklists. Name, documents, and configured iCloud preferences remain optional; documents and sync follow rig creation so the first choice stays focused. No permission prompts or account are required to begin. Rig and profile writes must succeed before advancing; failed profile insertion is removed so setup can be retried.
+
+Before release, check all eight rig types, back navigation without losing draft details, interrupted setup/relaunch, save failures, optional document/photo import, keyboard dismissal, large text, VoiceOver selection/progress, reduced motion/transparency, landscape/iPad, and light/dark appearance on an iOS 27 device or simulator. The illustrated flow has not been visually verified in the Linux workspace.
