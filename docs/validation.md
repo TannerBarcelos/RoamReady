@@ -50,9 +50,9 @@ Cloud sync is not established by local persistence tests. Validate multi-device 
 
 ## Apple capability configuration
 
-The default `Camp.entitlements` declares no capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. User location is not requested.
+The default `Camp.entitlements` declares no capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. Location (when in use, approximate by default) is requested only when the owner taps the weather reading on Home; it is rounded to about 1 km and sent only to WeatherKit.
 
-`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync preference (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures for the public campground snapshot host, optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
+`PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync preference (reason CA92.1), no tracking, and coarse location (not linked, app functionality) for the Home weather reading. Reassess the manifest and App Store privacy disclosures for the public campground snapshot host, optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
 
 Add capabilities through Xcode only when their corresponding integration is ready and your Apple Developer identifiers/profiles are configured. Optional weather/cloud examples require provisioning:
 

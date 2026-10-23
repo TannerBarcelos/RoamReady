@@ -13,6 +13,8 @@
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
     <key>RoamReadyMirroringContainerIdentifier</key><string>$(ROAMREADY_MIRRORING_CONTAINER)</string>
     <key>UIBackgroundModes</key><array><string>remote-notification</string></array>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Shows the temperature where you are on the Home screen. Your location is rounded to about 1 km and sent only to Apple Weather.</string>
+    <key>NSLocationDefaultAccuracyReduced</key><true/>
     <key>NSCameraUsageDescription</key><string>Take photos of your rig and campsite to save with your trips, even while offline.</string>
     <key>RoamReadyCampgroundDataURL</key><string>https://raw.githubusercontent.com/TannerBarcelos/RoamReady/main/data/campgrounds</string>
     <key>LSRequiresIPhoneOS</key><true/>

@@ -2,7 +2,6 @@ import SwiftUI
 import CampCore
 
 struct WeatherSection: View {
-    @Environment(\.colorScheme) private var colorScheme
     /// A snapshot of the trip's dates and location, so a trip being added can show weather too.
     let trip: TripDraft
     @State private var forecast: SavedForecast?
@@ -40,7 +39,7 @@ struct WeatherSection: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text("\(temperature(day.highCelsius)) / \(temperature(day.lowCelsius))").font(.subheadline)
+                            Text("\(WeatherFormat.temperature(day.highCelsius)) / \(WeatherFormat.temperature(day.lowCelsius))").font(.subheadline)
                         }.accessibilityElement(children: .combine)
                     }
                     if matchingDays.isEmpty { Text("These dates are outside the saved forecast window. Check again closer to departure.").foregroundStyle(.secondary) }
@@ -49,14 +48,8 @@ struct WeatherSection: View {
                     }
                     Text("Downloaded \(forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened)) · Conditions may have changed")
                         .font(.caption).foregroundStyle(.secondary)
-                    HStack {
-                        AsyncImage(url: colorScheme == .dark ? forecast.darkMarkURL : forecast.lightMarkURL) { image in
-                            image.resizable().scaledToFit()
-                        } placeholder: { Label("Weather", systemImage: "apple.logo") }
-                        .frame(width: 90, height: 20)
-                        Spacer()
-                        Link("Data sources", destination: forecast.attributionURL).font(.caption)
-                    }
+                    WeatherAttribution(legalURL: forecast.attributionURL, lightMarkURL: forecast.lightMarkURL,
+                                       darkMarkURL: forecast.darkMarkURL)
                 } else {
                     Text("No forecast saved yet. Weather needs a connection to refresh and is available only within the provider’s forecast window.").foregroundStyle(.secondary)
                 }
@@ -74,9 +67,6 @@ struct WeatherSection: View {
                 forecast = await WeatherStore.shared.cached(latitude: latitude, longitude: longitude)
             } else { forecast = nil }
         }
-    }
-    private func temperature(_ celsius: Double) -> String {
-        Measurement(value: celsius, unit: UnitTemperature.celsius).formatted(.measurement(width: .narrow, usage: .weather))
     }
     private func refresh() async {
         guard let latitude = trip.latitude, let longitude = trip.longitude else { return }
