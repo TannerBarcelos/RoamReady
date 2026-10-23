@@ -89,6 +89,7 @@ public enum RecordProjection {
             ]
             for name in optionalTripStrings + optionalTripNumbers { if let value = all[name], value != .null { f[name] = value } }
             if let rigID = trip.rigID { f["rigID"] = .string(rigID.uuidString) }
+            if let site = all["site"], site != .null { f["site"] = site }
             if let deadline = trip.cancellationDeadline { f["cancellationDeadline"] = .number(deadline.timeIntervalSinceReferenceDate) }
             if let completedAt = trip.completedAt { f["completedAt"] = .number(completedAt.timeIntervalSinceReferenceDate) }
             f["position"] = .number(Double(tripPosition))

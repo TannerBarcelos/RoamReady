@@ -6,6 +6,7 @@ public extension Trip {
     mutating func copyBookingDetails(from other: Trip) {
         siteNumber = other.siteNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         loop = Self.cleaned(other.loop)
+        site = other.site.flatMap { $0.isEmpty ? nil : $0 }
         confirmationNumber = Self.cleaned(other.confirmationNumber)
         bookingProvider = Self.cleaned(other.bookingProvider)
         bookingURL = Self.cleaned(other.bookingURL)
@@ -22,7 +23,7 @@ public extension Trip {
     }
 
     var hasBookingDetails: Bool {
-        [loop, confirmationNumber, bookingProvider, bookingURL].contains { $0 != nil }
+        [loop, confirmationNumber, bookingProvider, bookingURL].contains { $0 != nil } || site != nil
             || checkInMinutes != nil || checkOutMinutes != nil || totalCost != nil || amountPaid != nil
             || cancellationDeadline != nil
     }

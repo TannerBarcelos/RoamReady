@@ -96,6 +96,13 @@ struct BookingCard: View {
         Section {
             let site = [trip.siteNumber.isEmpty ? nil : "Site \(trip.siteNumber)", trip.loop.map { "Loop \($0)" }].compactMap { $0 }
             if !site.isEmpty { Label(site.joined(separator: " · "), systemImage: "mappin") }
+            if let details = trip.site, !details.summary.isEmpty {
+                LabeledContent("Site details", value: details.summary)
+                if let rig = store.rig(for: trip), details.isTooShort(for: rig), let limit = details.maxLengthFeet {
+                    Label("\(rig.displayName) is longer than this site’s \(limit.formatted()) ft limit", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                }
+            }
             if let number = trip.confirmationNumber {
                 LabeledContent("Confirmation", value: number).textSelection(.enabled)
             }
