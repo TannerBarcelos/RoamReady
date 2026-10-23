@@ -16,17 +16,30 @@ jobs:
       - name: Portable Swift tests (CampCore, Campgrounds, DocumentVault)
         run: swift test
   persistence:
-    # The Xcode 27 image (macOS 27, Apple silicon). `macos-latest` still maps to macOS 26 with the iOS 26 SDK.
+    # The Xcode 27 image (macOS 27, Apple silicon).
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Show the selected Xcode and iOS SDK
-        run: xcodebuild -version && xcrun --sdk iphonesimulator --show-sdk-version
-      # Runs the package tests (including SwiftData), validates the project, and builds the app for the
-      # iOS Simulator at the iOS 27 target. It fails if the selected SDK is older than iOS 27.
-      - name: Validate the package and build the iOS app with the iOS 27 SDK
-        run: ./scripts/check.sh --native
+      - name: Require Xcode with the iOS 27 SDK
+        run: |
+          xcodebuild -version
+          SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          echo "iOS Simulator SDK: $SDK_VERSION"
+          test "${SDK_VERSION%%.*}" -ge 27
+      - name: Swift package and SwiftData store tests
+        run: swift test
+      - name: Validate project, privacy, and Apple capabilities
+        run: |
+          plutil -lint RoamReady.xcodeproj/project.pbxproj Camp/Info.plist Camp/Camp.entitlements Camp/PrivacyInfo.xcprivacy Config/Cloud.entitlements
+          test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.weatherkit' Config/Cloud.entitlements)" = true
+          test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-services:0' Config/Cloud.entitlements)" = CloudKit
+          /usr/libexec/PlistBuddy -c 'Print :NSLocationWhenInUseUsageDescription' Camp/Info.plist > /dev/null
+      - name: Build the iOS app for Simulator
+        run: |
+          xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO build
       - name: Show crash reports
         if: failure()
-        run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec sh -c 'echo "== $1"; head -c 8000 "$1"' _ {} \; || true
+        run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec head -c 8000 {} \; || true

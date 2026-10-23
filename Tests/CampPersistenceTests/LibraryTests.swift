@@ -183,21 +183,23 @@ struct LibraryTests {
     // MARK: Saved campgrounds
 
     @Test func completedTripsPutTheirCampgroundOnBeenHereUnlessTheOwnerRemovesIt() throws {
+        let pinesID = CampgroundIdentity.local(UUID()).campgroundID
+        let lakesideID = CampgroundIdentity.local(UUID()).campgroundID
         let trip = try trip(rig: Rig.add(trailer, to: context))
-        trip.campgroundID = "ridb-1"
+        trip.campgroundID = pinesID
         let afterwards = arrival.addingTimeInterval(10 * 86_400)
         func lists() throws -> CampgroundLists {
             CampgroundLists(saved: try context.fetch(FetchDescriptor<SavedCampground>()), trips: [trip], now: afterwards)
         }
-        #expect(try lists().campgroundIDs(on: .beenTo) == ["ridb-1"])
-        try SavedCampground.set("ridb-1", name: "Pines", region: "CO", on: .beenTo, false, in: context)
-        #expect(try !lists().contains("ridb-1", on: .beenTo), "The removal sticks")
-        try SavedCampground.set("ridb-2", name: "Lakeside", region: "UT", on: .wantToGo, true, in: context)
-        try SavedCampground.set("ridb-2", name: "", region: "", on: .favorite, true, in: context)
-        #expect(try lists().name("ridb-2") == "Lakeside", "A blank name doesn't erase the saved one")
-        try SavedCampground.set("ridb-2", name: "", region: "", on: .wantToGo, false, in: context)
-        try SavedCampground.set("ridb-2", name: "", region: "", on: .favorite, false, in: context)
-        #expect(try lists().entry("ridb-2") == nil, "An entry on no list is deleted")
+        #expect(try lists().campgroundIDs(on: .beenTo) == [pinesID])
+        try SavedCampground.set(pinesID, name: "Pines", region: "CO", on: .beenTo, false, in: context)
+        #expect(try !lists().contains(pinesID, on: .beenTo), "The removal sticks")
+        try SavedCampground.set(lakesideID, name: "Lakeside", region: "UT", on: .wantToGo, true, in: context)
+        try SavedCampground.set(lakesideID, name: "", region: "", on: .favorite, true, in: context)
+        #expect(try lists().name(lakesideID) == "Lakeside", "A blank name doesn't erase the saved one")
+        try SavedCampground.set(lakesideID, name: "", region: "", on: .wantToGo, false, in: context)
+        try SavedCampground.set(lakesideID, name: "", region: "", on: .favorite, false, in: context)
+        #expect(try lists().entry(lakesideID) == nil, "An entry on no list is deleted")
     }
 
     @Test func anAppleMapsPlaceIsSavedByItsIdentifierOnly() throws {

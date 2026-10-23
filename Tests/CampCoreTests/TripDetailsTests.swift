@@ -6,7 +6,7 @@ final class TripDetailsTests: XCTestCase {
     /// May 1–3 at a Denver campground, planned in Los Angeles.
     private func denverTrip() -> TripDraft {
         TripDraft(campgroundName: "Pines", arrival: date("2026-05-01T07:00:00Z"), departure: date("2026-05-03T07:00:00Z"),
-                  campgroundID: "ridb-1", planningTimeZoneIdentifier: "America/Los_Angeles", campgroundTimeZoneIdentifier: "America/Denver")
+                  campgroundID: "apple:pines", planningTimeZoneIdentifier: "America/Los_Angeles", campgroundTimeZoneIdentifier: "America/Denver")
     }
 
     func testInvalidTripDatesNamesAndCoordinatesAreRejected() {

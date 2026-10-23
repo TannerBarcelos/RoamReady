@@ -35,7 +35,7 @@ Each trip references its rig, so rig edits show on every trip that uses it; repl
 
 **Rigs are entered by their owners in v1.** The app does not ship or query a rig catalog. RV makes, models, years, and floorplans number in the tens of thousands, and no investigated free source covers them, so a partial picker would mostly send people to manual entry anyway. Owner-entered details are stored as SwiftData `Rig` models, and trips relate to their rig. Older profiles saved without a length still open; the next profile edit asks for the missing required fields.
 
-Camp Finder's places come from Apple Maps, throttled per device by Apple, with no shared quota. Saved lists store only Apple's place identifiers and look places up when shown. Adding a trip saves the chosen campground name, coordinates, and time zone as part of the owner's booking record; search results and place cards remain in memory. Coverage is partial: an empty search doesn't mean there are no campgrounds. See [Camp Finder data source](docs/campground-sourcing.md). The earlier RIDB federal snapshot is retired.
+Camp Finder's places come from Apple Maps, throttled per device by Apple, with no shared quota. Saved lists store only Apple's place identifiers and look places up when shown. Adding a trip saves the chosen campground name, coordinates, and time zone as part of the owner's booking record; search results and place cards remain in memory. Coverage is partial: an empty search doesn't mean there are no campgrounds. See [Camp Finder data source](docs/campground-sourcing.md).
 
 Checklist wording is original, with the [Camping World setup and teardown article](https://blog.campingworld.com/learn-to-rv/rv-setup-checklist/) as a background reference. It is not a licensed reproduction of their full article or an endorsement. Equipment-specific ordering and procedures remain subject to the rig manufacturer's manuals.
 
@@ -52,17 +52,21 @@ The default build declares no entitlements; cloud and weather are separately con
 
 ## Checks
 
-```sh
-./scripts/check.sh
-```
-
-Runs the Swift tests, plist/JSON and Xcode project checks, and syntax parsing of native Swift files. Syntax parsing does **not** type-check Apple SDK APIs. Set `SWIFT_BIN=/path/to/swift` if necessary.
-
-On a Mac with the iOS 27 SDK:
+Run the Swift package tests from the repository root:
 
 ```sh
-./scripts/check.sh --native
+swift test
 ```
+
+On a Mac with the iOS 27 SDK, build the app for Simulator:
+
+```sh
+xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+[Apple validation](.github/workflows/apple-validation.yml) runs these commands in CI and checks the project, privacy manifest, permission text, and signed-build capabilities.
 
 The portable suites (`CampCore`, `Campgrounds`, `DocumentVault`) have **49 tests** and run on Linux and macOS. They cover rig policy and required details, trip dates and booking validation, site details, checklist generation, campground identities, Camp Finder places (website and phone links, merging nearest first), document type detection, validation and link rules, SHA-256 and AES-GCM sealing, default-on iCloud sync and account pinning decisions, and cross-time-zone/DST forecast dates. The SwiftData suite (`CampPersistenceTests`, 21 tests) runs on macOS against real stores: rigs and defaults, trips and their checklists, deletes and cascades, note versions, completion and campground lists, the document vault, reopening from disk, and the export.
 
@@ -83,7 +87,7 @@ The app (`Camp/`) is organized by feature:
 - `Features/<Feature>/`: `Home`, `Trips`, `Checklists`, `CampFinder`, `Documents`, `Memories`, `Profile`, `Onboarding`, `Weather`, `Assistant`, and `Sync`, each holding its views and its service (WeatherKit, Foundation Models, Apple Maps search, camera and photos, CloudKit sync and erase).
 - `Shared/`: connectivity gate and small shared views.
 
-Other folders: `docs/` (acquisition research, build instructions, source coverage, integration plan), `scripts/` (repeatable validation).
+`docs/` contains build instructions, Apple Maps coverage, storage contracts, and release setup.
 
 The app stores its library with SwiftData: profile, rigs, trips, checklist steps, photos, note versions, saved campgrounds, and documents are models with relationships. Local saves never require a network or account. See [offline storage and sync](docs/offline-storage.md) for the models, conflicts, setup, and release gates.
 

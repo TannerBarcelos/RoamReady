@@ -6,7 +6,7 @@ import Foundation
 ///   `MKMapItem.Identifier` for apps to store and look up again; the place's details are fetched
 ///   from Apple Maps when shown rather than copied into the library, so saved lists keep only the ID.
 /// - `local:<uuid>`: a campground the owner entered by name. Its name is the owner's own data.
-/// - Anything else, such as `ridb-<facility>`: a reference from an earlier directory, kept as is
+/// - Anything else: a previously saved identity, kept as is
 ///   so existing trips and lists stay readable.
 public enum CampgroundIdentity: Equatable, Sendable {
     case appleMaps(String)
