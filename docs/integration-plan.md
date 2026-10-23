@@ -18,7 +18,7 @@ v1 has no hosted AI. The only generative route is Apple's on-device Foundation M
 
 ## Campground data
 
-The RIDB public bulk export supports a real federal campground and site snapshot without an API key. `scripts/import_ridb.py` builds dated factual index/site shards, and the app downloads them over HTTPS from configurable public snapshot hosting. Development hosting points to this repository branch through Info.plist; production should use an owned CDN/versioned snapshot endpoint with an update owner and measured traffic budget. Static directory facts are not live booking availability.
+The RIDB public bulk export supports a real federal campground and site snapshot without an API key. A dated snapshot of index and site shards (now frozen, replaced by Yelp in #26) is committed in `data/campgrounds/`, and the app downloads them over HTTPS from configurable public snapshot hosting. Development hosting points to this repository branch through Info.plist; production should use an owned CDN/versioned snapshot endpoint with an update owner and measured traffic budget. Static directory facts are not live booking availability.
 
 A future live refresh (#18) needs a bounded backend and a registered RIDB API key; never ship provider keys in the app. NPS, state/local/private coverage, broader regional datasets, and any reservation availability require separate integrations/agreements. See [source report](campground-sourcing.md).
 
