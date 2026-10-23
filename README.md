@@ -83,7 +83,7 @@ The app (`Camp/`) is organized by feature:
 - `Shared/`: connectivity gate and small shared views.
 - `Resources/`: the bundled starter campground directory.
 
-Other folders: `docs/` (acquisition research, build instructions, source coverage, integration plan), `scripts/` (repeatable validation and the RIDB importer), `data/` (the published campground snapshot).
+Other folders: `docs/` (acquisition research, build instructions, source coverage, integration plan), `scripts/` (`check.sh`, the validation CI runs), `data/` (the federal campground snapshot Camp Finder reads until it moves to Yelp, #26).
 
 The app stores its library with SwiftData: profile, rigs, trips, checklist steps, photos, note versions, saved campgrounds, and documents are models with relationships. Local saves never require a network or account. See [offline storage and sync](docs/offline-storage.md) for the models, conflicts, setup, and release gates.
 

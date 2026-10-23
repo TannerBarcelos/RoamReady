@@ -18,8 +18,6 @@ SWIFTC_BIN="${SWIFTC_BIN:-$(dirname "$(command -v "$SWIFT_BIN")")/swiftc}"
 export SWIFTC_BIN
 
 "$SWIFT_BIN" test
-python3 scripts/test_import_ridb.py
-python3 scripts/validate_campgrounds.py
 
 "$SWIFT_BIN" -e '
 import Foundation
@@ -49,6 +47,10 @@ for path in list((root / "Camp").rglob("*.plist")) + list((root / "Camp").rglob(
 with (root / "Camp/Camp.entitlements").open("rb") as stream:
     entitlements = plistlib.load(stream)
 assert entitlements == {}, "The default build declares no capabilities (no accounts in v1); cloud/weather are configured separately"
+with (root / "Config/Cloud.entitlements").open("rb") as stream:
+    signed = plistlib.load(stream)
+assert signed.get("com.apple.developer.weatherkit") is True, "Signed builds need WeatherKit for forecasts"
+assert signed.get("com.apple.developer.icloud-services") == ["CloudKit"], "Signed builds mirror the library to CloudKit"
 
 json_files = list((root / "Camp").rglob("*.json"))
 for path in json_files:

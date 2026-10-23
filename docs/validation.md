@@ -19,7 +19,7 @@ cd Camp
 
 Requirements: Swift 6+, Bash, and Python 3. If Swift is not on PATH, use `SWIFT_BIN=/absolute/path/to/swift ./scripts/check.sh`.
 
-The script runs the Swift package tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax, validates the campground snapshot and importer, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
+The script runs the Swift package tests, parses the Xcode OpenStep project property list with Foundation, parses every native Swift file, validates plist and JSON syntax and the signed-build entitlements, and checks project and shared-scheme references. `swiftc -frontend -parse` only checks syntax; it does **not** resolve SwiftUI, UIKit, Foundation Models, WeatherKit, or other Apple SDK APIs and does not prove the native app compiles.
 
 On a Mac with the required SDK:
 
@@ -54,19 +54,7 @@ The default `Camp.entitlements` declares no capabilities; the app has no account
 
 `PrivacyInfo.xcprivacy` declares app-local UserDefaults access for the iCloud sync preference (reason CA92.1), no tracking, and no collected data for this local build. Reassess the manifest and App Store privacy disclosures for the public campground snapshot host, optional CloudKit, WeatherKit, and any future backend or telemetry. There is no remote AI.
 
-Add capabilities through Xcode only when their corresponding integration is ready and your Apple Developer identifiers/profiles are configured. Optional weather/cloud examples require provisioning:
-
-```xml
-<!-- WeatherKit: enable for the registered App ID. -->
-<key>com.apple.developer.weatherkit</key>
-<true/>
-
-<!-- CloudKit: replace the example container with your provisioned container. -->
-<key>com.apple.developer.icloud-container-identifiers</key>
-<array><string>iCloud.com.yourcompany.RoamReady</string></array>
-<key>com.apple.developer.icloud-services</key>
-<array><string>CloudKit</string></array>
-```
+Signed builds use `Config/Cloud.entitlements` through a local xcconfig made from `Config/Cloud.xcconfig.example` (see #6). It declares CloudKit for `$(ROAMREADY_MIRRORING_CONTAINER)` and WeatherKit (`com.apple.developer.weatherkit`); `check.sh` fails if either is removed. Enable iCloud (CloudKit), Push Notifications, and WeatherKit on the App ID to match. Without WeatherKit, weather refresh fails and shows any saved forecast.
 
 CloudKit subscription delivery also needs the appropriate Push Notifications capability and the `remote-notification` background mode if your sync design uses silent pushes; allow Xcode to generate the environment-specific push entitlement. Enabling CloudKit alone does not implement syncing or conflict handling. There are no app accounts; onboarding and trips must work offline. Foundation Models availability must be checked at runtime; an empty entitlements file cannot make an unsupported device eligible.
 
