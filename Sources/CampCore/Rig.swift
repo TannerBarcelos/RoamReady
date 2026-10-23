@@ -40,42 +40,30 @@ public struct Equipment: Codable, Equatable, Sendable {
     public static let none = Equipment(shorePower: false, freshWater: false, sewer: false, propane: false)
 }
 
-public struct Rig: Codable, Equatable, Identifiable, Sendable {
-    public var id: UUID
-    public var type: RigType
-    public var make: String
-    public var model: String
-    public var year: Int?
-    public var floorplan: String
-    public var emoji: String
-    public var photoFilename: String?
-    public var equipment: Equipment
-    /// Owner-entered details. Optional because tents and car camping have none; RVs require year,
-    /// make, model, and length when the form is saved (`validateDetails`).
-    public var lengthFeet: Double?
-    public var slideCount: Int?
-    public var axleCount: Int?
-    public var hasBunkhouse: Bool?
-    /// Set when the owner replaces this rig. Archived rigs leave the trip picker, don't count toward
-    /// `RigPolicy.maxActiveRigs`, and stay readable on the trips that used them.
-    public var archivedAt: Date?
-    public init(id: UUID = UUID(), type: RigType = .travelTrailer, make: String = "", model: String = "",
-                year: Int? = nil, floorplan: String = "", emoji: String = "🚐",
-                photoFilename: String? = nil, equipment: Equipment = Equipment(),
-                lengthFeet: Double? = nil, slideCount: Int? = nil, axleCount: Int? = nil, hasBunkhouse: Bool? = nil,
-                archivedAt: Date? = nil) {
-        self.id = id; self.type = type; self.make = make; self.model = model; self.year = year
-        self.floorplan = floorplan; self.emoji = emoji; self.photoFilename = photoFilename
-        self.equipment = equipment; self.lengthFeet = lengthFeet; self.slideCount = slideCount
-        self.axleCount = axleCount; self.hasBunkhouse = hasBunkhouse; self.archivedAt = archivedAt
-    }
-    public var isArchived: Bool { archivedAt != nil }
-    public var displayName: String {
+/// The owner-entered facts about a rig, shared by the stored rig and the form's draft so the rules
+/// live in one place.
+public protocol RigDetails {
+    var type: RigType { get }
+    var make: String { get }
+    var model: String { get }
+    var year: Int? { get }
+    var floorplan: String { get }
+    var equipment: Equipment { get }
+    /// Optional because tents and car camping have none; RVs require them when the form is saved.
+    var lengthFeet: Double? { get }
+    /// 0 means the owner said there are no slide-outs; nil means not specified.
+    var slideCount: Int? { get }
+    var axleCount: Int? { get }
+    var hasBunkhouse: Bool? { get }
+}
+
+public extension RigDetails {
+    var displayName: String {
         let name = [make, model, floorplan].filter { !$0.isEmpty }.joined(separator: " ")
         return name.isEmpty ? type.title : name
     }
     /// Short owner-entered facts, e.g. "2024 · 19 ft · 1 slide · Bunkhouse".
-    public var detailSummary: String {
+    var detailSummary: String {
         var parts: [String] = []
         if let year { parts.append(String(year)) }
         if let lengthFeet { parts.append(String(format: "%g ft", lengthFeet)) }
@@ -85,33 +73,62 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
         return parts.joined(separator: " · ")
     }
 
-    public static let yearRange = 1950...2100
-    public static let lengthRange = 5.0...65.0
-    /// 0 means the owner said there are no slide-outs; nil means not specified.
-    public static let slideRange = 0...8
-    public static let axleRange = 1...4
-
     /// RVs need year, make, model, and length; tents and car camping need none of them.
-    /// Checked when the owner saves the form, not on load, so a synced rig never makes the library unreadable.
-    public func validateDetails() throws {
+    /// Checked when the owner saves the form, never on load, so a synced rig always stays readable.
+    func validateDetails() throws {
         if type.isRV {
             guard let year, !make.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let lengthFeet else {
                 throw CampError.incompleteRig
             }
-            guard Self.yearRange.contains(year), lengthFeet.isFinite, Self.lengthRange.contains(lengthFeet) else {
+            guard RigDraft.yearRange.contains(year), lengthFeet.isFinite, RigDraft.lengthRange.contains(lengthFeet) else {
                 throw CampError.invalidRigDetails
             }
-        } else if let year, !Self.yearRange.contains(year) {
+        } else if let year, !RigDraft.yearRange.contains(year) {
             throw CampError.invalidRigDetails
         }
-        if let slideCount, !Self.slideRange.contains(slideCount) { throw CampError.invalidRigDetails }
-        if let axleCount, !Self.axleRange.contains(axleCount) { throw CampError.invalidRigDetails }
+        if let slideCount, !RigDraft.slideRange.contains(slideCount) { throw CampError.invalidRigDetails }
+        if let axleCount, !RigDraft.axleRange.contains(axleCount) { throw CampError.invalidRigDetails }
     }
-    public var hasRequiredDetails: Bool { (try? validateDetails()) != nil }
-    public var detailsProblem: String? {
+    var hasRequiredDetails: Bool { (try? validateDetails()) != nil }
+    var detailsProblem: String? {
         do { try validateDetails(); return nil } catch { return (error as? CampError)?.errorDescription }
     }
+}
+
+/// The rig form's editable copy. Saving applies it to the stored rig.
+public struct RigDraft: RigDetails, Equatable, Codable, Sendable {
+    public var type: RigType
+    public var make: String
+    public var model: String
+    public var year: Int?
+    public var floorplan: String
+    public var emoji: String
+    /// A resized JPEG, or nil to show the emoji.
+    public var photo: Data?
+    public var equipment: Equipment
+    public var lengthFeet: Double?
+    public var slideCount: Int?
+    public var axleCount: Int?
+    public var hasBunkhouse: Bool?
+    /// Exports leave the photo out; it is shared separately.
+    private enum CodingKeys: String, CodingKey {
+        case type, make, model, year, floorplan, emoji, equipment, lengthFeet, slideCount, axleCount, hasBunkhouse
+    }
+    public init(type: RigType = .travelTrailer, make: String = "", model: String = "", year: Int? = nil,
+                floorplan: String = "", emoji: String = "🚐", photo: Data? = nil, equipment: Equipment = Equipment(),
+                lengthFeet: Double? = nil, slideCount: Int? = nil, axleCount: Int? = nil, hasBunkhouse: Bool? = nil) {
+        self.type = type; self.make = make; self.model = model; self.year = year
+        self.floorplan = floorplan; self.emoji = emoji; self.photo = photo
+        self.equipment = equipment; self.lengthFeet = lengthFeet; self.slideCount = slideCount
+        self.axleCount = axleCount; self.hasBunkhouse = hasBunkhouse
+    }
+
+    public static let yearRange = 1950...2100
+    public static let lengthRange = 5.0...65.0
+    public static let slideRange = 0...8
+    public static let axleRange = 1...4
+
     /// True once any required field has a value, so a blank form doesn't open with an error.
     public var hasStartedDetails: Bool {
         year != nil || lengthFeet != nil || !make.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -146,4 +163,10 @@ public struct Rig: Codable, Equatable, Identifiable, Sendable {
     }
     public var yearText: String { year.map(String.init) ?? "" }
     public var lengthText: String { lengthFeet.map { String(format: "%g", $0) } ?? "" }
+}
+
+/// The single place the active-rig limit lives. A future paid tier changes only this value
+/// (sold through StoreKit in-app purchase).
+public enum RigPolicy {
+    public static let maxActiveRigs = 1
 }
