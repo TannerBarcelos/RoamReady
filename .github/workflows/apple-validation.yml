@@ -35,11 +35,13 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.weatherkit' Config/Cloud.entitlements)" = true
           test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-services:0' Config/Cloud.entitlements)" = CloudKit
           /usr/libexec/PlistBuddy -c 'Print :NSLocationWhenInUseUsageDescription' Camp/Info.plist > /dev/null
-      - name: Build the iOS app for Simulator
+      - name: Build Debug and Release for Simulator
         run: |
-          xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData \
-            CODE_SIGNING_ALLOWED=NO build
+          for BUILD_CONFIGURATION in Debug Release; do
+            xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration "$BUILD_CONFIGURATION" \
+              -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData \
+              CODE_SIGNING_ALLOWED=NO build
+          done
       - name: Assistant unavailable screens and text-only chat UI
         run: |
           SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith("iPhone")))')"
