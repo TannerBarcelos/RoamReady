@@ -36,14 +36,14 @@ Apple Maps doesn't list every campground, especially primitive or dispersed site
   - shows the name from a trip there (the owner's own record), or
   - looks the place up in Apple Maps as each row comes into view while online (one lookup per visible row, never the whole list at once), or
   - shows "Saved campground" offline.
-- Places found this session are kept in memory only, for showing details and directions; nothing from Apple Maps is written to disk.
+- Places found this session are kept in memory only, for showing details and directions; search results and place cards are not persisted. Adding a trip stores its chosen name, coordinates, and time zone in the booking record.
 - **Add trip** prefills the identifier, name, location, and the campground's time zone from Apple Maps. The time zone is always shown in the form so it can be checked or set by hand. The trip's name and dates are the owner's record and stay readable if Apple Maps stops listing the place.
 - Campgrounds entered by name get a local identity, `local:<uuid>`, reused for later trips with the same name, so they appear in Have been after a completed trip.
 - References from the retired RIDB snapshot (`ridb-<facility id>`) stay unchanged on existing trips and lists. Their saved names still show; they no longer open a listing.
 
 ## To check before release
 
-Tracked in #26 (Simulator) and the Camp Finder section of #10 (device):
+Tracked in the Camp Finder simulator and device sections of #10:
 
 1. **Coverage where people camp:** national forest, BLM/desert, state park, and town RV park searches return sensible places, and tapping campgrounds on the map opens them.
 2. **Place details:** how often Apple Maps has a website, a phone number, and a time zone for campgrounds. Each is optional in the app; a missing time zone leaves the device's zone selected in the trip form for the person to change.

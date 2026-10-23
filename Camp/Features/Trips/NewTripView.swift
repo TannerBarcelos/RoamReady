@@ -158,13 +158,21 @@ struct BookingFormSections: View {
             }
         }
         Section {
+            Picker("Campground time zone", selection: Binding(
+                get: { trip.campgroundCalendar.timeZone.identifier },
+                set: { trip.campgroundTimeZoneIdentifier = $0 })) {
+                ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { identifier in
+                    Text(identifier.replacingOccurrences(of: "_", with: " ")).tag(identifier)
+                }
+            }
+            .pickerStyle(.navigationLink)
             TimeOfDayRow(title: "Check-in time", minutes: $trip.checkInMinutes)
             TimeOfDayRow(title: "Check-out time", minutes: $trip.checkOutMinutes)
         } header: { Text("Check-in & check-out") } footer: {
             if let checkIn = trip.checkInDate, let checkOut = trip.checkOutDate, checkOut <= checkIn {
                 Text(CampError.invalidCheckTimes.localizedDescription).foregroundStyle(.red)
             } else {
-                Text("Times are in the campground’s local time zone.")
+                Text("Times use \(trip.campgroundCalendar.timeZone.identifier.replacingOccurrences(of: "_", with: " ")). Check the time zone against your reservation, especially when entering a campground by name.")
             }
         }
         Section("Cost") {

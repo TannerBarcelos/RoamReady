@@ -6,7 +6,7 @@
     <key>NSPrivacyTrackingDomains</key><array/>
     <key>NSPrivacyCollectedDataTypes</key>
     <array>
-        <!-- Rounded location sent to Apple Weather for the temperature on Home; not stored or linked. -->
+        <!-- Approximate location used for Apple Weather on Home and Apple Maps Near me; not stored or linked. -->
         <dict>
             <key>NSPrivacyCollectedDataType</key><string>NSPrivacyCollectedDataTypeCoarseLocation</string>
             <key>NSPrivacyCollectedDataTypeLinked</key><false/>
