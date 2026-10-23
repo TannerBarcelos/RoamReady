@@ -381,6 +381,7 @@ final class CampStore {
                                            campgroundID: draft.campgroundID,
                                            campgroundTimeZoneIdentifier: draft.campgroundTimeZoneIdentifier) { trip in
                 trip.copyBookingDetails(from: draft)
+                trip.notes = draft.notes.trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
         return created!.id

@@ -44,6 +44,8 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
 
     // Booking details, all optional and entered by the user. A trip is one booking at one campground.
     public var loop: String?
+    /// The booked site's parking, length limit, and hookups. Nil until the owner enters any.
+    public var site: SiteDetails?
     public var confirmationNumber: String?
     /// Who it was booked through, e.g. Recreation.gov or the campground directly.
     public var bookingProvider: String?
@@ -137,6 +139,7 @@ public struct Trip: Codable, Equatable, Identifiable, Sendable {
         for date in [cancellationDeadline, completedAt].compactMap({ $0 }) {
             guard date.timeIntervalSinceReferenceDate.isFinite else { throw CampError.invalidDates }
         }
+        try site?.validate()
     }
 }
 

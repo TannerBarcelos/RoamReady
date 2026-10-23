@@ -10,6 +10,7 @@ final class RecordProjectionTests: XCTestCase {
         a.loop = "B"; a.confirmationNumber = "0123-4567"; a.bookingProvider = "Recreation.gov"
         a.bookingURL = "https://www.recreation.gov/account/orders"; a.checkInMinutes = 900; a.checkOutMinutes = 1000
         a.totalCost = 84.5; a.amountPaid = 20; a.cancellationDeadline = Date(timeIntervalSinceReferenceDate: 12_345.5)
+        a.site = SiteDetails(parking: .pullThrough, maxLengthFeet: 40, electric: .amp30, water: true)
         let b = try Trip.create(campgroundName: "Watchman", arrival: a.arrival, departure: a.departure, rig: rig)
         var old = rig; old.id = UUID(); old.make = "Previous"; old.archivedAt = Date(timeIntervalSinceReferenceDate: 99)
         var defaults = ChecklistFactory.templates(for: rig); defaults.rigID = rig.id

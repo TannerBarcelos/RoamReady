@@ -3,7 +3,7 @@ import Foundation
 public enum CampError: Error, LocalizedError, Equatable, Sendable {
     case missingCampground, invalidDates, invalidCoordinates, duplicateIdentifiers, emptyChecklistTitle
     case invalidPhotoFilename, unsupportedSchema(Int), incompleteRig, invalidRigDetails
-    case invalidBookingLink, invalidCheckTimes, invalidBookingAmount
+    case invalidBookingLink, invalidCheckTimes, invalidBookingAmount, invalidSiteLength
     case rigLimitReached, rigInUse, rigNotFound, rigArchived
     public var errorDescription: String? {
         switch self {
@@ -19,6 +19,7 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
         case .invalidBookingLink: "The booking link must be a secure web address starting with https://."
         case .invalidCheckTimes: "Check-out must be after check-in."
         case .invalidBookingAmount: "Costs must be zero or more."
+        case .invalidSiteLength: "Enter the site’s length limit in feet, between 1 and 200."
         case .rigLimitReached: RigPolicy.maxActiveRigs == 1
             ? "You already have an active rig. Replace or archive it first."
             : "You already have \(RigPolicy.maxActiveRigs) active rigs. Archive one first."

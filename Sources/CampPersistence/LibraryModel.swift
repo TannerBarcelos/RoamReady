@@ -30,7 +30,7 @@ enum LibraryModel {
                        "campgroundTimeZoneIdentifier", "rigID", "loop", "confirmationNumber", "bookingProvider", "bookingURL"]
             numbers = ["latitude", "longitude", "arrival", "departure", "position", "checkInMinutes", "checkOutMinutes",
                        "totalCost", "amountPaid", "cancellationDeadline", "completedAt"]
-            binary = ["initialChecklistKeys"]
+            binary = ["initialChecklistKeys", "site"]
         case .checklistItem: strings = ["id", "title", "detail", "section", "status", "owner", "phase"]; numbers = ["position"]
         case .templates: strings = ["id", "sourceURL", "rigID"]; numbers = ["version"]; binary = ["initialChecklistKeys"]
         case .photo: strings = ["id", "filename", "caption", "owner"]; numbers = ["createdAt", "position"]

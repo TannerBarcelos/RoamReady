@@ -34,7 +34,7 @@ struct NewTripView: View {
                         .onChange(of: draft.arrival) { _, value in if draft.departure < value { draft.departure = value } }
                     DatePicker("Departure", selection: $draft.departure, in: draft.arrival..., displayedComponents: .date)
                 }
-                BookingFormSections(trip: $draft)
+                BookingFormSections(trip: $draft, includesSiteNotes: true)
                 Section {
                     Label("Setup & teardown included", systemImage: "checklist")
                     Text("The trip gets its own copy of your rig’s default checklists. Changing it never changes your defaults.").foregroundStyle(.secondary)
@@ -104,10 +104,34 @@ struct RigPickerSection: View {
 /// Booking fields, all optional so walk-up and first-come sites work. Editable at any time.
 struct BookingFormSections: View {
     @Binding var trip: Trip
+    /// Adding a trip also takes first site notes; after that, notes and photos live in Photos & site notes.
+    var includesSiteNotes = false
     var body: some View {
         Section {
             TextField("Site number", text: $trip.siteNumber)
             TextField("Loop", text: text(\.loop))
+            Picker("Parking", selection: site(\.parking)) {
+                Text("Not entered").tag(SiteParking?.none)
+                ForEach(SiteParking.allCases) { Text($0.title).tag(Optional($0)) }
+            }
+            TextField("Site length limit (ft)", value: site(\.maxLengthFeet), format: .number).keyboardType(.decimalPad)
+            Picker("Electric", selection: site(\.electric)) {
+                Text("Not entered").tag(SiteElectric?.none)
+                ForEach(SiteElectric.allCases) { Text($0.title).tag(Optional($0)) }
+            }
+            Picker("Water at site", selection: site(\.water)) { yesNoOptions }
+            Picker("Sewer at site", selection: site(\.sewer)) { yesNoOptions }
+            if includesSiteNotes {
+                TextField("Site notes (shade, slope, neighbors…)", text: $trip.notes, axis: .vertical).lineLimit(2...6)
+            }
+        } header: { Text("Site (optional)") } footer: {
+            if let details = trip.site, (try? details.validate()) == nil {
+                Text(CampError.invalidSiteLength.localizedDescription).foregroundStyle(.red)
+            } else {
+                Text("Campground listings don’t include site details. Copy them from your reservation or add them when you arrive. Add photos and more notes any time from Photos & site notes.")
+            }
+        }
+        Section {
             TextField("Confirmation number", text: text(\.confirmationNumber))
                 .textInputAutocapitalization(.characters).autocorrectionDisabled()
             TextField("Booked through (e.g. Recreation.gov)", text: text(\.bookingProvider))
@@ -144,6 +168,20 @@ struct BookingFormSections: View {
     private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
     private func text(_ keyPath: WritableKeyPath<Trip, String?>) -> Binding<String> {
         Binding(get: { trip[keyPath: keyPath] ?? "" }, set: { trip[keyPath: keyPath] = $0.isEmpty ? nil : $0 })
+    }
+    /// Edits one site field; the trip stores no site details until one is entered.
+    private func site<Value>(_ keyPath: WritableKeyPath<SiteDetails, Value>) -> Binding<Value> {
+        Binding(get: { (trip.site ?? SiteDetails())[keyPath: keyPath] },
+                set: { value in
+                    var details = trip.site ?? SiteDetails()
+                    details[keyPath: keyPath] = value
+                    trip.site = details.isEmpty ? nil : details
+                })
+    }
+    @ViewBuilder private var yesNoOptions: some View {
+        Text("Not entered").tag(Bool?.none)
+        Text("Yes").tag(Bool?.some(true))
+        Text("No").tag(Bool?.some(false))
     }
 }
 
