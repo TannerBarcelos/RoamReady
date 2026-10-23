@@ -58,7 +58,7 @@ The OS iCloud account supplies private CloudKit identity. On the first sync the 
 
 ## Validation and outstanding release gates
 
-macOS CI runs the SwiftData tests against real stores: rig, trip, checklist, list, and document rules; cascades and unattached documents; encryption and tamper detection; reopening from disk; and the export. Apple CI also builds the SwiftUI app; compiling against a pre-iOS-27 SDK with a temporary target override does not establish iOS 27 readiness.
+macOS CI runs the SwiftData tests against real stores: rig, trip, checklist, list, and document rules; cascades and unattached documents; encryption and tamper detection; reopening from disk; and the export. Apple CI also builds the SwiftUI app with the iOS 27 SDK; a simulator build does not establish runtime behavior on devices.
 
 Still required on provisioned devices:
 
