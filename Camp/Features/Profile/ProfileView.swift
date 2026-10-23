@@ -5,7 +5,6 @@ import CampPersistence
 
 struct ProfileView: View {
     @Environment(LibraryController.self) private var library
-    @Environment(Connectivity.self) private var connectivity
     @Query private var profiles: [CamperProfile]
     @Query private var trips: [Trip]
     @Query private var photos: [TripPhoto]
@@ -52,7 +51,7 @@ struct ProfileView: View {
             Section {
                 NavigationLink { EraseDataView() } label: { Label("Erase all data", systemImage: "trash").foregroundStyle(.red) }
             } footer: { Text("RoamReady has no accounts. Your library lives on this iPhone and, if sync is on, in your own iCloud.") }
-            CloudSyncSection().disabled(!connectivity.isOnline)
+            ICloudSection()
             Section("Camping help") {
                 Label(CampingAssistant.availability, systemImage: "iphone").font(.subheadline)
                 Text("Saved guidance is always available. AI explanations use Apple’s on-device model on iPhones that support Apple Intelligence (iPhone 15 Pro or later) when it’s turned on and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)

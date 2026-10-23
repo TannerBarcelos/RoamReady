@@ -28,7 +28,7 @@ struct OnboardingView: View {
                                 .foregroundStyle(.secondary)
                         }.padding(.vertical)
                     }
-                    if library.sync.configured { CloudSyncSection() }
+                    if library.iCloud.configured { ICloudSection() }
                     Section("What do you camp in?") {
                         ForEach(RigType.allCases) { type in
                             Button {

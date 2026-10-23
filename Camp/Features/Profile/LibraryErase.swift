@@ -24,7 +24,7 @@ enum LibraryErase {
 
     static func run(library: LibraryController, progress: (Step) -> Void) async throws {
         progress(.iCloud)
-        if let containerIdentifier = library.sync.containerIdentifier {
+        if let containerIdentifier = library.iCloud.containerIdentifier {
             do { try await deleteCloudData(containerIdentifier: containerIdentifier) }
             catch let failure as Failure { throw failure }
             catch { throw Failure(step: .iCloud, reason: error.localizedDescription) }

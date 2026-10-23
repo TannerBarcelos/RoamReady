@@ -50,13 +50,13 @@ The default build declares no entitlements and an empty `ROAMREADY_MIRRORING_CON
 
 1. Register the App ID, team, and a **new dedicated CloudKit container** for mirroring.
 2. Apply `Config/Cloud.xcconfig.example`, set the actual `ROAMREADY_MIRRORING_CONTAINER`, and use `Config/Cloud.entitlements` (CloudKit and WeatherKit). Enable iCloud (CloudKit), Push Notifications, and WeatherKit on the App ID. Let signing supply the appropriate `aps-environment`. `remote-notification` background mode is declared in Info.plist.
-3. Sync is on by default. The "Sync with iCloud" toggle (onboarding and Profile) applies **immediately**: the app saves, closes the container, and reopens it with or without mirroring, the same path used after an iCloud account change. Turning sync off does not delete local data or the iCloud copy. Validate toggling during large transfers on devices before release.
+3. Sync is on by default. The "Sync with iCloud" preference (onboarding and Profile) works offline and applies **on the next app launch**. The current session keeps its launch configuration, and the UI shows pending changes. Turning sync off does not delete local data or the iCloud copy. Validate preference changes and relaunches during large transfers on devices before release.
 4. Run a signed development build on Apple hardware so SwiftData creates the CloudKit schema in the Development environment, exercising every model (including documents). Inspect it in CloudKit Console and deploy it to Production before TestFlight. Do not mutate generated system fields.
 5. Test two devices, account transitions, offline operation, and large attachments before shipping.
 
-Mirroring events (`NSPersistentCloudKitContainer.eventChangedNotification`) drive the sync status in Profile and on each document. A completed event means that activity completed, not that every device is up to date. No force-sync button is exposed.
+`ICloudSettings` passively observes mirroring events (`NSPersistentCloudKitContainer.eventChangedNotification`) to show the last successful activity and the last completed activity's error. A completed event means that activity completed, not that every device is up to date. The status never claims global delivery. No force-sync or account-retry button is exposed.
 
-The OS iCloud account supplies private CloudKit identity. On the first sync the signed-in, container-specific CloudKit user is pinned automatically (`CloudSyncPolicy`); a different account never syncs into the library, and an account change reopens it on this device only. Profile › Erase all data deletes the CloudKit zone and everything local; see [erasing data](erase-data.md).
+The OS iCloud account supplies private CloudKit identity. SwiftData opens with the launch preference without an account or network preflight, and Apple handles account changes, connectivity, and retries while that same container stays open. There is no app-level identity pin, account notification handler, network-driven reopen, or account polling. Local data retention and cross-account behavior follow Apple's managed lifecycle and require device acceptance. Profile › Erase all data remains an explicit operation that deletes the CloudKit zone and everything local; see [erasing data](erase-data.md).
 
 ## Validation and outstanding release gates
 
@@ -64,10 +64,11 @@ macOS CI runs the SwiftData tests against real stores: rig, trip, checklist, lis
 
 Still required on provisioned devices:
 
-- Airplane-mode first launch and relaunch, checklist edits, notes, photos, saved campgrounds, exports, low storage.
+- Airplane-mode first launch and relaunch with mirroring configured, checklist edits, notes, photos, saved campgrounds, exports, low storage. Verify iCloud resumes without a database reopen after reconnection.
+- Change the iCloud preference offline in both directions, verify the current session stays unchanged, and relaunch to apply it; repeat during attachment transfers.
 - Two-device initial download, independent edits, concurrent onboarding, default-list replacement, reordering, and offline deletion.
 - Large and interrupted document transfers, metadata arriving before files, quota exhaustion, throttling, app termination, and long periods offline.
-- Sign out or switch iCloud accounts during transfers, reopen offline, verify account separation, and Erase all data.
+- Sign out or switch iCloud accounts during transfers; verify Apple's local retention and cross-account behavior, offline relaunch, sign-in/reconnection without reopening the store, and Erase all data.
 - Actual iOS 27 runtime, accessibility, WeatherKit and Foundation Models behavior, and measured memory and save times with large trip histories.
 
 Passing local tests is not certification of live CloudKit operation or production readiness.
