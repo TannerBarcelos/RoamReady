@@ -1,6 +1,8 @@
 import SwiftUI
+import SwiftData
 import CampCore
 import Campgrounds
+import CampPersistence
 
 struct CampsiteListView: View {
     @Environment(Connectivity.self) private var connectivity
@@ -10,11 +12,11 @@ struct CampsiteListView: View {
     @State private var failure: String?
     @State private var query = ""
     @State private var rigOnly = false
-    @Environment(CampStore.self) private var store
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     private var results: [CampsiteSnapshot] {
         sites.filter { site in
             (query.isEmpty || (site.name + " " + site.loop + " " + site.kind).localizedCaseInsensitiveContains(query))
-            && (!rigOnly || store.activeRig.map { site.equipment[$0.type.rawValue] != nil } == true)
+            && (!rigOnly || rigs.active.first.map { site.equipment[$0.type.rawValue] != nil } == true)
         }
     }
     var body: some View {

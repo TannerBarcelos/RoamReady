@@ -1,216 +1,159 @@
 import SwiftUI
+import SwiftData
 import PhotosUI
+import UIKit
 import CampCore
 import CampPersistence
-import UIKit
-import ImageIO
 
 struct MemoriesView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(LibraryController.self) private var library
     @Environment(\.openURL) private var openURL
-    let tripID: UUID
+    @Bindable var trip: Trip
     @State private var selections: [PhotosPickerItem] = []
     @State private var importing = false
     @State private var failure: String?
     @State private var selectedPhoto: TripPhoto?
-    @State private var importTask: Task<Void, Never>?
     @State private var showingCamera = false
     @State private var requestingCamera = false
     @State private var needsCameraPermission = false
     var body: some View {
-        Group {
-            if let trip = store.trip(tripID) {
-                List {
-                    Section("Remember this site") {
-                        TextField("Site number", text: Binding(get: { store.trip(tripID)?.siteNumber ?? "" }, set: { value in store.editTrip(tripID) { $0.siteNumber = value } }))
-                        Picker("Stay again?", selection: Binding(get: { store.trip(tripID)?.rating ?? .unrated }, set: { value in store.editTrip(tripID) { $0.rating = value } })) {
-                            ForEach(SiteRating.allCases) { Text($0.title).tag($0) }
-                        }
-                        TextField("Shade, slope, noise, favorite spots…", text: Binding(get: { store.trip(tripID)?.notes ?? "" }, set: { value in store.editTrip(tripID) { $0.notes = value } }), axis: .vertical)
-                            .lineLimit(5...15)
-                        SaveStatus()
-                        NavigationLink("Earlier note versions") { NoteHistoryView(tripID: tripID) }
+        List {
+            Section("Remember this site") {
+                TextField("Site number", text: $trip.siteNumber)
+                Picker("Stay again?", selection: $trip.rating) {
+                    ForEach(SiteRating.allCases) { Text($0.title).tag($0) }
+                }
+                TextField("Shade, slope, noise, favorite spots…", text: $trip.notes, axis: .vertical).lineLimit(5...15)
+                SaveStatus()
+                NavigationLink("Earlier note versions") { NoteHistoryView(trip: trip) }
+            }
+            Section {
+                Button {
+                    Task {
+                        requestingCamera = true; failure = nil; needsCameraPermission = false
+                        defer { requestingCamera = false }
+                        do {
+                            try await CameraAccess.request()
+                            showingCamera = true
+                        } catch CameraCaptureError.permissionDenied {
+                            needsCameraPermission = true
+                            failure = CameraCaptureError.permissionDenied.localizedDescription
+                        } catch { failure = error.localizedDescription }
                     }
-                    Section {
-                        Button {
-                            Task {
-                                requestingCamera = true; failure = nil; needsCameraPermission = false
-                                defer { requestingCamera = false }
-                                do {
-                                    try await CameraAccess.request()
-                                    showingCamera = true
-                                } catch CameraCaptureError.permissionDenied {
-                                    needsCameraPermission = true
-                                    failure = CameraCaptureError.permissionDenied.localizedDescription
-                                } catch { failure = error.localizedDescription }
-                            }
-                        } label: { Label("Take a photo", systemImage: "camera") }
-                        .disabled(importing || requestingCamera)
-                        PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images) {
-                            Label("Add trip photos", systemImage: "photo.badge.plus")
-                        }.disabled(importing || requestingCamera)
-                        if importing { ProgressView("Saving on this iPhone") }
-                        if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
-                        if needsCameraPermission {
-                            Button("Open Settings") {
-                                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                            }
-                        }
-                        if trip.photos.isEmpty {
-                            Text("Keep the moments you’ll want to come back to.").foregroundStyle(.secondary).padding(.vertical)
-                        } else {
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
-                                ForEach(trip.photos) { photo in
-                                    Button { selectedPhoto = photo } label: {
-                                        VStack(alignment: .leading) {
-                                            LocalPhoto(filename: photo.filename).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
-                                            if !photo.caption.isEmpty { Text(photo.caption).font(.caption).lineLimit(2).foregroundStyle(.primary) }
-                                        }
-                                    }.buttonStyle(.plain).accessibilityLabel(photo.caption.isEmpty ? "Trip photo" : photo.caption)
-                                }
-                            }.padding(.vertical, 6)
-                        }
-                    } header: { Text("Photos · \(trip.photos.count)") } footer: {
-                        Text("Photos are saved on this iPhone and resized for storage. Camera photos stay in RoamReady; use Share to save a copy elsewhere. iCloud-only library photos need a connection before importing.")
+                } label: { Label("Take a photo", systemImage: "camera") }
+                .disabled(importing || requestingCamera)
+                PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images) {
+                    Label("Add trip photos", systemImage: "photo.badge.plus")
+                }.disabled(importing || requestingCamera)
+                if importing { ProgressView("Saving on this iPhone") }
+                if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
+                if needsCameraPermission {
+                    Button("Open Settings") {
+                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                     }
                 }
-            } else { ContentUnavailableView("Trip unavailable", systemImage: "photo") }
+                let photos = trip.sortedPhotos
+                if photos.isEmpty {
+                    Text("Keep the moments you’ll want to come back to.").foregroundStyle(.secondary).padding(.vertical)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+                        ForEach(photos) { photo in
+                            Button { selectedPhoto = photo } label: {
+                                VStack(alignment: .leading) {
+                                    LocalPhoto(data: photo.image).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
+                                    if !photo.caption.isEmpty { Text(photo.caption).font(.caption).lineLimit(2).foregroundStyle(.primary) }
+                                }
+                            }.buttonStyle(.plain).accessibilityLabel(photo.caption.isEmpty ? "Trip photo" : photo.caption)
+                        }
+                    }.padding(.vertical, 6)
+                }
+            } header: { Text("Photos · \(trip.sortedPhotos.count)") } footer: {
+                Text("Photos are saved in RoamReady, resized for storage, and sync with the trip. Use Share to save a copy elsewhere. iCloud-only library photos need a connection before importing.")
+            }
         }
         .navigationTitle("Photos & site notes")
+        // Each visit's notes become a version that can be restored later.
+        .onDisappear { trip.saveNoteRevision(); library.save() }
         .onChange(of: selections) { _, selected in
             guard !selected.isEmpty, !importing else { return }
-            importTask = Task {
+            Task {
                 importing = true; failure = nil
                 defer { importing = false; selections = [] }
                 for selection in selected {
                     do {
                         guard let data = try await selection.loadTransferable(type: Data.self) else { throw CampUIError.unreadablePhoto }
-                        try await savePhoto(data)
+                        trip.addPhoto(try await PhotoImport.jpeg(from: data))
                     } catch { failure = "Some photos couldn’t be saved. \(error.localizedDescription)" }
                 }
+                library.save()
             }
         }
-        .sheet(item: $selectedPhoto) { photo in PhotoDetailView(tripID: tripID, photo: photo) }
+        .sheet(item: $selectedPhoto) { photo in PhotoDetailView(photo: photo) }
         .fullScreenCover(isPresented: $showingCamera) {
             CameraCapture { result in
                 showingCamera = false
                 guard let result else { return }
-                importTask = Task {
+                Task {
                     importing = true; failure = nil
                     defer { importing = false }
-                    do { try await savePhoto(result.get()) }
+                    do { trip.addPhoto(try await PhotoImport.jpeg(from: result.get())); library.save() }
                     catch { failure = "The photo couldn’t be saved. \(error.localizedDescription)" }
                 }
             }.ignoresSafeArea()
         }
     }
-
-    private func savePhoto(_ data: Data) async throws {
-        guard store.trip(tripID) != nil else { throw CocoaError(.fileNoSuchFile) }
-        let filename = try await store.media.importPhoto(data)
-        guard store.trip(tripID) != nil else { throw CocoaError(.fileNoSuchFile) }
-        store.editTrip(tripID) { $0.photos.append(TripPhoto(filename: filename)) }
-    }
-}
-
-struct LocalPhoto: View {
-    @Environment(CampStore.self) private var store
-    let filename: String
-    var maximumDimension = 512
-    @State private var thumbnail: UIImage?
-    @State private var photoFailure: String?
-    var body: some View {
-        Group {
-            if let thumbnail {
-                Image(uiImage: thumbnail).resizable().scaledToFill()
-            } else {
-                Color(.tertiarySystemFill).overlay {
-                    VStack {
-                        Image(systemName: photoFailure == nil ? "photo" : "icloud.and.arrow.down")
-                        if photoFailure != nil { Text("Not on this iPhone yet").font(.caption2) }
-                    }.foregroundStyle(.secondary)
-                }.accessibilityLabel(photoFailure ?? "Loading photo")
-            }
-        }
-        .task(id: "\(filename)-\(maximumDimension)-\(store.mediaRevision)") {
-            let url: URL
-            do { url = try await store.photoURL(filename: filename); photoFailure = nil }
-            catch { photoFailure = error.localizedDescription; return }
-            let bound = maximumDimension
-            // Only Sendable JPEG bytes cross the task boundary; UIKit images stay on the UI actor.
-            let data = await Task.detached(priority: .utility) { () -> Data? in
-                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-                      let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                        kCGImageSourceCreateThumbnailFromImageAlways: true,
-                        kCGImageSourceThumbnailMaxPixelSize: bound,
-                        kCGImageSourceCreateThumbnailWithTransform: true
-                      ] as CFDictionary) else { return nil }
-                return UIImage(cgImage: image).jpegData(compressionQuality: 0.85)
-            }.value
-            guard !Task.isCancelled else { return }
-            thumbnail = data.flatMap { UIImage(data: $0) }
-        }
-    }
 }
 
 struct PhotoDetailView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(\.modelContext) private var context
+    @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
-    let tripID: UUID
-    @State var photo: TripPhoto
+    let photo: TripPhoto
+    @State private var caption: String
     @State private var deleting = false
     @State private var shareURL: URL?
+    init(photo: TripPhoto) {
+        self.photo = photo
+        _caption = State(initialValue: photo.caption)
+    }
     var body: some View {
         NavigationStack {
             Form {
-                LocalPhoto(filename: photo.filename, maximumDimension: 2048).frame(height: 300).clipped()
-                TextField("Caption", text: $photo.caption, axis: .vertical)
+                LocalPhoto(data: photo.image, maximumDimension: 2048).frame(height: 300).clipped()
+                TextField("Caption", text: $caption, axis: .vertical)
                 if let shareURL { ShareLink("Share photo", item: shareURL) }
                 Button("Remove from trip", role: .destructive) { deleting = true }
             }
-            .task(id: store.mediaRevision) { shareURL = try? await store.photoURL(filename: photo.filename) }
+            .task { shareURL = photo.image.flatMap { try? PhotoImport.shareableFile($0) } }
             .navigationTitle("Trip photo").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        store.editTrip(tripID) { trip in if let index = trip.photos.firstIndex(where: { $0.id == photo.id }) { trip.photos[index].caption = photo.caption } }
-                        dismiss()
-                    }
+                    Button("Save") { photo.caption = caption; library.save(); dismiss() }
                 }
             }
             .confirmationDialog("Remove this photo from the trip?", isPresented: $deleting, titleVisibility: .visible) {
-                Button("Remove photo", role: .destructive) { store.editTrip(tripID) { $0.photos.removeAll { $0.id == photo.id } }; dismiss() }
+                Button("Remove photo", role: .destructive) { dismiss(); context.delete(photo); library.save() }
             }
         }
     }
 }
 
-
 struct NoteHistoryView: View {
-    @Environment(CampStore.self) private var store
+    @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
-    let tripID: UUID
-    @State private var revisions: [NoteRevision] = []
-    @State private var failure: String?
+    let trip: Trip
     var body: some View {
         List {
-            if let failure { Text(failure).foregroundStyle(.secondary) }
+            let revisions = trip.revisions
             if revisions.isEmpty { Text("Earlier versions of saved notes will appear here.").foregroundStyle(.secondary) }
             ForEach(revisions) { revision in
                 Section {
-                    Text(revision.text)
-                    Button("Use this version") {
-                        store.editTrip(tripID) { $0.notes = revision.text }
-                        dismiss()
-                    }
-                } header: { Text(revision.date, style: .date) }
+                    Text(revision.body)
+                    Button("Use this version") { trip.notes = revision.body; library.save(); dismiss() }
+                } header: { Text(revision.createdAt, style: .date) }
             }
         }
         .navigationTitle("Note history")
-        .task {
-            do { revisions = try await store.revisions(for: tripID) }
-            catch { failure = error.localizedDescription }
-        }
     }
 }

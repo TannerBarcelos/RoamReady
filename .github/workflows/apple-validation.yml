@@ -13,15 +13,18 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Portable Swift tests (CampCore, Campgrounds, DocumentVault, record projection)
+      - name: Portable Swift tests (CampCore, Campgrounds, DocumentVault)
         run: swift test
   persistence:
     runs-on: macos-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Validate core, SQLite persistence, and CloudKit source with Apple SDKs
+      - name: Validate core, SwiftData persistence, and CloudKit source with Apple SDKs
         run: ./scripts/check.sh
+      - name: Show crash reports
+        if: failure()
+        run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec sh -c 'echo "== $1"; head -c 8000 "$1"' _ {} \; || true
       - name: Compile native iOS app with the installed SDK
         shell: bash
         run: |

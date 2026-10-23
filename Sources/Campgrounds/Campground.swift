@@ -115,7 +115,7 @@ public struct CampgroundFilter: Equatable, Sendable {
     public init() {}
 
     /// "Use my rig": match the rig type and, for RVs with a known length, the site length.
-    public mutating func use(_ rig: Rig) {
+    public mutating func use(_ rig: some RigDetails) {
         rigType = rig.type
         if !rig.type.isRV { minimumRigLengthFeet = nil }
         else if let length = rig.lengthFeet { minimumRigLengthFeet = length }

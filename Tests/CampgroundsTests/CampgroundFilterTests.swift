@@ -52,12 +52,12 @@ final class CampgroundFilterTests: XCTestCase {
 
     func testUseMyRigMatchesTypeAndKnownLength() {
         var filter = CampgroundFilter()
-        filter.use(Rig(type: .travelTrailer, lengthFeet: 19.5))
+        filter.use(RigDraft(type: .travelTrailer, lengthFeet: 19.5))
         XCTAssertEqual(filter.rigType, .travelTrailer); XCTAssertEqual(filter.minimumRigLengthFeet, 19.5)
         filter.minimumRigLengthFeet = 30
-        filter.use(Rig(type: .motorhome))
+        filter.use(RigDraft(type: .motorhome))
         XCTAssertEqual(filter.rigType, .motorhome); XCTAssertEqual(filter.minimumRigLengthFeet, 30, "An unknown length keeps the typed filter")
-        filter.use(Rig(type: .tent, lengthFeet: 10))
+        filter.use(RigDraft(type: .tent, lengthFeet: 10))
         XCTAssertEqual(filter.rigType, .tent); XCTAssertNil(filter.minimumRigLengthFeet)
     }
 }

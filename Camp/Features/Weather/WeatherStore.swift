@@ -25,9 +25,9 @@ struct SavedForecast: Codable, Sendable {
 
 actor WeatherStore {
     static let shared = WeatherStore()
-    private let directory = URL.applicationSupportDirectory.appendingPathComponent("Camp/Weather", isDirectory: true)
+    static let directory = URL.applicationSupportDirectory.appending(path: "Weather", directoryHint: .isDirectory)
     private func url(latitude: Double, longitude: Double) -> URL {
-        directory.appendingPathComponent("\(latitude)_\(longitude).json")
+        Self.directory.appending(path: "\(latitude)_\(longitude).json")
     }
     func cached(latitude: Double, longitude: Double) -> SavedForecast? {
         guard let data = try? Data(contentsOf: url(latitude: latitude, longitude: longitude)) else { return nil }
@@ -45,7 +45,7 @@ actor WeatherStore {
                                 windKPH: $0.wind.speed.converted(to: .kilometersPerHour).value)
             }, attributionURL: attribution.legalPageURL, lightMarkURL: attribution.combinedMarkLightURL,
             darkMarkURL: attribution.combinedMarkDarkURL)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true)
         try JSONEncoder().encode(snapshot).write(to: url(latitude: latitude, longitude: longitude), options: .atomic)
         return snapshot
     }

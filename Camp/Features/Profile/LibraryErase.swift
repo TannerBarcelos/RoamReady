@@ -22,21 +22,18 @@ enum LibraryErase {
         }
     }
 
-    /// iCloud deletion needs a connection only when this build syncs.
-    static func needsConnection(_ store: CampStore) -> Bool { store.sync.containerIdentifier != nil }
-
-    static func run(store: CampStore, progress: (Step) -> Void) async throws {
+    static func run(library: LibraryController, progress: (Step) -> Void) async throws {
         progress(.iCloud)
-        if let containerIdentifier = store.sync.containerIdentifier {
+        if let containerIdentifier = library.sync.containerIdentifier {
             do { try await deleteCloudData(containerIdentifier: containerIdentifier) }
             catch let failure as Failure { throw failure }
             catch { throw Failure(step: .iCloud, reason: error.localizedDescription) }
         }
         progress(.device)
-        do { try await store.eraseLibrary() } catch { throw Failure(step: .device, reason: error.localizedDescription) }
+        do { try await library.eraseDevice() } catch { throw Failure(step: .device, reason: error.localizedDescription) }
     }
 
-    /// Core Data's CloudKit mirroring keeps everything in one private zone; deleting it removes the
+    /// SwiftData's CloudKit mirroring keeps everything in one private zone; deleting it removes the
     /// app's iCloud data. Other devices see the zone disappear and stop syncing; their local copy stays.
     private static func deleteCloudData(containerIdentifier: String) async throws {
         let container = CKContainer(identifier: containerIdentifier)

@@ -31,7 +31,7 @@ This also lints the project with Apple's `plutil` and runs an unsigned simulator
 
 ## Validation completed in the development environment
 
-The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the actual Core Data/CloudKit package and runs SQLite integration tests on macOS. The portable suites are supplemented by Apple-only managed-store tests, including CloudKit model rules, partial-import/reopen recovery, managed asset persistence, logical duplicate reconciliation, and note history.
+The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
 
 Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 and the available iOS 26.5 SDK, using a temporary deployment override. This verifies native API compilation, not iOS 27 acceptance or physical-device runtime behavior. The product project retains its requested iOS 27 deployment target. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
@@ -70,11 +70,11 @@ Add capabilities through Xcode only when their corresponding integration is read
 
 CloudKit subscription delivery also needs the appropriate Push Notifications capability and the `remote-notification` background mode if your sync design uses silent pushes; allow Xcode to generate the environment-specific push entitlement. Enabling CloudKit alone does not implement syncing or conflict handling. There are no app accounts; onboarding and trips must work offline. Foundation Models availability must be checked at runtime; an empty entitlements file cannot make an unsupported device eligible.
 
-## Core Data and automatic CloudKit mirroring
+## SwiftData and automatic CloudKit mirroring
 
-Core Data manages the local SQLite store; no raw SQL or SQLite driver is used. `NSPersistentCloudKitContainer` manages cloud transfers and external binary assets. The former custom CloudKit transport has been removed.
+SwiftData manages the local store; no raw SQL or SQLite driver is used. Its CloudKit mirroring (`NSPersistentCloudKitContainer` underneath) manages cloud transfers and external binary data. There is no custom CloudKit transport.
 
-See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the immediate toggle, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements are empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of Core Data's generated schema.
+See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the immediate toggle, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements are empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of the generated CloudKit schema.
 
 ## Dataset and account checks
 

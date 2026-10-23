@@ -15,15 +15,15 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0")
     ],
     targets: [
-        /// Rigs, trips, checklists, saved campgrounds, and the rules that govern them. Foundation only.
+        /// The rig and trip rules shared by the models and the forms' drafts, checklists, and policies. Foundation only.
         .target(name: "CampCore"),
         /// Federal campground snapshot, site shards, and filters.
         .target(name: "Campgrounds", dependencies: ["CampCore"]),
-        /// Document types, policy, the repository contract, SHA-256 digests, and the chunk cipher.
+        /// Document types and import policy, SHA-256 digests, and AES-GCM sealing.
         .target(name: "DocumentVault", dependencies: [
             .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux]))
         ]),
-        /// Core Data + CloudKit mirroring. The record projection is portable; the store is Apple-only.
+        /// The SwiftData models, CloudKit mirroring, library rules, and export. Apple-only.
         .target(name: "CampPersistence", dependencies: ["CampCore", "DocumentVault"]),
         .testTarget(name: "CampCoreTests", dependencies: ["CampCore"]),
         .testTarget(name: "CampgroundsTests", dependencies: ["Campgrounds", "CampCore"]),

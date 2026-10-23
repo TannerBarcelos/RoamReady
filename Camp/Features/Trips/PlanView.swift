@@ -1,20 +1,20 @@
 import SwiftUI
-import MapKit
+import SwiftData
 import CampCore
-import Campgrounds
+import CampPersistence
 
 struct PlanView: View {
-    @Environment(CampStore.self) private var store
+    @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var planning = false
-    var upcoming: [Trip] { store.state.trips.filter { !$0.isCompleted() }.sorted { $0.arrival < $1.arrival } }
-    var completed: [Trip] { store.state.trips.filter { $0.isCompleted() }.sorted { $0.arrival > $1.arrival } }
     var body: some View {
+        let upcoming = trips.filter { !$0.isCompleted() }
+        let completed = trips.filter { $0.isCompleted() }.reversed()
         List {
-            if store.state.trips.isEmpty {
+            if trips.isEmpty {
                 ContentUnavailableView("No trips yet", systemImage: "calendar.badge.plus", description: Text("After you reserve a campsite, add the booking here and we’ll prepare your checklists."))
             }
             if !upcoming.isEmpty { Section("Upcoming & current") { ForEach(upcoming) { TripRow(trip: $0) } } }
-            if !completed.isEmpty { Section("Completed trips") { ForEach(completed) { TripRow(trip: $0) } } }
+            if !completed.isEmpty { Section("Completed trips") { ForEach(Array(completed)) { TripRow(trip: $0) } } }
             Section { NavigationLink { SavedCampgroundsView() } label: { Label("Your campgrounds", systemImage: "bookmark") } }
             Button("Add a trip", systemImage: "plus") { planning = true }
         }
@@ -27,7 +27,7 @@ struct PlanView: View {
 struct TripRow: View {
     let trip: Trip
     var body: some View {
-        NavigationLink { TripDetailView(tripID: trip.id) } label: {
+        NavigationLink { TripDetailView(trip: trip) } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(trip.campgroundName).font(.headline)
                 Text(trip.dateSummary).font(.subheadline).foregroundStyle(.secondary)

@@ -3,7 +3,8 @@ import CampCore
 
 struct WeatherSection: View {
     @Environment(\.colorScheme) private var colorScheme
-    let trip: Trip
+    /// A snapshot of the trip's dates and location, so a trip being added can show weather too.
+    let trip: TripDraft
     @State private var forecast: SavedForecast?
     @State private var refreshing = false
     @State private var failure: String?

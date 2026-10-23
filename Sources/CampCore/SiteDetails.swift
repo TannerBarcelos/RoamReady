@@ -49,7 +49,7 @@ public struct SiteDetails: Codable, Equatable, Sendable {
     public var isEmpty: Bool { self == SiteDetails() }
 
     /// True when the site's length limit is known and shorter than the rig.
-    public func isTooShort(for rig: Rig) -> Bool {
+    public func isTooShort(for rig: some RigDetails) -> Bool {
         guard let maxLengthFeet, let rigLength = rig.lengthFeet else { return false }
         return rigLength > maxLengthFeet
     }

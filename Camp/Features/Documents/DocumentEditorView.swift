@@ -1,17 +1,16 @@
 import SwiftUI
-import PhotosUI
-import QuickLook
-import UniformTypeIdentifiers
-import CampCore
+import SwiftData
+import CampPersistence
 import DocumentVault
 
 struct DocumentEditorView: View {
     enum Mode {
         case newFile(DocumentOwner, PendingDocumentFile)
         case newLink(DocumentOwner)
-        case edit(ManagedDocument)
+        case edit(StoredDocument)
     }
-    @Environment(CampStore.self) private var store
+    @Environment(\.modelContext) private var context
+    @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
     let mode: Mode
     @State private var title = ""
@@ -24,7 +23,6 @@ struct DocumentEditorView: View {
     @State private var issuedOn = Date.now
     @State private var hasExpiration = false
     @State private var expiresOn = Date.now
-    @State private var saving = false
     @State private var failure: String?
     @State private var prepared = false
 
@@ -70,14 +68,9 @@ struct DocumentEditorView: View {
             .navigationTitle(isNew ? "New document" : "Edit document").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(saving || category == nil) }
+                ToolbarItem(placement: .confirmationAction) { Button("Save") { save() }.disabled(category == nil) }
             }
-            .interactiveDismissDisabled(saving)
             .onAppear(perform: prepare)
-            .onDisappear {
-                // The temporary copy is only needed until the document is saved or abandoned.
-                if case .newFile(_, let pending) = mode { DocumentImport.discard(pending.url) }
-            }
         }
     }
 
@@ -103,7 +96,7 @@ struct DocumentEditorView: View {
     }
 
     private var alreadyEncrypted: Bool {
-        if case .edit(let document) = mode { return document.metadata.protection == .endToEnd }
+        if case .edit(let document) = mode { return document.protection == .endToEnd }
         return false
     }
     private var isNew: Bool {
@@ -134,23 +127,27 @@ struct DocumentEditorView: View {
         let metadata = DocumentMetadata(title: title, category: category, notes: notes,
                                         issuedOn: hasIssued ? issuedOn : nil, expiresOn: hasExpiration ? expiresOn : nil,
                                         protection: encryptFile || alreadyEncrypted ? .endToEnd : .standard)
-        Task {
-            saving = true; failure = nil
-            defer { saving = false }
-            do {
-                switch mode {
-                case .newFile(let owner, let pending):
-                    try await store.addDocument(DocumentDraft(owner: owner, metadata: metadata, source: .fileAt(pending.url, filename: pending.file.filename)))
-                case .newLink(let owner):
-                    let url = try DocumentPolicy.link(from: linkText)
-                    var withTitle = metadata
-                    if withTitle.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { withTitle.title = url.host() ?? "Link" }
-                    try await store.addDocument(DocumentDraft(owner: owner, metadata: withTitle, source: .link(url)))
-                case .edit(let document):
-                    try await store.updateDocument(document.id, metadata: metadata)
-                }
-                dismiss()
-            } catch { failure = error.localizedDescription }
+        do {
+            switch mode {
+            case .newFile(let owner, let pending):
+                try add(metadata, contents: (pending.bytes, pending.file), link: nil, to: owner)
+            case .newLink(let owner):
+                let url = try DocumentPolicy.link(from: linkText)
+                var withTitle = metadata
+                if withTitle.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { withTitle.title = url.host() ?? "Link" }
+                try add(withTitle, contents: nil, link: url, to: owner)
+            case .edit(let document):
+                try document.update(metadata)
+            }
+            library.save()
+            dismiss()
+        } catch { failure = error.localizedDescription }
+    }
+
+    private func add(_ metadata: DocumentMetadata, contents: (bytes: Data, file: DocumentFile)?, link: URL?, to owner: DocumentOwner) throws {
+        switch owner {
+        case .rig(let rig): try StoredDocument.add(metadata, contents: contents, link: link, rig: rig, in: context)
+        case .trip(let trip): try StoredDocument.add(metadata, contents: contents, link: link, trip: trip, in: context)
         }
     }
 }
