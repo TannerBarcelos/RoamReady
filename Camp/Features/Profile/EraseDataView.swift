@@ -8,7 +8,7 @@ struct EraseDataView: View {
     @State private var confirming = false
     @State private var step: LibraryErase.Step?
     @State private var failure: String?
-    private var blockedOffline: Bool { library.sync.configured && !connectivity.isOnline }
+    private var blockedOffline: Bool { library.iCloud.configured && !connectivity.isOnline }
     var body: some View {
         Form {
             Section {
@@ -55,6 +55,6 @@ struct EraseDataView: View {
         catch { failure = error.localizedDescription }
         step = nil
         // After a successful erase the library reopens empty, which starts onboarding again.
-        if failure == nil { await library.open(online: connectivity.isOnline) }
+        if failure == nil { library.open() }
     }
 }

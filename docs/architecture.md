@@ -14,10 +14,10 @@ The app targets iOS 27.0. The local Swift package uses Swift tools/language vers
 
 | Module | Dependencies | Responsibilities |
 | --- | --- | --- |
-| `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, AI device policy, iCloud sync policy, and campground identities. |
+| `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, AI device policy, and campground identities. |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
 | `DocumentVault` | CryptoKit on Apple platforms; Apple's swift-crypto on Linux | Document types/import policy, SHA-256 integrity, and AES-GCM sealing. |
-| `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
+| `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
 
 The native app links these local products and Apple frameworks. There are no non-Apple runtime SDKs. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto) as an external package; its `Crypto` product is linked only on Linux. Package resolution may still fetch that dependency on a Mac.
 
@@ -25,8 +25,8 @@ The native app links these local products and Apple frameworks. There are no non
 
 | Path | Contents |
 | --- | --- |
-| [Camp/App/](../Camp/App/) | Entry point, root view, tabs, and `LibraryController`, which owns container lifecycle, deliberate saves, sync state, and erase. |
-| [Camp/Features/](../Camp/Features/) | Feature views and services for Home, Trips, Checklists, CampFinder, Documents, Memories, Profile, Onboarding, Weather, Assistant, and Sync. |
+| [Camp/App/](../Camp/App/) | Entry point, root view, tabs, and `LibraryController`, which opens the container, surfaces save failures, and handles explicit erase. |
+| [Camp/Features/](../Camp/Features/) | Feature views and services for Home, Trips, Checklists, CampFinder, Documents, Memories, Profile (including iCloud settings), Onboarding, Weather, and Assistant. |
 | [Camp/Shared/](../Camp/Shared/) | Connectivity gate and small shared views. |
 | [Sources/](../Sources/) | Swift package modules. |
 | [Tests/](../Tests/) | One test target per package module. |
@@ -44,7 +44,7 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 3. `RootView` queries for a profile, displaying onboarding or the four main tabs.
 4. Screens read models with `@Query`. Forms edit drafts such as `TripDraft`, `RigDraft`, and `ChecklistStepDraft`, then validate and apply them.
 5. Model extensions enforce library rules. `LibraryController.save()` performs deliberate saves and surfaces failures; scene transitions also trigger saving.
-6. If configured and allowed by the sync/identity policy, Apple mirrors the same library to the owner's private CloudKit database.
+6. If configured and enabled at launch, Apple mirrors the library to the device's private CloudKit database and manages connectivity, retries, and account transitions.
 
 There is no raw SQL, custom CloudKit record transport, hosted user-data service, or app account/session backend. See [storage and synchronization](offline-storage.md) for model relationships, schema constraints, conflict behavior, and identity transitions.
 
@@ -67,7 +67,7 @@ Deleting a trip cascades to its steps, photos, and note revisions. Documents are
 | Camping assistant | Bundled guidance plus Foundation Models after product/device and runtime availability checks. No remote question transfer in v1. |
 | Memories | Native camera, PhotosPicker, bounded image import, and system sharing. Cloud-only Photos items may need a download. |
 | Documents | System file import, Quick Look, HTTPS links, verified bytes, and optional/mandatory file sealing according to category. |
-| Sync | SwiftData/CloudKit mirroring, controlled by configuration, a default-on preference, and a pinned iCloud identity. |
+| Sync | SwiftData/CloudKit mirroring, enabled by configuration and a default-on launch preference. Apple owns its runtime lifecycle. |
 
 Connectivity indicates an available path, not successful service authorization or delivery. Local edits never wait for cloud transfer. Capability provisioning, real service reachability, and device behavior are separate acceptance concerns.
 

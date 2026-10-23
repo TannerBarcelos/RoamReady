@@ -20,14 +20,14 @@ Camp Finder and fresh weather require connectivity. **Erase all data** deletes t
 
 Private CloudKit mirroring is implemented through SwiftData and Apple's `NSPersistentCloudKitContainer`. Apple owns transfers, retries, history, and external binary delivery.
 
-A configured container enables default-on sync. The first sync pins the current iCloud identity without a prompt; a different identity leaves sync paused. The onboarding/Profile toggle reopens the container immediately, and turning it off deletes neither copy. The default build has no container and stays local-only.
+A configured container enables default-on sync at launch, even offline or without an available iCloud account. Apple manages account transitions and reconnection. The onboarding/Profile preference applies on the next app launch; changing it never reopens a live store and deletes neither copy. The default build has no container and stays local-only.
 
 Before release:
 
 - Register and provision a new dedicated Apple CloudKit container and push delivery.
 - Generate and deploy the schema.
 - Validate two-device edits/conflicts, account changes, interrupted/large attachment transfers, quota failures, and sync toggling.
-- Validate full-library erase and account separation on signed devices.
+- Validate full-library erase, local retention, and Apple's cross-account behavior on signed devices.
 
 See [storage setup and release gates](offline-storage.md).
 

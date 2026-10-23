@@ -29,10 +29,10 @@ struct DocumentDetailView: View {
                 } else {
                     Label("Encrypted at rest in iCloud", systemImage: "lock.icloud")
                 }
-                if library.sync.syncing {
-                    Label(library.sync.status, systemImage: library.sync.busy ? "arrow.triangle.2.circlepath.icloud" : "icloud").font(.caption)
+                if library.iCloud.enabledForSession {
+                    Label(library.iCloud.status, systemImage: "icloud").font(.caption)
                 } else {
-                    Label("On this iPhone only · iCloud sync is off", systemImage: "iphone").font(.caption)
+                    Label("iCloud sync is off for this session", systemImage: "iphone").font(.caption)
                 }
             }
             if document.issuedOn != nil || document.expiresOn != nil {
