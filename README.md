@@ -2,7 +2,7 @@
 
 A native SwiftUI iOS app following the approved **A · System-first** design: system lists, clear checklist progress, four native tabs, semantic colors, and automatic light/dark appearance. The app deployment target is **iOS 27.0**. Standard SwiftUI navigation and tab controls provide the system's Liquid Glass styling.
 
-**Current milestone: account-free onboarding with owner-entered rig details, offline trip workflows, Apple-only AI eligibility, and federal campground/site discovery are implemented in source.** Portable behavior is tested on Linux; Apple CI compiles the SwiftData library, runs its tests against real stores, and builds the native app with its installed SDK. The current runner uses iOS 26.5 with a temporary deployment override; iOS 27 and physical-device acceptance remain outstanding. This repository is an initial development build; production services and data acquisition remain outstanding.
+**Current milestone: account-free onboarding with owner-entered rig details, offline trip workflows, Apple-only AI eligibility, and federal campground/site discovery are implemented in source.** Portable behavior is tested on Linux; Apple CI compiles the SwiftData library, runs its tests against real stores, and builds the native app with Xcode 27 and the iOS 27 SDK at the iOS 27 deployment target. Physical-device acceptance remains outstanding. This repository is an initial development build; production services and data acquisition remain outstanding.
 
 ## Run
 

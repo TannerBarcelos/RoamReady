@@ -16,22 +16,17 @@ jobs:
       - name: Portable Swift tests (CampCore, Campgrounds, DocumentVault)
         run: swift test
   persistence:
-    runs-on: macos-latest
-    timeout-minutes: 20
+    # The Xcode 27 image (macOS 27, Apple silicon). `macos-latest` still maps to macOS 26 with the iOS 26 SDK.
+    runs-on: xcode-27
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Validate core, SwiftData persistence, and CloudKit source with Apple SDKs
-        run: ./scripts/check.sh
+      - name: Show the selected Xcode and iOS SDK
+        run: xcodebuild -version && xcrun --sdk iphonesimulator --show-sdk-version
+      # Runs the package tests (including SwiftData), validates the project, and builds the app for the
+      # iOS Simulator at the iOS 27 target. It fails if the selected SDK is older than iOS 27.
+      - name: Validate the package and build the iOS app with the iOS 27 SDK
+        run: ./scripts/check.sh --native
       - name: Show crash reports
         if: failure()
         run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec sh -c 'echo "== $1"; head -c 8000 "$1"' _ {} \; || true
-      - name: Compile native iOS app with the installed SDK
-        shell: bash
-        run: |
-          sdk_version="$(xcrun --sdk iphonesimulator --show-sdk-version)"
-          if [[ "${sdk_version%%.*}" -ge 27 ]]; then
-            ./scripts/check.sh --native
-          else
-            echo "::warning::SDK $sdk_version is below the product target of iOS 27. Building with a temporary deployment override verifies Apple APIs, not iOS 27 release readiness."
-            xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData IPHONEOS_DEPLOYMENT_TARGET="$sdk_version" CODE_SIGNING_ALLOWED=NO build
-          fi

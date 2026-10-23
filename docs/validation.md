@@ -33,7 +33,7 @@ This also lints the project with Apple's `plutil` and runs an unsigned simulator
 
 The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
 
-Apple CI has completed an unsigned arm64/x86_64 simulator build with Xcode 26.6 and the available iOS 26.5 SDK, using a temporary deployment override. This verifies native API compilation, not iOS 27 acceptance or physical-device runtime behavior. The product project retains its requested iOS 27 deployment target. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
+Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; `check.sh --native` refuses an older SDK. This verifies compilation, not runtime behavior on physical devices. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
