@@ -14,7 +14,7 @@ There is one active rig per owner, controlled by `RigPolicy.maxActiveRigs`. Edit
 
 ## Home and trip planning
 
-Home shows a featured trip, checklist progress, memories, local save status, and quick trip creation. The **Plan** tab separates upcoming and past trips.
+Home shows the earliest-arriving active trip, checklist progress, memories, local save status, and quick trip creation. Active means today falls within the inclusive arrival/departure dates in the campground’s time zone and the trip has not been marked complete. The card disappears after departure day; upcoming and past trips remain in Plan. Home refreshes at campground midnight and on foregrounding, without storing an active flag. The **Plan** tab separates upcoming and past trips.
 
 A trip represents one booking at one campground. Campground name, rig, and dates are required. Create a trip from a Camp Finder listing online or enter its campground by name offline. RoamReady records a booking; it does not make reservations.
 
@@ -71,7 +71,9 @@ Trips with campground coordinates also show per-day forecasts, cached with their
 
 ## Camping help
 
-Bundled checklist guidance is always available offline. Eligible iPhones can use Apple's on-device Foundation Models to explain relevant saved guidance; questions stay on the device.
+The global **Assistant** tab supports general camping troubleshooting without requiring a trip or a matching checklist entry. It retains a conversation while switching tabs, sends bounded recent turns to Apple’s on-device Foundation Models for follow-ups, and offers New chat. Conversations are not persisted or attached to trips. The tab is hidden on non-AI hardware, iPad, simulator, and runtime-ineligible devices; supported hardware keeps the tab for Apple Intelligence setup/model-download explanations. Disabled, preparing, and unavailable AI show a native recovery screen instead of the conversation or composer. Availability refreshes on foregrounding, retry, and while the screen is open. The conversation uses a scrolling transcript and fixed text/send composer, without attachments.
+
+Trip/checklist help remains grounded in matching saved guidance, which is always available offline. General chat uses the active rig’s default checklist notes when relevant. Questions stay on the device. The production adapter explicitly uses `SystemLanguageModel.default` and `LanguageModelSession.respond(to:options:)`; no remote provider, account, API key, or AI entitlement is required. It checks model and locale support before generation, uses fresh sessions with bounded recent context, limits unusually verbose output, and retries a context overflow once with a smaller prompt. General-chat refusals, language/context failures, rate limits, and other generation errors show a retryable error and preserve the question instead of silently substituting checklist text. Questions longer than 1,500 characters are rejected for shortening rather than silently truncated.
 
 The product gate admits iPhone 15 and newer, while Apple Intelligence requires iPhone 15 Pro or later and independent runtime eligibility. The base iPhone 15/15 Plus therefore receive saved guidance with an explanation. Disabled Apple Intelligence, a model not yet ready, and other runtime unavailability states also fall back to saved guidance. iPad, simulator, and unknown device identifiers retain saved guidance. Initial model download requires connectivity.
 

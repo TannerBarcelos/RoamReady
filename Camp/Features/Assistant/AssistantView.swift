@@ -1,47 +1,231 @@
 import SwiftUI
+import SwiftData
 import CampCore
 import CampPersistence
 
+private struct CampingExchange: Identifiable {
+    let id = UUID()
+    let question: String
+    let answer: CampingAnswer
+}
+
 struct AssistantView: View {
     @Environment(\.dismiss) private var dismiss
-    let trip: Trip
+    @Environment(\.scenePhase) private var scenePhase
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    let trip: Trip?
     let step: ChecklistStep?
+    let isPresentedAsSheet: Bool
     @State private var question = ""
-    @State private var response: CampingAnswer?
-    @State private var answering = false
+    @State private var exchanges: [CampingExchange] = []
+    @State private var pendingQuestion: String?
+    @State private var generationFailure: CampingChatFailure?
     @State private var task: Task<Void, Never>?
+    @State private var availability = CampingAssistant.globalAvailability
+
+    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true) {
+        self.trip = trip
+        self.step = step
+        self.isPresentedAsSheet = isPresentedAsSheet
+    }
+
+    private var answering: Bool { pendingQuestion != nil }
+    private var showsConversation: Bool { trip != nil || availability.showsConversation }
+    private var canSend: Bool {
+        showsConversation && !answering && !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Label(CampingAssistant.availability, systemImage: "iphone")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    if let step { LabeledContent("Current step", value: step.title) }
-                    TextField("What do you need help with?", text: $question, axis: .vertical).lineLimit(3...8)
-                    Button {
-                        answering = true
-                        task = Task {
-                            let steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
-                            let answer = await CampingAssistant.answer(question: question, steps: steps, rigType: trip.rig?.type, step: step?.draft)
-                            if !Task.isCancelled { response = answer; answering = false }
-                        }
-                    } label: {
-                        if answering { ProgressView("Looking at your saved guidance…") }
-                        else { Label("Ask", systemImage: "sparkles") }
-                    }.disabled(answering || question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                } footer: { Text("AI uses Apple’s on-device model only. It needs an iPhone that supports Apple Intelligence (iPhone 15 Pro or later), with Apple Intelligence turned on and its model downloaded. Questions aren’t sent to an online AI service. Saved guidance works without AI.") }
-                if let response {
-                    Section {
-                        Text(response.text).textSelection(.enabled)
-                        Text(response.mode).font(.caption).foregroundStyle(.secondary)
-                        if let url = URL(string: response.sourceURL) { Link("Checklist background: Camping World", destination: url).font(.caption) }
-                    } header: { Text("Camping help") } footer: { Text("Your saved checklist may include personal edits. This answer does not replace your rig’s manual or professional assistance.") }
+            Group {
+                if showsConversation {
+                    conversation
+                } else {
+                    ContentUnavailableView {
+                        Label(availability.title, systemImage: "sparkles")
+                    } description: {
+                        Text(availability.message)
+                    } actions: {
+                        Button("Try again") { refreshAvailability() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    .accessibilityIdentifier("assistantUnavailable")
                 }
             }
-            .navigationTitle("Camping help").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-            .onAppear { if let step { question = "What should I know about \(step.title.lowercased())?" } }
-            .onDisappear { task?.cancel() }
+            .navigationTitle(isPresentedAsSheet ? "Camping help" : "Assistant")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if showsConversation {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("New chat", systemImage: "square.and.pencil") {
+                            exchanges = []; question = ""; generationFailure = nil
+                        }.disabled(answering || exchanges.isEmpty)
+                    }
+                }
+                if isPresentedAsSheet {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                }
+            }
+            .onAppear {
+                refreshAvailability()
+                if let step, exchanges.isEmpty, question.isEmpty {
+                    question = "What should I know about \(step.title.lowercased())?"
+                }
+            }
+            .task(id: scenePhase) {
+                guard scenePhase == .active else { return }
+                // React to a completed model download or Settings changes while the app is open.
+                while !Task.isCancelled {
+                    refreshAvailability()
+                    do { try await Task.sleep(for: .seconds(3)) }
+                    catch { return }
+                }
+            }
+            .onDisappear { cancelRequest() }
+        }
+    }
+
+    private var conversation: some View {
+        ScrollViewReader { scroll in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 24) {
+                    if exchanges.isEmpty && !answering {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.tint)
+                            Text("How can I help?").font(.largeTitle.bold())
+                            Text(trip == nil ? AssistantAvailability.ready.message : "Ask about your trip or checklist, then follow up for more detail.")
+                                .foregroundStyle(.secondary)
+                            if let trip { Text(trip.campgroundName).font(.subheadline).foregroundStyle(.secondary) }
+                            if let step { Text(step.title).font(.subheadline).foregroundStyle(.secondary) }
+                        }.padding(.vertical, 32)
+                    }
+                    ForEach(exchanges) { exchange in
+                        userMessage(exchange.question)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(exchange.answer.text).textSelection(.enabled)
+                                .accessibilityIdentifier(exchange.answer.isGenerated ? "assistantGeneratedReply" : "assistantSavedReply")
+                            Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
+                            if let source = exchange.answer.sourceURL, let url = URL(string: source) {
+                                Link("Checklist background: Camping World", destination: url).font(.caption)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel("Assistant response")
+                    }
+                    if let pendingQuestion {
+                        userMessage(pendingQuestion)
+                        ProgressView("Thinking…").accessibilityLabel("Assistant is answering")
+                    }
+                    if let generationFailure {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Couldn’t get a response", systemImage: "exclamationmark.bubble")
+                                .font(.headline)
+                            Text(generationFailure.localizedDescription).foregroundStyle(.secondary)
+                            Button("Try again", action: ask).disabled(!canSend)
+                        }
+                    }
+                    Color.clear.frame(height: 1).id("bottom")
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 12)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) { composer }
+            .onChange(of: exchanges.count) { _, _ in
+                withAnimation { scroll.scrollTo("bottom", anchor: .bottom) }
+            }
+            .onChange(of: answering) { _, _ in
+                withAnimation { scroll.scrollTo("bottom", anchor: .bottom) }
+            }
+        }
+    }
+
+    private func userMessage(_ text: String) -> some View {
+        HStack {
+            Spacer(minLength: 36)
+            Text(text)
+                .textSelection(.enabled)
+                .padding(.horizontal, 16).padding(.vertical, 12)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("You: \(text)")
+    }
+
+    private var composer: some View {
+        VStack(spacing: 8) {
+            HStack(alignment: .bottom, spacing: 10) {
+                TextField("Message Assistant", text: $question, axis: .vertical)
+                    .lineLimit(1...6)
+                    .disabled(answering)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
+                    .accessibilityLabel("Message Assistant")
+                    .accessibilityIdentifier("assistantQuestion")
+                Button(action: ask) {
+                    Image(systemName: "arrow.up.circle.fill").font(.system(size: 34))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSend)
+                .accessibilityLabel("Send message")
+                .accessibilityIdentifier("assistantSend")
+            }
+            Text(trip == nil ? "On-device AI · Check advice against your manual" : CampingAssistant.availability)
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 10)
+        .background(.bar)
+    }
+
+    private func refreshAvailability() {
+        availability = CampingAssistant.globalAvailability
+        if trip == nil && !availability.showsConversation { cancelRequest() }
+    }
+
+    private func cancelRequest() {
+        task?.cancel()
+        task = nil
+        if let pendingQuestion, question.isEmpty { question = pendingQuestion }
+        pendingQuestion = nil
+    }
+
+    private func ask() {
+        refreshAvailability()
+        guard canSend else { return }
+        let submitted = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rig = trip == nil ? rigs.active.first : trip?.rig
+        let steps: [ChecklistStepDraft]
+        if let trip {
+            steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
+        } else if let rig {
+            steps = rig.defaultTemplate.setup + rig.defaultTemplate.teardown
+        } else {
+            steps = []
+        }
+        let history = exchanges.map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
+        pendingQuestion = submitted
+        generationFailure = nil
+        question = ""
+        task = Task {
+            do {
+                let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
+                                                       step: step?.draft, scope: trip == nil ? .general : .checklist,
+                                                       history: history)
+                guard !Task.isCancelled else { return }
+                refreshAvailability()
+                guard !Task.isCancelled, showsConversation else { return }
+                exchanges.append(CampingExchange(question: submitted, answer: answer))
+            } catch {
+                guard !Task.isCancelled else { return }
+                refreshAvailability()
+                guard !Task.isCancelled, showsConversation else { return }
+                generationFailure = (error as? CampingChatFailure) ?? .failed
+                question = submitted
+            }
+            pendingQuestion = nil
+            task = nil
         }
     }
 }

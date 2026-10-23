@@ -99,6 +99,40 @@ final class TripDetailsTests: XCTestCase {
         XCTAssertTrue(trip.isCompleted(asOf: date("2026-05-04T06:00:00Z")), "Midnight MDT on May 4")
     }
 
+    func testCurrentTripIncludesArrivalAndDepartureDaysOnly() {
+        let trip = denverTrip()
+        XCTAssertFalse(trip.isActive(asOf: date("2026-05-01T05:59:59Z")), "Not yet May 1 in Denver")
+        XCTAssertTrue(trip.isActive(asOf: date("2026-05-01T06:00:00Z")), "Arrival day begins")
+        XCTAssertTrue(trip.isActive(asOf: date("2026-05-02T18:00:00Z")), "During the stay")
+        XCTAssertTrue(trip.isActive(asOf: date("2026-05-04T05:59:59Z")), "Departure day is inclusive")
+        XCTAssertFalse(trip.isActive(asOf: date("2026-05-04T06:00:00Z")), "Trip disappears after departure day")
+    }
+
+    func testCurrentTripHandlesSameDayStayAndEarlyCompletion() {
+        var trip = denverTrip()
+        trip.departure = trip.arrival
+        let during = date("2026-05-01T18:00:00Z")
+        XCTAssertTrue(trip.isActive(asOf: during))
+        XCTAssertFalse(trip.isActive(asOf: date("2026-05-02T06:00:00Z")))
+        trip.completedAt = during
+        XCTAssertFalse(trip.isActive(asOf: during))
+        trip.completedAt = nil
+        XCTAssertTrue(trip.isActive(asOf: during))
+        trip.departure = trip.arrival.addingTimeInterval(-24 * 3600)
+        XCTAssertFalse(trip.isActive(asOf: during), "Invalid merged dates do not feature a trip")
+    }
+
+    func testCurrentTripLastsTheFullDayAcrossDaylightSavingChange() {
+        let trip = TripDraft(campgroundName: "DST", arrival: date("2026-11-01T07:00:00Z"),
+                             departure: date("2026-11-01T07:00:00Z"),
+                             planningTimeZoneIdentifier: "America/Los_Angeles",
+                             campgroundTimeZoneIdentifier: "America/New_York")
+        XCTAssertFalse(trip.isActive(asOf: date("2026-11-01T03:59:59Z")))
+        XCTAssertTrue(trip.isActive(asOf: date("2026-11-01T04:00:00Z")))
+        XCTAssertTrue(trip.isActive(asOf: date("2026-11-02T04:59:59Z")), "Includes the 25th hour")
+        XCTAssertFalse(trip.isActive(asOf: date("2026-11-02T05:00:00Z")))
+    }
+
     func testMarkingCompleteEarlyIsReversible() {
         var trip = denverTrip()
         let before = date("2026-04-01T00:00:00Z")

@@ -41,7 +41,7 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 
 1. `RoamReadyApp` creates `LibraryController` and connectivity state, then opens the library.
 2. The library exposes a SwiftData model container. If opening fails, the root shows an error and retry.
-3. `RootView` queries for a profile, displaying onboarding or the four main tabs.
+3. `RootView` queries for a profile, displaying onboarding or the four standard tabs plus Assistant on supported AI devices.
 4. Screens read models with `@Query`. Forms edit drafts such as `TripDraft`, `RigDraft`, and `ChecklistStepDraft`, then validate and apply them.
 5. Model extensions enforce library rules. `LibraryController.save()` performs deliberate saves and surfaces failures; scene transitions also trigger saving.
 6. If configured and enabled at launch, Apple mirrors the library to the device's private CloudKit database and manages connectivity, retries, and account transitions.

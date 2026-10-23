@@ -4,12 +4,13 @@ import CampCore
 import CampPersistence
 
 struct HomeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var profiles: [CamperProfile]
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var planning = false
-    /// The next trip that isn't over, or else the most recent one.
-    private var featured: Trip? { trips.first { !$0.isCompleted() } ?? trips.last }
+    @State private var now = Date()
+    private var currentTrip: Trip? { trips.first { $0.isActive(asOf: now) } }
 
     var body: some View {
         List {
@@ -24,7 +25,7 @@ struct HomeView: View {
                     }.padding(.vertical, 4)
                 }
             }
-            if let trip = featured {
+            if let trip = currentTrip {
                 Section {
                     NavigationLink { TripDetailView(trip: trip) } label: {
                         VStack(alignment: .leading, spacing: 8) {
@@ -40,7 +41,7 @@ struct HomeView: View {
                             ProgressSummary(steps: trip.steps(.setup))
                         }.padding(.vertical, 4)
                     }
-                } header: { Text(trip.isCompleted() ? "Latest trip" : "Your next adventure") }
+                } header: { Text("Current trip") }
                 Section("Your trip") {
                     ForEach(ChecklistPhase.allCases) { phase in
                         NavigationLink { ChecklistView(trip: trip, initialPhase: phase) } label: {
@@ -53,15 +54,30 @@ struct HomeView: View {
                 }
             } else {
                 ContentUnavailableView {
-                    Label("Your next adventure starts here", systemImage: "tent.2")
+                    Label("No current trip", systemImage: "tent.2")
                 } description: {
-                    Text("Booked a campsite? Add the trip and your setup and teardown checklists will be ready automatically.")
-                } actions: { Button("Add a trip") { planning = true }.buttonStyle(.borderedProminent) }
+                    Text("Your trip appears here from arrival through departure day. Find upcoming and past trips in Plan, or add your next adventure below.")
+                }
             }
             Section("Next trip") { Button("Add a trip", systemImage: "plus") { planning = true } }
         }
         .navigationTitle("Home")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
         .sheet(isPresented: $planning) { NewTripView() }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            // Refresh on return to the app and at the next campground midnight, even if Home
+            // stays open. The one-minute cap also picks up clock/time-zone and trip-date edits.
+            while !Task.isCancelled {
+                now = Date()
+                let midnight = trips.compactMap { trip in
+                    trip.campgroundCalendar.date(byAdding: .day, value: 1,
+                                                to: trip.campgroundCalendar.startOfDay(for: now))
+                }.min()
+                let delay = max(0.1, min(60, midnight?.timeIntervalSince(now) ?? 60))
+                do { try await Task.sleep(for: .seconds(delay)) }
+                catch { return }
+            }
+        }
     }
 }

@@ -35,7 +35,7 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Derived data is written to `.derivedData/`. The shared scheme runs the app; package tests, including SwiftData on macOS, run separately with `swift test`. The [Apple validation workflow](../.github/workflows/apple-validation.yml) runs these commands directly, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
+Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [Apple validation workflow](../.github/workflows/apple-validation.yml) runs these commands directly, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
 
 ## Test coverage and CI
 
@@ -48,7 +48,7 @@ The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the off
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
 | `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. This verifies compilation, not runtime behavior on physical devices. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
+Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. It also runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
@@ -69,7 +69,7 @@ Profile › Appearance offers **System** (the default), **Light**, and **Dark**.
 
 On an iOS simulator or device:
 
-1. With no saved preference, switch the device between Light and Dark and verify all four tabs follow it, including Camp Finder's map.
+1. With no saved preference, switch the device between Light and Dark and verify all available tabs follow it, including Camp Finder's map.
 2. Select **Dark** while the device is in Light. Check Home, Plan, a trip's booking/checklists/memories/weather, Camp Finder's listings and details, and Profile. Open an editor sheet, photo/document preview, and a delete confirmation; check text, fields, separators, blue actions, and destructive actions remain readable. Weather attribution must use the dark mark.
 3. Select **Light** while the device is in Dark. Confirm the existing light interface returns throughout the app, including sheets and the map, and weather attribution uses the light mark.
 4. Select **System** again. Change the device appearance while RoamReady is open and confirm it follows immediately; repeat with a sheet open. Explicit Light and Dark choices must stay fixed when the device setting changes.
@@ -100,3 +100,23 @@ See [offline-storage.md](offline-storage.md) for new-container provisioning, def
 ## Camp Finder and account changes
 
 The portable suites cover AI hardware policy, campground identities, Camp Finder places, file staging/streaming inspection, and legacy document decoding. Device acceptance must cover iCloud identity changes, iCloud preference changes and relaunches during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See the [identity/connectivity contract](account-and-offline-contract.md) for limits and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release) for discovery acceptance.
+
+## Current trip and Assistant acceptance pass
+
+1. Add a past trip and a future trip; neither appears as Current trip on Home. Both remain in Plan.
+2. Add a trip spanning today. Verify Home opens its booking, Setup, Teardown, and Photos & site notes directly. With overlapping trips, the earliest arrival is featured.
+3. Check arrival midnight and midnight after departure in the campground’s time zone, including DST and a same-day stay. Leave Home open across midnight and background/reopen the app. Mark complete early, reopen, and edit dates; the card must update without deleting trip data.
+4. On unsupported hardware (including base iPhone 15/15 Plus), iPad, and simulator, confirm no Assistant tab. Trip/checklist saved guidance remains available. On a supported iPhone, verify Assistant appears with AI ready, disabled, or preparing, and rechecks eligibility on return from Settings. Disabled/preparing/unavailable states must show the recovery screen and Try again with no conversation, text field, or send button. Re-enabling AI must restore the conversation.
+5. With AI ready and no active trip, ask a general troubleshooting question that matches no checklist. Ask a follow-up referring to the previous answer. Verify the conversation survives tab changes; New chat clears it. Verify trip/checklist help still uses saved guidance.
+6. Switch tabs or dismiss trip help during generation: the pending request cancels, its question is restored, and no late answer appears in a later request. Try a model refusal/failure and confirm honest saved-guidance fallback. Test in airplane mode after model download.
+7. Check long conversations, keyboard scrolling, Dynamic Type, VoiceOver, and all available tabs on a compact iPhone. Confirm the fixed composer has only a text input and send button, without file/image upload controls. Force-quit/relaunch and confirm chat is not persisted.
+
+The portable tests verify current-trip dates/time zones/DST/early completion, chat hardware policy, generation without a reference match, and bounded follow-up context. The `RoamReadyUITests` target checks the actual native error screens, absence of chat/composer in unavailable states, hidden tab on unsupported devices, and ready text/send composer. Its `-assistant-ui-test` state override exists only in DEBUG builds and bypasses onboarding without creating trip data. Run it with Xcode’s Test action or `xcodebuild test` using an iOS 27 simulator destination. These tests do not generate AI answers; Foundation Models still needs the physical-device checks above.
+
+## Live on-device Foundation Models smoke test
+
+Before release, use a physical iPhone 15 Pro or newer supported by the product policy, with iOS 27, a supported language, Apple Intelligence enabled, and the model downloaded. In Xcode, select that iPhone and set `ROAMREADY_RUN_ON_DEVICE_AI_SMOKE=1` in the shared scheme’s **Test** environment. Run `AssistantUITests/testLiveOnDeviceFoundationModelsResponseAndFollowUp`. It launches with the DEBUG-only `-assistant-device-smoke` onboarding bypass and never sets a simulated availability or response. It must receive a nonempty **generated** answer and a second generated answer to a follow-up. Repeat in airplane mode after the model is ready, then with no active trip, and check disabled/downloading states separately. A saved-guide answer does not pass this test.
+
+Simulator CI deliberately skips this opt-in hardware test. Its deterministic send/error UI tests use separate DEBUG-only simulated generators, which are excluded from Release builds. Portable tests verify that Send reaches the generator without a trip/reference match, errors and cancellations propagate, empty answers fail, overlong questions are preserved for shortening, and context overflow retries only once. Native UI tests check successful Send and failure/retry presentation. Real generation must still be verified on the physical device; simulator or fake replies do not establish it.
+
+The production adapter follows Apple’s [Foundation Models generation guide](https://developer.apple.com/documentation/foundationmodels/generating-content-and-performing-tasks-with-foundation-models), [language support guidance](https://developer.apple.com/documentation/foundationmodels/supporting-languages-and-locales-with-foundation-models), and [iOS 27 model error API](https://developer.apple.com/documentation/foundationmodels/languagemodelerror).

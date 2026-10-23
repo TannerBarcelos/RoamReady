@@ -17,10 +17,13 @@ If your build supports iCloud, onboarding and Profile offer **Sync with iCloud**
 
 | Tab | Use it to |
 | --- | --- |
-| Home | Return to your featured trip, review progress and memories, add a trip, or check local weather. |
+| Home | Return to your current trip, review progress and memories, add a trip, or check local weather. |
 | Plan | Browse upcoming and past trips and open their booking details, checklists, and memories. |
 | Camp Finder | Explore online campground listings and save places. |
+| Assistant | Ask general camping and troubleshooting questions, with follow-ups. Appears only on supported AI devices. |
 | Profile | Edit your rig/profile, manage checklist defaults and documents, view storage/sync status, export, or erase data. |
+
+Home shows the earliest-arriving active trip from arrival through the end of departure day in the campground’s time zone. It disappears when its dates end or you mark it complete; upcoming and past trips remain in Plan. Setup, teardown, and Photos & site notes open directly from Home.
 
 ## Add and manage a trip
 
@@ -73,7 +76,11 @@ Apple Maps does not list every campground or provide site availability, hookups,
 
 Tap Home's weather reading to request location access and fetch local temperature. Trips with campground coordinates show forecasts. Offline readings are saved data; check their retrieval time. Live weather requires a build configured for WeatherKit.
 
-Use **Ask for camping help** from a trip or checklist guidance. Saved guidance works offline. On supported iPhones with Apple Intelligence enabled and its model ready, on-device AI can explain that guidance. If it is unavailable, the app explains why and keeps saved guidance available.
+Open **Assistant** in the tab bar anytime for general camping or troubleshooting questions, including when you have no active trip. Follow up in the same conversation or choose **New chat** to start over. The tab is hidden on non-AI hardware (including base iPhone 15/15 Plus), iPad, and simulator under the current iPhone-only product policy. Supported iPhones still show the tab when Apple Intelligence needs enabling or its model is preparing. In those states, a native recovery screen replaces the conversation and composer; enable AI in Settings or wait for the model, then choose Try again. Availability also refreshes on foregrounding and while the screen is open.
+
+The text-only conversation has a message field and send button, with no file or image uploads. It stays while switching tabs, but is not saved across app launches or attached to a trip. The model receives a bounded recent conversation and relevant rig checklist guidance.
+
+Use **Ask for camping help** from a trip or checklist for answers grounded in that trip’s saved guidance. Saved guidance works offline on every device. AI runs on device when Apple Intelligence is enabled and its model is ready. In trip/checklist help, matching saved guidance remains available when AI cannot answer. In the global Assistant, a failed generation shows an error and keeps your question so you can edit or retry. Unsupported languages show recovery instructions. Keep questions within 1,500 characters; longer questions are preserved with a request to shorten them.
 
 ## Choose an appearance
 

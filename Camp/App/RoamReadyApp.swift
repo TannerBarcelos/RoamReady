@@ -44,21 +44,38 @@ struct RootView: View {
     @Query private var profiles: [CamperProfile]
     var body: some View {
         Group {
-            if profiles.isEmpty { OnboardingView() } else { MainTabs() }
+            #if DEBUG
+            if CampingAssistant.isRunningAssistantUITests { MainTabs() }
+            else { profileContent }
+            #else
+            profileContent
+            #endif
         }
         .alert("Couldn’t save changes", isPresented: Binding(get: { library.saveFailure != nil }, set: { _ in })) {
             Button("Retry") { library.save() }
         } message: { Text(library.saveFailure ?? "") }
     }
+
+    @ViewBuilder private var profileContent: some View {
+        if profiles.isEmpty { OnboardingView() } else { MainTabs() }
+    }
 }
 
 struct MainTabs: View {
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var showsAssistant = CampingAssistant.showsGlobalChat
     var body: some View {
         TabView {
             Tab("Home", systemImage: "house") { NavigationStack { HomeView() } }
             Tab("Plan", systemImage: "calendar") { NavigationStack { PlanView() } }
             Tab("Camp Finder", systemImage: "map") { NavigationStack { CampFinderView() } }
+            if showsAssistant {
+                Tab("Assistant", systemImage: "bubble.left.and.bubble.right") { AssistantView(isPresentedAsSheet: false) }
+            }
             Tab("Profile", systemImage: "person.crop.circle") { NavigationStack { ProfileView() } }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }
     }
 }
