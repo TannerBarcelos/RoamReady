@@ -13,14 +13,13 @@ public enum LibraryStore {
 
     /// `cloudKitContainer` nil keeps the library on this device only.
     public static func container(at url: URL, cloudKitContainer: String?) throws -> ModelContainer {
-        let configuration = ModelConfiguration(schema: schema, url: url,
-                                               cloudKitDatabase: cloudKitContainer.map { .private($0) } ?? .none)
+        let configuration = ModelConfiguration(url: url, cloudKitDatabase: cloudKitContainer.map { .private($0) } ?? .none)
         return try ModelContainer(for: schema, configurations: configuration)
     }
 
     /// For previews and tests.
     public static func inMemory() throws -> ModelContainer {
-        try ModelContainer(for: schema, configurations: ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none))
+        try ModelContainer(for: schema, configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
     }
 }
 

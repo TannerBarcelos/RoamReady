@@ -7,7 +7,7 @@ import DocumentVault
 @testable import CampPersistence
 
 /// Library rules against a real SwiftData store (in memory unless a test needs a file).
-@MainActor
+@MainActor @Suite(.serialized)
 struct LibraryTests {
     let container: ModelContainer
     let context: ModelContext
@@ -268,7 +268,9 @@ struct LibraryTests {
             try StoredDocument.add(DocumentMetadata(title: "Card", category: .insurance), contents: (Self.pdf, try DocumentPolicy.inspect(Self.pdf, filename: "c.pdf")), rig: rig, in: context)
             try context.save()
         }
-        let reopened = try LibraryStore.container(at: url, cloudKitContainer: nil).mainContext
+        // Keep the container alive while its models are read; a context doesn't own its container.
+        let reopenedContainer = try LibraryStore.container(at: url, cloudKitContainer: nil)
+        let reopened = reopenedContainer.mainContext
         #expect(try reopened.profile()?.name == "Sam")
         let trip = try #require(try reopened.fetch(FetchDescriptor<Trip>()).first)
         #expect(trip.rig?.model == "No Boundaries" && trip.steps(.setup)[0].status == .skipped)
