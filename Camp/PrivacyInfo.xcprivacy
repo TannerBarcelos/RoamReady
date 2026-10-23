@@ -4,10 +4,21 @@
 <dict>
     <key>NSPrivacyTracking</key><false/>
     <key>NSPrivacyTrackingDomains</key><array/>
-    <key>NSPrivacyCollectedDataTypes</key><array/>
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+        <!-- Approximate location used for Apple Weather on Home and Apple Maps Near me; not stored or linked. -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key><string>NSPrivacyCollectedDataTypeCoarseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key><false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key><false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+    </array>
     <key>NSPrivacyAccessedAPITypes</key>
     <array>
         <dict>
+            <!-- Device-local iCloud sync and appearance preferences. -->
             <key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategoryUserDefaults</string>
             <key>NSPrivacyAccessedAPITypeReasons</key>
             <array><string>CA92.1</string></array>

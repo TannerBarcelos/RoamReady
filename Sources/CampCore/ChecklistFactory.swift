@@ -4,16 +4,14 @@ import Foundation
 /// The rig manufacturer's instructions take priority over this general checklist.
 public enum ChecklistFactory {
     public static let sourceURL = "https://blog.campingworld.com/learn-to-rv/rv-setup-checklist/"
-    public static let templateVersion = 1
-
-    public static func templates(for rig: Rig) -> ChecklistTemplates {
-        var setup: [ChecklistItem] = []
-        var teardown: [ChecklistItem] = []
+    public static func template(for rig: some RigDetails) -> ChecklistTemplate {
+        var setup: [ChecklistStepDraft] = []
+        var teardown: [ChecklistStepDraft] = []
         func arrive(_ title: String, _ detail: String, _ section: String) {
-            setup.append(ChecklistItem(title: title, detail: detail, section: section))
+            setup.append(ChecklistStepDraft(title: title, detail: detail, section: section))
         }
         func depart(_ title: String, _ detail: String, _ section: String) {
-            teardown.append(ChecklistItem(title: title, detail: detail, section: section))
+            teardown.append(ChecklistStepDraft(title: title, detail: detail, section: section))
         }
 
         arrive("Confirm your site", "Check the site number, boundaries, campground rules, and any local fire or weather notices.", "Arrival")
@@ -91,6 +89,6 @@ public enum ChecklistFactory {
             depart("Secure your load", "Stow camping equipment so it cannot shift in transit. Keep the driver's visibility clear and check vehicle lights and tires.", "Final check")
         }
         depart("Leave the site ready for the next camper", "Take a final look for belongings, rubbish, and damage. Save any site notes while the details are fresh.", "Final check")
-        return ChecklistTemplates(version: templateVersion, sourceURL: sourceURL, setup: setup, teardown: teardown)
+        return ChecklistTemplate(setup: setup, teardown: teardown)
     }
 }

@@ -4,9 +4,9 @@
 
 RoamReady has **no accounts** in v1: no sign-up, no Sign in with Apple, and no server holding user data. The library belongs to the device and, when sync is on, to the person's own iCloud. First launch goes straight to rig/profile onboarding, which works offline.
 
-Trips (each one a booking: create from manual campground entry, edit any field, attach confirmation files, delete), setup/teardown checklists, progress, edits, notes, ratings, imported photos, camera capture, profile edits, rig edits/replacement/archiving, and per-rig default checklists all save through Core Data offline and sync later. Photo capture/import remains available even if no iCloud connection is possible. Cached forecasts retain their retrieval time; fresh weather needs connectivity. Creating a trip offline means entering the campground by name; choosing it from Camp Finder requires online access.
+Trips (each one a booking: create from manual campground entry, edit any field, attach confirmation files, delete), setup/teardown checklists, progress, edits, notes, ratings, imported photos, camera capture, profile edits, rig edits/replacement/archiving, and per-rig default checklists all save through SwiftData offline and sync later. Photo capture/import remains available even if no iCloud connection is possible. Cached forecasts retain their retrieval time; fresh weather needs connectivity. Creating a trip offline means entering the campground by name; choosing it from Camp Finder requires online access. Saved-campground marks are local and work offline; an Apple Maps campground's name and details come from Apple Maps or a trip there, so a saved identifier alone does not promise its details offline. Offline, Camp Finder shows "Camp Finder needs an internet connection" with Try again.
 
-Only Camp Finder and individual-site browsing, fresh weather, the iCloud sync preference, and erasing iCloud data require an available network path. A satisfied NWPathMonitor path is a prerequisite, not proof the service is reachable; actual authorization/download errors are surfaced. Profile and rig editing are ordinary local writes and work offline.
+Only Camp Finder (search, the map, and place details from Apple Maps), fresh weather, the iCloud sync preference, and erasing iCloud data require an available network path. A satisfied NWPathMonitor path is a prerequisite, not proof the service is reachable; actual authorization/download errors are surfaced. Profile and rig editing are ordinary local writes and work offline.
 
 ## Trips, rigs, and deletion (#28)
 
@@ -14,7 +14,7 @@ A trip is exactly one booking at one campground; there is no planning/booked sta
 
 Each rig has its own default setup and teardown lists. Creating a trip copies the chosen rig's defaults; after that the trip's lists are independent. Only the confirmed "Save as defaults for <rig>" action writes a trip's lists to that trip's rig; "Reset default checklists" regenerates them from the rig type. Neither touches existing trips.
 
-Cancelling a trip deletes it. The confirmation names the trip and dates and states that its checklists and progress, notes and all note versions, photos and captions, and site notes and rating are permanently deleted on every device signed in to the iCloud account; confirmation and paperwork files move to Unattached documents; the rig, its defaults, and original photos in the photo library are untouched. Deleting a trip also tombstones its note revisions and clears the deleted trip's note text.
+Cancelling a trip deletes it. The confirmation names the trip and dates and states that its checklists and progress, notes and all note versions, photos and captions, and site notes and rating are permanently deleted on every device signed in to the iCloud account; confirmation and paperwork files move to Unattached documents; the rig, its defaults, and original photos in the photo library are untouched.
 
 ## No accounts in v1
 
@@ -26,7 +26,7 @@ Revisit accounts when a feature needs a server-side identity: sharing trips betw
 
 ## iCloud identity
 
-Core Data mirroring uses the device's iCloud account. The approved container-specific record name is device-only metadata.
+SwiftData's CloudKit mirroring uses the device's iCloud account. The approved container-specific record name is device-only metadata.
 
 Sync is on by default. On the first sync the current iCloud identity is pinned without a prompt. Before opening a mirrored store, the controller verifies that the current iCloud identity matches the pinned one. If unavailable, the app opens locally and retries when connectivity returns; it never blocks the pinned user's offline trips. An identity mismatch leaves sync paused and cannot automatically rebind the library. A CKAccountChanged notification schedules mirroring teardown and local-only reopen. Existing app data is not deliberately deleted by this transition.
 

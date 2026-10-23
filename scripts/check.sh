@@ -18,9 +18,6 @@ SWIFTC_BIN="${SWIFTC_BIN:-$(dirname "$(command -v "$SWIFT_BIN")")/swiftc}"
 export SWIFTC_BIN
 
 "$SWIFT_BIN" test
-python3 scripts/validate_catalog.py
-python3 scripts/test_import_ridb.py
-python3 scripts/validate_campgrounds.py
 
 "$SWIFT_BIN" -e '
 import Foundation
@@ -50,21 +47,19 @@ for path in list((root / "Camp").rglob("*.plist")) + list((root / "Camp").rglob(
 with (root / "Camp/Camp.entitlements").open("rb") as stream:
     entitlements = plistlib.load(stream)
 assert entitlements == {}, "The default build declares no capabilities (no accounts in v1); cloud/weather are configured separately"
+with (root / "Config/Cloud.entitlements").open("rb") as stream:
+    signed = plistlib.load(stream)
+assert signed.get("com.apple.developer.weatherkit") is True, "Signed builds need WeatherKit for forecasts"
+assert signed.get("com.apple.developer.icloud-services") == ["CloudKit"], "Signed builds mirror the library to CloudKit"
 
 json_files = list((root / "Camp").rglob("*.json"))
 for path in json_files:
     json.loads(path.read_text())
-directory = json.loads((root / "Camp/Resources/campgrounds.json").read_text())
-assert directory["schemaVersion"] == 1
-campground_ids = set()
-for place in directory["campgrounds"]:
-    assert place["id"] not in campground_ids
-    campground_ids.add(place["id"])
-    assert -90 <= place["latitude"] <= 90 and -180 <= place["longitude"] <= 180
-    assert place["sourceURL"].startswith("https://")
-    assert all(type(value) is bool for value in place["amenities"].values())
-    assert place["checkedAt"] and place["name"] and place["region"]
-assert not (root / "Camp/Resources/rig-catalog.json").exists(), "v1 uses owner-entered rig details; do not bundle a rig catalog"
+with (root / "Camp/Info.plist").open("rb") as stream:
+    info = plistlib.load(stream)
+assert "NSLocationWhenInUseUsageDescription" in info, "Camp Finder's Near me asks for location"
+assert "RoamReadyCampgroundDataURL" not in info, "The RIDB snapshot is retired (#26)"
+assert not (root / "Camp/Resources").exists() and not (root / "data").exists(), "Camp Finder uses Apple Maps; no bundled or published campground data (#26)"
 
 project = (root / "RoamReady.xcodeproj/project.pbxproj").read_text()
 definitions = set(re.findall(r"\b([A-F0-9]{24})\s*(?:/\*.*?\*/\s*)?=", project))

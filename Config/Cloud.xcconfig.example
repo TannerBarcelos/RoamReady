@@ -1,10 +1,10 @@
-// Apply to BOTH build configurations after registering your App ID and iCloud container.
-// Replace placeholders, then use a configuration stored outside public source if desired.
+// Signed builds: copy to Config/Local.xcconfig (git-ignored), fill in the placeholders, and set it as
+// the base configuration for both Debug and Release. The default build stays unsigned and capability-free.
 PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.RoamReady
 DEVELOPMENT_TEAM = YOURTEAMID
-ROAMREADY_MIRRORING_CONTAINER = iCloud.com.yourcompany.RoamReadyManaged
+ROAMREADY_MIRRORING_CONTAINER = iCloud.com.yourcompany.RoamReady
 CODE_SIGN_ENTITLEMENTS = Config/Cloud.entitlements
-// CloudKit uses the device's iCloud account; the app has no accounts of its own.
 
-// Use a NEW container for Core Data mirroring; do not reuse the former custom-sync container.
-// Enable Push Notifications for this App ID; Xcode signing supplies aps-environment.
+// Config/Cloud.entitlements enables CloudKit (this container) and WeatherKit. On the App ID, enable
+// iCloud (CloudKit), Push Notifications, and WeatherKit; Xcode signing supplies aps-environment.
+// CloudKit uses the device's iCloud account; the app has no accounts of its own.
