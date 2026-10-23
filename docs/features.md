@@ -87,7 +87,7 @@ Profile offers **System** (the default), **Light**, and **Dark**. The choice app
 
 Edit profile and rig details offline, manage archived rigs and per-rig checklist defaults, view storage/sync status, access unattached documents, prepare an export, or erase all data.
 
-SwiftData stores the library locally. When a dedicated CloudKit container is configured, private iCloud mirroring is on by default and pins the first iCloud identity without a prompt. The onboarding/Profile toggle applies immediately; turning it off deletes neither local nor cloud data. The default unconfigured build stays local-only. See [storage and sync](offline-storage.md) and [erasing data](erase-data.md).
+SwiftData stores the library locally. When a dedicated CloudKit container is configured, private iCloud mirroring is on by default. Apple manages connectivity, account transitions, scheduling, and retries. The onboarding/Profile toggle works offline and takes effect on the next app launch, with pending changes shown explicitly; turning it off deletes neither local nor cloud data. The default unconfigured build stays local-only. See [storage and sync](offline-storage.md) and [erasing data](erase-data.md).
 
 ## Connectivity at a glance
 

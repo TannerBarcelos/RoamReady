@@ -8,7 +8,7 @@ RoamReady has **no accounts** in v1: no sign-up, no Sign in with Apple, and no s
 
 Trips (each one a booking: create from manual campground entry, edit any field, attach confirmation files, delete), setup/teardown checklists, progress, edits, notes, ratings, imported photos, camera capture, profile edits, rig edits/replacement/archiving, and per-rig default checklists all save through SwiftData offline and sync later. Photo capture/import remains available even if no iCloud connection is possible. Cached forecasts retain their retrieval time; fresh weather needs connectivity. Creating a trip offline means entering the campground by name; choosing it from Camp Finder requires online access. Saved-campground marks are local and work offline; an Apple Maps campground's name and details come from Apple Maps or a trip there, so a saved identifier alone does not promise its details offline. Offline, Camp Finder shows "Camp Finder needs an internet connection" with Try again.
 
-Only Camp Finder (search, the map, and place details from Apple Maps), fresh weather, the iCloud sync preference, and erasing iCloud data require an available network path. A satisfied NWPathMonitor path is a prerequisite, not proof the service is reachable; actual authorization/download errors are surfaced. Profile and rig editing are ordinary local writes and work offline.
+Only Camp Finder (search, the map, and place details from Apple Maps), fresh weather, and erasing iCloud data require an available network path. A satisfied NWPathMonitor path is a prerequisite, not proof the service is reachable; actual authorization/download errors are surfaced. Profile and rig editing and changing the iCloud launch preference are ordinary local writes and work offline.
 
 ## Trips, rigs, and deletion (#28)
 
@@ -28,11 +28,11 @@ Revisit accounts when a feature needs a server-side identity: sharing trips betw
 
 ## iCloud identity
 
-SwiftData's CloudKit mirroring uses the device's iCloud account. The approved container-specific record name is device-only metadata.
+SwiftData's CloudKit mirroring uses the device's iCloud account. Apple manages account availability and transitions, connectivity, scheduling, and retries. RoamReady does not fetch or pin a CloudKit user identifier, gate opening on account/network checks, or reopen the store after account or connectivity changes. Legacy identity pinning metadata is removed.
 
-Sync is on by default. On the first sync the current iCloud identity is pinned without a prompt. Before opening a mirrored store, the controller verifies that the current iCloud identity matches the pinned one. If unavailable, the app opens locally and retries when connectivity returns; it never blocks the pinned user's offline trips. An identity mismatch leaves sync paused and cannot automatically rebind the library. A CKAccountChanged notification schedules mirroring teardown and local-only reopen. Existing app data is not deliberately deleted by this transition.
+Sync is on by default in configured builds. The onboarding/Profile preference can be changed offline and takes effect on the next app launch; the current session keeps its launch configuration. The UI explicitly shows pending changes. Turning sync off deletes neither local data nor an existing iCloud copy.
 
-This is best-effort coordination around Apple's managed lifecycle, not a guarantee that a previously in-flight transfer can be undone. iCloud sign-out/switch behavior, cache retention, and account separation still require signed, two-device acceptance. Do not claim production account isolation based on source review or simulator compilation alone.
+iCloud sign-out/switch behavior, local data retention, and cross-account behavior follow Apple's managed lifecycle and still require signed, two-device acceptance. RoamReady does not provide a separate pinned-account isolation guarantee. Explicit full-library erase remains a user-requested deletion operation; it is not a sync recovery mechanism.
 
 ## Apple-only AI
 

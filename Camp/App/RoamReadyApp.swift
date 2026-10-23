@@ -19,7 +19,7 @@ struct RoamReadyApp: App {
                     ContentUnavailableView {
                         Label("Your saved data needs attention", systemImage: "externaldrive.badge.exclamationmark")
                     } description: { Text(failure) } actions: {
-                        Button("Try again") { Task { await library.open(online: connectivity.isOnline) } }
+                        Button("Try again") { library.open() }
                     }
                 } else {
                     ProgressView("Opening your trips…")
@@ -31,12 +31,8 @@ struct RoamReadyApp: App {
             .tint(.blue)
             .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
-            .task { await library.open(online: connectivity.isOnline) }
-            .task(id: connectivity.isOnline) {
-                if connectivity.isOnline, library.sync.waitingForConnection { await library.reopen(online: true) }
-            }
+            .task { library.open() }
             .onChange(of: scenePhase) { _, phase in
-                library.sync.setActive(phase == .active)
                 if phase != .active { library.save() }
             }
         }

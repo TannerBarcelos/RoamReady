@@ -11,7 +11,7 @@ RoamReady organizes camping trips and their checklists, paperwork, and memories.
 3. Choose a rig photo or emoji and optionally add your name and experience level.
 4. Complete onboarding. No account or internet connection is needed.
 
-If your build supports iCloud, onboarding and Profile offer **Sync with iCloud**. The preference starts on, but the default development build has no configured container and saves locally. [Storage and sync](offline-storage.md) explains configured builds.
+If your build supports iCloud, onboarding and Profile offer **Sync with iCloud**. The preference starts on in configured builds. You can change it offline; changes take effect the next time you launch the app, and the current session's setting is shown until then. Apple manages reconnection and retries automatically. Turning it off deletes neither your local data nor an existing iCloud copy. The default development build has no configured container and saves locally. [Storage and sync](offline-storage.md) explains configured builds.
 
 ## Find your way around
 

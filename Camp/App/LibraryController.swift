@@ -3,25 +3,24 @@ import Observation
 import SwiftData
 import CampPersistence
 
-/// Opens the SwiftData library, with or without iCloud, and reopens it when sync is turned on or
-/// off or the iCloud account changes. Screens read and write the library through SwiftData directly.
+/// Opens the SwiftData library once per session. Apple manages its iCloud lifecycle.
+/// Screens read and write the library through SwiftData directly.
 @MainActor @Observable
 final class LibraryController {
     private(set) var container: ModelContainer?
     private(set) var openFailure: String?
     private(set) var saveFailure: String?
-    let sync = CloudSyncController()
+    private(set) var iCloud = ICloudSettings(containerIdentifier: Bundle.main.object(forInfoDictionaryKey: "RoamReadyMirroringContainerIdentifier") as? String)
     let documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appending(path: "Documents", directoryHint: .isDirectory))
     private static let directory = URL.applicationSupportDirectory.appending(path: "Library", directoryHint: .isDirectory)
 
-    func open(online: Bool) async {
+    func open() {
         guard container == nil else { return }
         do {
             try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true,
                                                     attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
-            let cloudKitContainer = await sync.containerForLaunch(online: online)
-            container = try LibraryStore.container(at: Self.directory.appending(path: "RoamReady.store"), cloudKitContainer: cloudKitContainer)
-            sync.start(syncing: cloudKitContainer != nil) { [weak self] in await self?.reopen(online: false) }
+            container = try LibraryStore.container(at: Self.directory.appending(path: "RoamReady.store"), cloudKitContainer: iCloud.containerForSession)
+            iCloud.startObserving()
             openFailure = nil
         } catch {
             openFailure = "RoamReady couldn’t open your library. Nothing was deleted. \(error.localizedDescription)"
@@ -35,19 +34,6 @@ final class LibraryController {
         catch { saveFailure = "Your latest changes haven’t been saved to this iPhone. \(error.localizedDescription)" }
     }
 
-    /// Applies the iCloud setting now. Reopening never deletes local data or the iCloud copy.
-    func setCloudSync(_ enabled: Bool, online: Bool) async {
-        sync.setRequested(enabled)
-        await reopen(online: online)
-    }
-
-    /// Re-checks iCloud, e.g. after signing in to iCloud in Settings or reconnecting.
-    func reopen(online: Bool) async {
-        save()
-        await close()
-        await open(online: online)
-    }
-
     /// Erase all data on this device: the library, caches, imports, and settings. The caller has
     /// already deleted the iCloud copy.
     func eraseDevice() async throws {
@@ -58,6 +44,7 @@ final class LibraryController {
             try fileManager.removeItem(at: location)
         }
         if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
+        iCloud = ICloudSettings(containerIdentifier: iCloud.containerIdentifier)
         saveFailure = nil
     }
 
@@ -71,9 +58,9 @@ final class LibraryController {
         return url
     }
 
-    /// Lets SwiftUI release the old container's views before another one opens the same store.
+    /// Used only for explicit full-library erase, never for connectivity or account changes.
     private func close() async {
-        sync.stop()
+        iCloud.stopObserving()
         container = nil
         try? await Task.sleep(for: .milliseconds(300))
     }
