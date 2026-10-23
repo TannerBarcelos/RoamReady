@@ -19,6 +19,7 @@ struct AssistantView: View {
     @State private var question = ""
     @State private var exchanges: [CampingExchange] = []
     @State private var pendingQuestion: String?
+    @State private var generationFailure: CampingChatFailure?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
 
@@ -57,7 +58,7 @@ struct AssistantView: View {
                 if showsConversation {
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
-                            exchanges = []; question = ""
+                            exchanges = []; question = ""; generationFailure = nil
                         }.disabled(answering || exchanges.isEmpty)
                     }
                 }
@@ -102,6 +103,7 @@ struct AssistantView: View {
                         userMessage(exchange.question)
                         VStack(alignment: .leading, spacing: 10) {
                             Text(exchange.answer.text).textSelection(.enabled)
+                                .accessibilityIdentifier(exchange.answer.isGenerated ? "assistantGeneratedReply" : "assistantSavedReply")
                             Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
@@ -114,6 +116,15 @@ struct AssistantView: View {
                     if let pendingQuestion {
                         userMessage(pendingQuestion)
                         ProgressView("Thinking…").accessibilityLabel("Assistant is answering")
+                    }
+                    if let generationFailure {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label("Couldn’t get a response", systemImage: "exclamationmark.bubble")
+                                .font(.headline)
+                            Text(generationFailure.localizedDescription).foregroundStyle(.secondary)
+                            Button("Try again", action: ask).disabled(!canSend)
+                        }
+                        .accessibilityIdentifier("assistantGenerationFailure")
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -149,6 +160,7 @@ struct AssistantView: View {
             HStack(alignment: .bottom, spacing: 10) {
                 TextField("Message Assistant", text: $question, axis: .vertical)
                     .lineLimit(1...6)
+                    .disabled(answering)
                     .padding(.horizontal, 16).padding(.vertical, 12)
                     .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
                     .accessibilityLabel("Message Assistant")
@@ -196,15 +208,24 @@ struct AssistantView: View {
         }
         let history = exchanges.map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
         pendingQuestion = submitted
+        generationFailure = nil
         question = ""
         task = Task {
-            let answer = await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
+            do {
+                let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        history: history)
-            guard !Task.isCancelled else { return }
-            refreshAvailability()
-            guard !Task.isCancelled, showsConversation else { return }
-            exchanges.append(CampingExchange(question: submitted, answer: answer))
+                guard !Task.isCancelled else { return }
+                refreshAvailability()
+                guard !Task.isCancelled, showsConversation else { return }
+                exchanges.append(CampingExchange(question: submitted, answer: answer))
+            } catch {
+                guard !Task.isCancelled else { return }
+                refreshAvailability()
+                guard !Task.isCancelled, showsConversation else { return }
+                generationFailure = (error as? CampingChatFailure) ?? .failed
+                question = submitted
+            }
             pendingQuestion = nil
             task = nil
         }

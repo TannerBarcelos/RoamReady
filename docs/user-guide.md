@@ -80,7 +80,7 @@ Open **Assistant** in the tab bar anytime for general camping or troubleshooting
 
 The text-only conversation has a message field and send button, with no file or image uploads. It stays while switching tabs, but is not saved across app launches or attached to a trip. The model receives a bounded recent conversation and relevant rig checklist guidance.
 
-Use **Ask for camping help** from a trip or checklist for answers grounded in that trip’s saved guidance. Saved guidance works offline on every device. AI runs on device when Apple Intelligence is enabled and its model is ready. If AI is unavailable or a response fails, matching saved guidance remains available; otherwise the app explains that it has no matching guidance.
+Use **Ask for camping help** from a trip or checklist for answers grounded in that trip’s saved guidance. Saved guidance works offline on every device. AI runs on device when Apple Intelligence is enabled and its model is ready. In trip/checklist help, matching saved guidance remains available when AI cannot answer. In the global Assistant, a failed generation shows an error and keeps your question so you can edit or retry. Unsupported languages show recovery instructions. Keep questions within 1,500 characters; longer questions are preserved with a request to shorten them.
 
 ## Choose an appearance
 

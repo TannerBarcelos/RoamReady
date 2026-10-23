@@ -45,7 +45,7 @@ struct RootView: View {
     var body: some View {
         Group {
             #if DEBUG
-            if CampingAssistant.uiTestingAvailability != nil { MainTabs() }
+            if CampingAssistant.isRunningAssistantUITests { MainTabs() }
             else { profileContent }
             #else
             profileContent

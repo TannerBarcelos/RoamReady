@@ -1,6 +1,6 @@
 /// The global Assistant's presentation state. Trip/checklist saved help has its own fallback.
 public enum AssistantAvailability: Equatable, Sendable {
-    case ready, unsupported, disabled, preparing, unavailable
+    case ready, unsupported, disabled, preparing, unavailable, unsupportedLanguage
 
     public var showsTab: Bool { self != .unsupported }
     public var showsConversation: Bool { self == .ready }
@@ -12,6 +12,7 @@ public enum AssistantAvailability: Equatable, Sendable {
         case .disabled: "Turn on Apple Intelligence"
         case .preparing: "Apple Intelligence is getting ready"
         case .unavailable: "AI is currently unavailable"
+        case .unsupportedLanguage: "This language isn’t supported"
         }
     }
 
@@ -22,6 +23,7 @@ public enum AssistantAvailability: Equatable, Sendable {
         case .disabled: "Enable Apple Intelligence in Settings › Apple Intelligence & Siri, then return here. Your saved trip and checklist guidance is still available."
         case .preparing: "Your on-device model is still downloading or preparing. Check Apple Intelligence in Settings and try again when it’s ready."
         case .unavailable: "Apple’s on-device AI can’t answer right now. Try again in a moment. Your saved trip and checklist guidance is still available."
+        case .unsupportedLanguage: "Choose a language supported by Apple Intelligence in Settings, then try again. Your saved trip and checklist guidance is still available."
         }
     }
 }

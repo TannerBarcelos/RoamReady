@@ -2,9 +2,10 @@ import XCTest
 
 @MainActor
 final class AssistantUITests: XCTestCase {
-    private func launch(_ state: String) -> XCUIApplication {
+    private func launch(_ state: String, generation: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-assistant-ui-test", state]
+        if let generation { app.launchArguments += ["-assistant-generation-test", generation] }
         app.launch()
         return app
     }
@@ -25,6 +26,65 @@ final class AssistantUITests: XCTestCase {
 
     func testRuntimeFailureDisplaysRecoveryInsteadOfConversation() {
         assertUnavailable("unavailable", title: "AI is currently unavailable")
+    }
+
+    func testUnsupportedLanguageDisplaysRecoveryInsteadOfConversation() {
+        assertUnavailable("unsupported-language", title: "This language isn’t supported")
+    }
+
+    func testSendDisplaysGeneratedResponse() {
+        let app = launch("ready", generation: "reply")
+        XCTAssertTrue(app.tabBars.buttons["Assistant"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Assistant"].tap()
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("How do I keep drinking water clean?")
+        app.buttons["assistantSend"].tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.otherElements["assistantGenerationFailure"].exists)
+    }
+
+    func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
+        let app = launch("ready", generation: "failure")
+        XCTAssertTrue(app.tabBars.buttons["Assistant"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Assistant"].tap()
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("How do I keep drinking water clean?")
+        app.buttons["assistantSend"].tap()
+        XCTAssertTrue(app.staticTexts["Couldn’t get a response"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["assistantGeneratedReply"].exists)
+        XCTAssertEqual(input.value as? String, "How do I keep drinking water clean?")
+        XCTAssertTrue(app.buttons["assistantSend"].isEnabled)
+    }
+
+    /// Opt in via the scheme's Test environment on an actual eligible iPhone, with its model ready.
+    /// This path never sets simulated availability or generation flags.
+    func testLiveOnDeviceFoundationModelsResponseAndFollowUp() throws {
+        guard ProcessInfo.processInfo.environment["ROAMREADY_RUN_ON_DEVICE_AI_SMOKE"] == "1" else {
+            throw XCTSkip("Requires an eligible physical iPhone; enable ROAMREADY_RUN_ON_DEVICE_AI_SMOKE in the Test scheme.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-assistant-device-smoke"]
+        app.launch()
+        let tab = app.tabBars.buttons["Assistant"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 15), "Physical iPhone must support Apple Intelligence")
+        tab.tap()
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 10), "Enable Apple Intelligence and finish the model download first")
+        input.tap()
+        input.typeText("What are two ways to keep drinking water clean while camping?")
+        app.buttons["assistantSend"].tap()
+        let reply = app.staticTexts["assistantGeneratedReply"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 90), "Must get a real model response, not saved guidance")
+        XCTAssertFalse(reply.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        input.tap()
+        input.typeText("Can you explain the first suggestion?")
+        app.buttons["assistantSend"].tap()
+        let secondReply = app.staticTexts.matching(identifier: "assistantGeneratedReply").element(boundBy: 1)
+        XCTAssertTrue(secondReply.waitForExistence(timeout: 90))
     }
 
     private func assertUnavailable(_ state: String, title: String) {
