@@ -2,6 +2,7 @@ import Foundation
 import ImageIO
 import UIKit
 import PhotosUI
+import SwiftUI
 
 /// Photos are stored in the library as resized JPEGs, so they sync with their trip or rig.
 enum PhotoImport {
