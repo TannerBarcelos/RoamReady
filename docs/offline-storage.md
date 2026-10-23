@@ -18,7 +18,7 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | `NoteRevision` | a saved version of a trip's notes | trip |
 | `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
-| `DocumentContent` | the file bytes (external storage) and its file key (cloud-encrypted) | document |
+| `DocumentContent` | the original file bytes (external storage and cloud encryption); legacy bytes/keys remain readable | document |
 
 Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, and note versions; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
 
@@ -30,9 +30,9 @@ Screens read with `@Query` and edit models directly; SwiftData saves automatical
 
 ## Photos and documents
 
-Rig and trip photos are resized on import (at most 2560 pixels) and stored in the model as JPEG data with external storage, so they sync with their rig or trip and are deleted with it. There is no separate media folder or purge step. Original photos stay in the user's photo library.
+Rig and trip photos use file-based picker imports, are downsampled from disk (at most 2560 pixels), and are stored in new model fields as JPEG data with external storage and cloud encryption, so they sync with their rig or trip and are deleted with it. There is no separate media folder or purge step. Original photos stay in the user's photo library.
 
-Documents are at most 50 MB, stored byte-for-byte, and verified by SHA-256 on every read. See [document vault](document-vault.md).
+Documents are at most 50 MiB (an app limit), stored byte-for-byte in new external/cloud-encrypted attributes, and verified by SHA-256 on every read. Apple encrypts and transfers large assets; app-level sealing is retained only for reading legacy files. Existing CloudKit fields are preserved rather than changing their encryption settings. See [document vault](document-vault.md).
 
 A new device needs an online initial download before photos and files are available offline. Metadata can arrive before a file; the document then shows "Waiting to download from iCloud".
 

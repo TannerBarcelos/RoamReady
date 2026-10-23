@@ -2,8 +2,7 @@ import Foundation
 
 /// The rules every document follows, whichever screen adds or edits it.
 public enum DocumentPolicy {
-    /// A file is read, hashed, and sealed in memory, so this bounds memory as well as iCloud use.
-    /// 50 MB covers real-world manuals and scans.
+    /// An app limit bounding the Data SwiftData accepts, not a claimed native CloudKit limit.
     public static let maximumByteCount = 50 * 1024 * 1024
     public static let maximumTitleLength = 200
     public static let maximumNotesLength = 10_000
@@ -18,7 +17,7 @@ public enum DocumentPolicy {
             guard date.timeIntervalSinceReferenceDate.isFinite else { throw DocumentError.invalidDates }
         }
         if let issued = result.issuedOn, let expires = result.expiresOn, expires < issued { throw DocumentError.invalidDates }
-        result.protection = requiredProtection(for: result)
+        result.protection = .endToEnd
         return result
     }
 
@@ -42,11 +41,6 @@ public enum DocumentPolicy {
         return try validatedLink(url)
     }
 
-    /// The protection a document must have: sensitive types are always end-to-end encrypted.
-    public static func requiredProtection(for metadata: DocumentMetadata) -> DocumentProtection {
-        metadata.category.isSensitive ? .endToEnd : metadata.protection
-    }
-
     /// Describe original bytes without changing them. The type comes from the leading bytes,
     /// never from the filename.
     public static func inspect(_ bytes: Data, filename: String) throws -> DocumentFile {
@@ -55,6 +49,15 @@ public enum DocumentPolicy {
         guard let type = DocumentContentType.detect(bytes) else { throw DocumentError.unsupportedFileType }
         return DocumentFile(filename: sanitizedFilename(filename, for: type), contentType: type,
                             byteCount: bytes.count, checksum: DocumentDigest.sha256(bytes))
+    }
+
+    /// Hash and detect the format in bounded chunks without materializing an entire import.
+    public static func inspect(fileAt url: URL, filename: String) throws -> DocumentFile {
+        let result = try DocumentDigest.inspectFile(at: url, maximumByteCount: maximumByteCount)
+        guard result.byteCount > 0 else { throw DocumentError.emptyFile }
+        guard let type = DocumentContentType.detect(result.signature) else { throw DocumentError.unsupportedFileType }
+        return DocumentFile(filename: sanitizedFilename(filename, for: type), contentType: type,
+                            byteCount: result.byteCount, checksum: result.checksum)
     }
 
     /// A display and export name only. Never used as a path without a containing directory.

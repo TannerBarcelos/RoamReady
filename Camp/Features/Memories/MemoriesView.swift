@@ -42,7 +42,7 @@ struct MemoriesView: View {
                     }
                 } label: { Label("Take a photo", systemImage: "camera") }
                 .disabled(importing || requestingCamera)
-                PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images) {
+                PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images, preferredItemEncoding: .current) {
                     Label("Add trip photos", systemImage: "photo.badge.plus")
                 }.disabled(importing || requestingCamera)
                 if importing { ProgressView("Saving on this iPhone") }
@@ -60,7 +60,7 @@ struct MemoriesView: View {
                         ForEach(photos) { photo in
                             Button { selectedPhoto = photo } label: {
                                 VStack(alignment: .leading) {
-                                    LocalPhoto(data: photo.image).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
+                                    LocalPhoto(data: photo.imageData).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
                                     if !photo.caption.isEmpty { Text(photo.caption).font(.caption).lineLimit(2).foregroundStyle(.primary) }
                                 }
                             }.buttonStyle(.plain).accessibilityLabel(photo.caption.isEmpty ? "Trip photo" : photo.caption)
@@ -81,8 +81,7 @@ struct MemoriesView: View {
                 defer { importing = false; selections = [] }
                 for selection in selected {
                     do {
-                        guard let data = try await selection.loadTransferable(type: Data.self) else { throw CampUIError.unreadablePhoto }
-                        trip.addPhoto(try await PhotoImport.jpeg(from: data))
+                        trip.addPhoto(try await PhotoImport.jpeg(from: selection))
                     } catch { failure = "Some photos couldn’t be saved. \(error.localizedDescription)" }
                 }
                 library.save()
@@ -119,12 +118,12 @@ struct PhotoDetailView: View {
     var body: some View {
         NavigationStack {
             Form {
-                LocalPhoto(data: photo.image, maximumDimension: 2048).frame(height: 300).clipped()
+                LocalPhoto(data: photo.imageData, maximumDimension: 2048).frame(height: 300).clipped()
                 TextField("Caption", text: $caption, axis: .vertical)
                 if let shareURL { ShareLink("Share photo", item: shareURL) }
                 Button("Remove from trip", role: .destructive) { deleting = true }
             }
-            .task { shareURL = photo.image.flatMap { try? PhotoImport.shareableFile($0) } }
+            .task { shareURL = photo.imageData.flatMap { try? PhotoImport.shareableFile($0) } }
             .navigationTitle("Trip photo").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

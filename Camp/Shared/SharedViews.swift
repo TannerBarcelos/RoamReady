@@ -40,7 +40,7 @@ struct RigImage: View {
     let emoji: String
     let photo: Data?
     var size: CGFloat = 64
-    init(rig: Rig, size: CGFloat = 64) { self.init(type: rig.type, emoji: rig.emoji, photo: rig.photo, size: size) }
+    init(rig: Rig, size: CGFloat = 64) { self.init(type: rig.type, emoji: rig.emoji, photo: rig.photoData, size: size) }
     init(type: RigType, emoji: String, photo: Data?, size: CGFloat = 64) {
         self.type = type; self.emoji = emoji; self.photo = photo; self.size = size
     }
