@@ -13,8 +13,9 @@
     <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
     <key>RoamReadyMirroringContainerIdentifier</key><string>$(ROAMREADY_MIRRORING_CONTAINER)</string>
     <key>UIBackgroundModes</key><array><string>remote-notification</string></array>
+    <key>NSLocationWhenInUseUsageDescription</key><string>Shows the temperature where you are on Home and finds campgrounds near you in Camp Finder. Your location is used only for Apple Weather and Apple Maps, and RoamReady doesn’t save it. You can always search Camp Finder by place instead.</string>
+    <key>NSLocationDefaultAccuracyReduced</key><true/>
     <key>NSCameraUsageDescription</key><string>Take photos of your rig and campsite to save with your trips, even while offline.</string>
-    <key>NSLocationWhenInUseUsageDescription</key><string>Find campgrounds near you in Apple Maps. RoamReady doesn’t save or share your location. You can always search by place instead.</string>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>UIApplicationSceneManifest</key>
     <dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>

@@ -61,6 +61,7 @@ struct HomeView: View {
             Section("Next trip") { Button("Add a trip", systemImage: "plus") { planning = true } }
         }
         .navigationTitle("Home")
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
         .sheet(isPresented: $planning) { NewTripView() }
     }
 }
