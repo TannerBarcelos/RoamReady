@@ -3,25 +3,23 @@ import XCTest
 
 final class SiteDetailsTests: XCTestCase {
     let arrival = Date(timeIntervalSince1970: 1_800_000_000)
-    let trailer = Rig(make: "Forest River", model: "No Boundaries", year: 2024, lengthFeet: 19.5)
+    let trailer = RigDraft(make: "Forest River", model: "No Boundaries", year: 2024, lengthFeet: 19.5)
 
-    func testSiteDetailsAreCopiedWithBookingAndEmptyDetailsAreNotStored() throws {
-        var draft = Trip(campgroundName: "Pines", arrival: arrival, departure: arrival)
-        var trip = try Trip.create(campgroundName: "Pines", arrival: arrival, departure: arrival, rig: trailer)
+    func testSiteDetailsAreKeptWithTheBookingAndEmptyDetailsAreNotStored() {
+        var draft = TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival)
         draft.site = SiteDetails()
-        trip.copyBookingDetails(from: draft)
-        XCTAssertNil(trip.site)
-        XCTAssertFalse(trip.hasBookingDetails)
+        XCTAssertNil(draft.cleaned.site)
+        XCTAssertFalse(draft.cleaned.hasBookingDetails)
 
         draft.site = SiteDetails(parking: .backIn, maxLengthFeet: 35, electric: .amp50, sewer: false)
-        trip.copyBookingDetails(from: draft)
-        XCTAssertEqual(trip.site, draft.site)
-        XCTAssertTrue(trip.hasBookingDetails)
-        XCTAssertEqual(trip.site?.summary, "Back-in · 35 ft · 50 amp · No sewer")
+        XCTAssertEqual(draft.cleaned.site, draft.site)
+        XCTAssertTrue(draft.cleaned.hasBookingDetails)
+        XCTAssertEqual(draft.site?.summary, "Back-in · 35 ft · 50 amp · No sewer")
+        XCTAssertEqual(TripDraft(draft).site, draft.site, "Editing a trip starts from its site details")
     }
 
-    func testSiteLengthMustBeAPlausibleNumberOfFeet() throws {
-        var trip = try Trip.create(campgroundName: "Pines", arrival: arrival, departure: arrival, rig: trailer)
+    func testSiteLengthMustBeAPlausibleNumberOfFeet() {
+        var trip = TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival)
         for bad in [0, -5, 500, .nan, .infinity] {
             trip.site = SiteDetails(maxLengthFeet: bad)
             XCTAssertThrowsError(try trip.validate()) { XCTAssertEqual($0 as? CampError, .invalidSiteLength) }
@@ -32,18 +30,14 @@ final class SiteDetailsTests: XCTestCase {
 
     func testUnknownLengthNeverReportsTheRigAsTooLong() {
         XCTAssertFalse(SiteDetails().isTooShort(for: trailer))
-        XCTAssertFalse(SiteDetails(maxLengthFeet: 18).isTooShort(for: Rig(type: .tent, equipment: .none)))
+        XCTAssertFalse(SiteDetails(maxLengthFeet: 18).isTooShort(for: RigDraft(type: .tent, equipment: .none)))
         XCTAssertTrue(SiteDetails(maxLengthFeet: 18).isTooShort(for: trailer))
         XCTAssertFalse(SiteDetails(maxLengthFeet: 19.5).isTooShort(for: trailer))
     }
 
-    func testTripsSavedBeforeSiteDetailsStillDecode() throws {
-        var trip = try Trip.create(campgroundName: "Pines", arrival: arrival, departure: arrival, rig: trailer)
-        trip.site = SiteDetails(parking: .pullThrough)
-        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(trip)) as? [String: Any])
-        object.removeValue(forKey: "site")
-        let decoded = try JSONDecoder().decode(Trip.self, from: JSONSerialization.data(withJSONObject: object))
-        XCTAssertNil(decoded.site)
-        XCTAssertEqual(decoded.id, trip.id)
+    func testFirstSiteNotesAreTrimmed() {
+        var draft = TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival)
+        draft.notes = "  Shady, level pad \n"
+        XCTAssertEqual(draft.cleaned.notes, "Shady, level pad")
     }
 }

@@ -134,6 +134,20 @@ struct LibraryTests {
         #expect(trip.bookingURL == "https://www.recreation.gov/x", "A refused edit changes nothing")
     }
 
+    @Test func addingATripStoresItsSiteDetailsAndFirstNotes() throws {
+        let rig = try Rig.add(trailer, to: context)
+        var draft = TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival)
+        draft.site = SiteDetails(parking: .pullThrough, maxLengthFeet: 18, electric: .amp30)
+        draft.notes = "  Level pad near the creek "
+        let trip = try Trip.create(draft, rig: rig, in: context)
+        #expect(trip.site == draft.site && trip.notes == "Level pad near the creek")
+        #expect(trip.site?.isTooShort(for: rig) == true, "A 19.5 ft trailer doesn't fit an 18 ft site")
+        var edited = TripDraft(trip); edited.site = SiteDetails()
+        try trip.update(edited, rig: rig)
+        #expect(trip.site == nil, "Clearing every field stores no site details")
+        #expect(trip.notes == "Level pad near the creek", "Editing the booking never touches notes")
+    }
+
     @Test func deletingATripRemovesItsHistoryButKeepsItsDocuments() throws {
         let rig = try Rig.add(trailer, to: context)
         let trip = try trip(rig: rig)

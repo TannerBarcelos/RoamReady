@@ -15,6 +15,7 @@ public extension Trip {
         let trip = Trip()
         context.insert(trip)
         trip.apply(details)
+        trip.notes = details.notes
         trip.rig = rig
         let template = rig.defaultTemplate
         for phase in ChecklistPhase.allCases {
@@ -91,7 +92,7 @@ public extension Trip {
         arrival = draft.arrival; departure = draft.departure
         planningTimeZoneIdentifier = draft.planningTimeZoneIdentifier
         campgroundTimeZoneIdentifier = draft.campgroundTimeZoneIdentifier
-        siteNumber = draft.siteNumber; loop = draft.loop; confirmationNumber = draft.confirmationNumber
+        siteNumber = draft.siteNumber; loop = draft.loop; site = draft.site; confirmationNumber = draft.confirmationNumber
         bookingProvider = draft.bookingProvider; bookingURL = draft.bookingURL
         checkInMinutes = draft.checkInMinutes; checkOutMinutes = draft.checkOutMinutes
         totalCost = draft.totalCost; amountPaid = draft.amountPaid

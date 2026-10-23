@@ -57,6 +57,7 @@ public final class Trip: TripDetails {
     public var campgroundTimeZoneIdentifier: String?
     public var siteNumber: String = ""
     public var loop: String?
+    public var site: SiteDetails?
     public var confirmationNumber: String?
     public var bookingProvider: String?
     public var bookingURL: String?

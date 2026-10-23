@@ -26,6 +26,8 @@ public protocol TripDetails {
     var campgroundTimeZoneIdentifier: String? { get }
     var siteNumber: String { get }
     var loop: String? { get }
+    /// The booked site's parking, length limit, and hookups. Nil until the owner enters any.
+    var site: SiteDetails? { get }
     var confirmationNumber: String? { get }
     /// Who it was booked through, e.g. Recreation.gov or the campground directly.
     var bookingProvider: String? { get }
@@ -89,7 +91,7 @@ public extension TripDetails {
     }
 
     var hasBookingDetails: Bool {
-        [loop, confirmationNumber, bookingProvider, bookingURL].contains { $0 != nil }
+        [loop, confirmationNumber, bookingProvider, bookingURL].contains { $0 != nil } || site != nil
             || checkInMinutes != nil || checkOutMinutes != nil || totalCost != nil || amountPaid != nil
             || cancellationDeadline != nil
     }
@@ -113,6 +115,7 @@ public extension TripDetails {
         for amount in [totalCost, amountPaid].compactMap({ $0 }) {
             guard amount.isFinite, amount >= 0 else { throw CampError.invalidBookingAmount }
         }
+        try site?.validate()
     }
 
     /// The chosen civil day (as planned) at a local time in the campground's time zone. A time that
@@ -139,6 +142,7 @@ public struct TripDraft: TripDetails, Equatable, Codable, Sendable {
     public var campgroundTimeZoneIdentifier: String?
     public var siteNumber = ""
     public var loop: String?
+    public var site: SiteDetails?
     public var confirmationNumber: String?
     public var bookingProvider: String?
     public var bookingURL: String?
@@ -148,6 +152,8 @@ public struct TripDraft: TripDetails, Equatable, Codable, Sendable {
     public var amountPaid: Double?
     public var cancellationDeadline: Date?
     public var completedAt: Date?
+    /// First site notes, taken when the trip is added. Later notes are edited on the trip itself.
+    public var notes = ""
 
     public init(campgroundName: String = "", arrival: Date, departure: Date, campgroundID: String? = nil,
                 latitude: Double? = nil, longitude: Double? = nil,
@@ -164,7 +170,7 @@ public struct TripDraft: TripDetails, Equatable, Codable, Sendable {
                   campgroundID: trip.campgroundID, latitude: trip.latitude, longitude: trip.longitude,
                   planningTimeZoneIdentifier: trip.planningTimeZoneIdentifier,
                   campgroundTimeZoneIdentifier: trip.campgroundTimeZoneIdentifier)
-        siteNumber = trip.siteNumber; loop = trip.loop; confirmationNumber = trip.confirmationNumber
+        siteNumber = trip.siteNumber; loop = trip.loop; site = trip.site; confirmationNumber = trip.confirmationNumber
         bookingProvider = trip.bookingProvider; bookingURL = trip.bookingURL
         checkInMinutes = trip.checkInMinutes; checkOutMinutes = trip.checkOutMinutes
         totalCost = trip.totalCost; amountPaid = trip.amountPaid
@@ -186,6 +192,8 @@ public struct TripDraft: TripDetails, Equatable, Codable, Sendable {
         var copy = self
         copy.campgroundName = campgroundName.trimmingCharacters(in: .whitespacesAndNewlines)
         copy.siteNumber = siteNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        copy.site = site.flatMap { $0.isEmpty ? nil : $0 }
+        copy.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         copy.loop = clean(loop); copy.confirmationNumber = clean(confirmationNumber)
         copy.bookingProvider = clean(bookingProvider); copy.bookingURL = clean(bookingURL)
         return copy
