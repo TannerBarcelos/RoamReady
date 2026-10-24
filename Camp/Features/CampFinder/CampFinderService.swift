@@ -114,6 +114,8 @@ final class CampFinder {
 
     private func run(_ search: MKLocalSearch) async throws -> [CampgroundListing] {
         do { return try await search.start().mapItems.compactMap(remember) }
+        // Apple Maps reports a search with no matches as "placemark not found": that's no results, not a missing place.
+        catch let error as MKError where error.code == .placemarkNotFound { return [] }
         catch { throw CampFinderError(error) }
     }
 
