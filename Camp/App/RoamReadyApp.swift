@@ -71,9 +71,9 @@ struct MainTabs: View {
         TabView(selection: tabSelection) {
             Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
             Tab("Plan", systemImage: "calendar", value: .plan) { NavigationStack { PlanView() } }
-            Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
+            Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
             if showsAssistant {
                 Tab("Assistant", systemImage: "bubble.left.and.bubble.right", value: .assistant) { AssistantView(isPresentedAsSheet: false) }
             }
