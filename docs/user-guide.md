@@ -29,7 +29,7 @@ Home shows the earliest-arriving active trip from arrival through the end of dep
 
 Reserve with the campground or booking provider first. RoamReady keeps the details of that booking.
 
-1. Choose **Add trip** from Home/Plan or start from a Camp Finder listing.
+1. Tap **Trip** (the + in the tab bar) from anywhere, or start from a Camp Finder listing.
 2. Enter the campground name, select your rig, and set arrival/departure dates. Offline, enter the name directly.
 3. Optionally add site/loop, site length and hookups, booking provider, confirmation number, HTTPS booking link, check-in/out times, costs, cancellation deadline, and initial site notes.
 4. Save. The trip gets fresh setup and teardown lists from its rig's defaults.

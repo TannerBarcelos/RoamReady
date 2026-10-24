@@ -8,7 +8,6 @@ struct HomeView: View {
     @Query private var profiles: [CamperProfile]
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
-    @State private var planning = false
     @State private var now = Date()
     private var currentTrip: Trip? { trips.first { $0.isActive(asOf: now) } }
 
@@ -56,14 +55,12 @@ struct HomeView: View {
                 ContentUnavailableView {
                     Label("No current trip", systemImage: "tent.2")
                 } description: {
-                    Text("Your trip appears here from arrival through departure day. Find upcoming and past trips in Plan, or add your next adventure below.")
+                    Text("Your trip appears here from arrival through departure day. Find upcoming and past trips in Plan, or tap Trip below to add your next adventure.")
                 }
             }
-            Section("Next trip") { Button("Add a trip", systemImage: "plus") { planning = true } }
         }
         .navigationTitle("Home")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
-        .sheet(isPresented: $planning) { NewTripView() }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             // Refresh on return to the app and at the next campground midnight, even if Home
