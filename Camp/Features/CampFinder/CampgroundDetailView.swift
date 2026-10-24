@@ -17,7 +17,8 @@ struct CampgroundDetailView: View {
     @State private var listing: CampgroundListing?
     @State private var failure: CampFinderError?
     @State private var planning = false
-    @State private var placeCard: MKMapItem?
+    /// Apple's street-level imagery near the campground; nil while loading or where Apple has none.
+    @State private var lookAround: MKLookAroundScene?
 
     init(listing: CampgroundListing) {
         identifier = listing.mapItemIdentifier
@@ -48,35 +49,40 @@ struct CampgroundDetailView: View {
         }
         .navigationTitle(listing?.name ?? "Campground")
         .task { if listing == nil { await load() } }
+        .task(id: listing?.mapItemIdentifier) { if let listing { await loadLookAround(listing) } }
         .sheet(isPresented: $planning) { if let listing { NewTripView(initialListing: listing) } }
-        .mapItemDetailSheet(item: $placeCard)
     }
 
     private func content(_ listing: CampgroundListing) -> some View {
         List {
             Section {
-                if let kind = listing.kind { Text(kind.title).foregroundStyle(.secondary) }
-                if let address = listing.address { Text(address) }
+                mapPreview(listing)
+                    .listRowInsets(EdgeInsets())
+                VStack(alignment: .leading, spacing: 4) {
+                    if let kind = listing.kind { Text(kind.title).font(.subheadline).foregroundStyle(.secondary) }
+                    if let address = listing.address { Text(address).textSelection(.enabled) }
+                }
+                .padding(.vertical, 2)
+                actions(listing)
+                    .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 12, trailing: 12))
+            }
+            if let lookAround {
+                Section {
+                    LookAroundPreview(initialScene: lookAround, allowsNavigation: true, badgePosition: .bottomTrailing)
+                        .frame(height: 200)
+                        .listRowInsets(EdgeInsets())
+                        .accessibilityLabel("Look Around: street-level imagery near \(listing.name)")
+                } header: { Text("Look Around") } footer: {
+                    Text("Apple’s street-level imagery near the campground. Tap to look around full screen.")
+                }
             }
             Section {
-                if let url = listing.websiteLink {
-                    Link(destination: url) { Label("Website", systemImage: "globe") }
-                        .accessibilityHint("Opens the campground’s website, where you can book")
-                }
-                if let url = listing.phoneLink, let phone = listing.phone {
-                    Link(destination: url) { Label("Call \(phone)", systemImage: "phone") }
-                        .accessibilityLabel("Call campground, \(phone)")
-                }
-                Button("Directions", systemImage: "car") { openDirections(listing) }
-                    .accessibilityHint("Opens Apple Maps with driving directions")
-                if let item = finder.mapItem(for: listing) {
-                    Button("Photos, ratings & hours", systemImage: "info.circle") { placeCard = item }
-                        .accessibilityHint("Shows Apple Maps’ place card for this campground")
-                }
                 Button("Add trip", systemImage: "calendar.badge.plus") { planning = true }
                     .accessibilityHint("Enter a booking you’ve already made at this campground")
+                Button("Open in Apple Maps", systemImage: "map") { mapItem(for: listing).openInMaps() }
+                    .accessibilityHint("Opens this campground in the Maps app")
             } footer: {
-                Text("Book on the campground’s website or by phone. RoamReady doesn’t book or show availability. After you book, come back and tap Add trip.")
+                Text("Book on the campground’s website or by phone, then come back and tap Add trip. RoamReady doesn’t book or show availability. Apple Maps shows photos, ratings, and hours when it has them for a place.")
             }
             lists
             memories
@@ -126,13 +132,63 @@ struct CampgroundDetailView: View {
         catch { failure = error as? CampFinderError ?? .failed }
     }
 
-    private func openDirections(_ listing: CampgroundListing) {
-        let item = finder.mapItem(for: listing) ?? {
+    /// A still map of where the campground is; Directions and Open in Apple Maps are the ways to explore further.
+    private func mapPreview(_ listing: CampgroundListing) -> some View {
+        Map(initialPosition: .region(MKCoordinateRegion(center: listing.coordinate, latitudinalMeters: 2_500, longitudinalMeters: 2_500)),
+            interactionModes: []) {
+            Marker(listing.name, systemImage: listing.kind == .rvPark ? "car.side" : "tent", coordinate: listing.coordinate)
+        }
+        .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
+        .frame(height: 180)
+        .accessibilityLabel("Map showing where \(listing.name) is")
+    }
+
+    /// Call, Website, and Directions side by side, each shown only when Apple Maps has what it needs.
+    private func actions(_ listing: CampgroundListing) -> some View {
+        HStack(spacing: 8) {
+            if let url = listing.phoneLink, let phone = listing.phone {
+                Link(destination: url) { ActionLabel(title: "Call", systemImage: "phone.fill") }
+                    .accessibilityLabel("Call campground, \(phone)")
+            }
+            if let url = listing.websiteLink {
+                Link(destination: url) { ActionLabel(title: "Website", systemImage: "safari.fill") }
+                    .accessibilityHint("Opens the campground’s website, where you can book")
+            }
+            Button { openDirections(listing) } label: { ActionLabel(title: "Directions", systemImage: "car.fill") }
+                .accessibilityHint("Opens Apple Maps with driving directions")
+        }
+        .buttonStyle(.bordered)
+    }
+
+    private func loadLookAround(_ listing: CampgroundListing) async {
+        let request = finder.mapItem(for: listing).map { MKLookAroundSceneRequest(mapItem: $0) }
+            ?? MKLookAroundSceneRequest(coordinate: listing.coordinate)
+        lookAround = try? await request.scene
+    }
+
+    private func mapItem(for listing: CampgroundListing) -> MKMapItem {
+        finder.mapItem(for: listing) ?? {
             let item = MKMapItem(location: CLLocation(latitude: listing.latitude, longitude: listing.longitude), address: nil)
             item.name = listing.name
             return item
         }()
-        item.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+
+    private func openDirections(_ listing: CampgroundListing) {
+        mapItem(for: listing).openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+}
+
+/// An action button's label: icon above title, filling its share of the row.
+private struct ActionLabel: View {
+    let title: String
+    let systemImage: String
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: systemImage).font(.title3)
+            Text(title).font(.caption.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, minHeight: 44)
     }
 }
 
