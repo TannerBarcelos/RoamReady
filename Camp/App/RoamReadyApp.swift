@@ -62,21 +62,33 @@ struct RootView: View {
 }
 
 struct MainTabs: View {
+    enum Destination: Hashable { case home, plan, campFinder, newTrip, assistant, profile }
     @Environment(\.scenePhase) private var scenePhase
     @State private var showsAssistant = CampingAssistant.showsGlobalChat
+    @State private var selection = Destination.home
+    @State private var addingTrip = false
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "house") { NavigationStack { HomeView() } }
-            Tab("Plan", systemImage: "calendar") { NavigationStack { PlanView() } }
-            Tab("Camp Finder", systemImage: "map") { NavigationStack { CampFinderView() } }
+        TabView(selection: tabSelection) {
+            Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
+            Tab("Plan", systemImage: "calendar", value: .plan) { NavigationStack { PlanView() } }
+            // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
+            Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
+            Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
             if showsAssistant {
-                Tab("Assistant", systemImage: "bubble.left.and.bubble.right") { AssistantView(isPresentedAsSheet: false) }
+                Tab("Assistant", systemImage: "bubble.left.and.bubble.right", value: .assistant) { AssistantView(isPresentedAsSheet: false) }
             }
-            Tab("Profile", systemImage: "person.crop.circle") { NavigationStack { ProfileView() } }
+            Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
         }
+        .sheet(isPresented: $addingTrip) { NewTripView() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }
+    }
+    /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
+    private var tabSelection: Binding<Destination> {
+        Binding(get: { selection }, set: { destination in
+            if destination == .newTrip { addingTrip = true } else { selection = destination }
+        })
     }
 }
 
