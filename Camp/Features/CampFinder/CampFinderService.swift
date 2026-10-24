@@ -46,11 +46,34 @@ final class CampFinder {
     @ObservationIgnored private var items: [String: MKMapItem] = [:]
     private(set) var listings: [String: CampgroundListing] = [:]
 
-    /// Campgrounds and RV parks in a map region, with no search text.
+    /// Campgrounds and RV parks in a map region, with no search text. Apple's points-of-interest request
+    /// alone lists only a few (none around Hollister, CA; 2 in Yosemite Valley), so category searches kept
+    /// inside the region fill in the rest.
     func campgrounds(in region: MKCoordinateRegion) async throws -> [CampgroundListing] {
-        let request = MKLocalPointsOfInterestRequest(coordinateRegion: region)
-        request.pointOfInterestFilter = Self.filter
-        return try await run(MKLocalSearch(request: request))
+        let pointsOfInterest = MKLocalPointsOfInterestRequest(coordinateRegion: region)
+        pointsOfInterest.pointOfInterestFilter = Self.filter
+        var searches = [MKLocalSearch(request: pointsOfInterest)]
+        for category in ["campground", "RV park"] {
+            let request = MKLocalSearch.Request()
+            request.naturalLanguageQuery = category
+            request.resultTypes = .pointOfInterest
+            request.pointOfInterestFilter = Self.filter
+            request.region = region
+            request.regionPriority = .required
+            searches.append(MKLocalSearch(request: request))
+        }
+        var found: [CampgroundListing] = []
+        var failure: (any Error)?
+        var anySucceeded = false
+        for search in searches {
+            switch await optional({ try await self.run(search) }) {
+            case .success(let listings): found += listings; anySucceeded = true
+            case .failure(let error): failure = failure ?? error
+            }
+        }
+        // Any search finishing is a result; only all of them failing is an error.
+        if !anySucceeded, let failure { throw failure }
+        return found.merged(with: [], nearLatitude: region.center.latitude, longitude: region.center.longitude)
     }
 
     /// Typed text: campgrounds whose name matches, plus campgrounds around the place it names
@@ -114,6 +137,8 @@ final class CampFinder {
 
     private func run(_ search: MKLocalSearch) async throws -> [CampgroundListing] {
         do { return try await search.start().mapItems.compactMap(remember) }
+        // Apple Maps reports a search with no matches as "placemark not found": that's no results, not a missing place.
+        catch let error as MKError where error.code == .placemarkNotFound { return [] }
         catch { throw CampFinderError(error) }
     }
 

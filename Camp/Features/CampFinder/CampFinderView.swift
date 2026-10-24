@@ -64,7 +64,8 @@ struct CampFinderView: View {
         }
         .navigationDestination(for: CampgroundListing.self) { CampgroundDetailView(listing: $0) }
         .navigationDestination(item: $opened) { CampgroundDetailView(listing: $0) }
-        .searchable(text: $text, prompt: "Campground, city, park, or ZIP code")
+        // Always shown: the default placement hides the field under the large title until the list is pulled down.
+        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
         .onSubmit(of: .search) {
             guard cleanedSearchText(text) != nil else { return }
             search.run(.text(text, near: visibleRegion), using: finder)
