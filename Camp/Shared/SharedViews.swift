@@ -91,6 +91,7 @@ struct ProgressSummary: View {
 
 /// Let list rows measure the full title at accessibility text sizes.
 struct WrappingLabel: View {
+    @ScaledMetric(relativeTo: .body) private var iconWidth = 28
     let title: LocalizedStringKey
     let systemImage: String
 
@@ -100,12 +101,17 @@ struct WrappingLabel: View {
     }
 
     var body: some View {
-        Label {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.body).foregroundStyle(.tint)
+                .frame(width: iconWidth)
+                .accessibilityHidden(true)
             Text(title)
+                .font(.body)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.vertical, 2)
-        } icon: { Image(systemName: systemImage) }
+        }
         .accessibilityElement(children: .combine)
     }
 }
