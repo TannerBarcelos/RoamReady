@@ -33,7 +33,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 | --- | --- |
 | [Data sources and coverage](campground-data.md) | Owner-entered rigs, Apple Maps coverage, saved-place storage, and attribution. |
 | [Camp Finder data source](campground-sourcing.md) | Map/search behavior, place details, identifiers, provider limits, and acceptance. |
-| [Monetization proposal](monetization.md) | Draft subscription and remote-AI proposals; these are not implemented features. |
+| [Pricing](monetization.md) | $4.99 one-time purchase; no subscription or in-app purchases. |
 
 ## Maintaining these docs
 

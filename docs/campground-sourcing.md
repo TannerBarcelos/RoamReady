@@ -44,7 +44,7 @@ Apple Maps doesn't list every campground, especially primitive or dispersed site
 
 ## To check before release
 
-Tracked in the Camp Finder simulator and device sections of #10:
+Tracked in the Camp Finder simulator and device sections of the acceptance checklist in #6:
 
 1. **Coverage where people camp:** national forest, BLM/desert, state park, and town RV park searches return sensible places, and tapping campgrounds on the map opens them.
 2. **Place details:** how often Apple Maps has a website, a phone number, and a time zone for campgrounds. Each is optional in the app; a missing time zone leaves the device's zone selected in the trip form for the person to change.

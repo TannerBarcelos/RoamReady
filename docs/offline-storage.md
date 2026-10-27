@@ -22,7 +22,7 @@ The models live in `Sources/CampPersistence/Models.swift`:
 
 Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, and note versions; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
 
-The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, campground lists, and the document vault. Date, booking, site, and rig-detail rules are portable (`CampCore`'s `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested on Linux.
+The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, campground lists, and the document vault. Date, booking, site, and rig-detail rules are portable (`CampCore`'s `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested without SwiftData.
 
 Screens read with `@Query` and edit models directly; SwiftData saves automatically, and `LibraryController.save()` saves after each deliberate action so a failure is shown. Forms edit a draft (`TripDraft`, `RigDraft`, `ChecklistStepDraft`) so Cancel discards changes.
 
@@ -60,7 +60,7 @@ The OS iCloud account supplies private CloudKit identity. SwiftData opens with t
 
 ## Validation and outstanding release gates
 
-macOS CI runs the SwiftData tests against real stores: rig, trip, checklist, list, and document rules; cascades and unattached documents; encryption and tamper detection; reopening from disk; and the export. Apple CI also builds the SwiftUI app with the iOS 27 SDK; a simulator build does not establish runtime behavior on devices.
+macOS CI runs the SwiftData tests against real stores: rig, trip, checklist, list, and document rules; cascades and unattached documents; encryption and tamper detection; reopening from disk; and the export. CI also builds the SwiftUI app with the iOS 27 SDK; a simulator build does not establish runtime behavior on devices.
 
 Still required on provisioned devices:
 

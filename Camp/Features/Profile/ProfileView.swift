@@ -54,7 +54,7 @@ struct ProfileView: View {
             ICloudSection()
             Section("Camping help") {
                 Label(CampingAssistant.availability, systemImage: "sparkles").font(.subheadline)
-                Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkles button on Home or Plan. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
+                Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with Ask Assistant above the tab bar. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
                 Text("Camp Finder searches campgrounds and RV parks in Apple Maps, online only. Apple Maps doesn’t list every campground, and RoamReady doesn’t book or show availability.").font(.footnote).foregroundStyle(.secondary)

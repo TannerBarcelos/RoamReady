@@ -92,10 +92,7 @@ struct HomeView: View {
             }
         }
         .navigationTitle("Home")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() }
-            ToolbarItem(placement: .topBarTrailing) { AssistantToolbarButton() }
-        }
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
             // Refresh on return to the app and at the next campground midnight, even if Home

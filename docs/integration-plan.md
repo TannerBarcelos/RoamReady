@@ -6,9 +6,9 @@
 
 RoamReady is an initial development build. Account-free onboarding, owner-entered rigs, local trip/checklist/document/memory workflows, Apple-only AI eligibility, online Apple Maps campground discovery, and device-local appearance settings are implemented in source. Production Apple provisioning and physical-device acceptance remain outstanding.
 
-Release gates are [Apple app setup (#6)](https://github.com/TannerBarcelos/RoamReady/issues/6) and [simulator/device acceptance (#10)](https://github.com/TannerBarcelos/RoamReady/issues/10), tracked in [v1 (#4)](https://github.com/TannerBarcelos/RoamReady/issues/4). There is no v1 backend or campground dataset to provision.
+The remaining v1 work (decisions, App Store publishing, and simulator/device acceptance) is tracked in [v1 release: publish to the App Store (#6)](https://github.com/TannerBarcelos/RoamReady/issues/6). There is no v1 backend or campground dataset to provision.
 
-Portable tests exercise shared behavior on Linux/macOS. Apple CI is configured to run SwiftData tests against real stores and build the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for a particular commit; compilation does not establish device acceptance.
+Portable tests exercise shared behavior on any Swift platform. CI is configured to run SwiftData tests against real stores and build the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions) for a particular commit; compilation does not establish device acceptance.
 
 ## Identity and offline operation
 
@@ -47,7 +47,7 @@ Remote models and a model selector are proposed for v2 (#34); no hosted AI or re
 
 Camp Finder uses Apple Maps (MapKit): a campground/RV park map, Near me, Search this area, typed search, and place details. It requires no server, API key, or owned dataset. Saved lists keep Apple place identifiers; search results remain session-only.
 
-Validate coverage where people camp, tapped map places, optional website/phone/time-zone details, the Apple place card, per-device throttling, location allowed/denied, offline explanations, and retry (#10). The app does not infer prices, hookups, rig compatibility, or booking availability. Offline maps and region-limited offline lists are v2 work (#20).
+Validate coverage where people camp, tapped map places, optional website/phone/time-zone details, the Apple place card, per-device throttling, location allowed/denied, offline explanations, and retry (#6). The app does not infer prices, hookups, rig compatibility, or booking availability. Offline maps and region-limited offline lists are v2 work (#20).
 
 See [data coverage](campground-data.md) and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release).
 
@@ -57,8 +57,8 @@ See [data coverage](campground-data.md) and the [Camp Finder source guide](campg
 | --- | --- |
 | Rig catalog (#29) | Owner entry in v1; future lookup needs a licensed/permitted source and record provenance. Do not invent year ranges or floorplans. |
 | Offline maps and regional campground lists (#20) | Not implemented; hosting/licensing and download behavior need design and validation. |
-| Remote AI (#34) | Proposed v2 service with its own identity, consent, entitlement, and cost controls. |
-| Monetization (#33) | Draft proposal only; no payments in v1. See [monetization proposal](monetization.md). |
+| Remote AI (#34) | Proposed v2 service with its own identity, consent, and cost controls; it must fit the one-time price (no subscription). |
+| Pricing | Settled: $4.99 one-time purchase, with no subscription or in-app purchases now or later. See [pricing](monetization.md). |
 
 ## Native release acceptance
 
