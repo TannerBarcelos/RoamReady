@@ -5,11 +5,14 @@ import CampPersistence
 
 struct HomeView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.mainTabActions) private var tabActions
     @Query private var profiles: [CamperProfile]
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var now = Date()
     private var currentTrip: Trip? { trips.first { $0.isActive(asOf: now) } }
+    /// Trips whose arrival day is still ahead, soonest first.
+    private var upcomingTrips: [Trip] { trips.filter { $0.daysUntilArrival(asOf: now) != nil } }
 
     var body: some View {
         List {
@@ -51,11 +54,40 @@ struct HomeView: View {
                     }
                     NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
                 }
+            } else if let next = upcomingTrips.first, let days = next.daysUntilArrival(asOf: now) {
+                Section {
+                    NavigationLink { TripDetailView(trip: next) } label: {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(days == 1 ? "Starts tomorrow" : "Starts in \(days) days")
+                                .font(.footnote.weight(.semibold)).foregroundStyle(.tint)
+                                .padding(.horizontal, 10).padding(.vertical, 3)
+                                .background(.tint.opacity(0.12), in: .capsule)
+                            Text(next.campgroundName).font(.title2.bold())
+                            Text(next.dateSummary).font(.subheadline).foregroundStyle(.secondary)
+                            if !next.siteNumber.isEmpty { Label("Site \(next.siteNumber)", systemImage: "mappin").font(.subheadline) }
+                        }.padding(.vertical, 6)
+                    }
+                    NavigationLink { ChecklistView(trip: next) } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Review setup checklist").font(.headline)
+                            ProgressSummary(steps: next.steps(.setup))
+                        }.padding(.vertical, 4)
+                    }
+                } header: { Text("Next trip") } footer: {
+                    Text("On arrival day, Home switches to your live trip with checklist progress and photos.")
+                }
+                let later = upcomingTrips.dropFirst()
+                if !later.isEmpty { Section("Later") { ForEach(Array(later)) { TripRow(trip: $0) } } }
             } else {
                 ContentUnavailableView {
-                    Label("No current trip", systemImage: "tent.2")
+                    Label { Text(trips.isEmpty ? "Plan your first trip" : "Plan your next trip") } icon: {
+                        Image(systemName: "tent.2").foregroundStyle(.tint)
+                    }
                 } description: {
-                    Text("Your trip appears here from arrival through departure day. Find upcoming and past trips in Plan, or tap Trip below to add your next adventure.")
+                    Text("Add a reservation and RoamReady builds setup and teardown checklists for your \(rigs.active.first?.type.title.lowercased() ?? "rig"). They work offline at the campground.")
+                } actions: {
+                    Button("Add a trip", systemImage: "plus", action: tabActions.addTrip).buttonStyle(.borderedProminent)
+                    Button("Find a campground", action: tabActions.showCampFinder).buttonStyle(.bordered)
                 }
             }
         }

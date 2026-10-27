@@ -14,7 +14,7 @@ The root view shows onboarding when there is no profile, then four standard tabs
 
 | Tab | Primary responsibility |
 | --- | --- |
-| Home | The current trip during its arrival/departure dates, checklist progress, memories, quick trip creation, and local temperature. |
+| Home | The current trip during its arrival/departure dates, checklist progress, memories, quick trip creation, and local temperature. Before arrival day it shows the next trip's countdown and setup checklist. |
 | Plan | Upcoming/past trips and their booking, checklist, weather, and memory details. |
 | Camp Finder | Online campground/RV park map and search, place details, and saved lists. |
 | Assistant | General camping troubleshooting and follow-up chat, without requiring a trip. Hidden on non-AI devices. |
@@ -32,6 +32,8 @@ Trip details keep booking information together and link to setup/teardown, **Pho
 - Distinguish a local save from cloud delivery and show save failures with retry.
 - Explain network and AI unavailability at the affected feature, while local workflows remain available.
 - Show forecast retrieval times and explain Apple Maps coverage and missing place details so users can judge the data.
+
+- Empty states use `ContentUnavailableView` with a tinted SF Symbol, copy that names what the screen will hold, and buttons for the next step (add a trip, open Camp Finder). They never point at the tab bar.
 
 These patterns support the core use case: opening a saved trip at a campground with limited connectivity.
 

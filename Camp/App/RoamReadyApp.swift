@@ -79,6 +79,7 @@ struct MainTabs: View {
             }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
         }
+        .environment(\.mainTabActions, MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder }))
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
@@ -90,6 +91,16 @@ struct MainTabs: View {
             if destination == .newTrip { addingTrip = true } else { selection = destination }
         })
     }
+}
+
+/// Tab-level actions for empty states, so they offer a button rather than pointing at the tab bar.
+struct MainTabActions {
+    var addTrip: @MainActor () -> Void = {}
+    var showCampFinder: @MainActor () -> Void = {}
+}
+
+extension EnvironmentValues {
+    @Entry var mainTabActions = MainTabActions()
 }
 
 enum CampUIError: LocalizedError {

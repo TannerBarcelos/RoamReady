@@ -17,7 +17,7 @@ If your build supports iCloud, onboarding and Profile offer **Sync with iCloud**
 
 | Tab | Use it to |
 | --- | --- |
-| Home | Return to your current trip, review progress and memories, add a trip, or check local weather. |
+| Home | Return to your current trip, see how long until your next one, review progress and memories, add a trip, or check local weather. |
 | Plan | Browse upcoming and past trips and open their booking details, checklists, and memories. |
 | Camp Finder | Explore online campground listings and save places. |
 | Assistant | Ask general camping and troubleshooting questions, with follow-ups. Appears only on supported AI devices. |

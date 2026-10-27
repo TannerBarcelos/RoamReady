@@ -78,6 +78,14 @@ public extension TripDetails {
         return window.contains(campgroundCalendar.startOfDay(for: now))
     }
 
+    /// Whole days until the arrival day begins at the campground, or nil once it has (or the dates are invalid).
+    func daysUntilArrival(asOf now: Date = Date()) -> Int? {
+        guard completedAt == nil, let firstDay = forecastDayWindow?.lowerBound else { return nil }
+        let calendar = campgroundCalendar
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: firstDay).day ?? 0
+        return days > 0 ? days : nil
+    }
+
     /// Ended by its dates, as opposed to marked complete early.
     func endedByDate(asOf now: Date = Date()) -> Bool {
         guard let lastDay = forecastDayWindow?.upperBound,

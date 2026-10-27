@@ -108,6 +108,15 @@ final class TripDetailsTests: XCTestCase {
         XCTAssertFalse(trip.isActive(asOf: date("2026-05-04T06:00:00Z")), "Trip disappears after departure day")
     }
 
+    func testDaysUntilArrivalCountsCampgroundDays() {
+        var trip = denverTrip()
+        XCTAssertEqual(trip.daysUntilArrival(asOf: date("2026-04-20T18:00:00Z")), 11)
+        XCTAssertEqual(trip.daysUntilArrival(asOf: date("2026-05-01T05:59:59Z")), 1, "Still April 30 in Denver")
+        XCTAssertNil(trip.daysUntilArrival(asOf: date("2026-05-01T06:00:00Z")), "Arrival day has begun")
+        trip.completedAt = date("2026-04-20T18:00:00Z")
+        XCTAssertNil(trip.daysUntilArrival(asOf: date("2026-04-20T18:00:00Z")), "Cancelled early")
+    }
+
     func testCurrentTripHandlesSameDayStayAndEarlyCompletion() {
         var trip = denverTrip()
         trip.departure = trip.arrival
