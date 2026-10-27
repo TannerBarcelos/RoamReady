@@ -41,7 +41,7 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 
 1. `RoamReadyApp` creates `LibraryController` and connectivity state, then opens the library.
 2. The library exposes a SwiftData model container. If opening fails, the root shows an error and retry.
-3. `RootView` queries for a profile, displaying onboarding or the four standard tabs plus Assistant on supported AI devices.
+3. `RootView` queries for a profile, displaying onboarding or the main tabs, plus the Ask RoamReady tab-bar accessory that opens Assistant on supported AI devices.
 4. Screens read models with `@Query`. Forms edit drafts such as `TripDraft`, `RigDraft`, and `ChecklistStepDraft`, then validate and apply them.
 5. Model extensions enforce library rules. `LibraryController.save()` performs deliberate saves and surfaces failures; scene transitions also trigger saving.
 6. If configured and enabled at launch, Apple mirrors the library to the device's private CloudKit database and manages connectivity, retries, and account transitions.
@@ -64,7 +64,7 @@ Deleting a trip cascades to its steps, photos, and note revisions. Documents are
 | --- | --- |
 | Camp Finder | MapKit campground/RV park points of interest, typed/area searches, and place lookups. Session-only results; saved lists keep Apple identifiers. No server, API key, owned dataset, or live availability. |
 | Weather | WeatherKit for location temperature and campground forecasts; saved readings have timestamps and work offline. |
-| Camping assistant | Bundled guidance plus Foundation Models after product/device and runtime availability checks. No remote question transfer in v1. |
+| Camping assistant | Foundation Models after product/device and runtime availability checks, with saved checklist steps as context. No canned answers and no remote question transfer in v1. |
 | Memories | Native camera, PhotosPicker, bounded image import, and system sharing. Cloud-only Photos items may need a download. |
 | Documents | System file representations, bounded staging, Quick Look, HTTPS links, verified bytes, and Apple-managed encryption. |
 | Sync | SwiftData/CloudKit mirroring, enabled by configuration and a default-on launch preference. Apple owns its runtime lifecycle. |

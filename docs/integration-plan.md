@@ -37,7 +37,7 @@ Location temperature and per-trip cached forecasts are implemented. Live data re
 
 ## On-device camping help
 
-Foundation Models is the only v1 generative provider. The product gate admits iPhone 15 and newer, then checks Apple's independent runtime availability. Apple Intelligence requires iPhone 15 Pro or later; base iPhone 15/15 Plus receive an explanation and saved guidance.
+Foundation Models is the only v1 generative provider. The product gate admits iPhone 15 and newer, then checks Apple's independent runtime availability. Apple Intelligence requires iPhone 15 Pro or later; base iPhone 15/15 Plus don't offer Assistant.
 
 Device acceptance must cover disabled/not-ready models, supported languages/regions, unsupported hardware, model refusal/failure, and offline fallback. Initial model readiness/download requires connectivity. Exact identifier policy lives in the [AI contract](account-and-offline-contract.md#apple-only-ai).
 

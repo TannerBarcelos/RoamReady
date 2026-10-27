@@ -62,11 +62,15 @@ struct RootView: View {
 }
 
 struct MainTabs: View {
-    enum Destination: Hashable { case home, plan, campFinder, newTrip, assistant, profile }
+    enum Destination: Hashable { case home, plan, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
-    @State private var showsAssistant = CampingAssistant.showsGlobalChat
+    @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
+    @State private var chatting = false
+    @State private var chatDetent = PresentationDetent.large
+    /// One conversation for the whole app, kept while the chat sheet is closed.
+    @State private var conversation = AssistantConversation()
     var body: some View {
         TabView(selection: tabSelection) {
             Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
@@ -74,14 +78,20 @@ struct MainTabs: View {
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
-            if showsAssistant {
-                Tab("Assistant", systemImage: "bubble.left.and.bubble.right", value: .assistant) { AssistantView(isPresentedAsSheet: false) }
-            }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
         }
+        // Assistant opens from above the tab bar on every tab, rather than as a sixth tab hidden under More.
+        .tabViewBottomAccessory(isEnabled: showsAssistant) {
+            AssistantChatButton { chatDetent = .large; chatting = true }
+        }
         .sheet(isPresented: $addingTrip) { NewTripView() }
+        .sheet(isPresented: $chatting) {
+            AssistantView(conversation: conversation)
+                .presentationDetents([.medium, .large], selection: $chatDetent)
+                .presentationDragIndicator(.visible)
+        }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
+            if phase == .active { showsAssistant = CampingAssistant.showsChat }
         }
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.

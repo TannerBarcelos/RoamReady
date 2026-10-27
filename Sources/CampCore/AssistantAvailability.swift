@@ -1,8 +1,9 @@
-/// The global Assistant's presentation state. Trip/checklist saved help has its own fallback.
+/// The Assistant's presentation state, shared by the global chat and trip/checklist help.
 public enum AssistantAvailability: Equatable, Sendable {
     case ready, unsupported, disabled, preparing, unavailable, unsupportedLanguage
 
-    public var showsTab: Bool { self != .unsupported }
+    /// Supported hardware keeps the chat button so disabled or preparing AI can explain how to recover.
+    public var showsChatButton: Bool { self != .unsupported }
     public var showsConversation: Bool { self == .ready }
 
     public var title: String {
@@ -19,11 +20,11 @@ public enum AssistantAvailability: Equatable, Sendable {
     public var message: String {
         switch self {
         case .ready: "Ask about camping, your rig, or something that isn’t working."
-        case .unsupported: "Assistant requires a supported iPhone with Apple Intelligence. Your saved trip and checklist guidance is still available."
-        case .disabled: "Enable Apple Intelligence in Settings › Apple Intelligence & Siri, then return here. Your saved trip and checklist guidance is still available."
+        case .unsupported: "Assistant requires an iPhone that supports Apple Intelligence (iPhone 15 Pro or later)."
+        case .disabled: "Enable Apple Intelligence in Settings › Apple Intelligence & Siri, then return here."
         case .preparing: "Your on-device model is still downloading or preparing. Check Apple Intelligence in Settings and try again when it’s ready."
-        case .unavailable: "Apple’s on-device AI can’t answer right now. Try again in a moment. Your saved trip and checklist guidance is still available."
-        case .unsupportedLanguage: "Choose a language supported by Apple Intelligence in Settings, then try again. Your saved trip and checklist guidance is still available."
+        case .unavailable: "Apple’s on-device AI can’t answer right now. Try again in a moment."
+        case .unsupportedLanguage: "Choose a language supported by Apple Intelligence in Settings, then try again."
         }
     }
 }

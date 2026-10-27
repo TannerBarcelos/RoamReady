@@ -3,10 +3,18 @@ import SwiftData
 import CampCore
 import CampPersistence
 
-private struct CampingExchange: Identifiable {
+struct CampingExchange: Identifiable {
     let id = UUID()
     let question: String
     let answer: CampingAnswer
+}
+
+/// A transcript that outlives its sheet, so closing and reopening the global chat keeps the conversation.
+/// It stays in memory only; conversations are never saved or attached to trips.
+@MainActor @Observable
+final class AssistantConversation {
+    var exchanges: [CampingExchange] = []
+    var question = ""
 }
 
 struct AssistantView: View {
@@ -15,22 +23,30 @@ struct AssistantView: View {
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     let trip: Trip?
     let step: ChecklistStep?
-    let isPresentedAsSheet: Bool
-    @State private var question = ""
-    @State private var exchanges: [CampingExchange] = []
+    @State private var conversation: AssistantConversation
     @State private var pendingQuestion: String?
     @State private var generationFailure: CampingChatFailure?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
 
-    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true) {
+    /// Pass `conversation` to keep the transcript across presentations; trip and checklist help start fresh.
+    init(conversation: AssistantConversation? = nil, trip: Trip? = nil, step: ChecklistStep? = nil) {
+        _conversation = State(initialValue: conversation ?? AssistantConversation())
         self.trip = trip
         self.step = step
-        self.isPresentedAsSheet = isPresentedAsSheet
+    }
+
+    private var exchanges: [CampingExchange] {
+        get { conversation.exchanges }
+        nonmutating set { conversation.exchanges = newValue }
+    }
+    private var question: String {
+        get { conversation.question }
+        nonmutating set { conversation.question = newValue }
     }
 
     private var answering: Bool { pendingQuestion != nil }
-    private var showsConversation: Bool { trip != nil || availability.showsConversation }
+    private var showsConversation: Bool { availability.showsConversation }
     private var canSend: Bool {
         showsConversation && !answering && !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -52,7 +68,7 @@ struct AssistantView: View {
                     .accessibilityIdentifier("assistantUnavailable")
                 }
             }
-            .navigationTitle(isPresentedAsSheet ? "Camping help" : "Assistant")
+            .navigationTitle(trip == nil ? "Assistant" : "Camping help")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if showsConversation {
@@ -62,9 +78,7 @@ struct AssistantView: View {
                         }.disabled(answering || exchanges.isEmpty)
                     }
                 }
-                if isPresentedAsSheet {
-                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
             .onAppear {
                 refreshAvailability()
@@ -103,7 +117,7 @@ struct AssistantView: View {
                         userMessage(exchange.question)
                         VStack(alignment: .leading, spacing: 10) {
                             Text(exchange.answer.text).textSelection(.enabled)
-                                .accessibilityIdentifier(exchange.answer.isGenerated ? "assistantGeneratedReply" : "assistantSavedReply")
+                                .accessibilityIdentifier("assistantGeneratedReply")
                             Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
@@ -156,7 +170,7 @@ struct AssistantView: View {
     private var composer: some View {
         VStack(spacing: 8) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("Message Assistant", text: $question, axis: .vertical)
+                TextField("Message Assistant", text: $conversation.question, axis: .vertical)
                     .lineLimit(1...6)
                     .disabled(answering)
                     .padding(.horizontal, 16).padding(.vertical, 12)
@@ -172,7 +186,7 @@ struct AssistantView: View {
                 .accessibilityLabel("Send message")
                 .accessibilityIdentifier("assistantSend")
             }
-            Text(trip == nil ? "On-device AI · Check advice against your manual" : CampingAssistant.availability)
+            Text("On-device AI · Check advice against your manual")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
@@ -181,7 +195,7 @@ struct AssistantView: View {
 
     private func refreshAvailability() {
         availability = CampingAssistant.globalAvailability
-        if trip == nil && !availability.showsConversation { cancelRequest() }
+        if !availability.showsConversation { cancelRequest() }
     }
 
     private func cancelRequest() {
