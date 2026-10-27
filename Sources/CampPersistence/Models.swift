@@ -94,7 +94,13 @@ public final class ChecklistStep {
     public var status: ChecklistStatus = ChecklistStatus.pending
     /// The owner's notes, separate from the generated guidance in `detail`.
     public var notes: String = ""
-    public var priority: ChecklistPriority = ChecklistPriority.none
+    // Lightweight migration leaves priority nil on steps saved before priorities existed.
+    // Keep the original column mapping and tolerate those missing values when reading drafts.
+    @Attribute(originalName: "priority") private var storedPriority: ChecklistPriority?
+    public var priority: ChecklistPriority {
+        get { storedPriority ?? .none }
+        set { storedPriority = newValue }
+    }
     public var phase: ChecklistPhase = ChecklistPhase.setup
     public var position: Int = 0
     public var trip: Trip?

@@ -22,6 +22,8 @@ The models live in `Sources/CampPersistence/Models.swift`:
 
 Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, and note versions; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
 
+Checklist priority uses a nullable persisted backing property mapped from the original `priority` attribute. Steps saved before priorities existed can have no stored value after lightweight migration; the public `priority` property reads these as None. Migration tests exercise the rig-default and trip-step draft reads used by Assistant Send, and preserve priorities written by the earlier model.
+
 The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, campground lists, and the document vault. Date, booking, site, and rig-detail rules live in `CampCore` (its `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested without SwiftData.
 
 Screens read with `@Query` and edit models directly; SwiftData saves automatically, and `LibraryController.save()` saves after each deliberate action so a failure is shown. Forms edit a draft (`TripDraft`, `RigDraft`, `ChecklistStepDraft`) so Cancel discards changes.
@@ -42,7 +44,7 @@ Apple manages synchronization conflicts and timing; this is eventual consistency
 
 ## Backup
 
-Profile › Prepare export writes a zip with `library.json`, `documents.json`, and each document's verified original file; trip photos are shared individually. Copying the store file alone is not a complete backup: its WAL and external files belong to it.
+Profile › Settings › Prepare export writes a zip with `library.json`, `documents.json`, and each document's verified original file; trip photos are shared individually. Copying the store file alone is not a complete backup: its WAL and external files belong to it.
 
 ## iCloud setup
 
@@ -50,13 +52,13 @@ The default build declares no entitlements and an empty `ROAMREADY_MIRRORING_CON
 
 1. Register the App ID, team, and a **new dedicated CloudKit container** for mirroring.
 2. Apply `Config/Cloud.xcconfig.example`, set the actual `ROAMREADY_MIRRORING_CONTAINER`, and use `Config/Cloud.entitlements` (CloudKit and WeatherKit). Enable iCloud (CloudKit), Push Notifications, and WeatherKit on the App ID. Let signing supply the appropriate `aps-environment`. `remote-notification` background mode is declared in Info.plist.
-3. Sync is on by default. The "Sync with iCloud" preference (onboarding and Profile) works offline and applies **on the next app launch**. The current session keeps its launch configuration, and the UI shows pending changes. Turning sync off does not delete local data or the iCloud copy. Validate preference changes and relaunches during large transfers on devices before release.
+3. Sync is on by default. The "Sync with iCloud" preference (onboarding and Settings) works offline and applies **on the next app launch**. The current session keeps its launch configuration, and the UI shows pending changes. Turning sync off does not delete local data or the iCloud copy. Validate preference changes and relaunches during large transfers on devices before release.
 4. Run a signed development build on Apple hardware so SwiftData creates the CloudKit schema in the Development environment, exercising every model (including documents). Inspect it in CloudKit Console and deploy it to Production before TestFlight. Do not mutate generated system fields.
 5. Test two devices, account transitions, offline operation, and large attachments before shipping.
 
 `ICloudSettings` passively observes mirroring events (`NSPersistentCloudKitContainer.eventChangedNotification`) to show the last successful activity and the last completed activity's error. A completed event means that activity completed, not that every device is up to date. The status never claims global delivery. No force-sync or account-retry button is exposed.
 
-The OS iCloud account supplies private CloudKit identity. SwiftData opens with the launch preference without an account or network preflight, and Apple handles account changes, connectivity, and retries while that same container stays open. There is no app-level identity pin, account notification handler, network-driven reopen, or account polling. Local data retention and cross-account behavior follow Apple's managed lifecycle and require device acceptance. Profile › Erase all data remains an explicit operation that deletes the CloudKit zone and everything local; see [erasing data](erase-data.md).
+The OS iCloud account supplies private CloudKit identity. SwiftData opens with the launch preference without an account or network preflight, and Apple handles account changes, connectivity, and retries while that same container stays open. There is no app-level identity pin, account notification handler, network-driven reopen, or account polling. Local data retention and cross-account behavior follow Apple's managed lifecycle and require device acceptance. Profile › Settings › Erase all data remains an explicit operation that deletes the CloudKit zone and everything local; see [erasing data](erase-data.md).
 
 ## Validation and outstanding release gates
 

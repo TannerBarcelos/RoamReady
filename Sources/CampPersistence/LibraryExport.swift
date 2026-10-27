@@ -3,7 +3,7 @@ import SwiftData
 import CampCore
 import DocumentVault
 
-/// Profile › Prepare export: a zip with `library.json` (profile, rigs and their defaults, trips with
+/// Profile › Settings › Prepare export: a zip with `library.json` (profile, rigs and their defaults, trips with
 /// their checklists and notes, saved campgrounds), `documents.json`, and `Documents/` holding each
 /// document's verified original file. End-to-end encrypted documents are exported readable: the
 /// archive is the user's own copy, outside iCloud's protection. Trip photos are shared individually.

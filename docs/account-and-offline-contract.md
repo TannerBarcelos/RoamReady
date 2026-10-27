@@ -22,7 +22,7 @@ Cancelling a trip deletes it. The confirmation names the trip and dates and stat
 
 Sign in with Apple was removed. With no server holding user data, no Android or web app, and no sharing between people, an account added sign-up friction, a required connection on first launch, a token-revocation backend (an earlier Cloudflare Worker, since deleted), and App Store account-deletion obligations (Guideline 5.1.1(v)), and protected nothing that the device passcode and iCloud don't already. Builds before this change kept the Apple user ID, name, and email in the Keychain and a pinned-owner file; both are deleted at launch.
 
-**Erase all data** (Profile) is the deletion path: it deletes the app's CloudKit zone (when sync is configured; needs a connection and a signed-in iCloud account), then the local stores, Media, caches, documents, and preferences, stopping and naming the step if one fails. Other devices using the same iCloud account stop syncing and keep their local copy until erased.
+**Erase all data** (Profile › Settings) is the deletion path: it deletes the app's CloudKit zone (when sync is configured; needs a connection and a signed-in iCloud account), then the local stores, Media, caches, documents, and preferences, stopping and naming the step if one fails. Other devices using the same iCloud account stop syncing and keep their local copy until erased.
 
 Revisit accounts when a feature needs a server-side identity: sharing trips between people, Android or web, or paid server features. v2's remote AI (#34) can identify a paying install by its StoreKit transaction and App Attest instead of a user account.
 
@@ -30,7 +30,7 @@ Revisit accounts when a feature needs a server-side identity: sharing trips betw
 
 SwiftData's CloudKit mirroring uses the device's iCloud account. Apple manages account availability and transitions, connectivity, scheduling, and retries. RoamReady does not fetch or pin a CloudKit user identifier, gate opening on account/network checks, or reopen the store after account or connectivity changes. Legacy identity pinning metadata is removed.
 
-Sync is on by default in configured builds. The onboarding/Profile preference can be changed offline and takes effect on the next app launch; the current session keeps its launch configuration. The UI explicitly shows pending changes. Turning sync off deletes neither local data nor an existing iCloud copy.
+Sync is on by default in configured builds. The onboarding/Settings preference can be changed offline and takes effect on the next app launch; the current session keeps its launch configuration. The UI explicitly shows pending changes. Turning sync off deletes neither local data nor an existing iCloud copy.
 
 iCloud sign-out/switch behavior, local data retention, and cross-account behavior follow Apple's managed lifecycle and still require signed, two-device acceptance. RoamReady does not provide a separate pinned-account isolation guarantee. Explicit full-library erase remains a user-requested deletion operation; it is not a sync recovery mechanism.
 

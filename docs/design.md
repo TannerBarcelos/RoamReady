@@ -4,21 +4,24 @@
 
 ## System-first direction
 
-RoamReady follows the approved **A · System-first** design. The interface uses native SwiftUI lists, forms, navigation stacks, and tab controls, with semantic colors and a default System appearance with device-local Light/Dark overrides in Profile. Standard navigation and tabs receive the operating system's Liquid Glass styling at the app's iOS 27 deployment target.
+RoamReady follows the approved **A · System-first** design. The interface uses native SwiftUI lists, forms, navigation stacks, and tab controls, with semantic colors and a default System appearance with device-local Light/Dark overrides in Settings. Standard navigation and tabs receive the operating system's Liquid Glass styling at the app's iOS 27 deployment target.
 
 The [approved visual reference](design-A.png) records the design direction. Current behavior and labels are defined by the SwiftUI source; the image is not a complete feature specification.
 
 ## Navigation and information hierarchy
 
-The root view shows onboarding when there is no profile, then five tabs (Trip opens the new-trip sheet). iPhone shows at most five tabs, so on supported AI devices Assistant opens as a sheet from an **Ask Assistant** bar above the tab bar (`tabViewBottomAccessory`), visible on every tab:
+The root view shows onboarding when there is no profile, then four tabs (Trip opens the new-trip sheet). On supported AI devices Assistant opens as a sheet from a circular sparkle button at the bottom right above the tab bar (a shared bottom safe-area accessory), visible on every tab:
 
 | Tab | Primary responsibility |
 | --- | --- |
 | Home | The current trip during its arrival/departure dates, checklist progress, memories, quick trip creation, and local temperature. Before arrival day it shows the next trip's countdown and setup checklist. |
-| Plan | Upcoming/past trips and their booking, checklist, weather, and memory details. |
+| Trip | Open the new-trip sheet while keeping the current tab selected. |
 | Camp Finder | Online campground/RV park map and search, place details, and saved lists. |
-| Assistant (toolbar sheet) | General camping troubleshooting and follow-up chat, without requiring a trip. Hidden on non-AI devices. |
-| Profile | Rig/profile settings, default lists, documents, storage/sync, and library management. |
+| Profile | Your profile, rig, default lists, documents, completed trip history, and saved campgrounds. The gear opens Settings for appearance, iCloud, export, and library maintenance. |
+
+Home keeps every current and upcoming trip accessible, including overlapping bookings. Completed trips are in Profile › Trip history, newest first.
+
+With no current or upcoming trip, Home uses a compact card with a short description and vertically stacked Add a trip and Find a campground buttons. Its height follows its content, keeping both actions together without the empty space of a full-height unavailable view.
 
 Trip details keep booking information together and link to setup/teardown, **Photos & site notes**, documents, and camping help. Forms group campground, rig, dates, optional site details, booking, timing, and cost so users can save a minimal trip before adding paperwork.
 
@@ -42,7 +45,7 @@ These patterns support the core use case: opening a saved trip at a campground w
 
 Onboarding asks for rig details without sign-up. Home weather and Camp Finder's Near me request location only when invoked, with approximate location supported. Text search and manual trip entry do not require location permission. PhotosPicker provides access to selected items; camera capture uses the system permission prompt. Document categories determine protection, so the user explicitly chooses one before saving.
 
-Sync is configured through the onboarding/Profile toggle, which works offline and explicitly shows that changes apply on the next app launch. Export copy explains that documents leave iCloud protection as readable originals. Full-library erase and trip deletion have separate confirmation flows. See the [identity contract](account-and-offline-contract.md) and [document vault](document-vault.md).
+Sync is configured through the onboarding/Settings toggle, which works offline and explicitly shows that changes apply on the next app launch. Export copy explains that documents leave iCloud protection as readable originals. Full-library erase and trip deletion have separate confirmation flows. See the [identity contract](account-and-offline-contract.md) and [document vault](document-vault.md).
 
 ## Accessibility and adaptive layout
 

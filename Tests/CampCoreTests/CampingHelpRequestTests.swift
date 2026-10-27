@@ -20,6 +20,48 @@ final class CampingHelpRequestTests: XCTestCase {
         XCTAssertTrue(request.instructions.contains("emergency services"))
     }
 
+    func testRoutineTankCleaningDoesNotReceiveAnEvacuationScript() {
+        let rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries", year: 2024, lengthFeet: 19.5)
+        let template = ChecklistFactory.template(for: rig)
+        let request = CampingHelpRequest(question: "How do I clean the black water tank after flushing on my RV?",
+                                        steps: template.setup + template.teardown, rigType: rig.type,
+                                        step: nil, scope: .general)
+        XCTAssertFalse(request.instructions.contains("move everyone away from the rig"),
+                       "A routine request must not carry a canned evacuation script into generation")
+        XCTAssertTrue(request.instructions.contains("routine maintenance"))
+    }
+
+    func testSavedRigDetailsReachTheInitialInstructionsWithoutRegistrationOrPhotos() {
+        let rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries", year: 2024,
+                           floorplan: "19.8", photo: Data("private photo".utf8),
+                           equipment: Equipment(slideOuts: true), lengthFeet: 23,
+                           slideCount: 1, axleCount: 2, hasBunkhouse: true,
+                           vin: "1HGCM82633A004352", licensePlate: "PRIVATE123", plateRegion: "SECRETREGION")
+        let request = CampingHelpRequest(question: "What rig and equipment do I have?", steps: [], rigType: rig.type,
+                                        step: nil, scope: .general, rigContext: CampingRigContext(rig))
+        let inputs = request.instructions + request.prompt + request.compactPrompt
+        for fact in ["Forest River", "No Boundaries", "2024", "19.8", "\"lengthFeet\":23", "\"slideCount\":1",
+                     "\"axleCount\":2", "\"hasBunkhouse\":true", "\"sewer\":true", "\"propane\":true"] {
+            XCTAssertTrue(request.instructions.contains(fact), "Initial model instructions must contain \(fact)")
+        }
+        for privateValue in [rig.vin, rig.licensePlate, rig.plateRegion, "private photo"] {
+            XCTAssertFalse(inputs.contains(privateValue))
+        }
+    }
+
+    func testRigContextIsBoundedAndAbsentValuesAreNotInvented() {
+        let rig = RigDraft(type: .tent, make: String(repeating: "x", count: 5000), equipment: .none,
+                           lengthFeet: .infinity)
+        let request = CampingHelpRequest(question: "What do I have?", steps: [], rigType: nil,
+                                        step: nil, scope: .general, rigContext: CampingRigContext(rig))
+        XCTAssertTrue(request.prompt.contains("Rig category: Tent"))
+        XCTAssertFalse(request.instructions.contains(String(repeating: "x", count: 101)))
+        XCTAssertFalse(request.instructions.contains("\"year\":"))
+        XCTAssertFalse(request.instructions.contains("\"lengthFeet\":"))
+        XCTAssertTrue(request.instructions.contains("\"sewer\":false"))
+        XCTAssertLessThan(request.instructions.count, 2500)
+    }
+
     func testFollowUpRetainsTopicAndSelectedStepTakesPriority() {
         let water = ChecklistStepDraft(title: "Fresh water", detail: "Check the supply setting")
         let power = ChecklistStepDraft(title: "Shore power", detail: "Use rated equipment")

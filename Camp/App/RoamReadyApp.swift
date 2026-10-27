@@ -62,7 +62,7 @@ struct RootView: View {
 }
 
 struct MainTabs: View {
-    enum Destination: Hashable { case home, plan, campFinder, newTrip, profile }
+    enum Destination: Hashable { case home, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
     @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
@@ -71,19 +71,11 @@ struct MainTabs: View {
     @State private var assistantConversation = AssistantConversation()
     var body: some View {
         TabView(selection: tabSelection) {
-            Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
-            Tab("Plan", systemImage: "calendar", value: .plan) { NavigationStack { PlanView() } }
+            Tab("Home", systemImage: "house", value: .home) { tabRoot { HomeView() } }
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
-            Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
-            Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
-        }
-        // iPhone shows five tabs at most, so Assistant lives in the bar above them instead of a sixth tab.
-        .tabViewBottomAccessory(isEnabled: showsAssistant) {
-            Button { askingAssistant = true } label: {
-                Label("Ask Assistant", systemImage: "sparkles").frame(maxWidth: .infinity)
-            }
-            .accessibilityIdentifier("openAssistant")
+            Tab("Camp Finder", systemImage: "map", value: .campFinder) { tabRoot { CampFinderView() } }
+            Tab("Profile", systemImage: "person.crop.circle", value: .profile) { tabRoot { ProfileView() } }
         }
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
@@ -92,6 +84,30 @@ struct MainTabs: View {
             if phase == .active { showsAssistant = CampingAssistant.showsChat }
         }
     }
+
+    private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        NavigationStack { content() }
+            // The tab content's safe area ends above the native tab bar. Keeping the accessory
+            // here lets its glass stay circular instead of the tab accessory's full-width capsule.
+            .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
+                if showsAssistant {
+                    Button { askingAssistant = true } label: {
+                        Image(systemName: "sparkles")
+                            .font(.title2.weight(.medium))
+                            .foregroundStyle(.tint)
+                            .frame(width: 52, height: 52)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: Circle())
+                    .accessibilityLabel("Ask Assistant")
+                    .accessibilityIdentifier("openAssistant")
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                }
+            }
+    }
+
     private var tabActions: MainTabActions {
         MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
     }

@@ -42,6 +42,23 @@ final class CampingGenerationTests: XCTestCase {
         XCTAssertTrue(generator.prompts[1].contains("How can I keep drinking water clean?"))
     }
 
+    @MainActor func testInitialGenerationAndOverflowRetryBothReceiveTheSavedRigProfile() async throws {
+        let rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries", year: 2024,
+                           floorplan: "19.8", lengthFeet: 23)
+        let request = CampingHelpRequest(question: "How do I clean the black water tank after flushing on my RV?",
+                                        steps: [], rigType: rig.type, step: nil, scope: .general,
+                                        rigContext: CampingRigContext(rig))
+        let generator = StubCampingGenerator([.failure(.contextTooLong), .success("Generated maintenance guidance.")])
+        _ = try await CampingGeneration.reply(to: request, using: generator)
+        XCTAssertEqual(generator.instructions.count, 2)
+        for instructions in generator.instructions {
+            XCTAssertTrue(instructions.contains("Forest River"))
+            XCTAssertTrue(instructions.contains("No Boundaries"))
+            XCTAssertTrue(instructions.contains("19.8"))
+            XCTAssertFalse(instructions.contains("move everyone away from the rig"))
+        }
+    }
+
     @MainActor func testSecondOverflowAndOtherErrorsReachTheUIInsteadOfFakeAnswers() async {
         for failure in [CampingChatFailure.contextTooLong, .unsupportedLanguage, .refused, .busy, .notReady, .failed] {
             let generator = StubCampingGenerator([.failure(failure), .failure(failure)])

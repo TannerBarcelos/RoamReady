@@ -41,7 +41,7 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 
 1. `RoamReadyApp` creates `LibraryController` and connectivity state, then opens the library.
 2. The library exposes a SwiftData model container. If opening fails, the root shows an error and retry.
-3. `RootView` queries for a profile, displaying onboarding or the five tabs; on supported AI devices Home and Plan add an Assistant toolbar button.
+3. `RootView` queries for a profile, displaying onboarding or four tabs: Home, Trip (add sheet), Camp Finder, and Profile. The shared circular Assistant accessory opens a sheet on supported AI devices. Home lists current/upcoming trips; Profile links to completed trip history and saved campgrounds, with app preferences and library tools in its Settings sheet.
 4. Screens read models with `@Query`. Forms edit drafts such as `TripDraft`, `RigDraft`, and `ChecklistStepDraft`, then validate and apply them.
 5. Model extensions enforce library rules. `LibraryController.save()` performs deliberate saves and surfaces failures; scene transitions also trigger saving.
 6. If configured and enabled at launch, Apple mirrors the library to the device's private CloudKit database and manages connectivity, retries, and account transitions.
@@ -77,7 +77,7 @@ Rig/trip photos are downsampled from picker file representations to at most 2560
 
 Documents preserve original bytes up to 50 MiB. Content is separate from list metadata and uses SwiftData external storage plus cloud-encrypted fields. Apple handles large-asset encryption and transfer; there are no new app encryption keys. Legacy encrypted files remain readable, and reads verify size and SHA-256. Import inspection and preview verification run off the UI thread. See [document vault](document-vault.md).
 
-Profile exports `RoamReady Export.zip`: `library.json`, `documents.json`, and verified original files under `Documents/`. Photo metadata/captions are included, not image bytes; photos are shared individually. Exported encrypted documents are readable originals. The export is an explicit user copy, not an implemented restore/import workflow.
+Profile › Settings exports `RoamReady Export.zip`: `library.json`, `documents.json`, and verified original files under `Documents/`. Photo metadata/captions are included, not image bytes; photos are shared individually. Exported encrypted documents are readable originals. The export is an explicit user copy, not an implemented restore/import workflow.
 
 ## Validation boundaries
 

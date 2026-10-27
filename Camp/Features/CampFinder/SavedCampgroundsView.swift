@@ -117,7 +117,7 @@ struct SavedCampgroundsView: View {
     }
 }
 
-/// Plan's link to the campground lists, with how many places they hold.
+/// Profile's link to the campground lists, with how many places they hold.
 struct YourCampgroundsLink: View {
     @Query private var saved: [SavedCampground]
     @Query private var trips: [Trip]

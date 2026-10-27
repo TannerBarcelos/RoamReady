@@ -14,19 +14,18 @@ RoamReady organizes camping trips and their checklists, paperwork, and memories.
 
 Your VIN and plate then appear in **Profile › Your rig**; press and hold to copy them into a booking or check-in form. Change them with **Edit rig**.
 
-If your build supports iCloud, onboarding and Profile offer **Sync with iCloud**. The preference starts on in configured builds. You can change it offline; changes take effect the next time you launch the app, and the current session's setting is shown until then. Apple manages reconnection and retries automatically. Turning it off deletes neither your local data nor an existing iCloud copy. The default development build has no configured container and saves locally. [Storage and sync](offline-storage.md) explains configured builds.
+If your build supports iCloud, onboarding and Profile → Settings offer **Sync with iCloud**. The preference starts on in configured builds. You can change it offline; changes take effect the next time you launch the app, and the current session's setting is shown until then. Apple manages reconnection and retries automatically. Turning it off deletes neither your local data nor an existing iCloud copy. The default development build has no configured container and saves locally. [Storage and sync](offline-storage.md) explains configured builds.
 
 ## Find your way around
 
 | Tab | Use it to |
 | --- | --- |
 | Home | Return to your current trip, see how long until your next one, review progress and memories, add a trip, or check local weather. |
-| Plan | Browse upcoming and past trips and open their booking details, checklists, and memories. |
+| Trip | Add a booking without leaving your selected tab. |
 | Camp Finder | Explore online campground listings and save places. |
-| Assistant | Ask general camping and troubleshooting questions, with follow-ups. Appears only on supported AI devices. |
-| Profile | Edit your rig/profile, manage checklist defaults and documents, view storage/sync status, export, or erase data. |
+| Profile | Edit your rig/profile, manage checklist defaults and documents, revisit Trip history and Your campgrounds, or open Settings with the gear. |
 
-Home shows the earliest-arriving active trip from arrival through the end of departure day in the campground’s time zone. It disappears when its dates end or you mark it complete; upcoming and past trips remain in Plan. Setup, teardown, and Photos & site notes open directly from Home.
+Home shows the earliest-arriving active trip from arrival through the end of departure day in the campground’s time zone. It disappears when its dates end or you mark it complete; other current and upcoming trips stay on Home. Completed trips move to **Profile → Trip history**, newest first. Setup, teardown, and Photos & site notes open directly from Home.
 
 ## Add and manage a trip
 
@@ -81,7 +80,7 @@ Apple Maps does not list every campground or provide site availability, hookups,
 
 Tap Home's weather reading to request location access and fetch local temperature. Trips with campground coordinates show forecasts. Offline readings are saved data; check their retrieval time. Live weather requires a build configured for WeatherKit.
 
-Tap **Ask Assistant** above the tab bar anytime for general camping or troubleshooting questions, including when you have no active trip. Follow up in the same conversation or choose **New chat** to start over. Closing the Assistant keeps the conversation for when you reopen it; it isn't saved once the app quits. The bar is hidden on devices that can’t run Apple Intelligence. Supported iPhones, iPads, and Macs still show it when Apple Intelligence needs enabling or its model is preparing. In those states, a native recovery screen replaces the conversation and composer; enable AI in Settings or wait for the model, then choose Try again. Availability also refreshes on foregrounding and while the screen is open.
+Tap the circular sparkle button at the bottom right above the tab bar anytime for general camping or troubleshooting questions, including when you have no active trip. Follow up in the same conversation or choose **New chat** to start over. Closing the Assistant keeps the conversation for when you reopen it; it isn't saved once the app quits. The button is hidden on devices that can’t run Apple Intelligence. Supported iPhones, iPads, and Macs still show it when Apple Intelligence needs enabling or its model is preparing. In those states, a native recovery screen replaces the conversation and composer; enable AI in Settings or wait for the model, then choose Try again. Availability also refreshes on foregrounding and while the screen is open.
 
 The text-only conversation has a message field and send button, with no file or image uploads. It stays while switching tabs, but is not saved across app launches or attached to a trip. The model receives a bounded recent conversation and relevant rig checklist guidance.
 
@@ -89,7 +88,7 @@ Use **Ask for camping help** from a trip or checklist for answers that draw on t
 
 ## Choose an appearance
 
-In **Profile → Appearance**, select **System**, **Light**, or **Dark**. System follows your device setting; the other choices stay fixed. The setting is saved on this device and works offline.
+In **Profile → Settings → Appearance**, select **System**, **Light**, or **Dark**. System follows your device setting; the other choices stay fixed. The setting is saved on this device and works offline.
 
 ## Change rigs
 
@@ -99,8 +98,8 @@ Only one rig can be active in v1. Open **Archived rigs** to reactivate one withi
 
 ## Export or delete data
 
-**Profile → Prepare export** creates a zip containing library metadata and verified original document files. Encrypted documents are readable in the export, so store it privately. Photo bytes are not included; share trip photos individually. Review missing-file statuses before relying on the archive. There is no in-app restore workflow.
+**Profile → Settings → Prepare export** creates a zip containing library metadata and verified original document files. Encrypted documents are readable in the export, so store it privately. Photo bytes are not included; share trip photos individually. Review missing-file statuses before relying on the archive. There is no in-app restore workflow.
 
 **Cancel & delete trip** permanently removes its checklists/progress, notes/history, trip photos/captions, and site rating after confirmation. Its documents are kept as unattached, and its rig/defaults and original library photos remain. Cancel the actual reservation separately with its provider.
 
-**Profile → Erase all data** removes the app's library and, in a configured build, its iCloud zone. Read the confirmation carefully; the cloud step requires connectivity and the signed-in iCloud account, even if sync is currently off. Other devices retain their local copies until erased there. See [erasing data](erase-data.md) for the exact process and limits.
+**Profile → Settings → Erase all data** removes the app's library and, in a configured build, its iCloud zone. Read the confirmation carefully; the cloud step requires connectivity and the signed-in iCloud account, even if sync is currently off. Other devices retain their local copies until erased there. See [erasing data](erase-data.md) for the exact process and limits.

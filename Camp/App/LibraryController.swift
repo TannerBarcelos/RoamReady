@@ -17,6 +17,13 @@ final class LibraryController {
     func open() {
         guard container == nil else { return }
         do {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-navigation-ui-test") {
+                container = try NavigationUITestLibrary.make()
+                openFailure = nil
+                return
+            }
+            #endif
             try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true,
                                                     attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
             container = try LibraryStore.container(at: Self.directory.appending(path: "RoamReady.store"), cloudKitContainer: iCloud.containerForSession)

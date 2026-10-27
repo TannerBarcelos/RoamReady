@@ -72,7 +72,7 @@ public extension TripDetails {
     func isCompleted(asOf now: Date = Date()) -> Bool { completedAt != nil || endedByDate(asOf: now) }
 
     /// Home's current trip: includes the entire arrival and departure days at the campground.
-    /// Future, ended, invalid, and manually completed trips remain in Plan instead.
+    /// Home lists other unfinished trips; completed trips live in Profile's trip history.
     func isActive(asOf now: Date = Date()) -> Bool {
         guard completedAt == nil, departure >= arrival, let window = forecastDayWindow else { return false }
         return window.contains(campgroundCalendar.startOfDay(for: now))

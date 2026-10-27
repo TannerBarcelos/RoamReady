@@ -7,6 +7,69 @@ import DocumentVault
 
 @MainActor
 struct AttachmentMigrationTests {
+    @Test func prioritiesWrittenByThePreviousModelSurviveMigration() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appending(path: "Library.store")
+        do {
+            let old = try ModelContainer(for: PriorityChecklistSchema.ChecklistStep.self,
+                configurations: ModelConfiguration(url: url, cloudKitDatabase: .none))
+            for priority in ChecklistPriority.allCases {
+                let step = PriorityChecklistSchema.ChecklistStep()
+                step.title = priority.rawValue; step.priority = priority
+                step.notes = "Keep these notes"
+                old.mainContext.insert(step)
+            }
+            try old.mainContext.save()
+        }
+        let migrated = try LibraryStore.container(at: url, cloudKitContainer: nil)
+        let steps = try migrated.mainContext.fetch(FetchDescriptor<ChecklistStep>())
+        #expect(steps.count == ChecklistPriority.allCases.count)
+        for step in steps {
+            #expect(step.priority.rawValue == step.title)
+            #expect(step.draft.notes == "Keep these notes")
+        }
+    }
+
+    @Test func assistantContextLoadsRigDefaultsAndTripStepsFromAnOlderLibrary() throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appending(path: "Library.store")
+        do {
+            let old = try ModelContainer(for: LegacyLibrarySchema.schema,
+                configurations: ModelConfiguration(url: url, cloudKitDatabase: .none))
+            let context = old.mainContext
+            let rig = LegacyLibrarySchema.Rig(); context.insert(rig)
+            let trip = LegacyLibrarySchema.Trip(); trip.rig = rig; context.insert(trip)
+            let defaultStep = LegacyLibrarySchema.ChecklistStep()
+            defaultStep.title = "Chock the wheels"; defaultStep.rig = rig; context.insert(defaultStep)
+            let tripStep = LegacyLibrarySchema.ChecklistStep()
+            tripStep.title = "Disconnect shore power"; tripStep.phase = .teardown
+            tripStep.trip = trip; context.insert(tripStep)
+            try context.save()
+        }
+        do {
+            let migrated = try LibraryStore.container(at: url, cloudKitContainer: nil)
+            let context = migrated.mainContext
+            let rig = try #require(try context.activeRigs().first)
+            let trip = try #require(try context.fetch(FetchDescriptor<Trip>()).first)
+            // These are the same draft reads AssistantView.ask() makes before generation.
+            let generalContext = rig.defaultTemplate.setup + rig.defaultTemplate.teardown
+            let tripContext = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
+            #expect(generalContext == [ChecklistStepDraft(title: "Chock the wheels", section: "")])
+            #expect(tripContext == [ChecklistStepDraft(title: "Disconnect shore power", section: "")])
+            trip.steps(.teardown)[0].priority = .high
+            try context.save()
+        }
+        let reopened = try LibraryStore.container(at: url, cloudKitContainer: nil)
+        let trip = try #require(try reopened.mainContext.fetch(FetchDescriptor<Trip>()).first)
+        #expect(trip.steps(.teardown)[0].draft.priority == .high)
+        let rig = try #require(try reopened.mainContext.activeRigs().first)
+        #expect(rig.defaultTemplate.setup.first?.priority == ChecklistPriority.none)
+    }
+
     @Test func anExistingStoreMigratesWithoutLosingPhotosOrEncryptedDocuments() throws {
         let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -56,5 +119,21 @@ struct AttachmentMigrationTests {
         try context.save()
         #expect(document.content?.key == nil && document.content?.bytes == nil)
         #expect(try document.contents() == large)
+    }
+}
+
+/// The persisted priority field before the nullable backing property. Only the checklist entity
+/// is needed here: this fixture checks that migration retains every previously written enum case.
+private enum PriorityChecklistSchema {
+    @Model final class ChecklistStep {
+        var title: String = ""
+        var detail: String = ""
+        var section: String = ""
+        var status: ChecklistStatus = ChecklistStatus.pending
+        var notes: String = ""
+        var priority: ChecklistPriority = ChecklistPriority.none
+        var phase: ChecklistPhase = ChecklistPhase.setup
+        var position: Int = 0
+        init() {}
     }
 }

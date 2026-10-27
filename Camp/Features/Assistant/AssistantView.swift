@@ -81,7 +81,11 @@ struct AssistantView: View {
                     }
                 }
                 if isPresentedAsSheet {
-                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close Assistant", systemImage: "xmark") { dismiss() }
+                            .labelStyle(.iconOnly)
+                            .accessibilityIdentifier("closeAssistant")
+                    }
                 }
             }
             .onAppear {
@@ -214,6 +218,7 @@ struct AssistantView: View {
         guard canSend else { return }
         let submitted = chat.question.trimmingCharacters(in: .whitespacesAndNewlines)
         let rig = trip == nil ? rigs.active.first : trip?.rig
+        let rigContext = rig.map { CampingRigContext($0) }
         let steps: [ChecklistStepDraft]
         if let trip {
             steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
@@ -230,7 +235,7 @@ struct AssistantView: View {
             do {
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
-                                                       history: history)
+                                                       history: history, rigContext: rigContext)
                 guard !Task.isCancelled else { return }
                 refreshAvailability()
                 guard !Task.isCancelled, showsConversation else { return }

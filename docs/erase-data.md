@@ -2,7 +2,7 @@
 
 [Documentation index](README.md)
 
-RoamReady has no accounts (see [identity contract](account-and-offline-contract.md)), so there is no account to delete and App Store Guideline 5.1.1(v) doesn't apply. The owner can still remove everything: Profile › **Erase all data** (`EraseDataView`, `LibraryErase`).
+RoamReady has no accounts (see [identity contract](account-and-offline-contract.md)), so there is no account to delete and App Store Guideline 5.1.1(v) doesn't apply. The owner can still remove everything: Profile › Settings › **Erase all data** (`EraseDataView`, `LibraryErase`).
 
 1. The screen lists everything that is erased; the owner turns on "I understand this can't be undone" and confirms.
 2. **iCloud**: when the build syncs (a container is configured), SwiftData's mirroring zone (`com.apple.coredata.cloudkit.zone`) is deleted from the app's private CloudKit database. This needs a connection and a signed-in iCloud account; without them the flow stops before anything is erased. Builds without a container skip this step, so erasing works offline.

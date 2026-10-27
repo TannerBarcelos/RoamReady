@@ -82,10 +82,11 @@ enum CampingAssistant {
     /// Trip and checklist help pass their matching saved steps as context; general chat uses the active rig's.
     /// Model failures reach the UI as retryable errors rather than being replaced with saved text.
     static func answer(question: String, steps candidates: [ChecklistStepDraft], rigType: RigType?, step: ChecklistStepDraft?,
-                       scope: CampingHelpRequest.Scope = .checklist, history: [CampingChatTurn] = []) async throws -> CampingAnswer {
+                       scope: CampingHelpRequest.Scope = .checklist, history: [CampingChatTurn] = [],
+                       rigContext: CampingRigContext? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType,
-                                         step: step, scope: scope, history: history)
+                                         step: step, scope: scope, history: history, rigContext: rigContext)
         let text: String
         do {
             #if DEBUG

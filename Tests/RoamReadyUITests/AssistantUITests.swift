@@ -19,6 +19,8 @@ final class AssistantUITests: XCTestCase {
     func testTabBarFitsWithoutMore() {
         let app = launch("ready")
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.tabBars.buttons.count, 4)
+        XCTAssertFalse(app.tabBars.buttons["Plan"].exists)
         XCTAssertTrue(app.tabBars.buttons["Profile"].exists, "Profile must not be pushed into a More tab")
         XCTAssertFalse(app.tabBars.buttons["More"].exists)
     }
@@ -60,7 +62,7 @@ final class AssistantUITests: XCTestCase {
         input.typeText("How do I keep drinking water clean?")
         app.buttons["assistantSend"].tap()
         XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
-        app.buttons["Done"].tap()
+        app.buttons["closeAssistant"].tap()
         openAssistant(app)
         XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 5), "Reopening keeps the chat")
     }

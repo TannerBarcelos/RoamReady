@@ -13,6 +13,10 @@ struct HomeView: View {
     private var currentTrip: Trip? { trips.first { $0.isActive(asOf: now) } }
     /// Trips whose arrival day is still ahead, soonest first.
     private var upcomingTrips: [Trip] { trips.filter { $0.daysUntilArrival(asOf: now) != nil } }
+    private var otherTrips: [Trip] {
+        let featured = currentTrip ?? upcomingTrips.first
+        return trips.filter { !$0.isCompleted(asOf: now) && $0.persistentModelID != featured?.persistentModelID }
+    }
 
     var body: some View {
         List {
@@ -76,18 +80,39 @@ struct HomeView: View {
                 } header: { Text("Next trip") } footer: {
                     Text("On arrival day, Home switches to your live trip with checklist progress and photos.")
                 }
-                let later = upcomingTrips.dropFirst()
-                if !later.isEmpty { Section("Later") { ForEach(Array(later)) { TripRow(trip: $0) } } }
             } else {
-                ContentUnavailableView {
-                    Label { Text(trips.isEmpty ? "Plan your first trip" : "Plan your next trip") } icon: {
-                        Image(systemName: "tent.2").foregroundStyle(.tint)
+                VStack(spacing: 20) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "tent.2")
+                            .font(.largeTitle)
+                            .foregroundStyle(.tint)
+                            .accessibilityHidden(true)
+                        Text(trips.isEmpty ? "Plan your first trip" : "Plan your next trip")
+                            .font(.headline)
+                        Text("Add a booking for offline checklists, or find your next campground.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                } description: {
-                    Text("Add a reservation and RoamReady builds setup and teardown checklists for your \(rigs.active.first?.type.title.lowercased() ?? "rig"). They work offline at the campground.")
-                } actions: {
-                    Button("Add a trip", systemImage: "plus", action: tabActions.addTrip).buttonStyle(.borderedProminent)
-                    Button("Find a campground", action: tabActions.showCampFinder).buttonStyle(.bordered)
+                    VStack(spacing: 10) {
+                        Button(action: tabActions.addTrip) {
+                            Label("Add a trip", systemImage: "plus")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        Button(action: tabActions.showCampFinder) {
+                            Text("Find a campground").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .controlSize(.large)
+                }
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+            }
+            if !otherTrips.isEmpty {
+                Section(currentTrip == nil ? "Later" : "More trips") {
+                    ForEach(otherTrips) { TripRow(trip: $0) }
                 }
             }
         }
