@@ -32,7 +32,7 @@ The native app links these local products and Apple frameworks. There are no non
 | [Tests/](../Tests/) | One test target per package module. |
 | [RoamReady.xcodeproj/](../RoamReady.xcodeproj/) | Native app project and shared RoamReady scheme. |
 | [Config/](../Config/) | Optional signed-build capability configuration. |
-| [.github/workflows/ci.yml](../.github/workflows/ci.yml) | Package tests, configuration checks, Debug/Release simulator builds, and UI tests on macOS. |
+| [.github/workflows/](../.github/workflows/) | `ios.yml` and `ipad.yml`: simulator builds and UI tests per device family, via `simulator.yml`; the iOS run adds configuration checks and a Release build. `mac.yml`: package tests on macOS. |
 | [docs/](./) | Product, design, engineering, validation, and planning guides. |
 
 The Xcode project uses filesystem-synchronized groups: new source files under `Camp/` join the app target automatically. `Info.plist` and entitlements are excluded from resource copying.

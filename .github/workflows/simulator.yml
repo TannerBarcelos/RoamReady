@@ -1,22 +1,25 @@
-name: CI
+name: Simulator build and test
+# Shared by the iOS and iPad workflows: builds the app and runs its UI tests on one simulator.
 on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      device:
+        description: Simulator name prefix, such as iPhone or iPad.
+        required: true
+        type: string
+      release-build:
+        description: Also build Release and check the app's configuration. The binary is universal, so one platform does this.
+        default: false
+        type: boolean
 permissions:
   contents: read
-# A newer push to the same branch or PR replaces a run that is still going.
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
 env:
   PROJECT: RoamReady.xcodeproj
   SCHEME: RoamReady
   DERIVED_DATA: .derivedData
 jobs:
   build-and-test:
-    name: Build and test
+    name: Build and test (${{ inputs.device }})
     # The Xcode 27 image (macOS 27, Apple silicon).
     runs-on: xcode-27
     timeout-minutes: 45
@@ -33,25 +36,20 @@ jobs:
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
-          path: |
-            .build
-            .derivedData/SourcePackages
-          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
-          restore-keys: spm-${{ runner.os }}-
+          path: .derivedData/SourcePackages
+          key: spm-xcode-${{ hashFiles('Package.resolved') }}
+          restore-keys: spm-xcode-
 
       - name: Resolve package dependencies
         run: xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME" -derivedDataPath "$DERIVED_DATA"
 
       - name: Lint project, privacy, and Apple capabilities
+        if: inputs.release-build
         run: |
           plutil -lint "$PROJECT/project.pbxproj" Camp/Info.plist Camp/Camp.entitlements Camp/PrivacyInfo.xcprivacy Config/Cloud.entitlements
           test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.weatherkit' Config/Cloud.entitlements)" = true
           test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-services:0' Config/Cloud.entitlements)" = CloudKit
           /usr/libexec/PlistBuddy -c 'Print :NSLocationWhenInUseUsageDescription' Camp/Info.plist > /dev/null
-
-      - name: Unit tests
-        # The packages' tests (including SwiftData against real stores) aren't in the app scheme, so SwiftPM runs them.
-        run: swift test --parallel
 
       - name: Build for testing (Debug)
         run: |
@@ -60,17 +58,21 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Build Release
+        if: inputs.release-build
         # Catches optimizer-only failures and code behind #if DEBUG.
         run: |
           xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Boot the Simulator and warm up the app's first launch
+      - name: Boot the ${{ inputs.device }} Simulator and warm up the app's first launch
         # A cold Simulator can make the first UI test's launch exceed Xcode's launch timeout,
         # so finish booting and pay for the first install and launch before testing.
+        env:
+          DEVICE: ${{ inputs.device }}
         run: |
-          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith("iPhone")))')"
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, os, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith(os.environ["DEVICE"])))')"
+          echo "Using $(xcrun simctl list devices | grep "$SIMULATOR_ID")"
           echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
           xcrun simctl bootstatus "$SIMULATOR_ID" -b
           xcrun simctl install "$SIMULATOR_ID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/RoamReady.app"
@@ -88,7 +90,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: TestResults
+          name: TestResults-${{ inputs.device }}
           path: TestResults.xcresult
           if-no-files-found: ignore
 
