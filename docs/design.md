@@ -27,6 +27,7 @@ Trip details keep booking information together and link to setup/teardown, **Pho
 - Use standard list/form controls and system sheets for editing, document preview, camera/photo import, and sharing.
 - Edit drafts in forms so **Cancel** discards edits before save.
 - Keep checklist progress visible and make complete, skip, reorder, and customization actions available near the relevant steps.
+- Lay out checklist steps like Reminders: priority as `!`–`!!!` in the accent color before the title, the owner's notes in secondary text under it (two lines at most), then the section.
 - Keep optional booking/site fields optional; show length warnings near site details.
 - Explain permanent deletion before confirming it, including what is deleted and what is kept.
 - Distinguish a local save from cloud delivery and show save failures with retry.
@@ -53,7 +54,7 @@ Release acceptance must still verify large text, VoiceOver labels and order, red
 
 Three native form screens introduce the setup, collect rig details, and personalize the library. The welcome uses an SF Symbols campsite illustration and full-width rig choices with explicit selection indicators. A persistent bottom action and labeled step progress keep the next action visible. Each stage opens at the top; transitions respect Reduce Motion. Semantic colors, system typography, and standard navigation/materials follow the system appearance.
 
-Required RV details stay enforced; tent and car camping can continue without them. The last screen previews the saved rig and prepared checklists. Name, documents, and configured iCloud preferences remain optional; documents and sync follow rig creation so the first choice stays focused. No permission prompts or account are required to begin. Rig and profile writes must succeed before advancing; failed profile insertion is removed so setup can be retried.
+Required RV details stay enforced; tent and car camping can continue without them. Registration (VIN, plate, state or province) is optional, hidden for tents, and reports its own problem in place of the required-details hint. The last screen previews the saved rig and prepared checklists. Name, documents, and configured iCloud preferences remain optional; documents and sync follow rig creation so the first choice stays focused. No permission prompts or account are required to begin. Rig and profile writes must succeed before advancing; failed profile insertion is removed so setup can be retried.
 
 Before release, check all eight rig types, back navigation without losing draft details, interrupted setup/relaunch, save failures, optional document/photo import, keyboard dismissal, large text, VoiceOver selection/progress, reduced motion/transparency, landscape/iPad, and light/dark appearance on an iOS 27 device or simulator. The illustrated flow has not been visually verified in the Linux workspace.
 

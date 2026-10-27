@@ -10,6 +10,16 @@ First launch goes directly to rig/profile onboarding without an account or conne
 
 RVs require year, make, model, and length. Optional details include slide-out count (Not specified, None, or 1–8), axles for towables, bunkhouse, and floorplan. Details are owner-entered; there is no rig catalog. Older profiles without a length can still open, and their next edit requests the required fields.
 
+Every rig type except a tent has an optional **Registration** section, in onboarding and in Add, Edit, and Replace rig: VIN, license plate, and state or province.
+
+| Field | Rule |
+| --- | --- |
+| VIN | Saved in uppercase with spaces and dashes removed. A rig from 1981 or later, or with no year entered, needs the standard 17 letters and digits without I, O, or Q. A rig with an earlier year accepts 1–17 letters and digits, because older vehicles used shorter manufacturer serials. The check digit isn't verified; only North American VINs require it. |
+| License plate | Saved in uppercase with extra spaces collapsed; up to 12 characters. |
+| State or province | Free text, trimmed. |
+
+A VIN or plate problem appears under Registration and blocks saving. Changing the rig type clears registration with the other type-specific details. Profile › Your rig shows the plate and VIN as selectable text, so they can be copied into a booking or check-in form. Registration is stored in cloud-encrypted fields and included in the export. A scan of the registration card belongs in the rig's **Manuals & paperwork**.
+
 There is one active rig per owner, controlled by `RigPolicy.maxActiveRigs`. Editing a rig updates every trip that references it. **Replace rig** archives the current rig so past trips retain it. An archived rig can be reactivated within the active-rig limit or deleted when no trip uses it.
 
 ## Home and trip planning
@@ -37,7 +47,17 @@ Trips complete the day after departure and can also be marked complete manually.
 
 Each rig has default setup and teardown lists. A new trip receives fresh copies of its rig's defaults and keeps independent progress and edits afterward.
 
-Steps can be completed, unchecked, skipped, added, renamed, annotated, deleted, and reordered. **Save as defaults for <rig>** requires confirmation and writes that trip's lists to its own rig. Resetting rig defaults regenerates them from the rig type; existing trips retain their lists.
+Steps can be completed, unchecked, skipped, added, renamed, deleted, and reordered.
+
+Each step also has a **priority** and **notes**, as in Apple Reminders:
+
+- **Priority** is None, Low, Medium, or High. The list shows it as `!`, `!!`, or `!!!` before the step's title.
+- **Notes** are your own text, shown in up to two lines under the title. They are kept apart from the step's **Guidance**, the generated advice, so editing one never touches the other.
+- Generated steps start with no priority and no notes.
+
+**Save as defaults for <rig>** requires confirmation and writes that trip's lists to its own rig, priorities and notes included; only progress resets. New trips copy priorities and notes from the defaults, which Profile › **Default checklists** edits the same way, and each trip then owns its copy. Resetting rig defaults regenerates them from the rig type, dropping custom priorities and notes; existing trips keep their lists.
+
+Checklist help sends a step's notes to the on-device model, labeled as your notes, along with its guidance. Notes can also match a question on their own.
 
 Checklist wording is original, with the [Camping World setup and teardown article](https://blog.campingworld.com/learn-to-rv/rv-setup-checklist/) used as background reference. It is not a licensed reproduction or endorsement. Equipment-specific procedures and ordering remain subject to the rig manufacturer's manuals.
 
@@ -85,7 +105,7 @@ Profile offers **System** (the default), **Light**, and **Dark**. The choice app
 
 ## Profile and library management
 
-Edit profile and rig details offline, manage archived rigs and per-rig checklist defaults, view storage/sync status, access unattached documents, prepare an export, or erase all data.
+Edit profile and rig details (including registration) offline, manage archived rigs and per-rig checklist defaults, view storage/sync status, access unattached documents, prepare an export, or erase all data.
 
 SwiftData stores the library locally. When a dedicated CloudKit container is configured, private iCloud mirroring is on by default. Apple manages connectivity, account transitions, scheduling, and retries. The onboarding/Profile toggle works offline and takes effect on the next app launch, with pending changes shown explicitly; turning it off deletes neither local nor cloud data. The default unconfigured build stays local-only. See [storage and sync](offline-storage.md) and [erasing data](erase-data.md).
 

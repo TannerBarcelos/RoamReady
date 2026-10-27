@@ -39,24 +39,24 @@ Derived data is written to `.derivedData/`. The shared scheme runs the app and i
 
 ## Test coverage and CI
 
-The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
+The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, migrating an older store, and the export.
 
 | Suite | Coverage |
 | --- | --- |
-| `CampCoreTests` | Rig policy/required details, trip dates/bookings, site details, checklist generation, campground identities, Assistant availability states and requests, and time-zone/DST forecast dates. |
+| `CampCoreTests` | Rig policy/required details, VIN and plate normalization/validation, step priority/notes, trip dates/bookings, site details, checklist generation, campground identities, Assistant availability states and requests, and time-zone/DST forecast dates. |
 | `CampgroundsTests` | Camp Finder place models, website/phone links, cleaned search text, and unique nearest-first result merging. |
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
-| `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
+| `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
 Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator and Mac Catalyst with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. It also runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
-1. In airplane mode on a fresh install, complete rig/profile onboarding, including an emoji or photo, and add the initial trip. No account or connection is required.
-2. Plan a trip, inspect both checklists, change their order, complete a step, skip a step, and add a custom step.
+1. In airplane mode on a fresh install, complete rig/profile onboarding, including an emoji or photo and a VIN and plate, and add the initial trip. No account or connection is required. Check that an invalid VIN blocks Continue with its own message.
+2. Plan a trip, inspect both checklists, change their order, complete a step, skip a step, and add a custom step. Give one step a High priority and notes; confirm `!!!` and the notes show in the list.
 3. Create a second trip; confirm it has fresh progress and that editing it does not change the first trip.
 4. Save a site number, rating, notes, and locally available photos. Force-quit and relaunch in airplane mode, then check everything again.
-5. Change reusable checklist defaults and create another trip. Confirm the new trip uses the changed defaults and previous trips retain their snapshots.
+5. Change reusable checklist defaults and create another trip. Confirm the new trip uses the changed defaults, including their priorities and notes, and previous trips retain their snapshots.
 6. Test app relaunch and save retry after simulated disk-write failures. The app must surface the failure instead of claiming changes are durable.
 7. Check large text, VoiceOver, reduced motion/transparency, light/dark mode, rotation, and iPad split view. Check list controls remain usable outdoors and with long campground names.
 8. Check supported and unsupported on-device AI states, and cached weather timestamps when offline. A network request must never block checklist editing.

@@ -6,7 +6,7 @@
 
 v1 stores owner-entered rigs; it does not ship or query a rig catalog. RV makes, models, years, and floorplans number in the tens of thousands, and the investigated free sources did not cover them adequately. Manual entry avoids presenting a partial catalog as complete.
 
-Rig details are stored as SwiftData `Rig` models and referenced by trips. RV year, make, model, and length are required; older profiles without a length still open and request missing fields on their next edit. A licensed or permitted catalog lookup is post-v1 (#29); earlier rig-source research remains in git history.
+Rig details are stored as SwiftData `Rig` models and referenced by trips. RV year, make, model, and length are required; older profiles without a length still open and request missing fields on their next edit. The optional VIN is checked only for its format; it is never decoded or looked up, so it never fills in make, model, or year. A licensed or permitted catalog lookup is post-v1 (#29); earlier rig-source research remains in git history.
 
 ## Current campground source
 

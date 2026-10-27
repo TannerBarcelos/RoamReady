@@ -8,8 +8,11 @@ RoamReady organizes camping trips and their checklists, paperwork, and memories.
 
 1. On first launch, choose your rig category and confirm its equipment.
 2. For an RV, enter year, make, model, and length. Add optional details such as slide-outs or floorplan if useful.
-3. Choose a rig photo or emoji and optionally add your name and experience level.
-4. Complete onboarding. No account or internet connection is needed.
+3. Optionally, fill in **Registration**: VIN, license plate, and state or province. A VIN from 1981 on is 17 characters. Type it however it's printed; spaces, dashes, and lowercase are cleaned up. Tents skip this section.
+4. Choose a rig photo or emoji and optionally add your name and experience level.
+5. Complete onboarding. No account or internet connection is needed.
+
+Your VIN and plate then appear in **Profile › Your rig**; press and hold to copy them into a booking or check-in form. Change them with **Edit rig**.
 
 If your build supports iCloud, onboarding and Profile offer **Sync with iCloud**. The preference starts on in configured builds. You can change it offline; changes take effect the next time you launch the app, and the current session's setting is shown until then. Apple manages reconnection and retries automatically. Turning it off deletes neither your local data nor an existing iCloud copy. The default development build has no configured container and saves locally. [Storage and sync](offline-storage.md) explains configured builds.
 
@@ -40,7 +43,9 @@ Trips become complete after departure; you can also choose **Mark trip complete*
 
 ## Use and customize checklists
 
-Open a trip's **Setup** or **Teardown** checklist. Complete, uncheck, or skip steps as you go; add, rename, annotate, delete, or reorder them to suit the trip.
+Open a trip's **Setup** or **Teardown** checklist. Complete, uncheck, or skip steps as you go; add, rename, delete, or reorder them to suit the trip.
+
+Tap a step's info button to set its **Priority** (None, Low, Medium, or High) and add **Notes**, as in Reminders. The list shows `!` to `!!!` before the title and your notes under it. Notes are separate from the step's **Guidance**. Saving a trip's lists as defaults keeps their priorities and notes, so the next trip starts with them.
 
 Trip edits do not change other trips or the rig's defaults. To reuse a trip's customized lists, choose **Save as defaults for <rig>** and confirm. In Profile, **Default checklists** edits a rig's reusable lists, and **Reset default checklists** regenerates them from its rig type. Existing trips keep their copies.
 

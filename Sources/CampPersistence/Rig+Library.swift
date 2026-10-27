@@ -12,7 +12,8 @@ public extension Rig {
 
     var draft: RigDraft {
         RigDraft(type: type, make: make, model: model, year: year, floorplan: floorplan, emoji: emoji, photo: photoData,
-                 equipment: equipment, lengthFeet: lengthFeet, slideCount: slideCount, axleCount: axleCount, hasBunkhouse: hasBunkhouse)
+                 equipment: equipment, lengthFeet: lengthFeet, slideCount: slideCount, axleCount: axleCount, hasBunkhouse: hasBunkhouse,
+                 vin: vin, licensePlate: licensePlate, plateRegion: plateRegion)
     }
 
     /// Adds an active rig with default lists generated from its type.
@@ -83,21 +84,24 @@ public extension Rig {
     func resetDefaults() { setDefaults(ChecklistFactory.template(for: self)) }
 
     private func apply(_ draft: RigDraft) {
+        let draft = draft.normalized
         type = draft.type; make = draft.make; model = draft.model; year = draft.year
         floorplan = draft.floorplan; emoji = draft.emoji; protectedPhoto = draft.photo; photo = nil; equipment = draft.equipment
         lengthFeet = draft.lengthFeet; slideCount = draft.slideCount; axleCount = draft.axleCount
         hasBunkhouse = draft.hasBunkhouse
+        vin = draft.vin; licensePlate = draft.licensePlate; plateRegion = draft.plateRegion
     }
 }
 
 public extension ChecklistStep {
     var draft: ChecklistStepDraft {
-        ChecklistStepDraft(title: title, detail: detail, section: section, status: status)
+        ChecklistStepDraft(title: title, detail: detail, section: section, status: status, notes: notes, priority: priority)
     }
 
     func apply(_ draft: ChecklistStepDraft) {
         title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         detail = draft.detail; section = draft.section; status = draft.status
+        notes = draft.notes; priority = draft.priority
     }
 
     var isFinished: Bool { status != .pending }

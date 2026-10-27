@@ -26,6 +26,13 @@ struct RigsSection: View {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(rig.displayName).font(.headline)
                         if !rig.detailSummary.isEmpty { Text(rig.detailSummary).font(.caption).foregroundStyle(.secondary) }
+                        // Selectable so the plate or VIN can be copied into a booking or check-in form.
+                        if !rig.plateSummary.isEmpty {
+                            Text("Plate \(rig.plateSummary)").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                        }
+                        if !rig.vin.isEmpty {
+                            Text("VIN \(rig.vin)").font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                        }
                         Text("Used by \(rig.activeTrips.count) trips").font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 6)

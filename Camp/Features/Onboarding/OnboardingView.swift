@@ -139,7 +139,9 @@ struct OnboardingView: View {
                     .disabled(step == 1 && !draft.hasRequiredDetails)
                     .buttonStyle(.borderedProminent).controlSize(.large)
                     if step == 1 && !draft.hasRequiredDetails {
-                        Text("Add year, make, model, and length to continue.")
+                        // Only a VIN or plate problem replaces the usual hint; it's the one left to fix.
+                        Text(draft.detailsProblem == draft.registrationProblem ? draft.registrationProblem ?? ""
+                             : "Add year, make, model, and length to continue.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -226,7 +228,8 @@ struct RigFormSections: View {
                 }
             } header: { Text("Rig details") } footer: {
                 if rig.type.isRV {
-                    if let problem = rig.visibleDetailsProblem {
+                    // A VIN or plate problem shows under Registration instead.
+                    if let problem = rig.visibleDetailsProblem, problem != rig.registrationProblem {
                         Text(problem).foregroundStyle(.red)
                     } else {
                         Text("Year, make, model, and length are required. Use the overall length from your owner’s documents; Camp Finder can match it against site limits.")
@@ -252,6 +255,31 @@ struct RigFormSections: View {
                     }
                 } header: { Text("Optional details") } footer: {
                     Text("Choosing a slide-out count adds or removes slide-out steps in your starting checklists.")
+                }
+            }
+            if rig.type.hasRegistration {
+                Section {
+                    LabeledContent("VIN") {
+                        TextField("17 characters", text: $rig.vin)
+                            .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                            .monospaced().multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("License plate") {
+                        TextField("Optional", text: $rig.licensePlate)
+                            .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("State or province") {
+                        TextField("Optional", text: $rig.plateRegion)
+                            .textInputAutocapitalization(.characters).autocorrectionDisabled()
+                            .multilineTextAlignment(.trailing)
+                    }
+                } header: { Text("Registration (optional)") } footer: {
+                    if let problem = rig.registrationProblem {
+                        Text(problem).foregroundStyle(.red)
+                    } else {
+                        Text("Handy at check-in and for gate passes. The VIN is on your registration, title, or a plate near the hitch or driver’s door. You can also keep the registration card itself in your rig’s Manuals & paperwork.")
+                    }
                 }
             }
             Section {

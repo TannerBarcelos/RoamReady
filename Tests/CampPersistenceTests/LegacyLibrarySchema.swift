@@ -171,4 +171,11 @@ enum LegacyLibrarySchema {
         public init() {}
     }
 }
+
+/// Registration arrived after this schema; these aren't stored, so the frozen model stays as shipped.
+extension LegacyLibrarySchema.Rig {
+    public var vin: String { "" }
+    public var licensePlate: String { "" }
+    public var plateRegion: String { "" }
+}
 #endif

@@ -51,7 +51,7 @@ Files save locally first and open offline after import/download. Metadata can ar
 
 Reads check original size and SHA-256. Quick Look and sharing capture a Sendable content snapshot on the model context's actor, then verify/decrypt and write a protected disposable cache file on a worker task. Cached previews are regenerated from verified content, so a same-size corrupted cache file is not trusted. Cancellation prevents stale preview results from replacing a newer view state.
 
-Deleting a document cascades to its content. Deleting a trip/rig retains documents as unattached. Profile exports `RoamReady Export.zip` with `library.json`, `documents.json`, and verified original files under `Documents/`; encrypted documents are exported readable, as stated in the UI. There is no restore/import workflow for that archive.
+Deleting a document cascades to its content. Deleting a trip/rig retains documents as unattached. Profile exports `RoamReady Export.zip` with `library.json`, `documents.json`, and verified original files under `Documents/`. `library.json` is schema version 3, which added rig registration (VIN, plate, region) and checklist step priority and notes. Rig photos are left out. Encrypted documents are exported readable, as stated in the UI. There is no restore/import workflow for that archive.
 
 ## Validation
 

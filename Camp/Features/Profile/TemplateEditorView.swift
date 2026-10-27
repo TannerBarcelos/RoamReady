@@ -25,12 +25,7 @@ struct TemplateEditorView: View {
                 } footer: { Text("New trips with \(rig.displayName) start with these steps. Editing them never changes existing trips.") }
                 Section {
                     ForEach(template[phase]) { step in
-                        Button { editedStep = step } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(step.title).foregroundStyle(.primary)
-                                Text(step.section).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
+                        Button { editedStep = step } label: { ChecklistStepSummary(step: step, caption: step.section) }
                     }
                     .onDelete { template[phase].remove(atOffsets: $0) }
                     .onMove { template[phase].move(fromOffsets: $0, toOffset: $1) }

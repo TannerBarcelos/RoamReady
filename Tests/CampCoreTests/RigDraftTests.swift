@@ -74,6 +74,77 @@ final class RigDraftTests: XCTestCase {
         XCTAssertEqual(rig.equipment, Equipment())
     }
 
+    func testVINIsOptionalNormalizedAndValidatedWhenEntered() {
+        var rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries", year: 2024, lengthFeet: 19.5)
+        XCTAssertNoThrow(try rig.validateDetails(), "A VIN is optional")
+        rig.vin = " 1hgcm-826 33a004352 "
+        XCTAssertEqual(RigDraft.normalizedVIN(rig.vin), "1HGCM82633A004352")
+        XCTAssertNoThrow(try rig.validateDetails(), "Spaces, dashes, and lowercase are normalized before checking")
+        XCTAssertEqual(rig.normalized.vin, "1HGCM82633A004352")
+        for bad in ["1HGCM82633A00435", "1HGCM82633A0043521", "1HGCM82633A00435O", "1HGCM82633A00435I", "1HGCM82633A00435Q", "1HGCM82633A00435*"] {
+            rig.vin = bad
+            XCTAssertThrowsError(try rig.validateDetails(), bad) { XCTAssertEqual($0 as? CampError, .invalidVIN) }
+        }
+        rig.vin = "Ö1HGCM82633A00435"
+        XCTAssertEqual(rig.registrationProblem, CampError.invalidVIN.errorDescription, "Non-ASCII characters are rejected")
+    }
+
+    func testPre1981RigsAcceptShorterSerialsAsTheirVIN() {
+        let vintage = RigDraft(type: .travelTrailer, make: "Airstream", model: "Bambi", year: 1964, lengthFeet: 16, vin: "164B1234")
+        XCTAssertNoThrow(try vintage.validateDetails())
+        var modern = vintage; modern.year = 1981
+        XCTAssertThrowsError(try modern.validateDetails()) { XCTAssertEqual($0 as? CampError, .invalidVIN) }
+        var noYear = RigDraft(type: .carCamping, equipment: .none, vin: "164B1234")
+        XCTAssertEqual(noYear.registrationProblem, CampError.invalidVIN.errorDescription, "Without a year, the standard VIN applies")
+        noYear.vin = "1HGCM82633A004352"
+        XCTAssertNil(noYear.registrationProblem)
+    }
+
+    func testPlateIsNormalizedAndLimitedInLength() {
+        var rig = RigDraft(type: .camperVan, make: "Winnebago", model: "Solis", year: 2023, lengthFeet: 21,
+                           licensePlate: "  8abc   123 ", plateRegion: "  CA ")
+        XCTAssertNoThrow(try rig.validateDetails())
+        XCTAssertEqual(rig.normalized.licensePlate, "8ABC 123")
+        XCTAssertEqual(rig.normalized.plateRegion, "CA")
+        XCTAssertEqual(rig.normalized.plateSummary, "8ABC 123 · CA")
+        XCTAssertEqual(RigDraft(plateRegion: "CA").plateSummary, "CA")
+        XCTAssertEqual(RigDraft().plateSummary, "")
+        rig.licensePlate = String(repeating: "A", count: RigDraft.maxPlateLength)
+        XCTAssertNoThrow(try rig.validateDetails())
+        rig.licensePlate += "A"
+        XCTAssertThrowsError(try rig.validateDetails()) { XCTAssertEqual($0 as? CampError, .invalidPlate) }
+    }
+
+    func testOnlyARegistrationProblemIsReportedAsOne() {
+        var rig = RigDraft(type: .fifthWheel, vin: "TOO SHORT")
+        XCTAssertEqual(rig.detailsProblem, CampError.incompleteRig.errorDescription, "Missing required details come first")
+        XCTAssertEqual(rig.registrationProblem, CampError.invalidVIN.errorDescription)
+        XCTAssertNotNil(rig.visibleDetailsProblem, "Typing a VIN counts as starting the form")
+        rig.make = "Jayco"; rig.model = "Eagle"; rig.year = 2025; rig.lengthFeet = 38
+        XCTAssertEqual(rig.detailsProblem, rig.registrationProblem)
+        XCTAssertFalse(rig.hasRequiredDetails, "An invalid VIN blocks saving")
+        let car = RigDraft(type: .carCamping, equipment: .none, licensePlate: "ABC123")
+        XCTAssertTrue(car.hasStartedDetails && car.hasRequiredDetails)
+    }
+
+    func testTentsHaveNoRegistrationAndChangingTypeClearsIt() {
+        XCTAssertFalse(RigType.tent.hasRegistration)
+        XCTAssertTrue(RigType.allCases.filter { $0 != .tent }.allSatisfy(\.hasRegistration))
+        var rig = RigDraft(type: .travelTrailer, vin: "1HGCM82633A004352", licensePlate: "ABC123", plateRegion: "OR")
+        rig.type = .motorhome
+        rig.resetDetailsForType()
+        XCTAssertEqual(rig.vin, ""); XCTAssertEqual(rig.licensePlate, ""); XCTAssertEqual(rig.plateRegion, "")
+        let tent = RigDraft(type: .tent, equipment: .none, vin: "1HGCM82633A004352", licensePlate: "ABC123", plateRegion: "OR").normalized
+        XCTAssertEqual(tent.vin, ""); XCTAssertEqual(tent.licensePlate, ""); XCTAssertEqual(tent.plateRegion, "")
+    }
+
+    func testExportedRigIncludesRegistrationButNotThePhoto() throws {
+        let rig = RigDraft(type: .camperVan, photo: Data([1, 2, 3]), vin: "1HGCM82633A004352", licensePlate: "ABC123", plateRegion: "OR")
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(rig), encoding: .utf8))
+        for key in ["\"vin\"", "\"licensePlate\"", "\"plateRegion\"", "1HGCM82633A004352"] { XCTAssertTrue(json.contains(key), key) }
+        XCTAssertFalse(json.contains("\"photo\""))
+    }
+
     func testYearAndLengthTextParsing() {
         XCTAssertEqual(RigDraft.parseYear("2024"), 2024)
         XCTAssertEqual(RigDraft.parseYear(" 20a24 "), 2024)

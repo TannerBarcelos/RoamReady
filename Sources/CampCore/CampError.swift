@@ -2,7 +2,7 @@ import Foundation
 
 public enum CampError: Error, LocalizedError, Equatable, Sendable {
     case missingCampground, invalidDates, invalidCoordinates, emptyChecklistTitle
-    case unsupportedSchema(Int), incompleteRig, invalidRigDetails
+    case unsupportedSchema(Int), incompleteRig, invalidRigDetails, invalidVIN, invalidPlate
     case invalidBookingLink, invalidCheckTimes, invalidBookingAmount, invalidSiteLength
     case rigLimitReached, rigInUse, rigArchived, rigUnavailable
     public var errorDescription: String? {
@@ -14,6 +14,8 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
         case .unsupportedSchema(let version): "This data uses an unsupported format (version \(version)). Update the app before opening it."
         case .incompleteRig: "Enter your rig’s year, make, model, and length."
         case .invalidRigDetails: "Check your rig details. Year, length, slides, or axles are outside the supported range."
+        case .invalidVIN: "Check the VIN. It’s 17 letters and numbers, without I, O, or Q."
+        case .invalidPlate: "Check the license plate. It can be up to \(RigDraft.maxPlateLength) characters."
         case .invalidBookingLink: "The booking link must be a secure web address starting with https://."
         case .invalidCheckTimes: "Check-out must be after check-in."
         case .invalidBookingAmount: "Costs must be zero or more."

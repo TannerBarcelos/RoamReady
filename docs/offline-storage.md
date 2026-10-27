@@ -11,9 +11,9 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | Model | Holds | Relationships |
 | --- | --- | --- |
 | `CamperProfile` | name, experience | — |
-| `Rig` | owner-entered details, equipment, photo (external storage), archive date | default `ChecklistStep`s (cascade), trips, documents |
+| `Rig` | owner-entered details, equipment, registration (VIN, plate, region; cloud-encrypted), photo (external storage), archive date | default `ChecklistStep`s (cascade), trips, documents |
 | `Trip` | campground, dates, time zones, site details, booking, completion, notes, rating | rig, `ChecklistStep`s, `TripPhoto`s, `NoteRevision`s (all cascade), documents |
-| `ChecklistStep` | title, detail, section, status, phase, position | its trip, or its rig for default lists |
+| `ChecklistStep` | title, detail (guidance), notes, priority, section, status, phase, position | its trip, or its rig for default lists |
 | `TripPhoto` | resized JPEG (external storage), caption | trip |
 | `NoteRevision` | a saved version of a trip's notes | trip |
 | `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |

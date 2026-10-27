@@ -70,6 +70,26 @@ struct LibraryTests {
         #expect(manual.rig == nil, "Its documents become unattached")
     }
 
+    @Test func registrationIsStoredNormalizedEncryptedAndKeptOnEdit() throws {
+        var draft = trailer
+        draft.vin = "1hgcm 82633-a004352"; draft.licensePlate = " 8abc  123 "; draft.plateRegion = " CA "
+        let rig = try Rig.add(draft, to: context)
+        #expect(rig.vin == "1HGCM82633A004352" && rig.licensePlate == "8ABC 123" && rig.plateRegion == "CA")
+        #expect(rig.draft.vin == rig.vin && rig.plateSummary == "8ABC 123 · CA")
+        var edited = rig.draft; edited.lengthFeet = 24
+        try rig.update(edited)
+        #expect(rig.vin == "1HGCM82633A004352", "Editing other details keeps the registration")
+        var broken = rig.draft; broken.vin = "1HGCM82633A00435"
+        #expect(throws: CampError.invalidVIN) { try rig.update(broken) }
+        #expect(rig.vin == "1HGCM82633A004352", "A refused edit changes nothing")
+        let tent = try rig.replace(with: RigDraft(type: .tent, equipment: .none, vin: "1HGCM82633A004352"))
+        #expect(tent.vin.isEmpty, "A tent has no registration")
+        let entity = try #require(LibraryStore.schema.entities.first { $0.name == "Rig" })
+        for name in ["vin", "licensePlate", "plateRegion"] {
+            #expect(try #require(entity.attributesByName[name]).options.contains(.allowsCloudEncryption), "\(name)")
+        }
+    }
+
     @Test func aSyncRaceThatProducesTwoActiveRigsStaysReadable() throws {
         let first = try Rig.add(trailer, to: context)
         let second = Rig(); context.insert(second)
@@ -118,6 +138,28 @@ struct LibraryTests {
         #expect(rig.defaultTemplate.setup.last?.title == "Fill the kettle")
         #expect(rig.defaultTemplate.setup.allSatisfy { $0.status == .pending })
         #expect(trip.steps(.setup)[0].status == .completed, "The trip keeps its progress")
+    }
+
+    @Test func priorityAndNotesTravelWithAStepIntoDefaultsAndNewTrips() throws {
+        let rig = try Rig.add(trailer, to: context)
+        let first = try trip(rig: rig)
+        let step = first.steps(.setup)[0]
+        var edited = step.draft
+        edited.notes = "Chocks are in the front bin"; edited.priority = .high; edited.status = .completed
+        step.apply(edited)
+        #expect(step.notes == "Chocks are in the front bin" && step.priority == .high)
+        #expect(step.draft == edited)
+        first.addStep(ChecklistStepDraft(title: "Fill the kettle", notes: "Filtered water", priority: .low), to: .teardown)
+        #expect(first.steps(.teardown).last?.priority == .low, "Added steps keep their priority")
+        try first.saveChecklistsAsDefaults()
+        let saved = try #require(rig.defaultTemplate.setup.first)
+        #expect(saved.notes == "Chocks are in the front bin" && saved.priority == .high && saved.status == .pending,
+                "Defaults keep notes and priority; only progress resets")
+        let next = try trip("Lakeside", rig: rig)
+        #expect(next.steps(.setup)[0].priority == .high && next.steps(.setup)[0].notes == "Chocks are in the front bin")
+        #expect(next.steps(.teardown).last?.notes == "Filtered water")
+        next.steps(.setup)[0].priority = ChecklistPriority.none
+        #expect(first.steps(.setup)[0].priority == .high, "Each trip owns its copy")
     }
 
     @Test func editingATripKeepsItsChecklistsAndValidatesTheBooking() throws {
@@ -321,6 +363,7 @@ struct LibraryTests {
             let rig = try Rig.add(trailer, to: context)
             let trip = try Trip.create(TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival), rig: rig, in: context)
             trip.steps(.setup)[0].status = .skipped
+            trip.steps(.setup)[0].notes = "Bring the long hose"; trip.steps(.setup)[0].priority = .medium
             try StoredDocument.add(DocumentMetadata(title: "Card", category: .insurance), contents: DocumentPayload(bytes: Self.pdf, filename: "c.pdf"), rig: rig, in: context)
             try context.save()
         }
@@ -330,6 +373,7 @@ struct LibraryTests {
         #expect(try reopened.profile()?.name == "Sam")
         let trip = try #require(try reopened.fetch(FetchDescriptor<Trip>()).first)
         #expect(trip.rig?.model == "No Boundaries" && trip.steps(.setup)[0].status == .skipped)
+        #expect(trip.steps(.setup)[0].notes == "Bring the long hose" && trip.steps(.setup)[0].priority == .medium)
         #expect(try reopened.rigs().first?.attachedDocuments.first?.contents() == Self.pdf)
     }
 

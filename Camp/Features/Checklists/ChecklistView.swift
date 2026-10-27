@@ -50,11 +50,8 @@ struct ChecklistView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(step.title), \(step.status.title). \(step.status == .completed ? "Mark pending" : "Mark complete")")
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(step.title).foregroundStyle(step.status == .skipped ? .secondary : .primary)
-                            Text(step.status == .skipped ? "Skipped · \(step.section)" : step.section)
-                                .font(.caption).foregroundStyle(.secondary)
-                        }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5)
+                        ChecklistStepSummary(step: step.draft, caption: step.status == .skipped ? "Skipped · \(step.section)" : step.section)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5)
                         Button { editedStep = step } label: { Image(systemName: editing.isEditing ? "pencil" : "info.circle").frame(width: 36, height: 44) }
                             .buttonStyle(.borderless).accessibilityLabel("Details and edit \(step.title)")
                     }
@@ -113,6 +110,28 @@ struct ChecklistView: View {
     }
 }
 
+/// A step laid out like a reminder: priority marks before the title, the owner's notes under it, then a caption.
+struct ChecklistStepSummary: View {
+    let step: ChecklistStepDraft
+    let caption: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                if !step.priority.marks.isEmpty {
+                    Text(step.priority.marks).fontWeight(.bold).foregroundStyle(.blue)
+                        .accessibilityLabel("\(step.priority.title) priority")
+                }
+                Text(step.title).foregroundStyle(step.status == .skipped ? .secondary : .primary)
+            }
+            if let notes = step.visibleNotes {
+                Text(notes).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+            }
+            Text(caption).font(.caption).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 /// Edits a copy of a step, so Cancel discards the changes.
 struct ChecklistStepEditor: View {
     @Environment(\.dismiss) private var dismiss
@@ -124,13 +143,23 @@ struct ChecklistStepEditor: View {
             Form {
                 Section("Step") {
                     TextField("Title", text: $step.title, axis: .vertical)
-                    TextField("Section", text: $step.section)
-                    TextField("Guidance or your own notes", text: $step.detail, axis: .vertical).lineLimit(4...12)
+                    TextField("Notes", text: $step.notes, axis: .vertical).lineLimit(2...8)
                 }
-                Section("Progress") {
+                Section {
+                    Picker("Priority", selection: $step.priority) {
+                        ForEach(ChecklistPriority.allCases) { priority in
+                            Text(priority.marks.isEmpty ? priority.title : "\(priority.title) \(priority.marks)").tag(priority)
+                        }
+                    }
+                    TextField("Section", text: $step.section)
                     Picker("Status", selection: $step.status) {
                         ForEach(ChecklistStatus.allCases) { Text($0.title).tag($0) }
                     }
+                }
+                Section {
+                    TextField("Guidance", text: $step.detail, axis: .vertical).lineLimit(4...12)
+                } header: { Text("Guidance") } footer: {
+                    Text("General guidance for this step. Follow your rig’s manuals for equipment-specific procedures.")
                 }
                 if let onHelp { Button("Ask about this step", systemImage: "sparkles") { onHelp() } }
             }

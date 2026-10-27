@@ -2,6 +2,7 @@
 import Foundation
 import SwiftData
 import Testing
+import CampCore
 import DocumentVault
 @testable import CampPersistence
 
@@ -22,6 +23,8 @@ struct AttachmentMigrationTests {
             rig.photo = Data([1, 2, 3]); context.insert(rig)
             let trip = LegacyLibrarySchema.Trip()
             trip.rig = rig; context.insert(trip)
+            let step = LegacyLibrarySchema.ChecklistStep()
+            step.title = "Legacy step"; step.trip = trip; context.insert(step)
             let photo = LegacyLibrarySchema.TripPhoto(image: Data([4, 5, 6]))
             photo.trip = trip; context.insert(photo)
             let document = LegacyLibrarySchema.StoredDocument()
@@ -42,6 +45,9 @@ struct AttachmentMigrationTests {
         #expect(rig.photoData == Data([1, 2, 3]))
         let trip = try #require(try context.fetch(FetchDescriptor<Trip>()).first)
         #expect(trip.rig === rig && trip.sortedPhotos.first?.imageData == Data([4, 5, 6]))
+        #expect(rig.vin.isEmpty && rig.licensePlate.isEmpty && rig.plateRegion.isEmpty, "New registration fields start empty")
+        let step = try #require(trip.steps(.setup).first)
+        #expect(step.title == "Legacy step" && step.notes.isEmpty && step.priority == ChecklistPriority.none, "Existing steps gain no priority or notes")
         let document = try #require(try context.fetch(FetchDescriptor<StoredDocument>()).first)
         #expect(document.trip === trip && document.title == "Legacy insurance")
         #expect(try document.contents() == plaintext)
