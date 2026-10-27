@@ -39,16 +39,6 @@ jobs:
           echo "iOS Simulator SDK: $SDK_VERSION"
           test "${SDK_VERSION%%.*}" -ge 27
 
-      - name: Cache Swift packages
-        uses: actions/cache@v4
-        with:
-          path: .derivedData/SourcePackages
-          key: spm-xcode-${{ hashFiles('Package.resolved') }}
-          restore-keys: spm-xcode-
-
-      - name: Resolve package dependencies
-        run: xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME" -derivedDataPath "$DERIVED_DATA"
-
       - name: Lint project, privacy, and Apple capabilities
         if: matrix.release-build
         run: |

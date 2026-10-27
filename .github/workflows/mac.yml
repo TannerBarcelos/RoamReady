@@ -26,13 +26,6 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Cache Swift packages
-        uses: actions/cache@v4
-        with:
-          path: .build
-          key: spm-swiftpm-${{ hashFiles('Package.resolved') }}
-          restore-keys: spm-swiftpm-
-
       - name: Build packages and tests
         run: swift build --build-tests
 

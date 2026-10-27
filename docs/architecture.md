@@ -16,10 +16,10 @@ The app targets iOS 27.0. The local Swift package uses Swift tools/language vers
 | --- | --- | --- |
 | `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, AI device policy, and campground identities. |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
-| `DocumentVault` | CryptoKit on Apple platforms; Apple's swift-crypto on Linux | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
+| `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
 
-The native app links these local products and Apple frameworks. There are no non-Apple runtime SDKs. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto) as an external package; its `Crypto` product is linked only on Linux. Package resolution may still fetch that dependency on a Mac.
+The native app links these local products and Apple frameworks. There are no external package dependencies.
 
 ## Source layout
 
