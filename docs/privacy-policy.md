@@ -8,7 +8,7 @@ RoamReady helps you plan camping trips and keep your rig details, checklists, do
 
 The app stores the information you choose to enter on your device: profile and rig details (including optional VIN and registration), bookings, campground locations, checklists, notes, photos, documents and saved campground lists. Core library features work offline.
 
-In a build configured for iCloud, optional private iCloud synchronization uses your Apple account and Apple's CloudKit service. Apple manages the service, transfers and encryption. The preference can be changed in Profile and takes effect when you next launch the app. Turning sync off does not delete either copy of your library. Apple's privacy terms apply to its services.
+In a build configured for iCloud, optional private iCloud synchronization uses your Apple account and Apple's CloudKit service. Apple manages the service, transfers and encryption. The preference can be changed in Profile › Settings and takes effect when you next launch the app. Turning sync off does not delete either copy of your library. Apple's privacy terms apply to its services.
 
 ## Location and online services
 
@@ -30,7 +30,7 @@ Assistant uses Apple's on-device Foundation Models on eligible devices. RoamRead
 
 You can edit or delete library content in the app. Deleting a trip removes its photos, checklists, notes and rating; its documents become unattached so you can keep or delete them separately. Original items in your system photo library are not deleted.
 
-Profile offers an export and **Erase all data**. In a configured iCloud build, erasing deletes the app's private cloud zone before removing the device library, caches and settings; it needs a connection and an available iCloud account. Other devices can retain local copies and should be erased separately if desired. Copies you exported or shared must be removed at their destinations.
+Profile › Settings offers an export and **Erase all data**. In a configured iCloud build, erasing deletes the app's private cloud zone before removing the device library, caches and settings; it needs a connection and an available iCloud account. Other devices can retain local copies and should be erased separately if desired. Copies you exported or shared must be removed at their destinations.
 
 ## Support and updates
 

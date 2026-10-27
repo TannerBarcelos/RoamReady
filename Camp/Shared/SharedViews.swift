@@ -88,3 +88,20 @@ struct ProgressSummary: View {
         }
     }
 }
+
+/// Let list rows measure the full title at accessibility text sizes.
+struct WrappingLabel: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+
+    init(_ title: LocalizedStringKey, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Label {
+            Text(title).fixedSize(horizontal: false, vertical: true)
+        } icon: { Image(systemName: systemImage) }
+    }
+}

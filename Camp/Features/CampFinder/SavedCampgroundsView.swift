@@ -126,14 +126,13 @@ struct SavedCampgroundsView: View {
 
 /// Profile's link to the campground lists, with how many places they hold.
 struct YourCampgroundsLink: View {
-    @State private var saveFailure: String?
     @Query private var saved: [SavedCampground]
     @Query private var trips: [Trip]
     var body: some View {
         let count = CampgroundLists(saved: saved, trips: trips).count
         NavigationLink { SavedCampgroundsView() } label: {
             LabeledContent { Text(count == 0 ? "None yet" : String(count)) } label: {
-                Label("Your campgrounds", systemImage: "bookmark")
+                WrappingLabel("Your campgrounds", systemImage: "bookmark")
             }
         }
     }
