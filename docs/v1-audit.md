@@ -53,7 +53,7 @@ The priority representation changes a newly introduced, pre-release field. An op
 
 - Avoid copying a complete chat history before every request: the UI and prompt builder share the existing three-turn bound. Chat lifetime and model context behavior are unchanged.
 - Discard canceled thumbnail work before it updates a reused photo view, preventing stale photos during rapid navigation.
-- Prepare a public privacy policy covering actual library, permissions, Apple services, on-device AI, sharing and deletion behavior. Publishing its final URL and App Store declarations still depends on release setup.
+- Prepare a public privacy policy covering actual library, permissions, Apple services, on-device AI, sharing and deletion behavior, and link policy/support from Profile. The canonical policy URL becomes live when this branch is merged into main; App Store declarations still depend on release setup.
 
 
 - Wire both app configurations to `Config/App.xcconfig`; optional `Config/Local.xcconfig` now overrides actual resolved signing, bundle, container and capability settings. Target-level empty values previously took precedence over base configurations. CI verifies defaults and fixture overrides without signing or contacting Apple provisioning.
