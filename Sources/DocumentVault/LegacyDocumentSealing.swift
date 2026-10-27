@@ -1,9 +1,5 @@
 import Foundation
-#if canImport(CryptoKit)
 import CryptoKit
-#else
-import Crypto
-#endif
 
 /// Read compatibility for files sealed by older builds. New writes use SwiftData's
 /// `.allowsCloudEncryption` and CloudKit's automatically encrypted assets, without app keys.

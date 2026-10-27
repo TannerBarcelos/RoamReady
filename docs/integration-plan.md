@@ -8,7 +8,7 @@ RoamReady is an initial development build. Account-free onboarding, owner-entere
 
 Release gates are [Apple app setup (#6)](https://github.com/TannerBarcelos/RoamReady/issues/6) and [simulator/device acceptance (#10)](https://github.com/TannerBarcelos/RoamReady/issues/10), tracked in [v1 (#4)](https://github.com/TannerBarcelos/RoamReady/issues/4). There is no v1 backend or campground dataset to provision.
 
-Portable tests exercise shared behavior on Linux/macOS. Apple CI is configured to run SwiftData tests against real stores and build the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for a particular commit; compilation does not establish device acceptance.
+Portable tests exercise shared behavior on any Swift platform. CI is configured to run SwiftData tests against real stores and build the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions) for a particular commit; compilation does not establish device acceptance.
 
 ## Identity and offline operation
 

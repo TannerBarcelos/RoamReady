@@ -6,15 +6,15 @@
 
 Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27 with the iOS 27 SDK.
 
-The native app uses the local Swift package and Apple frameworks. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto), whose `Crypto` product is linked only on Linux for CryptoKit-compatible tests. Initial package resolution may require internet access, including on macOS. There are no non-Apple runtime SDKs.
+The native app uses the local Swift package and Apple frameworks only. There are no external package dependencies.
 
 ## Open the native project
 
-Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone and iPad, portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository; the only external package is Apple's swift-crypto, used for Linux tests.
+Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone and iPad, portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external dependencies.
 
 The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
-Swift language mode is 6.0 with strict concurrency. Default MainActor inference is deliberately not enabled: isolation belongs on the app's state-owning declarations. `CampCore` is a Foundation-only package with a lower platform floor so its tests also run on Linux and macOS; the app's deployment target remains iOS 27.0.
+Swift language mode is 6.0 with strict concurrency. Default MainActor inference is deliberately not enabled: isolation belongs on the app's state-owning declarations. `CampCore` is a Foundation-only package with a lower platform floor so its tests run natively on macOS; the app's deployment target remains iOS 27.0.
 
 For a physical device, change the placeholder `com.example.RoamReady` identifier to your own unique bundle identifier and select your development team under Signing & Capabilities. Simulator builds need no development team. A production App Store archive additionally needs your app icon, distribution signing, privacy disclosures, and configured services. No icon assets have been fabricated for this development scaffold.
 
@@ -35,11 +35,11 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [Apple validation workflow](../.github/workflows/apple-validation.yml) runs these commands directly, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
+Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [iOS and iPad](../.github/workflows/app.yml) and [Mac](../.github/workflows/mac.yml) workflows run these commands on macOS runners. The iOS and iPad workflow verifies the iOS SDK version, and its iPhone job also checks the location permission and signed-build WeatherKit/CloudKit configuration.
 
 ## Test coverage and CI
 
-The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
+The Mac workflow runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
 
 | Suite | Coverage |
 | --- | --- |
@@ -48,7 +48,7 @@ The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the off
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
 | `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. It also runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
+The iOS and iPad workflow runs one job per device (an iPhone and an iPad simulator) on GitHub's `xcode-27` image (macOS 27). Each builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target, refusing an older SDK, and runs the UI tests; the iPhone job also builds Release. They run Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the latest [iOS and iPad](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml) and [Mac](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml) results for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
@@ -95,7 +95,7 @@ SwiftData manages the local store; no raw SQL or SQLite driver is used. Its Clou
 
 See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the next-launch preference, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements are empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of the generated CloudKit schema.
 
-`ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run on Apple CI with the persistence suite.
+`ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run in CI with the persistence suite.
 
 ## Camp Finder and account changes
 
