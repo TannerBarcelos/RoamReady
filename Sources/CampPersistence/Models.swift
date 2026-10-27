@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -35,6 +34,10 @@ public final class Rig: RigDetails {
     public var slideCount: Int?
     public var axleCount: Int?
     public var hasBunkhouse: Bool?
+    /// Normalized registration (see `RigDraft.normalized`), encrypted in iCloud like other identifying details.
+    @Attribute(.allowsCloudEncryption) public var vin: String = ""
+    @Attribute(.allowsCloudEncryption) public var licensePlate: String = ""
+    @Attribute(.allowsCloudEncryption) public var plateRegion: String = ""
     /// Set when the owner replaces this rig. Archived rigs leave the trip picker, don't count toward
     /// `RigPolicy.maxActiveRigs`, and stay on the trips that used them.
     public var archivedAt: Date?
@@ -89,6 +92,9 @@ public final class ChecklistStep {
     public var detail: String = ""
     public var section: String = ""
     public var status: ChecklistStatus = ChecklistStatus.pending
+    /// The owner's notes, separate from the generated guidance in `detail`.
+    public var notes: String = ""
+    public var priority: ChecklistPriority = ChecklistPriority.none
     public var phase: ChecklistPhase = ChecklistPhase.setup
     public var position: Int = 0
     public var trip: Trip?
@@ -176,4 +182,3 @@ public final class DocumentContent {
     public var document: StoredDocument?
     public init() {}
 }
-#endif

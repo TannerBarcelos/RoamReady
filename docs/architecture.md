@@ -29,7 +29,7 @@ The native app links these local products and Apple frameworks. There are no ext
 | [Camp/Features/](../Camp/Features/) | Feature views and services for Home, Trips, Checklists, CampFinder, Documents, Memories, Profile (including iCloud settings), Onboarding, Weather, and Assistant. |
 | [Camp/Shared/](../Camp/Shared/) | Connectivity gate and small shared views. |
 | [Sources/](../Sources/) | Swift package modules. |
-| [Tests/](../Tests/) | One test target per package module. |
+| [Tests/](../Tests/) | One test target per package module, plus the app's `RoamReadyUITests` (run by the Xcode scheme, not `swift test`). |
 | [RoamReady.xcodeproj/](../RoamReady.xcodeproj/) | Native app project and shared RoamReady scheme. |
 | [Config/](../Config/) | Optional signed-build capability configuration. |
 | [.github/workflows/](../.github/workflows/) | `app.yml`: simulator builds and UI tests on iPhone and iPad (a device matrix); the iPhone job adds configuration checks and a Release build. `mac.yml`: package tests and Debug/Release Mac Catalyst builds on macOS. |
@@ -54,7 +54,7 @@ The device-local appearance preference is stored through `AppAppearance`/`@AppSt
 
 A trip is one campground booking and references its rig. Editing a rig changes the details shown on all related trips; replacing it archives the old rig. New trips copy the rig's default setup/teardown steps, then own their checklist copies independently.
 
-Rig and trip validation is shared through `RigDetails` and `TripDetails` protocols implemented by both drafts and persisted models. Portable tests exercise those rules without SwiftUI or SwiftData.
+Rig and trip validation is shared through `RigDetails` and `TripDetails` protocols implemented by both drafts and persisted models. `CampCoreTests` exercise those rules without SwiftUI or SwiftData.
 
 Deleting a trip cascades to its steps, photos, and note revisions. Documents are retained as unattached. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
 
@@ -81,4 +81,4 @@ Profile exports `RoamReady Export.zip`: `library.json`, `documents.json`, and ve
 
 ## Validation boundaries
 
-Portable tests cover shared policies, validation, place identities, search-result merging, and document integrity/crypto. Apple-platform tests exercise real SwiftData stores. A native simulator build checks Apple SDK compilation; physical devices are still needed for permissions, model availability, iCloud account/asset behavior, accessibility, and release acceptance. See [build and validation](validation.md).
+Package tests cover shared policies, validation, place identities, search-result merging, document integrity/crypto, and real SwiftData stores. A native simulator build checks Apple SDK compilation; physical devices are still needed for permissions, model availability, iCloud account/asset behavior, accessibility, and release acceptance. See [build and validation](validation.md).

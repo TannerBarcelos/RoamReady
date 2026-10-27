@@ -6,7 +6,7 @@ Its core workflows work offline, with no account required. Camp Finder helps you
 
 ## Features
 
-- Keep your rig details and reusable camping checklists in one place.
+- Keep your rig details, including its VIN and license plate, and reusable camping checklists with Reminders-style priorities and notes in one place.
 - Organize trips, reservation details, and campground site notes.
 - Store manuals and paperwork for offline access.
 - Save trip photos, captions, and return-or-avoid ratings.

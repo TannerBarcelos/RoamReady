@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -84,7 +83,8 @@ public enum LibraryExport {
             let setup: [ChecklistStepDraft]; let teardown: [ChecklistStepDraft]; let photoCaptions: [String]
         }
         struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool? }
-        var schemaVersion = 2
+        /// 3 added rig registration and checklist step notes and priority.
+        var schemaVersion = 3
         let profile: Profile?
         let rigs: [RigEntry]
         let trips: [TripEntry]
@@ -106,4 +106,3 @@ public enum LibraryExport {
     }
     private struct Manifest: Encodable { var schemaVersion = 2; let documents: [Entry] }
 }
-#endif

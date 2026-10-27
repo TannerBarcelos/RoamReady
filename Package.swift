@@ -17,7 +17,7 @@ let package = Package(
         .target(name: "Campgrounds", dependencies: ["CampCore"]),
         /// Document types and import policy, SHA-256 digests, and AES-GCM sealing.
         .target(name: "DocumentVault"),
-        /// The SwiftData models, CloudKit mirroring, library rules, and export. Apple-only.
+        /// The SwiftData models, CloudKit mirroring, library rules, and export.
         .target(name: "CampPersistence", dependencies: ["CampCore", "DocumentVault"]),
         .testTarget(name: "CampCoreTests", dependencies: ["CampCore"]),
         .testTarget(name: "CampgroundsTests", dependencies: ["Campgrounds", "CampCore"]),

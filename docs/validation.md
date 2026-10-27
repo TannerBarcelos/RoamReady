@@ -39,24 +39,24 @@ Derived data is written to `.derivedData/`. The shared scheme runs the app and i
 
 ## Test coverage and CI
 
-The Mac workflow runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
+The Mac workflow runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, migrating an older store, and the export.
 
 | Suite | Coverage |
 | --- | --- |
-| `CampCoreTests` | Rig policy/required details, trip dates/bookings, site details, checklist generation, campground identities, Assistant availability states and requests, and time-zone/DST forecast dates. |
+| `CampCoreTests` | Rig policy/required details, VIN and plate normalization/validation, step priority/notes, trip dates/bookings, site details, checklist generation, campground identities, Assistant availability states and requests, and time-zone/DST forecast dates. |
 | `CampgroundsTests` | Camp Finder place models, website/phone links, cleaned search text, and unique nearest-first result merging. |
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
-| `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
+| `CampPersistenceTests` | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
 The iOS and iPad workflow runs one job per device (an iPhone and an iPad simulator) on GitHub's `xcode-27` image (macOS 27). Each builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target, refusing an older SDK, and runs the UI tests; the iPhone job also builds Release. The Mac workflow builds the Mac Catalyst app in Debug and Release. The UI tests cover Assistant presentation/composer using DEBUG-only simulated AI states. They do not verify Foundation Models generation or physical-device behavior. See the latest [iOS and iPad](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml) and [Mac](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml) results for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
-1. In airplane mode on a fresh install, complete rig/profile onboarding, including an emoji or photo, and add the initial trip. No account or connection is required.
-2. Plan a trip, inspect both checklists, change their order, complete a step, skip a step, and add a custom step.
+1. In airplane mode on a fresh install, complete rig/profile onboarding, including an emoji or photo and a VIN and plate, and add the initial trip. No account or connection is required. Check that an invalid VIN blocks Continue with its own message.
+2. Plan a trip, inspect both checklists, change their order, complete a step, skip a step, and add a custom step. Give one step a High priority and notes; confirm `!!!` and the notes show in the list.
 3. Create a second trip; confirm it has fresh progress and that editing it does not change the first trip.
 4. Save a site number, rating, notes, and locally available photos. Force-quit and relaunch in airplane mode, then check everything again.
-5. Change reusable checklist defaults and create another trip. Confirm the new trip uses the changed defaults and previous trips retain their snapshots.
+5. Change reusable checklist defaults and create another trip. Confirm the new trip uses the changed defaults, including their priorities and notes, and previous trips retain their snapshots.
 6. Test app relaunch and save retry after simulated disk-write failures. The app must surface the failure instead of claiming changes are durable.
 7. Check large text, VoiceOver, reduced motion/transparency, light/dark mode, rotation, and iPad split view. Check list controls remain usable outdoors and with long campground names.
 8. Check supported and unsupported on-device AI states, and cached weather timestamps when offline. A network request must never block checklist editing.
@@ -77,7 +77,7 @@ On an iOS simulator or device:
 6. Check the picker with VoiceOver and the largest Dynamic Type sizes, and review each mode with Increase Contrast, Reduce Transparency, and Reduce Motion enabled.
 7. On a disposable test library, use Erase all data. The appearance preference resets to System with the other device settings, and onboarding follows the device appearance.
 
-These visual checks require Apple SDKs and are not covered by the portable package tests.
+These visual checks are not covered by the package tests.
 
 ## Apple capability configuration
 
@@ -99,7 +99,7 @@ See [offline-storage.md](offline-storage.md) for new-container provisioning, def
 
 ## Camp Finder and account changes
 
-The portable suites cover Assistant availability and requests, campground identities, Camp Finder places, file staging/streaming inspection, and legacy document decoding. Device acceptance must cover iCloud identity changes, iCloud preference changes and relaunches during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See the [identity/connectivity contract](account-and-offline-contract.md) for limits and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release) for discovery acceptance.
+The package tests cover Assistant availability and requests, campground identities, Camp Finder places, file staging/streaming inspection, and legacy document decoding. Device acceptance must cover iCloud identity changes, iCloud preference changes and relaunches during transfers, Erase all data, offline trip camera capture, and Camp Finder (the campground-only map and tapping places, Near me with location allowed and denied, text search, Search this area, the place card, Website/Call/Directions, offline and retry, the throttling message). See the [identity/connectivity contract](account-and-offline-contract.md) for limits and the [Camp Finder source guide](campground-sourcing.md#to-check-before-release) for discovery acceptance.
 
 ## Current trip and Assistant acceptance pass
 
@@ -111,12 +111,12 @@ The portable suites cover Assistant availability and requests, campground identi
 6. Close the Assistant or dismiss trip help during generation: the pending request cancels, its question is restored, and no late answer appears in a later request. Try a model refusal/failure and confirm a retryable error, with no saved-text substitute. Test in airplane mode after model download.
 7. Check long conversations, keyboard scrolling, Dynamic Type, VoiceOver, and all available tabs on a compact iPhone. Confirm the fixed composer has only a text input and send button, without file/image upload controls. Force-quit/relaunch and confirm chat is not persisted.
 
-The portable tests verify current-trip dates/time zones/DST/early completion, generation without a reference match, and bounded follow-up context. The `RoamReadyUITests` target checks the actual native error screens, absence of chat/composer in unavailable states, hidden Ask Assistant bar on unsupported devices, and ready text/send composer. Its `-assistant-ui-test` state override exists only in DEBUG builds and bypasses onboarding without creating trip data. Run it with Xcode’s Test action or `xcodebuild test` using an iOS 27 simulator destination. These tests do not generate AI answers; Foundation Models still needs the physical-device checks above.
+The package tests verify current-trip dates/time zones/DST/early completion, generation without a reference match, and bounded follow-up context. The `RoamReadyUITests` target checks the actual native error screens, absence of chat/composer in unavailable states, hidden Ask Assistant bar on unsupported devices, and ready text/send composer. Its `-assistant-ui-test` state override exists only in DEBUG builds and bypasses onboarding without creating trip data. Run it with Xcode’s Test action or `xcodebuild test` using an iOS 27 simulator destination. These tests do not generate AI answers; Foundation Models still needs the physical-device checks above.
 
 ## Live on-device Foundation Models smoke test
 
 Before release, use a physical iPhone, iPad, or Mac that supports Apple Intelligence, with iOS 27, a supported language, Apple Intelligence enabled, and the model downloaded. In Xcode, select that iPhone and set `ROAMREADY_RUN_ON_DEVICE_AI_SMOKE=1` in the shared scheme’s **Test** environment. Run `AssistantUITests/testLiveOnDeviceFoundationModelsResponseAndFollowUp`. It launches with the DEBUG-only `-assistant-device-smoke` onboarding bypass and never sets a simulated availability or response. It must receive a nonempty **generated** answer and a second generated answer to a follow-up. Repeat in airplane mode after the model is ready, then with no active trip, and check disabled/downloading states separately. A saved-guide answer does not pass this test.
 
-Simulator CI deliberately skips this opt-in hardware test. Its deterministic send/error UI tests use separate DEBUG-only simulated generators, which are excluded from Release builds. Portable tests verify that Send reaches the generator without a trip/reference match, errors and cancellations propagate, empty answers fail, overlong questions are preserved for shortening, and context overflow retries only once. Native UI tests check successful Send and failure/retry presentation. Real generation must still be verified on the physical device; simulator or fake replies do not establish it.
+Simulator CI deliberately skips this opt-in hardware test. Its deterministic send/error UI tests use separate DEBUG-only simulated generators, which are excluded from Release builds. Package tests verify that Send reaches the generator without a trip/reference match, errors and cancellations propagate, empty answers fail, overlong questions are preserved for shortening, and context overflow retries only once. Native UI tests check successful Send and failure/retry presentation. Real generation must still be verified on the physical device; simulator or fake replies do not establish it.
 
 The production adapter follows Apple’s [Foundation Models generation guide](https://developer.apple.com/documentation/foundationmodels/generating-content-and-performing-tasks-with-foundation-models), [language support guidance](https://developer.apple.com/documentation/foundationmodels/supporting-languages-and-locales-with-foundation-models), and [iOS 27 model error API](https://developer.apple.com/documentation/foundationmodels/languagemodelerror).

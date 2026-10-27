@@ -35,6 +35,19 @@ final class CampingHelpRequestTests: XCTestCase {
         XCTAssertEqual(selected.passages, "Shore power: Use rated equipment")
     }
 
+    func testOwnerNotesAreMatchedAndSentAsReference() {
+        let hose = ChecklistStepDraft(title: "Connect drinking water", detail: "Use a potable-water hose",
+                                      notes: "Regulator lives in the curbside bay")
+        let power = ChecklistStepDraft(title: "Shore power", detail: "Use rated equipment")
+        let request = CampingHelpRequest(question: "Where did I put the regulator?", steps: [hose, power],
+                                        rigType: .travelTrailer, step: nil, scope: .checklist)
+        XCTAssertEqual(request.passages, "Connect drinking water: Use a potable-water hose\nMy notes: Regulator lives in the curbside bay",
+                       "Notes alone can match the question")
+        let blank = ChecklistStepDraft(title: "Shore power", detail: "Use rated equipment", notes: "  \n ")
+        XCTAssertEqual(CampingHelpRequest(question: "power", steps: [], rigType: nil, step: blank, scope: .checklist).passages,
+                       "Shore power: Use rated equipment", "Blank notes add nothing")
+    }
+
     func testLongConversationsUseBoundedRecentContext() {
         let history = [CampingChatTurn(question: "Old topic", answer: "Old answer")]
             + (1...3).map { CampingChatTurn(question: "Recent \($0) " + String(repeating: "q", count: 5000),

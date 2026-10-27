@@ -11,9 +11,9 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | Model | Holds | Relationships |
 | --- | --- | --- |
 | `CamperProfile` | name, experience | — |
-| `Rig` | owner-entered details, equipment, photo (external storage), archive date | default `ChecklistStep`s (cascade), trips, documents |
+| `Rig` | owner-entered details, equipment, registration (VIN, plate, region; cloud-encrypted), photo (external storage), archive date | default `ChecklistStep`s (cascade), trips, documents |
 | `Trip` | campground, dates, time zones, site details, booking, completion, notes, rating | rig, `ChecklistStep`s, `TripPhoto`s, `NoteRevision`s (all cascade), documents |
-| `ChecklistStep` | title, detail, section, status, phase, position | its trip, or its rig for default lists |
+| `ChecklistStep` | title, detail (guidance), notes, priority, section, status, phase, position | its trip, or its rig for default lists |
 | `TripPhoto` | resized JPEG (external storage), caption | trip |
 | `NoteRevision` | a saved version of a trip's notes | trip |
 | `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
@@ -22,7 +22,7 @@ The models live in `Sources/CampPersistence/Models.swift`:
 
 Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, and note versions; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
 
-The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, campground lists, and the document vault. Date, booking, site, and rig-detail rules are portable (`CampCore`'s `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested without SwiftData.
+The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, campground lists, and the document vault. Date, booking, site, and rig-detail rules live in `CampCore` (its `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested without SwiftData.
 
 Screens read with `@Query` and edit models directly; SwiftData saves automatically, and `LibraryController.save()` saves after each deliberate action so a failure is shown. Forms edit a draft (`TripDraft`, `RigDraft`, `ChecklistStepDraft`) so Cancel discards changes.
 

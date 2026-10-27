@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import Testing
 @testable import CampPersistence
@@ -62,4 +61,3 @@ struct ICloudSettingsTests {
         #expect(settings.status == "iCloud manages synchronization automatically")
     }
 }
-#endif

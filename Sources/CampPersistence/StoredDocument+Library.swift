@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import DocumentVault
@@ -95,4 +94,3 @@ public struct DocumentContentSnapshot: Sendable {
         try LegacyDocumentSealing.open(bytes, key: key, documentID: documentID, expecting: file)
     }
 }
-#endif

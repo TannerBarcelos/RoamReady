@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -171,4 +170,10 @@ enum LegacyLibrarySchema {
         public init() {}
     }
 }
-#endif
+
+/// Registration arrived after this schema; these aren't stored, so the frozen model stays as shipped.
+extension LegacyLibrarySchema.Rig {
+    public var vin: String { "" }
+    public var licensePlate: String { "" }
+    public var plateRegion: String { "" }
+}
