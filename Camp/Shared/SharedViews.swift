@@ -60,7 +60,10 @@ struct RigImage: View {
             }
         }
         .frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: 14))
+        // Expose photos and emoji as one labeled thumbnail to VoiceOver.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Your \(type.title.lowercased())")
+        .accessibilityAddTraits(.isImage)
     }
 }
 

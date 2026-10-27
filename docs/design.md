@@ -51,6 +51,8 @@ Sync is configured through the onboarding/Settings toggle, which works offline a
 
 The app targets iPhone and iPad in portrait and landscape, and Mac through Mac Catalyst, and defaults to system appearance, with explicit Light/Dark choices applied at the window root. Native controls provide the starting point for Dynamic Type, VoiceOver, and platform interaction conventions.
 
+Rig thumbnails expose a single labeled image to VoiceOver for both photos and emoji. Their decorative contents stay within the thumbnail; surrounding rig details and actions scale with Dynamic Type.
+
 Release acceptance must still verify large text, VoiceOver labels and order, reduced motion/transparency, light/dark contrast, rotation, iPad split view, long campground names, and outdoor readability. Treat these as validation requirements, not completed accessibility certification. The [validation guide](validation.md#airplane-mode-acceptance-pass) includes the device checklist.
 
 ## First-rig onboarding

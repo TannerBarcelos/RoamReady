@@ -58,6 +58,17 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
     }
 
+    func testRigThumbnailIsAnAccessibleImage() {
+        let app = launch()
+        app.navigationTab("Profile").tap()
+        let thumbnail = app.images["Your travel trailer"]
+        for _ in 0..<4 {
+            if thumbnail.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(thumbnail.isHittable, "The rig thumbnail needs a labeled image role for VoiceOver")
+    }
+
     func testAddTripStillPresentsFromProfileAndReturnsToIt() {
         let app = launch()
         app.navigationTab("Profile").tap()
