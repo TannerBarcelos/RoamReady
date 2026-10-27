@@ -48,7 +48,7 @@ struct AssistantView: View {
     }
 
     private var answering: Bool { pendingQuestion != nil }
-    private var showsConversation: Bool { trip != nil || availability.showsConversation }
+    private var showsConversation: Bool { availability.showsConversation }
     private var canSend: Bool {
         showsConversation && !answering && !chat.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -121,7 +121,7 @@ struct AssistantView: View {
                         userMessage(exchange.question)
                         VStack(alignment: .leading, spacing: 10) {
                             Text(exchange.answer.text).textSelection(.enabled)
-                                .accessibilityIdentifier(exchange.answer.isGenerated ? "assistantGeneratedReply" : "assistantSavedReply")
+                                .accessibilityIdentifier("assistantGeneratedReply")
                             Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
@@ -190,7 +190,7 @@ struct AssistantView: View {
                 .accessibilityLabel("Send message")
                 .accessibilityIdentifier("assistantSend")
             }
-            Text(trip == nil ? "On-device AI · Check advice against your manual" : CampingAssistant.availability)
+            Text("On-device AI · Check advice against your manual")
                 .font(.caption2).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
@@ -199,7 +199,7 @@ struct AssistantView: View {
 
     private func refreshAvailability() {
         availability = CampingAssistant.globalAvailability
-        if trip == nil && !availability.showsConversation { cancelRequest() }
+        if !availability.showsConversation { cancelRequest() }
     }
 
     private func cancelRequest() {

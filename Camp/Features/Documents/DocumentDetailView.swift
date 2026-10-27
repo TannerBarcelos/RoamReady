@@ -64,7 +64,7 @@ struct DocumentDetailView: View {
 
     @ViewBuilder private var availability: some View {
         switch document.availability {
-        case .offline: Label("Saved on this iPhone · opens offline", systemImage: "iphone")
+        case .offline: Label("Saved on this device · opens offline", systemImage: "internaldrive")
         case .awaitingDownload: Label("Waiting to download from iCloud", systemImage: "icloud.and.arrow.down")
         case .onlineOnly: Label("Link · needs a connection to open", systemImage: "link")
         }

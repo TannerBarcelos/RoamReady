@@ -14,7 +14,7 @@ enum CampFinderError: Error, Equatable {
     var message: String {
         switch self {
         case .offline: "Camp Finder needs an internet connection."
-        case .throttled: "Apple Maps is limiting searches from this iPhone for a moment. Try again shortly."
+        case .throttled: "Apple Maps is limiting searches from this device for a moment. Try again shortly."
         case .notFound: "Apple Maps no longer lists this place. Your trips and lists are unchanged."
         case .failed: "Apple Maps couldn’t finish the search. Try again."
         }

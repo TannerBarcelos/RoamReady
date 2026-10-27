@@ -3,8 +3,9 @@ import CampCore
 #if canImport(FoundationModels)
 import FoundationModels
 
-/// The sole production generator. SystemLanguageModel.default runs on device;
-/// there is no Private Cloud Compute or third-party service fallback.
+/// The sole production generator. `SystemLanguageModel.default` is Apple's on-device model in its general-purpose
+/// configuration, the most capable model Foundation Models runs on device. Private Cloud Compute and other
+/// server models are remote, so they wait for v2; there is no service fallback.
 @MainActor
 struct AppleCampingResponseGenerator: CampingResponseGenerating {
     func respond(to prompt: String, instructions: String) async throws -> String {

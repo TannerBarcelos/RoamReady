@@ -23,7 +23,7 @@ struct LocalPhoto: View {
                 Color(.tertiarySystemFill).overlay {
                     VStack {
                         Image(systemName: data == nil ? "icloud.and.arrow.down" : "photo")
-                        if data == nil { Text("Not on this iPhone yet").font(.caption2) }
+                        if data == nil { Text("Not on this device yet").font(.caption2) }
                     }.foregroundStyle(.secondary)
                 }.accessibilityLabel(data == nil ? "Photo not downloaded yet" : "Loading photo")
             }
@@ -63,7 +63,7 @@ struct RigImage: View {
 struct SaveStatus: View {
     @Environment(LibraryController.self) private var library
     var body: some View {
-        Label(library.saveFailure == nil ? "Saved on this iPhone" : "Changes need saving",
+        Label(library.saveFailure == nil ? "Saved on this device" : "Changes need saving",
               systemImage: library.saveFailure == nil ? "checkmark.circle.fill" : "exclamationmark.circle")
             .font(.caption).foregroundStyle(library.saveFailure == nil ? Color.secondary : .orange)
             .accessibilityIdentifier("localSaveStatus")

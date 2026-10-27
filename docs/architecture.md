@@ -6,7 +6,7 @@
 
 RoamReady is a native SwiftUI app with a local SwiftData library and optional Apple-managed private CloudKit mirroring. Core editing works without a network or app account. Online discovery and weather are feature services; camping AI runs on device when eligible.
 
-The app targets iOS 27.0. The local Swift package uses Swift tools/language version 6 and lower platform floors (iOS 17/macOS 14) so shared logic can be tested independently. Those package floors do not lower the app's deployment target.
+The app targets iOS 27.0 on iPhone and iPad, and Mac through Mac Catalyst. The local Swift package uses Swift tools/language version 6 and lower platform floors (iOS 17/macOS 14) so shared logic can be tested independently. Those package floors do not lower the app's deployment target.
 
 ## Package boundaries
 
@@ -14,7 +14,7 @@ The app targets iOS 27.0. The local Swift package uses Swift tools/language vers
 
 | Module | Dependencies | Responsibilities |
 | --- | --- | --- |
-| `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, AI device policy, and campground identities. |
+| `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, Assistant availability and request preparation, and campground identities. |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
 | `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
@@ -32,7 +32,7 @@ The native app links these local products and Apple frameworks. There are no ext
 | [Tests/](../Tests/) | One test target per package module. |
 | [RoamReady.xcodeproj/](../RoamReady.xcodeproj/) | Native app project and shared RoamReady scheme. |
 | [Config/](../Config/) | Optional signed-build capability configuration. |
-| [.github/workflows/](../.github/workflows/) | `app.yml`: simulator builds and UI tests on iPhone and iPad (a device matrix); the iPhone job adds configuration checks and a Release build. `mac.yml`: package tests on macOS. |
+| [.github/workflows/](../.github/workflows/) | `app.yml`: simulator builds and UI tests on iPhone and iPad (a device matrix); the iPhone job adds configuration checks and a Release build. `mac.yml`: package tests and Debug/Release Mac Catalyst builds on macOS. |
 | [docs/](./) | Product, design, engineering, validation, and planning guides. |
 
 The Xcode project uses filesystem-synchronized groups: new source files under `Camp/` join the app target automatically. `Info.plist` and entitlements are excluded from resource copying.

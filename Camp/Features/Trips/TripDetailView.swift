@@ -36,7 +36,9 @@ struct TripDetailView: View {
                 NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
                 if trip.rating != .unrated { Label(trip.rating.title, systemImage: trip.rating == .wouldReturn ? "heart" : "hand.thumbsdown") }
             }
-            Section { Button("Ask for camping help", systemImage: "sparkles") { showAssistant = true } }
+            if CampingAssistant.showsChat {
+                Section { Button("Ask for camping help", systemImage: "sparkles") { showAssistant = true } }
+            }
             Section {
                 if trip.endedByDate() {
                     Label("Completed: this trip’s dates have passed", systemImage: "checkmark.seal")

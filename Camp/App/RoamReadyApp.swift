@@ -64,7 +64,7 @@ struct RootView: View {
 struct MainTabs: View {
     enum Destination: Hashable { case home, plan, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
-    @State private var showsAssistant = CampingAssistant.showsGlobalChat
+    @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
     @State private var askingAssistant = false
@@ -89,7 +89,7 @@ struct MainTabs: View {
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
+            if phase == .active { showsAssistant = CampingAssistant.showsChat }
         }
     }
     private var tabActions: MainTabActions {
