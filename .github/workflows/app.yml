@@ -1,25 +1,31 @@
-name: Simulator build and test
-# Shared by the iOS and iPad workflows: builds the app and runs its UI tests on one simulator.
+name: iOS and iPad
 on:
-  workflow_call:
-    inputs:
-      device:
-        description: Simulator name prefix, such as iPhone or iPad.
-        required: true
-        type: string
-      release-build:
-        description: Also build Release and check the app's configuration. The binary is universal, so one platform does this.
-        default: false
-        type: boolean
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
+# A newer push to the same branch or PR replaces a run that is still going.
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
 env:
   PROJECT: RoamReady.xcodeproj
   SCHEME: RoamReady
   DERIVED_DATA: .derivedData
 jobs:
   build-and-test:
-    name: Build and test (${{ inputs.device }})
+    name: Build and test (${{ matrix.device }})
+    strategy:
+      # Let the other device finish so one run shows both results.
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+        include:
+          # The app is one universal binary, so the Release build and configuration checks run once.
+          - device: iPhone
+            release-build: true
     # The Xcode 27 image (macOS 27, Apple silicon).
     runs-on: xcode-27
     timeout-minutes: 45
@@ -44,7 +50,7 @@ jobs:
         run: xcodebuild -resolvePackageDependencies -project "$PROJECT" -scheme "$SCHEME" -derivedDataPath "$DERIVED_DATA"
 
       - name: Lint project, privacy, and Apple capabilities
-        if: inputs.release-build
+        if: matrix.release-build
         run: |
           plutil -lint "$PROJECT/project.pbxproj" Camp/Info.plist Camp/Camp.entitlements Camp/PrivacyInfo.xcprivacy Config/Cloud.entitlements
           test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.weatherkit' Config/Cloud.entitlements)" = true
@@ -58,18 +64,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
       - name: Build Release
-        if: inputs.release-build
+        if: matrix.release-build
         # Catches optimizer-only failures and code behind #if DEBUG.
         run: |
           xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
             CODE_SIGNING_ALLOWED=NO
 
-      - name: Boot the ${{ inputs.device }} Simulator and warm up the app's first launch
+      - name: Boot the ${{ matrix.device }} Simulator and warm up the app's first launch
         # A cold Simulator can make the first UI test's launch exceed Xcode's launch timeout,
         # so finish booting and pay for the first install and launch before testing.
         env:
-          DEVICE: ${{ inputs.device }}
+          DEVICE: ${{ matrix.device }}
         run: |
           SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, os, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith(os.environ["DEVICE"])))')"
           echo "Using $(xcrun simctl list devices | grep "$SIMULATOR_ID")"
@@ -90,7 +96,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: TestResults-${{ inputs.device }}
+          name: TestResults-${{ matrix.device }}
           path: TestResults.xcresult
           if-no-files-found: ignore
 
