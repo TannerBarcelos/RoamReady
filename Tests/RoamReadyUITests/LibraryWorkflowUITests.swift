@@ -19,7 +19,7 @@ final class LibraryWorkflowUITests: XCTestCase {
         app.buttons["Looks like home"].tap()
         app.buttons["Let’s go camping"].tap()
 
-        let tripAction = app.tabBars.buttons["Trip"]
+        let tripAction = app.navigationTab("Trip")
         XCTAssertTrue(tripAction.waitForExistence(timeout: 10))
         tripAction.tap()
         let campground = app.textFields["tripCampgroundName"]
@@ -27,7 +27,7 @@ final class LibraryWorkflowUITests: XCTestCase {
         campground.tap()
         campground.typeText("Workflow Pines")
         app.buttons["Save"].tap()
-        app.tabBars.buttons["Plan"].tap()
+        app.navigationTab("Plan").tap()
         let booking = app.descendants(matching: .any)["tripRow-Workflow Pines"].firstMatch
         XCTAssertTrue(booking.waitForExistence(timeout: 5))
         booking.tap()
@@ -49,8 +49,8 @@ final class LibraryWorkflowUITests: XCTestCase {
 
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Plan"].waitForExistence(timeout: 15), "Onboarding must not return")
-        app.tabBars.buttons["Plan"].tap()
+        XCTAssertTrue(app.navigationTab("Plan").waitForExistence(timeout: 15), "Onboarding must not return")
+        app.navigationTab("Plan").tap()
         XCTAssertTrue(booking.waitForExistence(timeout: 5), "Booking survives reopening the disk store")
         booking.tap()
         app.descendants(matching: .any)["tripChecklist-setup"].firstMatch.tap()
@@ -62,7 +62,7 @@ final class LibraryWorkflowUITests: XCTestCase {
         XCTAssertTrue(savedStep.exists, "Custom checklist content survives app termination")
 
         // Verify the real preference, then relaunch at the largest accessibility text size.
-        app.tabBars.buttons["Profile"].tap()
+        app.navigationTab("Profile").tap()
         let appearance = app.segmentedControls["appearancePicker"]
         scrollTo(appearance, in: app)
         appearance.buttons["Dark"].tap()
@@ -70,8 +70,8 @@ final class LibraryWorkflowUITests: XCTestCase {
         app.terminate()
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Profile"].waitForExistence(timeout: 15))
-        app.tabBars.buttons["Profile"].tap()
+        XCTAssertTrue(app.navigationTab("Profile").waitForExistence(timeout: 15))
+        app.navigationTab("Profile").tap()
         scrollTo(appearance, in: app)
         XCTAssertTrue(appearance.buttons["Dark"].isSelected, "Appearance survives app termination")
         try app.performAccessibilityAudit(for: [.dynamicType, .textClipped])

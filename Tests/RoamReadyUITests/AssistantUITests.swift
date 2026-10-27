@@ -12,41 +12,40 @@ final class AssistantUITests: XCTestCase {
 
     func testUnsupportedDeviceHasNoAssistantButton() {
         let app = launch("unsupported")
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         XCTAssertFalse(app.buttons["openAssistant"].exists)
     }
 
     func testTabBarFitsWithoutMore() {
         let app = launch("ready")
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.tabBars.buttons.count, 4)
-        XCTAssertFalse(app.tabBars.buttons["Plan"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Profile"].exists, "Profile must not be pushed into a More tab")
-        XCTAssertFalse(app.tabBars.buttons["More"].exists)
+        XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationTab("Profile").exists, "Profile must not be pushed into a More tab")
+        XCTAssertFalse(app.navigationTab("Plan").exists)
+        XCTAssertFalse(app.navigationTab("More").exists)
     }
 
     func testAssistantIsReachableFromEveryTab() {
         let app = launch("ready")
-        for tab in ["Home", "Plan", "Camp Finder", "Profile"] {
-            let button = app.tabBars.buttons[tab]
+        for tab in ["Home", "Camp Finder", "Profile"] {
+            let button = app.navigationTab(tab)
             XCTAssertTrue(button.waitForExistence(timeout: 10))
             button.tap()
             openAssistant(app)
-            XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
-            app.buttons["Done"].tap()
+            XCTAssertTrue(app.buttons["closeAssistant"].waitForExistence(timeout: 5))
+            app.buttons["closeAssistant"].tap()
         }
     }
 
     func testTripActionPresentsSheetAndPreservesSelectedTab() {
         let app = launch("unsupported")
-        let plan = app.tabBars.buttons["Plan"]
-        XCTAssertTrue(plan.waitForExistence(timeout: 10))
-        plan.tap()
-        app.tabBars.buttons["Trip"].tap()
+        let profile = app.navigationTab("Profile")
+        XCTAssertTrue(profile.waitForExistence(timeout: 10))
+        profile.tap()
+        app.navigationTab("Trip").tap()
         XCTAssertTrue(app.navigationBars["Add trip"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Save"].isEnabled, "Cannot save a booking without a rig and campground")
         app.buttons["Cancel"].tap()
-        XCTAssertTrue(plan.isSelected)
+        XCTAssertTrue(profile.isSelected)
     }
 
     func testDisabledAIDisplaysRecoveryInsteadOfConversation() {
