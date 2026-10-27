@@ -27,7 +27,7 @@ The native app links these local products and Apple frameworks. There are no ext
 | --- | --- |
 | [Camp/App/](../Camp/App/) | Entry point, root view, tabs, and `LibraryController`, which opens the container, surfaces save failures, and handles explicit erase. |
 | [Camp/Features/](../Camp/Features/) | Feature views and services for Home, Trips, Checklists, CampFinder, Documents, Memories, Profile (including iCloud settings), Onboarding, Weather, and Assistant. |
-| [Camp/Shared/](../Camp/Shared/) | Connectivity gate and small shared views. |
+| [Camp/Shared/](../Camp/Shared/) | Connectivity gate, iPhone Duo hinge detection, and small shared views. |
 | [Sources/](../Sources/) | Swift package modules. |
 | [Tests/](../Tests/) | One test target per package module, plus the app's `RoamReadyUITests` (run by the Xcode scheme, not `swift test`). |
 | [RoamReady.xcodeproj/](../RoamReady.xcodeproj/) | Native app project and shared RoamReady scheme. |
@@ -47,6 +47,12 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 6. If configured and enabled at launch, Apple mirrors the library to the device's private CloudKit database and manages connectivity, retries, and account transitions.
 
 There is no raw SQL, custom CloudKit record transport, hosted user-data service, or app account/session backend. See [storage and synchronization](offline-storage.md) for model relationships, schema constraints, conflict behavior, and identity transitions.
+
+### iPhone Duo workspace
+
+Each window's root applies `observesDuoWorkspace()` ([DuoWorkspace.swift](../Camp/Shared/DuoWorkspace.swift)). It hosts a `UIHingeInteraction` (iOS 27.1, guarded by availability and excluded from Mac Catalyst) and feeds every update, including the initial one, into `HingeCapability` in `CampCore`. The first non-nil hinge turns the scene's Duo workspace on; it stays on, because a nil report only means the observing view left a hierarchy that provides hinge updates. Screens read the `\.usesDuoWorkspace` environment value. There are no model-name checks or device dimensions; Duo screens adapt with size classes and available space.
+
+`MainTabs` forces a compact horizontal size class everywhere except the Duo workspace, where the scene's own size class passes through. Tab selection, the Add trip and Assistant sheets, and the Assistant conversation stay in `MainTabs`, above the content that resizes. Debug builds force the workspace with `-duo-ui-test`.
 
 The device-local appearance preference is stored through `AppAppearance`/`@AppStorage` and applied at the window root. System follows the OS; Light/Dark overrides also apply to navigation and sheets.
 

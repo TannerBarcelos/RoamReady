@@ -28,6 +28,7 @@ struct RoamReadyApp: App {
             .environment(library)
             .environment(connectivity)
             .environment(campFinder)
+            .observesDuoWorkspace()
             .tint(.blue)
             .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
@@ -66,6 +67,8 @@ struct MainTabs: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
+    // Selection, sheets, and the conversation live here, above the content that resizes on Duo.
     @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
@@ -80,7 +83,8 @@ struct MainTabs: View {
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { tabRoot { ProfileView() } }
         }
         // Keep native tab controls stable as text size changes; iPad's floating labels don't scale.
-        .environment(\.horizontalSizeClass, .compact)
+        // On Duo the scene's own width passes through so screens can use the open display.
+        .environment(\.horizontalSizeClass, usesDuoWorkspace ? horizontalSizeClass : .compact)
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
