@@ -101,7 +101,11 @@ struct WrappingLabel: View {
 
     var body: some View {
         Label {
-            Text(title).fixedSize(horizontal: false, vertical: true)
+            Text(title)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 2)
         } icon: { Image(systemName: systemImage) }
+        .accessibilityElement(children: .combine)
     }
 }
