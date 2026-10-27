@@ -1,5 +1,5 @@
-// Signed builds: copy to Config/Local.xcconfig (git-ignored), fill in the placeholders, and set it as
-// the base configuration for both Debug and Release. The default build stays unsigned and capability-free.
+// Signed builds: copy to Config/Local.xcconfig (git-ignored), fill in the placeholders. Both Debug and Release
+// already include it through Config/App.xcconfig. The default build stays unsigned and capability-free.
 PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.RoamReady
 DEVELOPMENT_TEAM = YOURTEAMID
 ROAMREADY_MIRRORING_CONTAINER = iCloud.com.yourcompany.RoamReady

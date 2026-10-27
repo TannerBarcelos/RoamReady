@@ -3,7 +3,7 @@ import XCTest
 /// Exercises production onboarding and SwiftData through the UI with a separate on-disk library.
 @MainActor
 final class LibraryWorkflowUITests: XCTestCase {
-    func testOnboardingTripAndCustomStepSurviveRelaunch() {
+    func testOnboardingTripAndCustomStepSurviveRelaunch() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-workflow-ui-test", UUID().uuidString]
         app.launch()
@@ -60,5 +60,28 @@ final class LibraryWorkflowUITests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(savedStep.exists, "Custom checklist content survives app termination")
+
+        // Verify the real preference, then relaunch at the largest accessibility text size.
+        app.tabBars.buttons["Profile"].tap()
+        let appearance = app.segmentedControls["appearancePicker"]
+        scrollTo(appearance, in: app)
+        appearance.buttons["Dark"].tap()
+        XCTAssertTrue(appearance.buttons["Dark"].isSelected)
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.buttons["Profile"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["Profile"].tap()
+        scrollTo(appearance, in: app)
+        XCTAssertTrue(appearance.buttons["Dark"].isSelected, "Appearance survives app termination")
+        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped])
+    }
+
+    private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<12 {
+            if element.isHittable { return }
+            app.swipeUp()
+        }
+        XCTAssertTrue(element.isHittable)
     }
 }

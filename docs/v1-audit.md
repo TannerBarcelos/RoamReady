@@ -43,9 +43,18 @@ The priority representation changes a newly introduced, pre-release field. An op
 
 - Baseline main, Mac run [40444911329](https://github.com/TannerBarcelos/RoamReady/actions/runs/40444911329): failed in persistence tests with the priority cast abort; Catalyst build did not run.
 - Initial fix `5df32e3`, Mac run [40445339230](https://github.com/TannerBarcelos/RoamReady/actions/runs/40445339230): package build and unit-test steps passed, including the previously aborting persistence suite. Superseded by further work, so it is not final-branch build evidence.
-- Final-branch iPhone/iPad UI tests, Release simulator build, Mac package tests and Debug/Release Catalyst builds: record exact run/commit outcomes below after CI completes.
+- Code commit `67612af`: [Mac run 40445923327](https://github.com/TannerBarcelos/RoamReady/actions/runs/40445923327) passed all 104 package tests (72 XCTest and 32 Swift Testing), plus Debug/Release Catalyst builds. [iPhone/iPad run 40445923300](https://github.com/TannerBarcelos/RoamReady/actions/runs/40445923300) passed both Debug build-for-testing jobs and iPhone Release; UI execution was still running when the second audit pass began.
+- The follow-up pass adds signing override verification, a 300-trip/2,000-photo real-store regression, appearance persistence at accessibility text size, and a focused native Dynamic Type/text-clipping audit. Native results for this follow-up must pass before counting those checks as verified.
 - Local environment is Linux without Swift/Xcode or a connected iOS device. Source/configuration review and `git diff --check` were performed here; native execution uses the repository's existing Xcode 27 CI runners.
 - No signed physical-device, live WeatherKit, real Foundation Models, CloudKit multi-device, accessibility, performance or App Store submission checks were performed in this audit.
+
+## Follow-up fixes and checks
+
+- Wire both app configurations to `Config/App.xcconfig`; optional `Config/Local.xcconfig` now overrides actual resolved signing, bundle, container and capability settings. Target-level empty values previously took precedence over base configurations. CI verifies defaults and fixture overrides without signing or contacting Apple provisioning.
+- Honor Reduce Motion when scrolling Assistant transcripts, give checklist controls 44-point targets, and stack forecast details at accessibility text sizes.
+- Add real-store scale coverage for 300 trips, 2,000 synthetic 16 KiB photos and their relationships, including reopen/fetch timing. This measures storage operations, not camera decode or smooth scrolling with real images.
+- Extend the real UI workflow to verify Dark appearance survives relaunch and run native Dynamic Type/text-clipping checks on the visible Profile screen at the largest accessibility size. VoiceOver navigation, contrast, the rest of the app and physical-device acceptance still require their documented passes.
+- Bound simulator warmup and UI-test steps so a stuck runner produces a specific failure; retain result bundles for successful as well as failed runs.
 
 ## Remaining decisions and missing release work
 

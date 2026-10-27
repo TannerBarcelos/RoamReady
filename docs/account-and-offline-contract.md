@@ -46,6 +46,6 @@ Answers use relevant saved checklist guidance, including the owner's step notes,
 
 ## Provisioning and acceptance
 
-The default build declares no capabilities. Provision the new managed CloudKit container and push delivery as documented in offline-storage.md.
+The default build declares Mac sandbox permissions, but no CloudKit or WeatherKit capabilities. Provision the new managed CloudKit container and push delivery as documented in offline-storage.md.
 
 Required device acceptance includes an offline first launch and onboarding, Erase all data (online and offline, sync on and off), restoration to a new device through iCloud, iCloud changes during imports/exports, real camera permission/capture, and all Foundation Models availability states. No backend or provider account was created automatically during this work.

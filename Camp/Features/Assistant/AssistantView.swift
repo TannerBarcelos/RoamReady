@@ -30,6 +30,7 @@ struct TripAssistantSheet: View {
 struct AssistantView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     let trip: Trip?
     let step: ChecklistStep?
@@ -155,10 +156,10 @@ struct AssistantView: View {
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             .onChange(of: chat.exchanges.count) { _, _ in
-                withAnimation { scroll.scrollTo("bottom", anchor: .bottom) }
+                withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
             }
             .onChange(of: answering) { _, _ in
-                withAnimation { scroll.scrollTo("bottom", anchor: .bottom) }
+                withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
             }
         }
     }
