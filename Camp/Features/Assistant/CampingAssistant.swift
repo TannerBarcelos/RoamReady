@@ -43,7 +43,7 @@ enum CampingAssistant {
         uiTestingAvailability != nil || ProcessInfo.processInfo.arguments.contains("-assistant-device-smoke")
     }
 
-    /// Deterministic UI tests on Simulator, where Foundation Models cannot run.
+    /// Deterministic UI fixtures, independent of the simulator host’s AI configuration.
     static var uiTestingAvailability: AssistantAvailability? {
         let arguments = ProcessInfo.processInfo.arguments
         guard let index = arguments.firstIndex(of: "-assistant-ui-test"),
