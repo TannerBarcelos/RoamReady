@@ -27,6 +27,9 @@ final class LibraryController {
             try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true,
                                                     attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
             container = try LibraryStore.container(at: Self.directory.appending(path: "RoamReady.store"), cloudKitContainer: iCloud.containerForSession)
+            #if DEBUG
+            if let container { try SampleTrips.seedIfRequested(in: container) }
+            #endif
             iCloud.startObserving()
             openFailure = nil
         } catch {
