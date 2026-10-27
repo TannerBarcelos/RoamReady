@@ -64,7 +64,7 @@ struct RootView: View {
 struct MainTabs: View {
     enum Destination: Hashable { case home, plan, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
-    @State private var showsAssistant = CampingAssistant.showsGlobalChat
+    @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
     @State private var askingAssistant = false
@@ -82,7 +82,7 @@ struct MainTabs: View {
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
+            if phase == .active { showsAssistant = CampingAssistant.showsChat }
         }
     }
     /// iPhone shows five tabs at most, so Assistant opens from a toolbar button instead of a sixth tab.
@@ -103,7 +103,7 @@ struct MainTabs: View {
 struct MainTabActions {
     var addTrip: @MainActor () -> Void = {}
     var showCampFinder: @MainActor () -> Void = {}
-    /// Nil where the Assistant isn't offered (non-AI hardware, iPad, Simulator).
+    /// Nil where the Assistant isn't offered: devices that can't run Apple Intelligence.
     var openAssistant: (@MainActor () -> Void)? = nil
 }
 

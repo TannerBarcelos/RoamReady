@@ -45,7 +45,7 @@ struct MemoriesView: View {
                 PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images, preferredItemEncoding: .current) {
                     Label("Add trip photos", systemImage: "photo.badge.plus")
                 }.disabled(importing || requestingCamera)
-                if importing { ProgressView("Saving on this iPhone") }
+                if importing { ProgressView("Saving on this device") }
                 if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
                 if needsCameraPermission {
                     Button("Open Settings") {

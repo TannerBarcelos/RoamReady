@@ -31,7 +31,7 @@ final class LibraryController {
     func save() {
         guard let context = container?.mainContext, context.hasChanges else { return }
         do { try context.save(); saveFailure = nil }
-        catch { saveFailure = "Your latest changes haven’t been saved to this iPhone. \(error.localizedDescription)" }
+        catch { saveFailure = "Your latest changes haven’t been saved to this device. \(error.localizedDescription)" }
     }
 
     /// Erase all data on this device: the library, caches, imports, and settings. The caller has

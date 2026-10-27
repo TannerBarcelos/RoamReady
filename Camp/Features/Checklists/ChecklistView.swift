@@ -25,6 +25,8 @@ struct ChecklistView: View {
     }
     private var steps: [ChecklistStep] { trip.steps(phase) }
     private var rigName: String { trip.rig?.displayName ?? "this rig" }
+    /// AI help only appears on hardware that can run Apple Intelligence.
+    private var offersHelp: Bool { CampingAssistant.showsChat }
 
     var body: some View {
         List {
@@ -57,7 +59,9 @@ struct ChecklistView: View {
                             .buttonStyle(.borderless).accessibilityLabel("Details and edit \(step.title)")
                     }
                     .contextMenu {
-                        Button("Ask about this step", systemImage: "sparkles") { helpStep = step; showAssistant = true }
+                        if offersHelp {
+                            Button("Ask about this step", systemImage: "sparkles") { helpStep = step; showAssistant = true }
+                        }
                         Button(step.status == .skipped ? "Mark pending" : "Skip this step", systemImage: "arrow.uturn.right") {
                             step.status = step.status == .skipped ? .pending : .skipped
                             library.save()
@@ -74,7 +78,9 @@ struct ChecklistView: View {
                 Text("Tap a circle to finish a step. Use Edit to reorder or remove steps. Follow your rig’s manuals for equipment-specific procedures.")
             }
             Section {
-                Button("Ask about this checklist", systemImage: "sparkles") { helpStep = nil; showAssistant = true }
+                if offersHelp {
+                    Button("Ask about this checklist", systemImage: "sparkles") { helpStep = nil; showAssistant = true }
+                }
                 Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { confirmingDefaults = true }
                     .disabled(trip.rig == nil)
                 if defaultsSaved { Label("Defaults updated for \(rigName)", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
@@ -92,7 +98,7 @@ struct ChecklistView: View {
             if helpAfterDismiss { helpAfterDismiss = false; showAssistant = true }
         }) { step in
             ChecklistStepEditor(step: step.draft, onSave: { edited in step.apply(edited); library.save() },
-                                onHelp: { helpStep = step; helpAfterDismiss = true; editedStep = nil })
+                                onHelp: offersHelp ? { helpStep = step; helpAfterDismiss = true; editedStep = nil } : nil)
         }
         .sheet(isPresented: $adding) {
             ChecklistStepEditor(step: ChecklistStepDraft(title: "")) { step in trip.addStep(step, to: phase); library.save() }

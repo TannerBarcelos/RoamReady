@@ -3,15 +3,15 @@ import XCTest
 
 final class AssistantAvailabilityTests: XCTestCase {
     func testOnlyReadyAIShowsConversationAndComposer() {
-        XCTAssertTrue(AssistantAvailability.ready.showsTab)
+        XCTAssertTrue(AssistantAvailability.ready.showsChatButton)
         XCTAssertTrue(AssistantAvailability.ready.showsConversation)
         for state in [AssistantAvailability.disabled, .preparing, .unavailable, .unsupportedLanguage] {
-            XCTAssertTrue(state.showsTab, "Supported devices retain the tab to explain setup/failure")
+            XCTAssertTrue(state.showsChatButton, "Supported devices keep the chat button to explain setup/failure")
             XCTAssertFalse(state.showsConversation, "Show the unavailable screen instead of chat or its composer")
             XCTAssertFalse(state.title.isEmpty)
             XCTAssertFalse(state.message.isEmpty)
         }
-        XCTAssertFalse(AssistantAvailability.unsupported.showsTab)
+        XCTAssertFalse(AssistantAvailability.unsupported.showsChatButton)
         XCTAssertFalse(AssistantAvailability.unsupported.showsConversation)
     }
 

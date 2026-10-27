@@ -45,16 +45,16 @@ struct ProfileView: View {
                 }
                 if let exportURL { ShareLink("Share export (.zip)", item: exportURL) }
                 if let exportFailure { Text(exportFailure).font(.caption).foregroundStyle(.red) }
-            } header: { Text("On this iPhone") } footer: {
+            } header: { Text("On this device") } footer: {
                 Text("The export includes your profile, rigs, checklists, bookings, notes, saved campgrounds, and readable copies of your documents, including end-to-end encrypted ones. Keep it somewhere private. Share trip photos individually.")
             }
             Section {
                 NavigationLink { EraseDataView() } label: { Label("Erase all data", systemImage: "trash").foregroundStyle(.red) }
-            } footer: { Text("RoamReady has no accounts. Your library lives on this iPhone and, if sync is on, in your own iCloud.") }
+            } footer: { Text("RoamReady has no accounts. Your library lives on this device and, if sync is on, in your own iCloud.") }
             ICloudSection()
             Section("Camping help") {
-                Label(CampingAssistant.availability, systemImage: "iphone").font(.subheadline)
-                Text("Saved guidance is always available. AI explanations use Apple’s on-device model on iPhones that support Apple Intelligence (iPhone 15 Pro or later) when it’s turned on and its model is ready. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
+                Label(CampingAssistant.availability, systemImage: "sparkles").font(.subheadline)
+                Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkles button on Home or Plan. Questions stay on this device.").font(.footnote).foregroundStyle(.secondary)
             }
             Section {
                 Text("Camp Finder searches campgrounds and RV parks in Apple Maps, online only. Apple Maps doesn’t list every campground, and RoamReady doesn’t book or show availability.").font(.footnote).foregroundStyle(.secondary)

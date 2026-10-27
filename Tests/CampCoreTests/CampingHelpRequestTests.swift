@@ -2,14 +2,22 @@ import XCTest
 @testable import CampCore
 
 final class CampingHelpRequestTests: XCTestCase {
-    func testGeneralTroubleshootingDoesNotRequireATripOrReferenceMatch() {
+    func testQuestionsWithoutAReferenceMatchStillReachTheModel() {
         let general = CampingHelpRequest(question: "Why is my refrigerator warm?", steps: [], rigType: nil,
                                          step: nil, scope: .general)
-        XCTAssertTrue(general.allowsGeneration)
         XCTAssertTrue(general.passages.isEmpty)
+        XCTAssertTrue(general.prompt.contains("Why is my refrigerator warm?"))
         let checklist = CampingHelpRequest(question: "Why is my refrigerator warm?", steps: [], rigType: nil,
                                            step: nil, scope: .checklist)
-        XCTAssertFalse(checklist.allowsGeneration, "Trip help still requires saved guidance")
+        XCTAssertTrue(checklist.passages.isEmpty)
+        XCTAssertTrue(checklist.prompt.contains("Why is my refrigerator warm?"))
+        XCTAssertTrue(checklist.instructions.contains("general camping knowledge"),
+                      "Trip help answers beyond saved notes instead of refusing")
+    }
+
+    func testHazardsAreHandledByTheModelWithSafetyFirstInstructions() {
+        let request = CampingHelpRequest(question: "I smell gas", steps: [], rigType: nil, step: nil, scope: .checklist)
+        XCTAssertTrue(request.instructions.contains("emergency services"))
     }
 
     func testFollowUpRetainsTopicAndSelectedStepTakesPriority() {

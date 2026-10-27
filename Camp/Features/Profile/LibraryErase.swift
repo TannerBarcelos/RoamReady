@@ -8,7 +8,7 @@ import CloudKit
 enum LibraryErase {
     enum Step: String, Sendable {
         case iCloud = "Deleting your iCloud data"
-        case device = "Erasing this iPhone"
+        case device = "Erasing this device"
     }
 
     struct Failure: LocalizedError {
@@ -17,7 +17,7 @@ enum LibraryErase {
         var errorDescription: String? {
             switch step {
             case .iCloud: "Nothing was erased. Your iCloud data couldn’t be deleted. \(reason)"
-            case .device: "Your iCloud data was deleted, but this iPhone couldn’t be fully erased. \(reason) Try again, or delete the app."
+            case .device: "Your iCloud data was deleted, but this device couldn’t be fully erased. \(reason) Try again, or delete the app."
             }
         }
     }
@@ -38,7 +38,7 @@ enum LibraryErase {
     private static func deleteCloudData(containerIdentifier: String) async throws {
         let container = CKContainer(identifier: containerIdentifier)
         guard try await container.accountStatus() == .available else {
-            throw Failure(step: .iCloud, reason: "Sign in to iCloud on this iPhone, then try again.")
+            throw Failure(step: .iCloud, reason: "Sign in to iCloud on this device, then try again.")
         }
         let zone = CKRecordZone.ID(zoneName: "com.apple.coredata.cloudkit.zone", ownerName: CKCurrentUserDefaultName)
         do { _ = try await container.privateCloudDatabase.deleteRecordZone(withID: zone) }

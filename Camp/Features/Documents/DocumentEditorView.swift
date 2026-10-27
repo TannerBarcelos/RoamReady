@@ -49,7 +49,7 @@ struct DocumentEditorView: View {
                         }
                     }
                 } header: { Text("Document type") } footer: {
-                    Text("Documents are encrypted automatically when synced with your private iCloud. Files saved on this iPhone open offline.")
+                    Text("Documents are encrypted automatically when synced with your private iCloud. Files saved on this device open offline.")
                 }
                 Section("Details") {
                     TextField("Title", text: $title)

@@ -59,7 +59,7 @@ struct PendingDocumentFile: Identifiable, Sendable {
 struct DocumentVaultSection: View {
     let owner: DocumentOwner
     var header = "Documents"
-    var footer = "PDFs and images are saved on this iPhone and open offline. Links need a connection unless you save a copy."
+    var footer = "PDFs and images are saved on this device and open offline. Links need a connection unless you save a copy."
     @State private var importingFile = false
     @State private var choosingPhoto = false
     @State private var photoSelection: PhotosPickerItem?
