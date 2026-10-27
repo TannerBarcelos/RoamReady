@@ -18,6 +18,15 @@ final class AssistantConversation {
     var generationFailure: CampingChatFailure?
 }
 
+/// Trip and checklist help: a fresh conversation each time the sheet opens. The sheet's closure reruns
+/// whenever its parent redraws, so the conversation is held here in @State rather than created there.
+struct TripAssistantSheet: View {
+    let trip: Trip
+    let step: ChecklistStep?
+    @State private var chat = AssistantConversation()
+    var body: some View { AssistantView(trip: trip, step: step, chat: chat) }
+}
+
 struct AssistantView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -25,15 +34,14 @@ struct AssistantView: View {
     let trip: Trip?
     let step: ChecklistStep?
     let isPresentedAsSheet: Bool
-    @State private var chat: AssistantConversation
+    /// Borrowed from whoever owns the conversation's lifetime.
+    @Bindable var chat: AssistantConversation
     @State private var pendingQuestion: String?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
 
-    /// Pass `conversation` to keep the chat across presentations; trip and checklist help start fresh.
-    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true,
-         conversation: AssistantConversation? = nil) {
-        _chat = State(initialValue: conversation ?? AssistantConversation())
+    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true, chat: AssistantConversation) {
+        _chat = Bindable(wrappedValue: chat)
         self.trip = trip
         self.step = step
         self.isPresentedAsSheet = isPresentedAsSheet

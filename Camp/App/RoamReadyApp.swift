@@ -80,7 +80,7 @@ struct MainTabs: View {
         }
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
-        .sheet(isPresented: $askingAssistant) { AssistantView(conversation: assistantConversation) }
+        .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }
