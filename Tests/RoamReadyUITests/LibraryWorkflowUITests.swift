@@ -28,10 +28,10 @@ final class LibraryWorkflowUITests: XCTestCase {
         campground.typeText("Workflow Pines")
         app.buttons["Save"].tap()
         app.tabBars.buttons["Plan"].tap()
-        let booking = app.staticTexts["Workflow Pines"].firstMatch
+        let booking = app.descendants(matching: .any)["tripRow-Workflow Pines"].firstMatch
         XCTAssertTrue(booking.waitForExistence(timeout: 5))
         booking.tap()
-        app.staticTexts["Setup"].firstMatch.tap()
+        app.descendants(matching: .any)["tripChecklist-setup"].firstMatch.tap()
         // The add action is below the generated checklist on smaller devices.
         let addStep = app.buttons["Add a step"]
         for _ in 0..<12 {
@@ -53,7 +53,7 @@ final class LibraryWorkflowUITests: XCTestCase {
         app.tabBars.buttons["Plan"].tap()
         XCTAssertTrue(booking.waitForExistence(timeout: 5), "Booking survives reopening the disk store")
         booking.tap()
-        app.staticTexts["Setup"].firstMatch.tap()
+        app.descendants(matching: .any)["tripChecklist-setup"].firstMatch.tap()
         let savedStep = app.descendants(matching: .any)["checklistStep-Pack the blue kettle"].firstMatch
         for _ in 0..<12 {
             if savedStep.isHittable { break }

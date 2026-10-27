@@ -29,6 +29,7 @@ struct TripDetailView: View {
                     NavigationLink { ChecklistView(trip: trip, initialPhase: phase) } label: {
                         VStack(alignment: .leading, spacing: 8) { Text(phase.title).font(.headline); ProgressSummary(steps: trip.steps(phase)) }
                     }
+                    .accessibilityIdentifier("tripChecklist-\(phase.rawValue)")
                 }
             }
             WeatherSection(trip: TripDraft(trip))
