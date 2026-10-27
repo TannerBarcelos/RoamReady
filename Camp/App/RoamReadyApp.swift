@@ -68,6 +68,7 @@ struct MainTabs: View {
     @State private var selection = Destination.home
     @State private var addingTrip = false
     @State private var askingAssistant = false
+    @State private var assistantConversation = AssistantConversation()
     var body: some View {
         TabView(selection: tabSelection) {
             Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
@@ -81,7 +82,7 @@ struct MainTabs: View {
         .environment(\.mainTabActions, MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder },
                                                       openAssistant: showsAssistant ? { askingAssistant = true } : nil))
         .sheet(isPresented: $addingTrip) { NewTripView() }
-        .sheet(isPresented: $askingAssistant) { AssistantView() }
+        .sheet(isPresented: $askingAssistant) { AssistantView(conversation: assistantConversation) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }

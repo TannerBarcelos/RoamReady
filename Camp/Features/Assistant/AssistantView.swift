@@ -3,10 +3,19 @@ import SwiftData
 import CampCore
 import CampPersistence
 
-private struct CampingExchange: Identifiable {
+struct CampingExchange: Identifiable {
     let id = UUID()
     let question: String
     let answer: CampingAnswer
+}
+
+/// The global chat, owned above its sheet so it survives closing and reopening the Assistant.
+/// Kept in memory only; conversations are never saved to the library.
+@MainActor @Observable
+final class AssistantConversation {
+    var question = ""
+    var exchanges: [CampingExchange] = []
+    var generationFailure: CampingChatFailure?
 }
 
 struct AssistantView: View {
@@ -16,14 +25,15 @@ struct AssistantView: View {
     let trip: Trip?
     let step: ChecklistStep?
     let isPresentedAsSheet: Bool
-    @State private var question = ""
-    @State private var exchanges: [CampingExchange] = []
+    @State private var chat: AssistantConversation
     @State private var pendingQuestion: String?
-    @State private var generationFailure: CampingChatFailure?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
 
-    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true) {
+    /// Pass `conversation` to keep the chat across presentations; trip and checklist help start fresh.
+    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true,
+         conversation: AssistantConversation? = nil) {
+        _chat = State(initialValue: conversation ?? AssistantConversation())
         self.trip = trip
         self.step = step
         self.isPresentedAsSheet = isPresentedAsSheet
@@ -32,7 +42,7 @@ struct AssistantView: View {
     private var answering: Bool { pendingQuestion != nil }
     private var showsConversation: Bool { trip != nil || availability.showsConversation }
     private var canSend: Bool {
-        showsConversation && !answering && !question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        showsConversation && !answering && !chat.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -58,8 +68,8 @@ struct AssistantView: View {
                 if showsConversation {
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
-                            exchanges = []; question = ""; generationFailure = nil
-                        }.disabled(answering || exchanges.isEmpty)
+                            chat.exchanges = []; chat.question = ""; chat.generationFailure = nil
+                        }.disabled(answering || chat.exchanges.isEmpty)
                     }
                 }
                 if isPresentedAsSheet {
@@ -68,8 +78,8 @@ struct AssistantView: View {
             }
             .onAppear {
                 refreshAvailability()
-                if let step, exchanges.isEmpty, question.isEmpty {
-                    question = "What should I know about \(step.title.lowercased())?"
+                if let step, chat.exchanges.isEmpty, chat.question.isEmpty {
+                    chat.question = "What should I know about \(step.title.lowercased())?"
                 }
             }
             .task(id: scenePhase) {
@@ -89,7 +99,7 @@ struct AssistantView: View {
         ScrollViewReader { scroll in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
-                    if exchanges.isEmpty && !answering {
+                    if chat.exchanges.isEmpty && !answering {
                         VStack(alignment: .leading, spacing: 12) {
                             Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.tint)
                             Text("How can I help?").font(.largeTitle.bold())
@@ -99,7 +109,7 @@ struct AssistantView: View {
                             if let step { Text(step.title).font(.subheadline).foregroundStyle(.secondary) }
                         }.padding(.vertical, 32)
                     }
-                    ForEach(exchanges) { exchange in
+                    ForEach(chat.exchanges) { exchange in
                         userMessage(exchange.question)
                         VStack(alignment: .leading, spacing: 10) {
                             Text(exchange.answer.text).textSelection(.enabled)
@@ -117,7 +127,7 @@ struct AssistantView: View {
                         userMessage(pendingQuestion)
                         ProgressView("Thinking…").accessibilityLabel("Assistant is answering")
                     }
-                    if let generationFailure {
+                    if let generationFailure = chat.generationFailure {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Couldn’t get a response", systemImage: "exclamationmark.bubble")
                                 .font(.headline)
@@ -132,7 +142,7 @@ struct AssistantView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
-            .onChange(of: exchanges.count) { _, _ in
+            .onChange(of: chat.exchanges.count) { _, _ in
                 withAnimation { scroll.scrollTo("bottom", anchor: .bottom) }
             }
             .onChange(of: answering) { _, _ in
@@ -156,7 +166,7 @@ struct AssistantView: View {
     private var composer: some View {
         VStack(spacing: 8) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("Message Assistant", text: $question, axis: .vertical)
+                TextField("Message Assistant", text: $chat.question, axis: .vertical)
                     .lineLimit(1...6)
                     .disabled(answering)
                     .padding(.horizontal, 16).padding(.vertical, 12)
@@ -187,14 +197,14 @@ struct AssistantView: View {
     private func cancelRequest() {
         task?.cancel()
         task = nil
-        if let pendingQuestion, question.isEmpty { question = pendingQuestion }
+        if let pendingQuestion, chat.question.isEmpty { chat.question = pendingQuestion }
         pendingQuestion = nil
     }
 
     private func ask() {
         refreshAvailability()
         guard canSend else { return }
-        let submitted = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        let submitted = chat.question.trimmingCharacters(in: .whitespacesAndNewlines)
         let rig = trip == nil ? rigs.active.first : trip?.rig
         let steps: [ChecklistStepDraft]
         if let trip {
@@ -204,10 +214,10 @@ struct AssistantView: View {
         } else {
             steps = []
         }
-        let history = exchanges.map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
+        let history = chat.exchanges.map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
         pendingQuestion = submitted
-        generationFailure = nil
-        question = ""
+        chat.generationFailure = nil
+        chat.question = ""
         task = Task {
             do {
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
@@ -216,13 +226,13 @@ struct AssistantView: View {
                 guard !Task.isCancelled else { return }
                 refreshAvailability()
                 guard !Task.isCancelled, showsConversation else { return }
-                exchanges.append(CampingExchange(question: submitted, answer: answer))
+                chat.exchanges.append(CampingExchange(question: submitted, answer: answer))
             } catch {
                 guard !Task.isCancelled else { return }
                 refreshAvailability()
                 guard !Task.isCancelled, showsConversation else { return }
-                generationFailure = (error as? CampingChatFailure) ?? .failed
-                question = submitted
+                chat.generationFailure = (error as? CampingChatFailure) ?? .failed
+                chat.question = submitted
             }
             pendingQuestion = nil
             task = nil

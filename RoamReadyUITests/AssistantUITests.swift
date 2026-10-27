@@ -51,6 +51,20 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
     }
 
+    func testConversationSurvivesClosingTheAssistant() {
+        let app = launch("ready", generation: "reply")
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("How do I keep drinking water clean?")
+        app.buttons["assistantSend"].tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        app.buttons["Done"].tap()
+        openAssistant(app)
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 5), "Reopening keeps the chat")
+    }
+
     func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
         let app = launch("ready", generation: "failure")
         openAssistant(app)
