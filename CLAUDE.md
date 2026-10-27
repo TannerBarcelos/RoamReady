@@ -17,7 +17,7 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
 
 # Install and launch the build on the booted simulator
 xcrun simctl install booted .derivedData/Build/Products/Debug-iphonesimulator/RoamReady.app
-xcrun simctl launch booted com.example.RoamReady
+xcrun simctl launch booted com.tannerdev.roamready
 
 # UI tests (Tests/RoamReadyUITests)
 xcodebuild -project RoamReady.xcodeproj -scheme RoamReady \

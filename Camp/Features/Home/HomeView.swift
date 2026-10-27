@@ -41,6 +41,7 @@ struct HomeView: View {
                             SaveStatus()
                         }.padding(.vertical, 6)
                     }
+                    .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
                     NavigationLink { ChecklistView(trip: trip) } label: {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Continue setup").font(.headline)
@@ -71,6 +72,7 @@ struct HomeView: View {
                             if !next.siteNumber.isEmpty { Label("Site \(next.siteNumber)", systemImage: "mappin").font(.subheadline) }
                         }.padding(.vertical, 6)
                     }
+                    .accessibilityIdentifier("tripRow-\(next.campgroundName)")
                     NavigationLink { ChecklistView(trip: next) } label: {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Review setup checklist").font(.headline)

@@ -42,8 +42,16 @@ struct AppSettingsView: View {
                 }
                 Section("Camping help") {
                     Label(CampingAssistant.availability, systemImage: "sparkles").font(.subheadline)
-                    Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkle button above the tab bar. Questions stay on this device.")
+                    Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkle button above the tab bar or Ask Assistant in the toolbar. Questions stay on this device.")
                         .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Privacy & support") {
+                    Link(destination: URL(string: "https://github.com/TannerBarcelos/RoamReady/blob/main/docs/privacy-policy.md")!) {
+                        Label("Privacy policy", systemImage: "hand.raised")
+                    }
+                    Link(destination: URL(string: "https://github.com/TannerBarcelos/RoamReady/issues")!) {
+                        Label("Get help or report a problem", systemImage: "questionmark.circle")
+                    }
                 }
                 Section {
                     Text("Camp Finder searches campgrounds and RV parks in Apple Maps, online only. Apple Maps doesn’t list every campground, and RoamReady doesn’t book or show availability.")

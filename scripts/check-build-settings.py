@@ -6,8 +6,8 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL = ROOT / "Config/Local.xcconfig"
 DEFAULTS = {
-    "PRODUCT_BUNDLE_IDENTIFIER": "com.example.RoamReady",
-    "DEVELOPMENT_TEAM": "",
+    "PRODUCT_BUNDLE_IDENTIFIER": "com.tannerdev.roamready",
+    "DEVELOPMENT_TEAM": "CCW6X88UZ6",
     "ROAMREADY_MIRRORING_CONTAINER": "",
     "CODE_SIGN_ENTITLEMENTS": "Camp/Camp.entitlements",
 }
