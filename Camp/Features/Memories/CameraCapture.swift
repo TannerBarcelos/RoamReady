@@ -16,8 +16,10 @@ enum CameraCaptureError: LocalizedError {
 
 @MainActor
 enum CameraAccess {
+    static var isAvailable: Bool { UIImagePickerController.isSourceTypeAvailable(.camera) }
+
     static func request() async throws {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { throw CameraCaptureError.unavailable }
+        guard isAvailable else { throw CameraCaptureError.unavailable }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: return
         case .notDetermined:

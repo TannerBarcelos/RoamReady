@@ -348,6 +348,33 @@ struct LibraryTests {
         }
     }
 
+    @Test func intentionallyEmptyDefaultsStayEmptyForNewTrips() throws {
+        let rig = try Rig.add(trailer, to: context)
+        let existing = try trip(rig: rig)
+        rig.setDefaults(ChecklistTemplate())
+        try context.save()
+        #expect(rig.defaultTemplate == ChecklistTemplate())
+        let next = try trip(rig: rig)
+        #expect(next.steps(.setup).isEmpty && next.steps(.teardown).isEmpty)
+        #expect(!existing.steps(.setup).isEmpty, "Existing trip snapshots stay intact")
+        rig.resetDefaults()
+        #expect(!rig.defaultTemplate.setup.isEmpty)
+    }
+
+    @Test func prioritiesUseStableRawValuesAndPreserveUnknownValues() throws {
+        let step = ChecklistStep()
+        context.insert(step)
+        #expect(step.priority == ChecklistPriority.none)
+        for priority in ChecklistPriority.allCases {
+            step.priority = priority
+            try context.save()
+            #expect(step.priorityValue == priority.rawValue && step.priority == priority)
+        }
+        step.priorityValue = "future-priority"
+        #expect(step.priority == ChecklistPriority.none)
+        #expect(step.priorityValue == "future-priority")
+    }
+
     // MARK: Durability and export
 
     @Test func theLibraryReopensFromDiskWithEverythingIntact() throws {

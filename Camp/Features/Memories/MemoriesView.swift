@@ -28,6 +28,7 @@ struct MemoriesView: View {
                 NavigationLink("Earlier note versions") { NoteHistoryView(trip: trip) }
             }
             Section {
+                if CameraAccess.isAvailable {
                 Button {
                     Task {
                         requestingCamera = true; failure = nil; needsCameraPermission = false
@@ -42,6 +43,7 @@ struct MemoriesView: View {
                     }
                 } label: { Label("Take a photo", systemImage: "camera") }
                 .disabled(importing || requestingCamera)
+                }
                 PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images, preferredItemEncoding: .current) {
                     Label("Add trip photos", systemImage: "photo.badge.plus")
                 }.disabled(importing || requestingCamera)

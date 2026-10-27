@@ -63,6 +63,7 @@ struct NewTripView: View {
             .sheet(isPresented: $choosing) {
                 NavigationStack { CampgroundPicker { place in select(place); choosing = false } }
             }
+            .environment(\.timeZone, draft.planningTimeZone)
             .onAppear {
                 if rig == nil { rig = rigs.active.first }
                 if let initialListing, selected == nil { select(initialListing) }
