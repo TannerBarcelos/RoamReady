@@ -72,9 +72,13 @@ final class LibraryWorkflowUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.navigationTab("Profile").waitForExistence(timeout: 15))
         app.navigationTab("Profile").tap()
-        scrollTo(appearance, in: app)
-        XCTAssertTrue(appearance.buttons["Dark"].isSelected, "Appearance survives app termination")
-        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped])
+        let accessibleDark = app.buttons["appearanceOption-dark"]
+        scrollTo(accessibleDark, in: app)
+        XCTAssertTrue(accessibleDark.isSelected, "Appearance survives app termination")
+        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped]) { issue in
+            print("Accessibility audit: \(issue.compactDescription)\n\(issue.detailedDescription)")
+            return false // Report every finding; never waive an issue to make CI pass.
+        }
     }
 
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
