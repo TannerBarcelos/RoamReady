@@ -8,7 +8,8 @@ let package = Package(
         .library(name: "CampCore", targets: ["CampCore"]),
         .library(name: "Campgrounds", targets: ["Campgrounds"]),
         .library(name: "DocumentVault", targets: ["DocumentVault"]),
-        .library(name: "CampPersistence", targets: ["CampPersistence"])
+        .library(name: "CampPersistence", targets: ["CampPersistence"]),
+        .library(name: "DocumentSearch", targets: ["DocumentSearch"])
     ],
     targets: [
         /// The rig and trip rules shared by the models and the forms' drafts, checklists, and policies. Foundation only.
@@ -19,9 +20,19 @@ let package = Package(
         .target(name: "DocumentVault"),
         /// The SwiftData models, CloudKit mirroring, library rules, and export.
         .target(name: "CampPersistence", dependencies: ["CampCore", "DocumentVault"]),
+        /// The vendored sqlite-vec amalgamation (see PROVENANCE.md), built against the system SQLite.
+        .target(
+            name: "CSQLiteVec",
+            exclude: ["PROVENANCE.md", "LICENSE-MIT", "LICENSE-APACHE", "sqlite-vec.h"],
+            cSettings: [.define("SQLITE_CORE"), .define("SQLITE_VEC_STATIC")],
+            linkerSettings: [.linkedLibrary("sqlite3")]
+        ),
+        /// The document Assistant's search index: its own disposable SQLite file with FTS5 and sqlite-vec.
+        .target(name: "DocumentSearch", dependencies: ["CSQLiteVec"]),
         .testTarget(name: "CampCoreTests", dependencies: ["CampCore"]),
         .testTarget(name: "CampgroundsTests", dependencies: ["Campgrounds", "CampCore"]),
         .testTarget(name: "DocumentVaultTests", dependencies: ["DocumentVault"]),
+        .testTarget(name: "DocumentSearchTests", dependencies: ["DocumentSearch"]),
         .testTarget(name: "CampPersistenceTests", dependencies: ["CampPersistence", "CampCore", "DocumentVault"])
     ]
 )
