@@ -11,6 +11,7 @@ struct CampgroundDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(CampFinder.self) private var finder
+    @State private var saveFailure: String?
     @Query private var saved: [SavedCampground]
     @Query(sort: \Trip.arrival, order: .reverse) private var trips: [Trip]
     private let identifier: String
@@ -48,6 +49,10 @@ struct CampgroundDetailView: View {
             }
         }
         .navigationTitle(listing?.name ?? "Campground")
+        .alert("Couldn’t update your campgrounds", isPresented: Binding(
+            get: { saveFailure != nil }, set: { if !$0 { saveFailure = nil } })) {
+            Button("OK") { saveFailure = nil }
+        } message: { Text(saveFailure ?? "") }
         .task { if listing == nil { await load() } }
         .task(id: listing?.mapItemIdentifier) { if let listing { await loadLookAround(listing) } }
         .sheet(isPresented: $planning) { if let listing { NewTripView(initialListing: listing) } }
@@ -98,8 +103,10 @@ struct CampgroundDetailView: View {
             ForEach(CampgroundList.allCases) { list in
                 Toggle(isOn: Binding(get: { CampgroundLists(saved: saved, trips: trips).contains(campgroundID, on: list) },
                                      set: { included in
-                                         try? SavedCampground.set(campgroundID, name: "", region: "", on: list, included, in: context)
-                                         library.save()
+                                         do {
+                                             try SavedCampground.set(campgroundID, name: "", region: "", on: list, included, in: context)
+                                             library.save()
+                                         } catch { saveFailure = error.localizedDescription }
                                      })) {
                     Label(list.title, systemImage: list.symbol)
                 }

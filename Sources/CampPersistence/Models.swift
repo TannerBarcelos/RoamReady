@@ -42,6 +42,8 @@ public final class Rig: RigDetails {
     /// `RigPolicy.maxActiveRigs`, and stay on the trips that used them.
     public var archivedAt: Date?
     public var createdAt: Date = Date.now
+    /// Distinguishes intentionally empty defaults from an older rig without generated lists.
+    public var hasConfiguredDefaults: Bool = false
     /// The rig's default setup and teardown lists, copied into each new trip.
     @Relationship(deleteRule: .cascade, inverse: \ChecklistStep.rig) public var defaultSteps: [ChecklistStep]? = []
     @Relationship(inverse: \Trip.rig) public var trips: [Trip]? = []
@@ -94,12 +96,18 @@ public final class ChecklistStep {
     public var status: ChecklistStatus = ChecklistStatus.pending
     /// The owner's notes, separate from the generated guidance in `detail`.
     public var notes: String = ""
-    // Lightweight migration leaves priority nil on steps saved before priorities existed.
-    // Keep the original column mapping and tolerate those missing values when reading drafts.
+    /// Persist a primitive value: SwiftData can fail to materialize a defaulted Codable enum
+    /// when opening an older store. Keep unknown values intact for forward compatibility.
+    public var priorityValue: String?
+    /// Retain priorities written by development builds before the raw-value representation.
+    /// Optional storage avoids the failing enum default during schema materialization.
     @Attribute(originalName: "priority") private var storedPriority: ChecklistPriority?
     public var priority: ChecklistPriority {
-        get { storedPriority ?? .none }
-        set { storedPriority = newValue }
+        get {
+            if let priorityValue { return ChecklistPriority(rawValue: priorityValue) ?? .none }
+            return storedPriority ?? .none
+        }
+        set { priorityValue = newValue.rawValue }
     }
     public var phase: ChecklistPhase = ChecklistPhase.setup
     public var position: Int = 0

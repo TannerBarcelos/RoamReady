@@ -12,6 +12,9 @@ public struct CampingChatTurn: Sendable {
 
 /// Request preparation shared by general chat and trip/checklist help.
 public struct CampingHelpRequest: Sendable {
+    /// Shared with the UI so preparing a request never copies an entire long conversation.
+    public static let maximumHistoryTurns = 3
+
     public enum Scope: Sendable { case general, checklist }
 
     public let scope: Scope
@@ -71,7 +74,7 @@ public struct CampingHelpRequest: Sendable {
         }
         let ranked = matches.prefix(4).map(\.item)
         passages = (step.map { [$0] } ?? ranked).map(Self.passage).joined(separator: "\n\n")
-        let conversation = history.suffix(3).map {
+        let conversation = history.suffix(Self.maximumHistoryTurns).map {
             "User: \(String($0.question.prefix(400)))\nAssistant: \(String($0.answer.prefix(1000)))"
         }.joined(separator: "\n\n")
         prompt = """

@@ -17,7 +17,7 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
 
 # Install and launch the build on the booted simulator
 xcrun simctl install booted .derivedData/Build/Products/Debug-iphonesimulator/RoamReady.app
-xcrun simctl launch booted com.example.RoamReady
+xcrun simctl launch booted com.tannerdev.roamready
 
 # UI tests (Tests/RoamReadyUITests)
 xcodebuild -project RoamReady.xcodeproj -scheme RoamReady \
@@ -35,7 +35,7 @@ Use the `RoamReady` scheme for the app. The other schemes (`CampCore`, `Campgrou
 - **To have many trips to look at,** launch with `-seed-sample-trips`. This adds seven trips to the real on-device library: five upcoming (from 4 days to about 2.5 months out) and two that ended weeks ago.
   - Seeded trips have `SAMPLE-<n>` confirmation numbers. If any trip already has one, seeding is skipped, so launching again doesn't add duplicates.
   - They sync through iCloud if the simulator is signed in. Delete them in the app when you're done.
-- **The Assistant** (the sparkle button) appears only where Apple Intelligence can run, which never includes the simulator. Use the UI-test flags below to show it.
+- **The Assistant** (the sparkle button) follows Apple’s runtime eligibility, which can depend on the simulator host. Use the UI-test flags below for deterministic availability states.
 - **To check Home's empty, upcoming, and current states,** look at the arrival and departure dates. Home features the trip whose dates include today, or else the next upcoming one. Completed trips appear only in Profile › Trip history.
 
 ### Debug launch arguments

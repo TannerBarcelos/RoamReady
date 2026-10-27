@@ -4,6 +4,7 @@ import CampCore
 struct WeatherSection: View {
     /// A snapshot of the trip's dates and location, so a trip being added can show weather too.
     let trip: TripDraft
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var forecast: SavedForecast?
     @State private var refreshing = false
     @State private var failure: String?
@@ -31,14 +32,14 @@ struct WeatherSection: View {
             } else {
                 if let forecast {
                     ForEach(matchingDays) { day in
-                        HStack {
+                        forecastLayout {
                             Image(systemName: day.symbol).symbolRenderingMode(.multicolor).frame(width: 30)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(dayLabel(day.date))
                                 Text("Rain \(Int(day.precipitationChance * 100))% · Wind \(Measurement(value: day.windKPH, unit: UnitSpeed.kilometersPerHour).formatted())")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
-                            Spacer()
+                            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                             Text("\(WeatherFormat.temperature(day.highCelsius)) / \(WeatherFormat.temperature(day.lowCelsius))").font(.subheadline)
                         }.accessibilityElement(children: .combine)
                     }
@@ -68,6 +69,12 @@ struct WeatherSection: View {
             } else { forecast = nil }
         }
     }
+    private var forecastLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout())
+    }
+
     private func refresh() async {
         guard let latitude = trip.latitude, let longitude = trip.longitude else { return }
         refreshing = true

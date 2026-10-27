@@ -5,13 +5,23 @@ struct AppearanceSection: View {
 
     var body: some View {
         Section {
-            Picker("Appearance", selection: $appearance) {
-                ForEach(AppAppearance.allCases) { option in
-                    Text(option.title).tag(option)
+            // Keep the same scalable controls at every text size, including during system changes.
+            ForEach(AppAppearance.allCases) { option in
+                Button { appearance = option } label: {
+                    HStack {
+                        Text(option.title)
+                            .font(.body).foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                        if appearance == option {
+                            Image(systemName: "checkmark").foregroundStyle(.tint).accessibilityHidden(true)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(appearance == option ? .isSelected : [])
+                .accessibilityIdentifier("appearanceOption-\(option.rawValue)")
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("appearancePicker")
         } header: {
             Text("Appearance")
         } footer: {

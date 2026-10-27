@@ -6,14 +6,14 @@ final class NavigationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test"]
         app.launch()
-        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         return app
     }
 
     func testHomeKeepsOverlappingAndUpcomingTripsWithoutPlanTab() {
         let app = launch()
-        XCTAssertEqual(app.tabBars.buttons.count, 4)
-        XCTAssertFalse(app.tabBars.buttons["Plan"].exists)
+        if app.tabBars.firstMatch.exists { XCTAssertEqual(app.tabBars.buttons.count, 4) }
+        XCTAssertFalse(app.navigationTab("Plan").exists)
         XCTAssertTrue(app.staticTexts["Current Pines"].exists)
         app.swipeUp()
         XCTAssertTrue(app.staticTexts["Overlapping Creek"].waitForExistence(timeout: 5))
@@ -25,10 +25,10 @@ final class NavigationUITests: XCTestCase {
 
     func testProfileOwnsTripHistoryAndCampgrounds() {
         let app = launch()
-        app.tabBars.buttons["Profile"].tap()
+        app.navigationTab("Profile").tap()
         XCTAssertTrue(app.buttons["tripHistoryLink"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["savedCampgroundsLink"].exists)
-        XCTAssertFalse(app.segmentedControls["appearancePicker"].exists)
+        XCTAssertFalse(app.buttons["appearanceOption-system"].exists)
         XCTAssertFalse(app.buttons["prepareLibraryExport"].exists)
         app.buttons["tripHistoryLink"].tap()
         XCTAssertTrue(app.navigationBars["Trip history"].waitForExistence(timeout: 5))
@@ -44,10 +44,10 @@ final class NavigationUITests: XCTestCase {
 
     func testSettingsContainsAppearanceAndLibraryTools() {
         let app = launch()
-        app.tabBars.buttons["Profile"].tap()
+        app.navigationTab("Profile").tap()
         app.buttons["openAppSettings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.segmentedControls["appearancePicker"].exists)
+        XCTAssertTrue(app.buttons["appearanceOption-system"].exists)
         let export = app.buttons["prepareLibraryExport"]
         for _ in 0..<4 {
             if export.isHittable { break }
@@ -60,11 +60,11 @@ final class NavigationUITests: XCTestCase {
 
     func testAddTripStillPresentsFromProfileAndReturnsToIt() {
         let app = launch()
-        app.tabBars.buttons["Profile"].tap()
-        app.tabBars.buttons["Trip"].tap()
+        app.navigationTab("Profile").tap()
+        app.navigationTab("Trip").tap()
         XCTAssertTrue(app.navigationBars["Add trip"].waitForExistence(timeout: 5))
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Profile"].isSelected)
+        XCTAssertTrue(app.navigationTab("Profile").isSelected)
     }
 }

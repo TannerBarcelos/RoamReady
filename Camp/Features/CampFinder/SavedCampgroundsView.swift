@@ -15,6 +15,7 @@ struct SavedCampgroundsView: View {
     @Environment(Connectivity.self) private var connectivity
     @Environment(\.mainTabActions) private var tabActions
     @Environment(\.dismiss) private var dismiss
+    @State private var saveFailure: String?
     @Query private var saved: [SavedCampground]
     @Query private var trips: [Trip]
     var body: some View {
@@ -46,6 +47,10 @@ struct SavedCampgroundsView: View {
             }
         }
         .navigationTitle("Your campgrounds")
+        .alert("Couldn’t update your campgrounds", isPresented: Binding(
+            get: { saveFailure != nil }, set: { if !$0 { saveFailure = nil } })) {
+            Button("OK") { saveFailure = nil }
+        } message: { Text(saveFailure ?? "") }
     }
 
     @ViewBuilder private func listSections(_ lists: CampgroundLists) -> some View {
@@ -60,8 +65,10 @@ struct SavedCampgroundsView: View {
                         row(id, lists: lists)
                         Spacer()
                         Button("Remove", systemImage: "minus.circle") {
-                            try? SavedCampground.set(id, name: "", region: "", on: list, false, in: context)
-                            library.save()
+                            do {
+                                try SavedCampground.set(id, name: "", region: "", on: list, false, in: context)
+                                library.save()
+                            } catch { saveFailure = error.localizedDescription }
                         }.labelStyle(.iconOnly).buttonStyle(.borderless)
                             .accessibilityLabel("Remove \(name(id, lists: lists) ?? "this campground") from \(list.title)")
                     }
@@ -125,7 +132,7 @@ struct YourCampgroundsLink: View {
         let count = CampgroundLists(saved: saved, trips: trips).count
         NavigationLink { SavedCampgroundsView() } label: {
             LabeledContent { Text(count == 0 ? "None yet" : String(count)) } label: {
-                Label("Your campgrounds", systemImage: "bookmark")
+                WrappingLabel("Your campgrounds", systemImage: "bookmark")
             }
         }
     }

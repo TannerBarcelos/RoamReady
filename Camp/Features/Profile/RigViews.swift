@@ -36,13 +36,24 @@ struct RigsSection: View {
                         Text("Used by \(rig.activeTrips.count) trips").font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 6)
-                Button("Edit rig", systemImage: "pencil") { editor = .edit(rig) }
-                Button("Default checklists", systemImage: "checklist") { editingDefaults = rig }
-                Button("Reset default checklists", systemImage: "arrow.counterclockwise") { resetting = rig }
-                NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
-                    LabeledContent { Text(String(rig.attachedDocuments.count)) } label: { Label("Manuals & paperwork", systemImage: "folder") }
+                Button { editor = .edit(rig) } label: {
+                    WrappingLabel("Edit rig", systemImage: "pencil")
                 }
-                Button("Replace rig", systemImage: "arrow.triangle.2.circlepath") { editor = .replace(rig) }
+                Button { editingDefaults = rig } label: {
+                    WrappingLabel("Default checklists", systemImage: "checklist")
+                }
+                Button { resetting = rig } label: {
+                    WrappingLabel("Reset default checklists", systemImage: "arrow.counterclockwise")
+                }
+                NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
+                    LabeledContent { Text(String(rig.attachedDocuments.count)) } label: {
+                        WrappingLabel("Manuals & paperwork", systemImage: "folder")
+                    }
+                }
+                Button { editor = .replace(rig) } label: {
+                    WrappingLabel("Replace rig", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .accessibilityIdentifier("replaceRig")
                 if rigs.needsRigResolution {
                     Button("Archive this rig", systemImage: "archivebox") { rig.archive(); library.save() }
                 }
@@ -56,7 +67,7 @@ struct RigsSection: View {
             }
             if !rigs.archived.isEmpty {
                 NavigationLink { ArchivedRigsView() } label: {
-                    LabeledContent { Text(String(rigs.archived.count)) } label: { Label("Archived rigs", systemImage: "archivebox") }
+                    LabeledContent { Text(String(rigs.archived.count)) } label: { WrappingLabel("Archived rigs", systemImage: "archivebox") }
                 }
             }
             if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
@@ -89,7 +100,9 @@ struct ArchivedRigsView: View {
                             Text(count == 0 ? "No trips use this rig" : "Shown on \(count) past trips").font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: { Label("Manuals & paperwork", systemImage: "folder") }
+                    NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
+                        WrappingLabel("Manuals & paperwork", systemImage: "folder")
+                    }
                     Button("Make active again", systemImage: "arrow.uturn.backward") { perform { try rig.unarchive() } }
                         .disabled(rigs.active.count >= RigPolicy.maxActiveRigs)
                     if rig.activeTrips.isEmpty {

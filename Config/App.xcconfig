@@ -1,0 +1,8 @@
+// Defaults for a local-only development build. Both app configurations use this file.
+PRODUCT_BUNDLE_IDENTIFIER = com.tannerdev.roamready
+DEVELOPMENT_TEAM = CCW6X88UZ6
+ROAMREADY_MIRRORING_CONTAINER =
+CODE_SIGN_ENTITLEMENTS = Camp/Camp.entitlements
+
+// Provisioned builds override the defaults without editing the project or committing identifiers.
+#include? "Local.xcconfig"

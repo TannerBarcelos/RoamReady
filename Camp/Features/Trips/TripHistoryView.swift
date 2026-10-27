@@ -30,5 +30,6 @@ struct TripRow: View {
                 if trip.isCompleted() { Label("Completed", systemImage: "checkmark.seal").font(.caption).foregroundStyle(.secondary) }
             }.padding(.vertical, 4)
         }
+        .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
     }
 }

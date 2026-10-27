@@ -46,13 +46,13 @@ struct ChecklistView: View {
                         } label: {
                             Image(systemName: step.status == .completed ? "checkmark.circle.fill" : step.status == .skipped ? "minus.circle" : "circle")
                                 .font(.title2).foregroundStyle(step.status == .completed ? Color.blue : .secondary)
-                                .frame(width: 32, height: 44)
+                                .frame(width: 44, height: 44)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(step.title), \(step.status.title). \(step.status == .completed ? "Mark pending" : "Mark complete")")
                         ChecklistStepSummary(step: step.draft, caption: step.status == .skipped ? "Skipped · \(step.section)" : step.section)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 5)
-                        Button { editedStep = step } label: { Image(systemName: editing.isEditing ? "pencil" : "info.circle").frame(width: 36, height: 44) }
+                        Button { editedStep = step } label: { Image(systemName: editing.isEditing ? "pencil" : "info.circle").frame(width: 44, height: 44) }
                             .buttonStyle(.borderless).accessibilityLabel("Details and edit \(step.title)")
                     }
                     .contextMenu {
@@ -129,6 +129,7 @@ struct ChecklistStepSummary: View {
             Text(caption).font(.caption).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("checklistStep-\(step.title)")
     }
 }
 
@@ -143,6 +144,7 @@ struct ChecklistStepEditor: View {
             Form {
                 Section("Step") {
                     TextField("Title", text: $step.title, axis: .vertical)
+                        .accessibilityIdentifier("checklistStepTitle")
                     TextField("Notes", text: $step.notes, axis: .vertical).lineLimit(2...8)
                 }
                 Section {

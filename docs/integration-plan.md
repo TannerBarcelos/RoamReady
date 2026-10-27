@@ -2,6 +2,10 @@
 
 [Documentation index](README.md) · [Build and validation](validation.md)
 
+## V1 audit
+
+See the [v1 readiness audit](v1-audit.md) for requirement-by-requirement evidence, defects fixed, and outstanding release gates. On October 27, 2026, the owner confirmed that v1 keeps chat in memory across sheet dismissal and clears it on app quit. Saved sessions from #65 remain separate work; the existing bounded-history and one-retry context-overflow policy stays in v1. The owner also confirmed iPhone, iPad and Mac in v1, and that AI help stays hidden on devices without Apple Intelligence while checklists remain available everywhere.
+
 ## Current status
 
 RoamReady is an initial development build. Account-free onboarding, owner-entered rigs, local trip/checklist/document/memory workflows, Apple-only AI eligibility, online Apple Maps campground discovery, and device-local appearance settings are implemented in source. Production Apple provisioning and physical-device acceptance remain outstanding.
@@ -59,6 +63,10 @@ See [data coverage](campground-data.md) and the [Camp Finder source guide](campg
 | Offline maps and regional campground lists (#20) | Not implemented; hosting/licensing and download behavior need design and validation. |
 | Remote AI (#34) | Proposed v2 service with its own identity, consent, and cost controls; it must fit the one-time price (no subscription). |
 | Pricing | Settled: $4.99 one-time purchase, with no subscription or in-app purchases now or later. See [pricing](monetization.md). |
+
+## Store listing preparation
+
+The [App Store listing preparation](app-store-listing.md) includes copy, URLs and the remaining asset/account steps. The [privacy policy](privacy-policy.md) is checked in and can be used as the public policy URL after this branch is merged. The public repository's issue tracker provides a support contact. Confirm the final App Store privacy answers against the signed build and its actual capabilities; this document does not create an App Store Connect listing or provision Apple services.
 
 ## Native release acceptance
 

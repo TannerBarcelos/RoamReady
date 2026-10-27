@@ -6,6 +6,7 @@ import Observation
 /// tapped the first time, and disappears if location access is off.
 struct CurrentWeatherBadge: View {
     @Environment(Connectivity.self) private var connectivity
+    @Environment(\.scenePhase) private var scenePhase
     @State private var weather = LocalWeather()
     @State private var showingDetails = false
 
@@ -18,14 +19,23 @@ struct CurrentWeatherBadge: View {
                         .symbolRenderingMode(.multicolor)
                 }
                 .accessibilityLabel("Weather here: \(WeatherFormat.temperature(conditions.temperatureCelsius)), \(conditions.condition)")
-            } else if weather.access == .unknown {
-                Button { Task { await weather.refresh(force: true) } } label: {
+            } else if weather.access != .denied {
+                Button {
+                    showingDetails = true
+                    Task { await weather.refresh(force: true) }
+                } label: {
                     Image(systemName: "thermometer.medium")
                 }
                 .accessibilityLabel("Show the weather where you are")
             }
         }
         .sheet(isPresented: $showingDetails) { CurrentWeatherSheet(weather: weather) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                weather.updateAccess()
+                if connectivity.isOnline { Task { await weather.refresh() } }
+            }
+        }
         .task(id: connectivity.isOnline) {
             await weather.load()
             if connectivity.isOnline { await weather.refresh() }
@@ -71,6 +81,18 @@ struct CurrentWeatherSheet: View {
                         WeatherAttribution(legalURL: conditions.attributionURL, lightMarkURL: conditions.lightMarkURL,
                                            darkMarkURL: conditions.darkMarkURL)
                     }
+                } else {
+                    Section {
+                        if weather.refreshing {
+                            ProgressView("Loading weather…")
+                        } else {
+                            Text(weather.failure ?? "Get the weather near your current location.")
+                            Button("Try again") { Task { await weather.refresh(force: true) } }
+                                .disabled(!connectivity.isOnline || weather.access == .denied)
+                        }
+                        if !connectivity.isOnline { Text("Weather refresh needs a connection.").foregroundStyle(.secondary) }
+                        if weather.access == .denied { Text("Allow location access in Settings to see local weather.") }
+                    }
                 }
             }
             .navigationTitle("Weather here").navigationBarTitleDisplayMode(.inline)
@@ -92,6 +114,8 @@ final class LocalWeather {
     @ObservationIgnored private let manager = CLLocationManager()
 
     init() { access = Self.access(manager.authorizationStatus) }
+
+    func updateAccess() { access = Self.access(manager.authorizationStatus) }
 
     func load() async {
         if conditions == nil { conditions = await WeatherStore.shared.cachedCurrent() }

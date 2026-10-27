@@ -59,7 +59,7 @@ public extension Rig {
     /// The rig's default lists, or the lists its type generates if it has none.
     var defaultTemplate: ChecklistTemplate {
         let steps = (defaultSteps ?? []).filter { !$0.isDeleted }
-        guard !steps.isEmpty else { return ChecklistFactory.template(for: self) }
+        guard hasConfiguredDefaults || !steps.isEmpty else { return ChecklistFactory.template(for: self) }
         var template = ChecklistTemplate()
         for phase in ChecklistPhase.allCases {
             template[phase] = steps.filter { $0.phase == phase }.sorted { $0.position < $1.position }.map(\.draft)
@@ -70,6 +70,7 @@ public extension Rig {
     /// Replaces the default lists with pending copies. Existing trips are never touched.
     func setDefaults(_ template: ChecklistTemplate) {
         guard let modelContext else { return }
+        hasConfiguredDefaults = true
         for step in defaultSteps ?? [] { modelContext.delete(step) }
         for phase in ChecklistPhase.allCases {
             for (position, draft) in template[phase].enumerated() {

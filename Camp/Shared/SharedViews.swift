@@ -29,8 +29,12 @@ struct LocalPhoto: View {
             }
         }
         .task(id: data) {
-            guard let data, let jpeg = await PhotoImport.thumbnail(data, maximumDimension: maximumDimension) else { thumbnail = nil; return }
-            thumbnail = UIImage(data: jpeg)
+            thumbnail = nil
+            guard let data else { return }
+            let jpeg = await PhotoImport.thumbnail(data, maximumDimension: maximumDimension)
+            // Downsampling runs detached; cancellation must be checked before updating a reused view.
+            guard !Task.isCancelled else { return }
+            thumbnail = jpeg.flatMap { UIImage(data: $0) }
         }
     }
 }
@@ -82,5 +86,32 @@ struct ProgressSummary: View {
             let skipped = steps.filter { $0.status == .skipped }.count
             if skipped > 0 { Text("Includes \(skipped) skipped").font(.caption).foregroundStyle(.secondary) }
         }
+    }
+}
+
+/// Let list rows measure the full title at accessibility text sizes.
+struct WrappingLabel: View {
+    @ScaledMetric(relativeTo: .body) private var iconWidth = 28
+    let title: LocalizedStringKey
+    let systemImage: String
+
+    init(_ title: LocalizedStringKey, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.body).foregroundStyle(.tint)
+                .frame(width: iconWidth)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.body)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 2)
+        }
+        .accessibilityElement(children: .combine)
     }
 }

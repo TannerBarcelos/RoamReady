@@ -12,7 +12,17 @@ final class LibraryController {
     private(set) var saveFailure: String?
     private(set) var iCloud = ICloudSettings(containerIdentifier: Bundle.main.object(forInfoDictionaryKey: "RoamReadyMirroringContainerIdentifier") as? String)
     let documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appending(path: "Documents", directoryHint: .isDirectory))
-    private static let directory = URL.applicationSupportDirectory.appending(path: "Library", directoryHint: .isDirectory)
+    private static var directory: URL {
+        #if DEBUG
+        // Each workflow test owns a real disk library; relaunch keeps it, other tests never see it.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-workflow-ui-test"),
+           arguments.indices.contains(index + 1), let id = UUID(uuidString: arguments[index + 1]) {
+            return URL.temporaryDirectory.appending(path: "WorkflowTests/\(id.uuidString)", directoryHint: .isDirectory)
+        }
+        #endif
+        return URL.applicationSupportDirectory.appending(path: "Library", directoryHint: .isDirectory)
+    }
 
     func open() {
         guard container == nil else { return }

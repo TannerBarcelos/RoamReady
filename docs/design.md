@@ -10,7 +10,7 @@ The [approved visual reference](design-A.png) records the design direction. Curr
 
 ## Navigation and information hierarchy
 
-The root view shows onboarding when there is no profile, then four tabs (Trip opens the new-trip sheet). On supported AI devices Assistant opens as a sheet from a circular sparkle button at the bottom right above the tab bar (a shared bottom safe-area accessory), visible on every tab:
+The root view shows onboarding when there is no profile, then four tabs (Trip opens the new-trip sheet). On supported AI devices Assistant opens as a sheet from a circular sparkle button at the bottom right above the tab bar on compact layouts (a shared bottom safe-area accessory), or **Ask Assistant** in the toolbar on regular iPad layouts, Mac, and accessibility text sizes, visible on every tab:
 
 | Tab | Primary responsibility |
 | --- | --- |
@@ -70,3 +70,5 @@ The icon is a blaze-orange map pin holding a three-quarter progress ring and a c
 `Camp/AppIcon.icon` is an Icon Composer bundle, so iOS applies Liquid Glass and derives the Clear and Tinted appearances from its layers. The `Pin` group contains the pin, with the ring and check cut out of it. The `Progress` group contains the white ring and check, which fill those cut-outs. Because the layers never overlap, stacking order does not affect the result. The target selects the bundle through `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`.
 
 The bundle was written by hand rather than exported from Icon Composer. Open it in Icon Composer on a Mac to check its glass, shadow, and translucency settings in each appearance. Use the Home Screen, Spotlight, and Settings sizes to judge it, and check Clear and Tinted on a device. The preview image above approximates the flat artwork; it does not show Liquid Glass.
+
+Settings opens as a native sheet at standard text sizes and full screen when opened at accessibility text sizes, giving large text the available width. Its close icon retains a spoken Done label.

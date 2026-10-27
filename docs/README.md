@@ -6,6 +6,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 
 | Guide | What it covers |
 | --- | --- |
+| [Privacy policy](privacy-policy.md) | Data use, Apple services, permissions, retention and deletion. |
 | [User guide](user-guide.md) | First launch, trips, checklists, documents, memories, discovery, and managing your library. |
 | [Feature reference](features.md) | Implemented behavior, offline support, device requirements, and feature limits. |
 
@@ -24,6 +25,8 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 
 | Guide | What it covers |
 | --- | --- |
+| [V1 readiness audit](v1-audit.md) | Requirement coverage, fixes, validation evidence, and remaining certification gates. |
+| [App Store listing preparation](app-store-listing.md) | Prepared listing copy, policy/support URLs, required assets and account steps. |
 | [Build and validation](validation.md) | Local setup, dependencies, checks, CI, Apple capabilities, and device acceptance. |
 | [Production integrations and release plan](integration-plan.md) | Current implementation, provisioning work, release gates, and deferred features. |
 

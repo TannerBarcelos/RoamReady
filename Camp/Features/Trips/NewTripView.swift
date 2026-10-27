@@ -22,6 +22,7 @@ struct NewTripView: View {
             Form {
                 Section {
                     TextField("Campground name", text: $draft.campgroundName)
+                        .accessibilityIdentifier("tripCampgroundName")
                         .onChange(of: draft.campgroundName) { _, value in if selected?.name != value { select(nil) } }
                     Button("Choose from Camp Finder", systemImage: "map") { choosing = true }
                         .disabled(!connectivity.isOnline)
@@ -63,6 +64,7 @@ struct NewTripView: View {
             .sheet(isPresented: $choosing) {
                 NavigationStack { CampgroundPicker { place in select(place); choosing = false } }
             }
+            .environment(\.timeZone, draft.planningTimeZone)
             .onAppear {
                 if rig == nil { rig = rigs.active.first }
                 if let initialListing, selected == nil { select(initialListing) }
