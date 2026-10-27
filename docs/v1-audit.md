@@ -37,7 +37,7 @@ This audit uses `docs/features.md`, the identity/offline contract, and release i
 
 Changes are localized; existing off-main media downsampling, lazy photo grids and file staging remain the storage/performance strategy. No unmeasured launch/scroll performance claim is made. The 300-trip/2,000-photo device benchmark in #6 remains open.
 
-The priority representation changes a newly introduced, pre-release field. This is not a migration guarantee for a development library already written by #75 with non-default priorities, or for a deployed CloudKit Production schema containing that enum field. Validate any such library/schema before adopting the change; do not erase user stores to make validation pass.
+The priority representation changes a newly introduced, pre-release field. An optional legacy attribute with `originalName: "priority"` preserves development-build enum values while new edits use raw values. `PriorityMigrationTests` exercises every old priority through migration and a subsequent save/reopen. A deployed CloudKit Production schema still needs a separate compatibility review before this pre-release rename; do not erase user stores to make validation pass.
 
 ## Validation record
 
