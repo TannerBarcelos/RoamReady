@@ -54,3 +54,13 @@ Three native form screens introduce the setup, collect rig details, and personal
 Required RV details stay enforced; tent and car camping can continue without them. The last screen previews the saved rig and prepared checklists. Name, documents, and configured iCloud preferences remain optional; documents and sync follow rig creation so the first choice stays focused. No permission prompts or account are required to begin. Rig and profile writes must succeed before advancing; failed profile insertion is removed so setup can be retried.
 
 Before release, check all eight rig types, back navigation without losing draft details, interrupted setup/relaunch, save failures, optional document/photo import, keyboard dismissal, large text, VoiceOver selection/progress, reduced motion/transparency, landscape/iPad, and light/dark appearance on an iOS 27 device or simulator. The illustrated flow has not been visually verified in the Linux workspace.
+
+## App icon
+
+The icon is a blaze-orange map pin holding a three-quarter progress ring and a check: finding a campsite and getting it set up. The light appearance uses a sand background and the dark appearance uses a forest-green background. Neither depends on the rig type.
+
+![RoamReady app icon in light and dark appearances](app-icon.png)
+
+`Camp/AppIcon.icon` is an Icon Composer bundle, so iOS applies Liquid Glass and derives the Clear and Tinted appearances from its layers. The `Pin` group contains the pin, with the ring and check cut out of it. The `Progress` group contains the white ring and check, which fill those cut-outs. Because the layers never overlap, stacking order does not affect the result. The target selects the bundle through `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`.
+
+The bundle was written by hand rather than exported from Icon Composer. Open it in Icon Composer on a Mac to check its glass, shadow, and translucency settings in each appearance. Use the Home Screen, Spotlight, and Settings sizes to judge it, and check Clear and Tinted on a device. The preview image above approximates the flat artwork; it does not show Liquid Glass.
