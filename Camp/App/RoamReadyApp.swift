@@ -78,14 +78,18 @@ struct MainTabs: View {
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
         }
-        // iPhone shows five tabs at most, so Assistant opens from a toolbar button instead of a sixth tab.
-        .environment(\.mainTabActions, MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder },
-                                                      openAssistant: showsAssistant ? { askingAssistant = true } : nil))
+        .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(conversation: assistantConversation) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }
+    }
+    /// iPhone shows five tabs at most, so Assistant opens from a toolbar button instead of a sixth tab.
+    private var tabActions: MainTabActions {
+        var actions = MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
+        if showsAssistant { actions.openAssistant = { askingAssistant = true } }
+        return actions
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
     private var tabSelection: Binding<Destination> {
