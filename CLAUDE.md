@@ -50,6 +50,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `-assistant-ui-test <state>` | Sets the Assistant's availability to `ready`, `disabled`, `preparing`, `unsupported`, `unavailable`, or `unsupported-language`, and skips onboarding |
 | `-assistant-generation-test <reply\|failure>` | Gives the Assistant a stubbed reply or failure |
 | `-assistant-device-smoke` | Skips onboarding for the Assistant smoke test on a real device |
+| `-duo-ui-test` | Forces the iPhone Duo workspace without hinge hardware ([DuoWorkspace.swift](Camp/Shared/DuoWorkspace.swift)); combine with `-navigation-ui-test` to skip onboarding |
 
 ## Where things are
 
@@ -57,7 +58,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | --- | --- |
 | `Camp/App/` | The app entry point (`RoamReadyApp`, `RootView`, `MainTabs`), `LibraryController` (opens and saves the SwiftData store), and the debug fixtures |
 | `Camp/Features/<Feature>/` | One folder per capability: `Home`, `Trips` (new trip, trip details, plan), `Checklists`, `CampFinder` (MapKit search and saved campgrounds), `Documents`, `Memories` (photos and site notes), `Weather` (WeatherKit), `Assistant` (Foundation Models plus bundled guidance), `Profile` (rig, defaults, settings, iCloud, export, erasing data), `Onboarding` |
-| `Camp/Shared/` | Shared views, appearance, connectivity, and image picking |
+| `Camp/Shared/` | Shared views, appearance, connectivity, image picking, and iPhone Duo hinge detection |
 | `Sources/CampCore/` | Foundation-only domain rules: drafts (`TripDraft`, `RigDraft`, `ChecklistStepDraft`), validation, checklist generation, and the Assistant's availability states |
 | `Sources/CampPersistence/` | The SwiftData `@Model`s (`Models.swift`), the library rules as model extensions (`Trip+Library.swift` and so on), the store and CloudKit setup, and export |
 | `Sources/Campgrounds/` | Camp Finder's place model, links, and how search results are merged |
