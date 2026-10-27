@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -99,4 +98,3 @@ public extension Trip {
         cancellationDeadline = draft.cancellationDeadline; completedAt = draft.completedAt
     }
 }
-#endif

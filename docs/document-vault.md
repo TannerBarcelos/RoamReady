@@ -55,6 +55,6 @@ Deleting a document cascades to its content. Deleting a trip/rig retains documen
 
 ## Validation
 
-Portable tests cover streaming inspection, format/signature checks, exact original bytes, app-owned staging after provider URL removal, cleanup, limits, metadata/HTTPS validation, and fixed legacy encryption fixtures with wrong-key/tamper failures. Apple tests cover encrypted attribute configuration (including small inline payloads), exact content, missing/corrupted content, metadata editing without bytes, legacy document/photo reads, replacement without app keys, persistence/reopen, cascade rules, and export.
+`DocumentVaultTests` cover streaming inspection, format/signature checks, exact original bytes, app-owned staging after provider URL removal, cleanup, limits, metadata/HTTPS validation, and fixed legacy encryption fixtures with wrong-key/tamper failures. `CampPersistenceTests` cover encrypted attribute configuration (including small inline payloads), exact content, missing/corrupted content, metadata editing without bytes, legacy document/photo reads, replacement without app keys, persistence/reopen, cascade rules, and export.
 
 Provisioned-device release checks include two-device transfers of small and large attachments, metadata before bytes, legacy key arrival, offline imports, reconnection, quota exhaustion, iCloud Keychain reset, provider/Photos failures and cancellation, peak memory near the file limit, Quick Look/sharing, and VoiceOver. CI verifies model behavior and compilation; it cannot establish live CloudKit encryption/delivery.

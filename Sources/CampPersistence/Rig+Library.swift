@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -116,4 +115,3 @@ public extension ChecklistStep {
         return step
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -38,4 +37,3 @@ public extension Array where Element == Rig {
     /// hidden or deleted; the owner is asked to archive one.
     var needsRigResolution: Bool { active.count > RigPolicy.maxActiveRigs }
 }
-#endif

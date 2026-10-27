@@ -10,7 +10,7 @@ public struct CampingChatTurn: Sendable {
     }
 }
 
-/// Portable request preparation shared by general chat and trip/checklist help.
+/// Request preparation shared by general chat and trip/checklist help.
 public struct CampingHelpRequest: Sendable {
     public enum Scope: Sendable { case general, checklist }
 

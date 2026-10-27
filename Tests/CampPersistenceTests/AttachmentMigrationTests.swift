@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import Testing
@@ -59,4 +58,3 @@ struct AttachmentMigrationTests {
         #expect(try document.contents() == large)
     }
 }
-#endif

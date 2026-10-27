@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import Testing
@@ -392,5 +391,3 @@ struct LibraryTests {
         #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "work").path), "The workspace is removed")
     }
 }
-
-#endif

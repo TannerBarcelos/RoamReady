@@ -56,7 +56,7 @@ Three native form screens introduce the setup, collect rig details, and personal
 
 Required RV details stay enforced; tent and car camping can continue without them. Registration (VIN, plate, state or province) is optional, hidden for tents, and reports its own problem in place of the required-details hint. The last screen previews the saved rig and prepared checklists. Name, documents, and configured iCloud preferences remain optional; documents and sync follow rig creation so the first choice stays focused. No permission prompts or account are required to begin. Rig and profile writes must succeed before advancing; failed profile insertion is removed so setup can be retried.
 
-Before release, check all eight rig types, back navigation without losing draft details, interrupted setup/relaunch, save failures, optional document/photo import, keyboard dismissal, large text, VoiceOver selection/progress, reduced motion/transparency, landscape/iPad, and light/dark appearance on an iOS 27 device or simulator. The illustrated flow has not been visually verified in the Linux workspace.
+Before release, check all eight rig types, back navigation without losing draft details, interrupted setup/relaunch, save failures, optional document/photo import, keyboard dismissal, large text, VoiceOver selection/progress, reduced motion/transparency, landscape/iPad, and light/dark appearance on an iOS 27 device or simulator.
 
 ## App icon
 

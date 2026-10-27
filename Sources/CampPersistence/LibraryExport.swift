@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -107,4 +106,3 @@ public enum LibraryExport {
     }
     private struct Manifest: Encodable { var schemaVersion = 2; let documents: [Entry] }
 }
-#endif

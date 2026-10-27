@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -67,4 +66,3 @@ public extension SavedCampground {
         if !entry.wantToGo && !entry.favorite && entry.beenTo == nil { context.delete(entry) }
     }
 }
-#endif

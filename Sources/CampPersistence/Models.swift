@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -183,4 +182,3 @@ public final class DocumentContent {
     public var document: StoredDocument?
     public init() {}
 }
-#endif

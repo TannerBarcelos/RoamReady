@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import Observation
 import CoreData
@@ -71,4 +70,3 @@ public final class ICloudSettings {
         }
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CampCore
@@ -178,4 +177,3 @@ extension LegacyLibrarySchema.Rig {
     public var licensePlate: String { "" }
     public var plateRegion: String { "" }
 }
-#endif

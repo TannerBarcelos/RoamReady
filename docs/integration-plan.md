@@ -8,7 +8,7 @@ RoamReady is an initial development build. Account-free onboarding, owner-entere
 
 The remaining v1 work (decisions, App Store publishing, and simulator/device acceptance) is tracked in [v1 release: publish to the App Store (#6)](https://github.com/TannerBarcelos/RoamReady/issues/6). There is no v1 backend or campground dataset to provision.
 
-Portable tests exercise shared behavior on any Swift platform. CI is configured to run SwiftData tests against real stores and build the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions) for a particular commit; compilation does not establish device acceptance.
+CI runs the package tests, including SwiftData tests against real stores, and builds the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions) for a particular commit; compilation does not establish device acceptance.
 
 ## Identity and offline operation
 
@@ -73,4 +73,4 @@ The release pass must include:
 - VoiceOver, Dynamic Type, reduced motion/transparency, System/Light/Dark appearance and persistence, rotation, and iPad layouts.
 - App icon, production identifiers/signing, privacy disclosures, and service configuration.
 
-Use [build and validation](validation.md) for commands and repeatable acceptance steps. Portable checks and unsigned simulator builds do not establish production readiness.
+Use [build and validation](validation.md) for commands and repeatable acceptance steps. Package tests and unsigned simulator builds do not establish production readiness.

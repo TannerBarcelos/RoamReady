@@ -45,7 +45,7 @@
 			path = Camp;
 			sourceTree = "<group>";
 		};
-		CB0000000000000000000002 /* RoamReadyUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = RoamReadyUITests; sourceTree = "<group>"; };
+		CB0000000000000000000002 /* RoamReadyUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); name = RoamReadyUITests; path = Tests/RoamReadyUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
