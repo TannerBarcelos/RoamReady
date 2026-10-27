@@ -27,9 +27,15 @@ struct AssistantChatButton: View {
     }
 }
 
+/// Opens the app-wide Assistant chat, in the style of `OpenURLAction`: call it like a function.
+struct OpenAssistantAction {
+    let handler: @MainActor () -> Void
+    @MainActor func callAsFunction() { handler() }
+}
+
 extension EnvironmentValues {
-    /// Opens the app-wide Assistant chat; nil where Assistant isn't offered.
-    @Entry var openAssistant: (@MainActor () -> Void)? = nil
+    /// Nil where Assistant isn't offered.
+    @Entry var openAssistant: OpenAssistantAction? = nil
 }
 
 /// In regular width (iPad, Mac, and large iPhones in landscape) the tab bar isn't at the bottom, so the

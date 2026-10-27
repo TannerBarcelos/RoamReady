@@ -86,7 +86,7 @@ struct MainTabs: View {
         .tabViewBottomAccessory(isEnabled: showsAssistant && sizeClass != .regular) {
             AssistantChatButton(action: openAssistant)
         }
-        .environment(\.openAssistant, showsAssistant ? { openAssistant() } : nil)
+        .environment(\.openAssistant, showsAssistant ? OpenAssistantAction(handler: openAssistant) : nil)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $chatting) {
             AssistantView(conversation: conversation)

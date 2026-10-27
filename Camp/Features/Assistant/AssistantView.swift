@@ -23,7 +23,7 @@ struct AssistantView: View {
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     let trip: Trip?
     let step: ChecklistStep?
-    @State private var conversation: AssistantConversation
+    @State private var transcript: AssistantConversation
     @State private var pendingQuestion: String?
     @State private var generationFailure: CampingChatFailure?
     @State private var task: Task<Void, Never>?
@@ -31,18 +31,18 @@ struct AssistantView: View {
 
     /// Pass `conversation` to keep the transcript across presentations; trip and checklist help start fresh.
     init(conversation: AssistantConversation? = nil, trip: Trip? = nil, step: ChecklistStep? = nil) {
-        _conversation = State(initialValue: conversation ?? AssistantConversation())
+        _transcript = State(initialValue: conversation ?? AssistantConversation())
         self.trip = trip
         self.step = step
     }
 
     private var exchanges: [CampingExchange] {
-        get { conversation.exchanges }
-        nonmutating set { conversation.exchanges = newValue }
+        get { transcript.exchanges }
+        nonmutating set { transcript.exchanges = newValue }
     }
     private var question: String {
-        get { conversation.question }
-        nonmutating set { conversation.question = newValue }
+        get { transcript.question }
+        nonmutating set { transcript.question = newValue }
     }
 
     private var answering: Bool { pendingQuestion != nil }
@@ -170,7 +170,7 @@ struct AssistantView: View {
     private var composer: some View {
         VStack(spacing: 8) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField("Message Assistant", text: $conversation.question, axis: .vertical)
+                TextField("Message Assistant", text: $transcript.question, axis: .vertical)
                     .lineLimit(1...6)
                     .disabled(answering)
                     .padding(.horizontal, 16).padding(.vertical, 12)
