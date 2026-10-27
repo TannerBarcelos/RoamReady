@@ -23,9 +23,9 @@ struct HomeView: View {
             if let profile = profiles.first {
                 Section {
                     HStack(spacing: 16) {
-                        if let rig = rigs.active.first { RigImage(rig: rig) }
+                        if let rig = rigs.active.first { RigImage(rig: rig, size: 48) }
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(profile.name.isEmpty ? "Welcome back" : "Hello, \(profile.name)").font(.title3.bold())
+                            Text(profile.name.isEmpty ? "Welcome back" : "Hello, \(profile.name)").font(.headline)
                             if let rig = rigs.active.first { Text(rig.displayName).font(.subheadline).foregroundStyle(.secondary) }
                         }
                     }.padding(.vertical, 4)
@@ -81,34 +81,10 @@ struct HomeView: View {
                     Text("On arrival day, Home switches to your live trip with checklist progress and photos.")
                 }
             } else {
-                VStack(spacing: 20) {
-                    VStack(spacing: 8) {
-                        Image(systemName: "tent.2")
-                            .font(.largeTitle)
-                            .foregroundStyle(.tint)
-                            .accessibilityHidden(true)
-                        Text(trips.isEmpty ? "Plan your first trip" : "Plan your next trip")
-                            .font(.headline)
-                        Text("Add a booking for offline checklists, or find your next campground.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    VStack(spacing: 10) {
-                        Button(action: tabActions.addTrip) {
-                            Label("Add a trip", systemImage: "plus")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        Button(action: tabActions.showCampFinder) {
-                            Text("Find a campground").frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .controlSize(.large)
+                Section(trips.isEmpty ? "Your first trip" : "Your next trip") {
+                    Button("Add a trip", systemImage: "calendar.badge.plus", action: tabActions.addTrip)
+                    Button("Find a campground", systemImage: "map", action: tabActions.showCampFinder)
                 }
-                .padding(.vertical, 16)
-                .frame(maxWidth: .infinity)
             }
             if !otherTrips.isEmpty {
                 Section(currentTrip == nil ? "Later" : "More trips") {
@@ -116,6 +92,7 @@ struct HomeView: View {
                 }
             }
         }
+        .listSectionSpacing(.compact)
         .navigationTitle("Home")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
         .task(id: scenePhase) {

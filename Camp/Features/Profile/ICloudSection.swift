@@ -21,11 +21,11 @@ struct ICloudSection: View {
             }
         } header: { Text("iCloud") } footer: {
             if !sync.configured {
-                Text("Your trips and photos work offline. iCloud sync isn’t available in this build.")
+                Text("iCloud sync isn’t available in this build.")
             } else if sync.enabledForSession {
-                Text("Apple manages syncing your profile, rigs, trips, checklists, notes, photos, and documents with your iCloud, including reconnection and retries. Uses your iCloud storage. Everything saves on this device first and works offline. Changes to this setting take effect on the next app launch.")
+                Text("Keep your library across your devices with iCloud. Changes to this setting take effect the next time you open RoamReady.")
             } else {
-                Text("New changes save on this device without syncing to iCloud. Changes to this setting take effect on the next app launch. Turning sync off doesn’t delete anything here or any copy already in iCloud. You can delete that copy in Settings › [your name] › iCloud › Manage Account Storage.")
+                Text("Turn on iCloud to keep your library across your devices. Changes take effect the next time you open RoamReady. Turning sync off keeps your existing data.")
             }
         }
     }

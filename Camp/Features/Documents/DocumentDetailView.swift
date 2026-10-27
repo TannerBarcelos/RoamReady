@@ -29,11 +29,6 @@ struct DocumentDetailView: View {
                 } else {
                     Label("Encrypted in iCloud", systemImage: "lock.icloud")
                 }
-                if library.iCloud.enabledForSession {
-                    Label(library.iCloud.status, systemImage: "icloud").font(.caption)
-                } else {
-                    Label("iCloud sync is off for this session", systemImage: "iphone").font(.caption)
-                }
             }
             if document.issuedOn != nil || document.expiresOn != nil {
                 Section("Dates") {
@@ -64,7 +59,7 @@ struct DocumentDetailView: View {
 
     @ViewBuilder private var availability: some View {
         switch document.availability {
-        case .offline: Label("Saved on this device · opens offline", systemImage: "internaldrive")
+        case .offline: Label("Ready to open", systemImage: "doc")
         case .awaitingDownload: Label("Waiting to download from iCloud", systemImage: "icloud.and.arrow.down")
         case .onlineOnly: Label("Link · needs a connection to open", systemImage: "link")
         }
@@ -80,7 +75,7 @@ struct DocumentDetailView: View {
         if let link = document.linkURL {
             Button("Open link", systemImage: "safari") { openURL(link) }.disabled(!connectivity.isOnline)
             if document.file == nil {
-                Button(downloading ? "Saving a copy…" : "Save a copy for offline use", systemImage: "arrow.down.doc") { saveOffline(link) }
+                Button(downloading ? "Saving a copy…" : "Save a copy", systemImage: "arrow.down.doc") { saveOffline(link) }
                     .disabled(!connectivity.isOnline || downloading)
                 ShareLink("Share link", item: link)
             }

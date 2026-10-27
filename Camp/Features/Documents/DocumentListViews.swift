@@ -42,8 +42,8 @@ enum DocumentOwner {
     }
     var emptyMessage: String {
         switch self {
-        case .rig: "Keep your registration, insurance, warranty, and owner’s manuals here so they open offline at the campground."
-        case .trip: "Add your reservation confirmation or campground map so it’s on hand without a signal."
+        case .rig: "Keep your manuals, registration, insurance, and warranty together."
+        case .trip: "Keep your reservation confirmation and campground map with this trip."
         }
     }
 }
@@ -59,7 +59,7 @@ struct PendingDocumentFile: Identifiable, Sendable {
 struct DocumentVaultSection: View {
     let owner: DocumentOwner
     var header = "Documents"
-    var footer = "Files saved on this device open offline. Files from iCloud must finish downloading first. Links need a connection unless you save a copy."
+    var footer = "Add PDFs, images, or links."
     @State private var importingFile = false
     @State private var choosingPhoto = false
     @State private var photoSelection: PhotosPickerItem?
@@ -179,7 +179,7 @@ struct DocumentAvailabilityIcon: View {
     let availability: DocumentAvailability
     var body: some View {
         switch availability {
-        case .offline: Image(systemName: "iphone").foregroundStyle(.secondary).accessibilityLabel("Available offline")
+        case .offline: Image(systemName: "iphone").foregroundStyle(.secondary).accessibilityLabel("File ready to open")
         case .awaitingDownload: Image(systemName: "icloud.and.arrow.down").foregroundStyle(.secondary).accessibilityLabel("Waiting to download")
         case .onlineOnly: Image(systemName: "link").foregroundStyle(.secondary).accessibilityLabel("Link, needs a connection")
         }

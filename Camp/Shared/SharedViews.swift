@@ -63,10 +63,11 @@ struct RigImage: View {
 struct SaveStatus: View {
     @Environment(LibraryController.self) private var library
     var body: some View {
-        Label(library.saveFailure == nil ? "Saved on this device" : "Changes need saving",
-              systemImage: library.saveFailure == nil ? "checkmark.circle.fill" : "exclamationmark.circle")
-            .font(.caption).foregroundStyle(library.saveFailure == nil ? Color.secondary : .orange)
-            .accessibilityIdentifier("localSaveStatus")
+        if library.saveFailure != nil {
+            Label("Changes need saving", systemImage: "exclamationmark.circle")
+                .font(.caption).foregroundStyle(.orange)
+                .accessibilityIdentifier("localSaveStatus")
+        }
     }
 }
 

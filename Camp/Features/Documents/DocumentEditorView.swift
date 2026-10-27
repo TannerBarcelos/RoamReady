@@ -40,7 +40,7 @@ struct DocumentEditorView: View {
                     Section {
                         TextField("https://", text: $linkText).keyboardType(.URL).textContentType(.URL)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    } header: { Text("Link") } footer: { Text("Links open online. You can save a copy of a PDF or image link for offline use later.") }
+                    } header: { Text("Link") } footer: { Text("You can also save a copy of a linked PDF or image.") }
                 }
                 Section {
                     Picker("Document type", selection: $category) {
@@ -50,7 +50,7 @@ struct DocumentEditorView: View {
                         }
                     }
                 } header: { Text("Document type") } footer: {
-                    Text("Documents are encrypted automatically when synced with your private iCloud. Files saved on this device open offline.")
+                    Text("Choose a category to keep your documents organized.")
                 }
                 Section("Details") {
                     TextField("Title", text: $title)
