@@ -8,7 +8,12 @@ final class LibraryWorkflowUITests: XCTestCase {
         app.launchArguments = ["-workflow-ui-test", UUID().uuidString]
         app.launch()
         let tent = app.buttons["Tent"]
-        XCTAssertTrue(tent.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["RoamReady"].waitForExistence(timeout: 15))
+        for _ in 0..<8 {
+            if tent.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(tent.isHittable)
         tent.tap()
         app.buttons["Set up my tent"].tap()
         app.buttons["Looks like home"].tap()
@@ -40,7 +45,7 @@ final class LibraryWorkflowUITests: XCTestCase {
         title.tap()
         title.typeText("Pack the blue kettle")
         app.buttons["Save"].tap()
-        XCTAssertTrue(app.staticTexts["Pack the blue kettle"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["checklistStep-Pack the blue kettle"].firstMatch.waitForExistence(timeout: 5))
 
         app.terminate()
         app.launch()
@@ -49,7 +54,7 @@ final class LibraryWorkflowUITests: XCTestCase {
         XCTAssertTrue(booking.waitForExistence(timeout: 5), "Booking survives reopening the disk store")
         booking.tap()
         app.staticTexts["Setup"].firstMatch.tap()
-        let savedStep = app.staticTexts["Pack the blue kettle"]
+        let savedStep = app.descendants(matching: .any)["checklistStep-Pack the blue kettle"].firstMatch
         for _ in 0..<12 {
             if savedStep.isHittable { break }
             app.swipeUp()

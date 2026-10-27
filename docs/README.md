@@ -24,6 +24,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 
 | Guide | What it covers |
 | --- | --- |
+| [V1 readiness audit](v1-audit.md) | Requirement coverage, fixes, validation evidence, and remaining certification gates. |
 | [Build and validation](validation.md) | Local setup, dependencies, checks, CI, Apple capabilities, and device acceptance. |
 | [Production integrations and release plan](integration-plan.md) | Current implementation, provisioning work, release gates, and deferred features. |
 

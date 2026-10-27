@@ -2,6 +2,10 @@
 
 [Documentation index](README.md) · [Build and validation](validation.md)
 
+## V1 audit
+
+See the [v1 readiness audit](v1-audit.md) for requirement-by-requirement evidence, defects fixed, and outstanding release gates. On October 27, 2026, the owner confirmed that v1 keeps chat in memory across sheet dismissal and clears it on app quit. Saved sessions from #65 remain separate work; the existing bounded-history and one-retry context-overflow policy stays in v1.
+
 ## Current status
 
 RoamReady is an initial development build. Account-free onboarding, owner-entered rigs, local trip/checklist/document/memory workflows, Apple-only AI eligibility, online Apple Maps campground discovery, and device-local appearance settings are implemented in source. Production Apple provisioning and physical-device acceptance remain outstanding.

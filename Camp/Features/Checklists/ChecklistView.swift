@@ -129,6 +129,7 @@ struct ChecklistStepSummary: View {
             Text(caption).font(.caption).foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("checklistStep-\(step.title)")
     }
 }
 
