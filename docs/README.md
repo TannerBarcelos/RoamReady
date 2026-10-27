@@ -6,6 +6,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 
 | Guide | What it covers |
 | --- | --- |
+| [Privacy policy](privacy-policy.md) | Data use, Apple services, permissions, retention and deletion. |
 | [User guide](user-guide.md) | First launch, trips, checklists, documents, memories, discovery, and managing your library. |
 | [Feature reference](features.md) | Implemented behavior, offline support, device requirements, and feature limits. |
 

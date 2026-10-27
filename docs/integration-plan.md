@@ -64,6 +64,10 @@ See [data coverage](campground-data.md) and the [Camp Finder source guide](campg
 | Remote AI (#34) | Proposed v2 service with its own identity, consent, and cost controls; it must fit the one-time price (no subscription). |
 | Pricing | Settled: $4.99 one-time purchase, with no subscription or in-app purchases now or later. See [pricing](monetization.md). |
 
+## Store listing preparation
+
+The [privacy policy](privacy-policy.md) is checked in and can be used as the public policy URL after this branch is merged. The public repository's issue tracker provides a support contact. Confirm the final App Store privacy answers against the signed build and its actual capabilities; this document does not create an App Store Connect listing or provision Apple services.
+
 ## Native release acceptance
 
 The release pass must include:

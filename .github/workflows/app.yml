@@ -68,7 +68,7 @@ jobs:
       - name: Boot the ${{ matrix.device }} Simulator and warm up the app's first launch
         # A cold Simulator can make the first UI test's launch exceed Xcode's launch timeout,
         # so finish booting and pay for the first install and launch before testing.
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           DEVICE: ${{ matrix.device }}
         run: |
