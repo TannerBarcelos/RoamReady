@@ -40,8 +40,8 @@ final class CampingHelpRequestTests: XCTestCase {
         let request = CampingHelpRequest(question: "What rig and equipment do I have?", steps: [], rigType: rig.type,
                                         step: nil, scope: .general, rigContext: CampingRigContext(rig))
         let inputs = request.instructions + request.prompt + request.compactPrompt
-        for fact in ["Forest River", "No Boundaries", "2024", "19.8", "\"lengthFeet\":23", "\"slideCount\":1",
-                     "\"axleCount\":2", "\"hasBunkhouse\":true", "\"sewer\":true", "\"propane\":true"] {
+        for fact in ["Forest River", "No Boundaries", "2024", "Floorplan code: \"19.8\"", "Overall length: 23 ft", "Slide-out count: 1",
+                     "Axle count: 2", "Bunkhouse: Yes", "Wastewater connection selected: Yes", "Propane selected: Yes"] {
             XCTAssertTrue(request.instructions.contains(fact), "Initial model instructions must contain \(fact)")
         }
         for privateValue in [rig.vin, rig.licensePlate, rig.plateRegion, "private photo"] {
@@ -56,9 +56,9 @@ final class CampingHelpRequestTests: XCTestCase {
                                         step: nil, scope: .general, rigContext: CampingRigContext(rig))
         XCTAssertTrue(request.prompt.contains("Rig category: Tent"))
         XCTAssertFalse(request.instructions.contains(String(repeating: "x", count: 101)))
-        XCTAssertFalse(request.instructions.contains("\"year\":"))
-        XCTAssertFalse(request.instructions.contains("\"lengthFeet\":"))
-        XCTAssertTrue(request.instructions.contains("\"sewer\":false"))
+        XCTAssertFalse(request.instructions.contains("Model year:"))
+        XCTAssertFalse(request.instructions.contains("Overall length:"))
+        XCTAssertTrue(request.instructions.contains("Wastewater connection selected: No"))
         XCTAssertLessThan(request.instructions.count, 2500)
     }
 

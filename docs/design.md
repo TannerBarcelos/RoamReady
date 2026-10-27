@@ -21,7 +21,7 @@ The root view shows onboarding when there is no profile, then four tabs (Trip op
 
 Home keeps every current and upcoming trip accessible, including overlapping bookings. Completed trips are in Profile › Trip history, newest first.
 
-With no current or upcoming trip, Home uses a compact card with a short description and vertically stacked Add a trip and Find a campground buttons. Its height follows its content, keeping both actions together without the empty space of a full-height unavailable view.
+With no current or upcoming trip, Home shows two standard iOS action rows: Add a trip and Find a campground. A small section heading and compact section spacing keep this state quiet and easy to scan. Everyday screens focus on the trip or document; connection and sync details belong in Settings or actionable availability and save errors.
 
 Trip details keep booking information together and link to setup/teardown, **Photos & site notes**, documents, and camping help. Forms group campground, rig, dates, optional site details, booking, timing, and cost so users can save a minimal trip before adding paperwork.
 
@@ -33,7 +33,7 @@ Trip details keep booking information together and link to setup/teardown, **Pho
 - Lay out checklist steps like Reminders: priority as `!`–`!!!` in the accent color before the title, the owner's notes in secondary text under it (two lines at most), then the section.
 - Keep optional booking/site fields optional; show length warnings near site details.
 - Explain permanent deletion before confirming it, including what is deleted and what is kept.
-- Distinguish a local save from cloud delivery and show save failures with retry.
+- Keep routine saving and synchronization in the background. Surface save failures with retry; show cloud status in Settings without claiming every device has received a change.
 - Explain network and AI unavailability at the affected feature, while local workflows remain available.
 - Show forecast retrieval times and explain Apple Maps coverage and missing place details so users can judge the data.
 

@@ -93,16 +93,16 @@ struct OnboardingView: View {
                     }
                     if let rig {
                         DocumentVaultSection(owner: .rig(rig), header: "Manuals & paperwork (optional)",
-                                             footer: "Bring a manual, registration, or insurance along now, or add it later in Profile. Saved files open offline; links need a connection.")
+                                             footer: "Add a manual, registration, or insurance now, or add it later in Profile.")
                     }
                     if library.iCloud.configured { ICloudSection() }
                     Section {
-                        Label("Ready beyond reception", systemImage: "mountain.2")
+                        Label("Ready for your next trip", systemImage: "mountain.2")
                             .font(.headline)
-                        Text("Your saved trips, checklists, photos, and notes go with you. Camp Finder and fresh weather need a connection.")
+                        Text("Keep your trips, checklists, photos, and notes together.")
                             .foregroundStyle(.secondary)
                     } footer: {
-                        Text("No account needed. Optional iCloud sync keeps a private copy in your iCloud when configured.")
+                        Text("No account needed. Manage iCloud in Settings.")
                     }
                 }
                 if let failure {
@@ -305,7 +305,7 @@ struct RigFormSections: View {
                 }
                 if let photoError { Text(photoError).font(.caption).foregroundStyle(.red) }
             } header: { Text("Make it recognizable") } footer: {
-                Text("Your rig photo is saved in RoamReady and syncs with your rig when iCloud sync is on.")
+                Text("Choose a photo that makes your rig easy to recognize.")
             }
             if rig.type.isRV {
                 Section {
