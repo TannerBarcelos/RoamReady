@@ -143,6 +143,7 @@ struct ChecklistStepEditor: View {
             Form {
                 Section("Step") {
                     TextField("Title", text: $step.title, axis: .vertical)
+                        .accessibilityIdentifier("checklistStepTitle")
                     TextField("Notes", text: $step.notes, axis: .vertical).lineLimit(2...8)
                 }
                 Section {

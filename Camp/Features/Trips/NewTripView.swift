@@ -22,6 +22,7 @@ struct NewTripView: View {
             Form {
                 Section {
                     TextField("Campground name", text: $draft.campgroundName)
+                        .accessibilityIdentifier("tripCampgroundName")
                         .onChange(of: draft.campgroundName) { _, value in if selected?.name != value { select(nil) } }
                     Button("Choose from Camp Finder", systemImage: "map") { choosing = true }
                         .disabled(!connectivity.isOnline)
