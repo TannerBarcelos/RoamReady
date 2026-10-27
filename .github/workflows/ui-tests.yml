@@ -1,0 +1,68 @@
+name: UI tests (manual)
+# Run explicitly for UI work or release validation, outside regular PR/push CI.
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: Simulator to test
+        type: choice
+        options: [iPhone, iPad]
+        default: iPhone
+permissions:
+  contents: read
+concurrency:
+  group: ui-tests-${{ github.ref }}-${{ inputs.device }}
+  cancel-in-progress: true
+env:
+  PROJECT: RoamReady.xcodeproj
+  SCHEME: RoamReady
+  DERIVED_DATA: .derivedData
+jobs:
+  ui-tests:
+    name: UI tests (${{ inputs.device }})
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build for testing (Debug)
+        run: |
+          xcodebuild build-for-testing -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Boot the ${{ inputs.device }} Simulator and warm up the app's first launch
+        # A cold Simulator can make the first UI test's launch exceed Xcode's launch timeout,
+        # so finish booting and pay for the first install and launch before testing.
+        timeout-minutes: 15
+        env:
+          DEVICE: ${{ inputs.device }}
+        run: |
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, os, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith(os.environ["DEVICE"])))')"
+          echo "Using $(xcrun simctl list devices | grep "$SIMULATOR_ID")"
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+          xcrun simctl install "$SIMULATOR_ID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/RoamReady.app"
+          APP_BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/RoamReady.app/Info.plist")"
+          xcrun simctl launch "$SIMULATOR_ID" "$APP_BUNDLE_ID"
+          sleep 5
+          xcrun simctl terminate "$SIMULATOR_ID" "$APP_BUNDLE_ID"
+
+      - name: UI tests
+        timeout-minutes: 20
+        run: |
+          xcodebuild test-without-building -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath "$DERIVED_DATA" \
+            -parallel-testing-enabled NO -resultBundlePath TestResults.xcresult
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults-${{ inputs.device }}
+          path: TestResults.xcresult
+          if-no-files-found: ignore
+
+      - name: Show crash reports
+        if: failure()
+        run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec head -c 8000 {} \; || true

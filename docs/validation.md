@@ -35,7 +35,7 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [iOS and iPad](../.github/workflows/app.yml) and [Mac](../.github/workflows/mac.yml) workflows run these commands on macOS runners. The iOS and iPad workflow verifies the iOS SDK version, and its iPhone job also checks the location permission and signed-build WeatherKit/CloudKit configuration.
+Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. Regular CI builds the iOS app unsigned with `-destination 'generic/platform=iOS'`, which compiles for iPhone and iPad without booting a simulator. It also verifies the SDK version, location permission, and WeatherKit/CloudKit configuration.
 
 ## Test coverage and CI
 
@@ -48,7 +48,9 @@ The Mac workflow runs every package suite with `swift test` on macOS, including 
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
 | `CampPersistenceTests` | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-The iOS and iPad workflow runs one job per device (an iPhone and an iPad simulator) on GitHub's `xcode-27` image (macOS 27). Each builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target, refusing an older SDK, and runs the UI tests; the iPhone job also builds Release. The Mac workflow builds the Mac Catalyst app in Debug and Release. The UI tests cover Assistant presentation/composer using DEBUG-only simulated AI states. They do not verify Foundation Models generation or physical-device behavior. See the latest [iOS and iPad](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml) and [Mac](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml) results for the exact commit and outcome.
+On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) workflow builds the single universal app in Debug and Release, and the [Mac](../.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in both configurations. These jobs use GitHub's `xcode-27` image and never boot a simulator. Package tests retain real-store migration, cascade, export, and persistence coverage.
+
+Simulator tests are deferred to the manual [UI tests](../.github/workflows/ui-tests.yml) workflow. In GitHub Actions, select **UI tests (manual)**, choose the branch and iPhone or iPad, and click **Run workflow**. The full native suite and its unfiltered accessibility audits remain available; no UI tests run automatically on PRs or main pushes. They cover navigation, onboarding/disk persistence, appearance, and simulated Assistant states, but do not establish real Foundation Models generation or physical-device behavior. The unresolved iPad Dynamic Type finding recorded in [the v1 audit](v1-audit.md) remains a release-validation item; green build/package CI does not certify that audit.
 
 ## Airplane-mode acceptance pass
 

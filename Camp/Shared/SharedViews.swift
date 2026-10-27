@@ -55,12 +55,19 @@ struct RigImage: View {
             } else {
                 ZStack {
                     Color(.tertiarySystemGroupedBackground)
-                    Text(emoji.isEmpty ? type.defaultEmoji : emoji).font(.system(size: size * 0.55))
+                    Canvas { context, canvasSize in
+                        let symbol = Text(emoji.isEmpty ? type.defaultEmoji : emoji)
+                            .font(.system(size: size * 0.55))
+                        context.draw(symbol, at: CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2))
+                    }
                 }
             }
         }
         .frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: 14))
+        // Expose photos and emoji as one labeled thumbnail to VoiceOver.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Your \(type.title.lowercased())")
+        .accessibilityAddTraits(.isImage)
     }
 }
 
