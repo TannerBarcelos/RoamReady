@@ -55,8 +55,11 @@ struct RigImage: View {
             } else {
                 ZStack {
                     Color(.tertiarySystemGroupedBackground)
-                    Text(emoji.isEmpty ? type.defaultEmoji : emoji).font(.system(size: size * 0.55))
-                        .accessibilityHidden(true)
+                    Canvas { context, canvasSize in
+                        let symbol = Text(emoji.isEmpty ? type.defaultEmoji : emoji)
+                            .font(.system(size: size * 0.55))
+                        context.draw(symbol, at: CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2))
+                    }
                 }
             }
         }
