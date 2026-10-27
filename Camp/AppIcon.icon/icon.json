@@ -1,0 +1,80 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.95991,0.93818,0.89150,1.00000",
+          "display-p3:0.88405,0.83733,0.74794,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "display-p3:0.16113,0.24805,0.18930,1.00000",
+          "display-p3:0.06835,0.11222,0.08457,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "fill": {
+            "solid": "extended-gray:1.00000,1.00000"
+          },
+          "glass": true,
+          "image-name": "check.svg",
+          "name": "check"
+        },
+        {
+          "fill": {
+            "solid": "extended-gray:1.00000,1.00000"
+          },
+          "glass": true,
+          "image-name": "ring.svg",
+          "name": "ring"
+        }
+      ],
+      "lighting": "combined",
+      "name": "Progress",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.35
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.2
+      }
+    },
+    {
+      "layers": [
+        {
+          "fill": {
+            "automatic-gradient": "display-p3:0.89905,0.50475,0.25902,1.00000"
+          },
+          "glass": true,
+          "image-name": "pin.svg",
+          "name": "pin"
+        }
+      ],
+      "lighting": "individual",
+      "name": "Pin",
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.5
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.4
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}
