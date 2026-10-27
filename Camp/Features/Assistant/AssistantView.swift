@@ -228,7 +228,7 @@ struct AssistantView: View {
         } else {
             steps = []
         }
-        let history = chat.exchanges.map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
+        let history = chat.exchanges.suffix(CampingHelpRequest.maximumHistoryTurns).map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
         pendingQuestion = submitted
         chat.generationFailure = nil
         chat.question = ""

@@ -50,6 +50,11 @@ The priority representation changes a newly introduced, pre-release field. An op
 
 ## Follow-up fixes and checks
 
+- Avoid copying a complete chat history before every request: the UI and prompt builder share the existing three-turn bound. Chat lifetime and model context behavior are unchanged.
+- Discard canceled thumbnail work before it updates a reused photo view, preventing stale photos during rapid navigation.
+- Prepare a public privacy policy covering actual library, permissions, Apple services, on-device AI, sharing and deletion behavior. Publishing its final URL and App Store declarations still depends on release setup.
+
+
 - Wire both app configurations to `Config/App.xcconfig`; optional `Config/Local.xcconfig` now overrides actual resolved signing, bundle, container and capability settings. Target-level empty values previously took precedence over base configurations. CI verifies defaults and fixture overrides without signing or contacting Apple provisioning.
 - Honor Reduce Motion when scrolling Assistant transcripts, give checklist controls 44-point targets, and stack forecast details at accessibility text sizes.
 - Add real-store scale coverage for 300 trips, 2,000 synthetic 16 KiB photos and their relationships, including reopen/fetch timing. This measures storage operations, not camera decode or smooth scrolling with real images.

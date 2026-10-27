@@ -29,8 +29,12 @@ struct LocalPhoto: View {
             }
         }
         .task(id: data) {
-            guard let data, let jpeg = await PhotoImport.thumbnail(data, maximumDimension: maximumDimension) else { thumbnail = nil; return }
-            thumbnail = UIImage(data: jpeg)
+            thumbnail = nil
+            guard let data else { return }
+            let jpeg = await PhotoImport.thumbnail(data, maximumDimension: maximumDimension)
+            // Downsampling runs detached; cancellation must be checked before updating a reused view.
+            guard !Task.isCancelled else { return }
+            thumbnail = jpeg.flatMap { UIImage(data: $0) }
         }
     }
 }
