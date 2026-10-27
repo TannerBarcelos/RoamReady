@@ -5,18 +5,29 @@ import CampPersistence
 
 struct PlanView: View {
     @Query(sort: \Trip.arrival) private var trips: [Trip]
+    @Environment(\.mainTabActions) private var tabActions
     var body: some View {
         let upcoming = trips.filter { !$0.isCompleted() }
         let completed = trips.filter { $0.isCompleted() }.reversed()
         List {
             if trips.isEmpty {
-                ContentUnavailableView("No trips yet", systemImage: "calendar.badge.plus", description: Text("After you reserve a campsite, tap Trip below to add the booking and we’ll prepare your checklists."))
+                ContentUnavailableView {
+                    Label { Text("No trips planned") } icon: {
+                        Image(systemName: "calendar.badge.plus").foregroundStyle(.tint)
+                    }
+                } description: {
+                    Text("Booked a campsite? Add it here to get checklists, the forecast, and a place for your photos and notes.")
+                } actions: {
+                    Button("Add a trip", systemImage: "plus", action: tabActions.addTrip).buttonStyle(.borderedProminent)
+                    Button("Still deciding? Browse Camp Finder", action: tabActions.showCampFinder).buttonStyle(.bordered)
+                }
             }
             if !upcoming.isEmpty { Section("Upcoming & current") { ForEach(upcoming) { TripRow(trip: $0) } } }
             if !completed.isEmpty { Section("Completed trips") { ForEach(Array(completed)) { TripRow(trip: $0) } } }
-            Section { NavigationLink { SavedCampgroundsView() } label: { Label("Your campgrounds", systemImage: "bookmark") } }
+            Section { YourCampgroundsLink() }
         }
         .navigationTitle("Plan")
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { AssistantToolbarButton() } }
     }
 }
 

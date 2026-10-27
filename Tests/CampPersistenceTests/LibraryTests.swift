@@ -197,9 +197,14 @@ struct LibraryTests {
         try SavedCampground.set(lakesideID, name: "Lakeside", region: "UT", on: .wantToGo, true, in: context)
         try SavedCampground.set(lakesideID, name: "", region: "", on: .favorite, true, in: context)
         #expect(try lists().name(lakesideID) == "Lakeside", "A blank name doesn't erase the saved one")
+        #expect(try lists().count == 1, "One campground on two lists counts once")
         try SavedCampground.set(lakesideID, name: "", region: "", on: .wantToGo, false, in: context)
         try SavedCampground.set(lakesideID, name: "", region: "", on: .favorite, false, in: context)
         #expect(try lists().entry(lakesideID) == nil, "An entry on no list is deleted")
+        #expect(try lists().count == 0)
+        trip.campgroundID = nil
+        #expect(try lists().otherPlaces == [trip.campgroundName], "A trip entered by name still counts as a place camped")
+        #expect(try lists().count == 1)
     }
 
     @Test func anAppleMapsPlaceIsSavedByItsIdentifierOnly() throws {

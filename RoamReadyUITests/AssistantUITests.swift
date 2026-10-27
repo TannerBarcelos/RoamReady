@@ -10,10 +10,17 @@ final class AssistantUITests: XCTestCase {
         return app
     }
 
-    func testUnsupportedDeviceHasNoAssistantTab() {
+    func testUnsupportedDeviceHasNoAssistantButton() {
         let app = launch("unsupported")
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.tabBars.buttons["Assistant"].exists)
+        XCTAssertFalse(app.buttons["openAssistant"].exists)
+    }
+
+    func testTabBarFitsWithoutMore() {
+        let app = launch("ready")
+        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.tabBars.buttons["Profile"].exists, "Profile must not be pushed into a More tab")
+        XCTAssertFalse(app.tabBars.buttons["More"].exists)
     }
 
     func testDisabledAIDisplaysRecoveryInsteadOfConversation() {
@@ -34,8 +41,7 @@ final class AssistantUITests: XCTestCase {
 
     func testSendDisplaysGeneratedResponse() {
         let app = launch("ready", generation: "reply")
-        XCTAssertTrue(app.tabBars.buttons["Assistant"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Assistant"].tap()
+        openAssistant(app)
         let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         input.tap()
@@ -45,10 +51,23 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
     }
 
+    func testConversationSurvivesClosingTheAssistant() {
+        let app = launch("ready", generation: "reply")
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText("How do I keep drinking water clean?")
+        app.buttons["assistantSend"].tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        app.buttons["Done"].tap()
+        openAssistant(app)
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 5), "Reopening keeps the chat")
+    }
+
     func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
         let app = launch("ready", generation: "failure")
-        XCTAssertTrue(app.tabBars.buttons["Assistant"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Assistant"].tap()
+        openAssistant(app)
         let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         input.tap()
@@ -69,9 +88,9 @@ final class AssistantUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-assistant-device-smoke"]
         app.launch()
-        let tab = app.tabBars.buttons["Assistant"]
-        XCTAssertTrue(tab.waitForExistence(timeout: 15), "Physical iPhone must support Apple Intelligence")
-        tab.tap()
+        let button = app.buttons["openAssistant"]
+        XCTAssertTrue(button.waitForExistence(timeout: 15), "Physical iPhone must support Apple Intelligence")
+        button.tap()
         let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
         XCTAssertTrue(input.waitForExistence(timeout: 10), "Enable Apple Intelligence and finish the model download first")
         input.tap()
@@ -87,11 +106,15 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(secondReply.waitForExistence(timeout: 90))
     }
 
+    private func openAssistant(_ app: XCUIApplication) {
+        let button = app.buttons["openAssistant"]
+        XCTAssertTrue(button.waitForExistence(timeout: 10))
+        button.tap()
+    }
+
     private func assertUnavailable(_ state: String, title: String) {
         let app = launch(state)
-        let assistant = app.tabBars.buttons["Assistant"]
-        XCTAssertTrue(assistant.waitForExistence(timeout: 10))
-        assistant.tap()
+        openAssistant(app)
         XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Try again"].exists)
         XCTAssertFalse(app.textViews["assistantQuestion"].exists)
@@ -103,9 +126,7 @@ final class AssistantUITests: XCTestCase {
 
     func testReadyChatHasOnlyTextComposerAndSend() {
         let app = launch("ready")
-        let assistant = app.tabBars.buttons["Assistant"]
-        XCTAssertTrue(assistant.waitForExistence(timeout: 10))
-        assistant.tap()
+        openAssistant(app)
         let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
         XCTAssertTrue(input.waitForExistence(timeout: 5))
         let send = app.buttons["assistantSend"]
