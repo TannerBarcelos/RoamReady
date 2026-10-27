@@ -78,6 +78,13 @@ struct MainTabs: View {
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
         }
+        // iPhone shows five tabs at most, so Assistant lives in the bar above them instead of a sixth tab.
+        .tabViewBottomAccessory(isEnabled: showsAssistant) {
+            Button { askingAssistant = true } label: {
+                Label("Ask Assistant", systemImage: "sparkles").frame(maxWidth: .infinity)
+            }
+            .accessibilityIdentifier("openAssistant")
+        }
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
@@ -85,11 +92,8 @@ struct MainTabs: View {
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }
     }
-    /// iPhone shows five tabs at most, so Assistant opens from a toolbar button instead of a sixth tab.
     private var tabActions: MainTabActions {
-        var actions = MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
-        if showsAssistant { actions.openAssistant = { askingAssistant = true } }
-        return actions
+        MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
     private var tabSelection: Binding<Destination> {
@@ -103,18 +107,6 @@ struct MainTabs: View {
 struct MainTabActions {
     var addTrip: @MainActor () -> Void = {}
     var showCampFinder: @MainActor () -> Void = {}
-    /// Nil where the Assistant isn't offered (non-AI hardware, iPad, Simulator).
-    var openAssistant: (@MainActor () -> Void)? = nil
-}
-
-/// Opens the global Assistant, on devices that offer it.
-struct AssistantToolbarButton: View {
-    @Environment(\.mainTabActions) private var tabActions
-    var body: some View {
-        if let open = tabActions.openAssistant {
-            Button("Assistant", systemImage: "sparkles", action: open).accessibilityIdentifier("openAssistant")
-        }
-    }
 }
 
 extension EnvironmentValues {

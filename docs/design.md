@@ -10,7 +10,7 @@ The [approved visual reference](design-A.png) records the design direction. Curr
 
 ## Navigation and information hierarchy
 
-The root view shows onboarding when there is no profile, then five tabs (Trip opens the new-trip sheet). iPhone shows at most five tabs, so on supported AI devices Assistant opens as a sheet from a sparkles button in the Home and Plan toolbars:
+The root view shows onboarding when there is no profile, then five tabs (Trip opens the new-trip sheet). iPhone shows at most five tabs, so on supported AI devices Assistant opens as a sheet from an **Ask Assistant** bar above the tab bar (`tabViewBottomAccessory`), visible on every tab:
 
 | Tab | Primary responsibility |
 | --- | --- |
