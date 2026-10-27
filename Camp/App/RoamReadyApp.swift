@@ -32,6 +32,9 @@ struct RoamReadyApp: App {
             .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
             .task { library.open() }
+            #if DEBUG
+            .task { await DocumentSearchSmokeCheck.runIfRequested() }
+            #endif
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { library.save() }
             }

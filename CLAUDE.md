@@ -1,6 +1,6 @@
 # RoamReady
 
-A native SwiftUI app for iPhone, iPad, and Mac (Catalyst) for planning camping trips. It keeps rigs, setup and teardown checklists, bookings, documents, and trip photos together. It works offline with no account. Data lives in SwiftData, mirrored to the user's private iCloud database when that's configured. There are no external package dependencies and no backend.
+A native SwiftUI app for iPhone, iPad, and Mac (Catalyst) for planning camping trips. It keeps rigs, setup and teardown checklists, bookings, documents, and trip photos together. It works offline with no account. Data lives in SwiftData, mirrored to the user's private iCloud database when that's configured. There are no external package dependencies and no backend. The one deliberate third-party code is a vendored, pinned C library, `sqlite-vec` (MIT/Apache-2.0), for document search; see [Sources/CSQLiteVec/PROVENANCE.md](Sources/CSQLiteVec/PROVENANCE.md).
 
 ## Commands
 
@@ -45,6 +45,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | Argument | Effect |
 | --- | --- |
 | `-seed-sample-trips` | Adds sample trips to the real library ([SampleTrips.swift](Camp/App/SampleTrips.swift)) |
+| `-document-search-smoke` | Runs a file-backed FTS5 + sqlite-vec lifecycle in a temp folder and logs `DOCUMENT-SEARCH-SMOKE: PASS` or `FAIL` ([DocumentSearchSmokeCheck.swift](Camp/App/DocumentSearchSmokeCheck.swift)) |
 | `-navigation-ui-test` | Uses an in-memory library with fixture trips; the real library is never opened ([NavigationUITestLibrary.swift](Camp/App/NavigationUITestLibrary.swift)) |
 | `-assistant-ui-test <state>` | Sets the Assistant's availability to `ready`, `disabled`, `preparing`, `unsupported`, `unavailable`, or `unsupported-language`, and skips onboarding |
 | `-assistant-generation-test <reply\|failure>` | Gives the Assistant a stubbed reply or failure |
@@ -60,6 +61,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `Sources/CampCore/` | Foundation-only domain rules: drafts (`TripDraft`, `RigDraft`, `ChecklistStepDraft`), validation, checklist generation, and the Assistant's availability states |
 | `Sources/CampPersistence/` | The SwiftData `@Model`s (`Models.swift`), the library rules as model extensions (`Trip+Library.swift` and so on), the store and CloudKit setup, and export |
 | `Sources/Campgrounds/` | Camp Finder's place model, links, and how search results are merged |
+| `Sources/DocumentSearch/`, `Sources/CSQLiteVec/` | The document search index: its own disposable SQLite file with FTS5 and `sqlite-vec`, behind `DocumentSearchIndex`. `CSQLiteVec` is the vendored sqlite-vec source plus its license and provenance note; don't edit the vendored files |
 | `Sources/DocumentVault/` | Document types, import rules, SHA-256, and reading older encrypted files |
 | `Tests/` | One test target per package, plus `RoamReadyUITests` |
 | `docs/` | Product and engineering docs. Start at [docs/README.md](docs/README.md); [architecture.md](docs/architecture.md), [features.md](docs/features.md), and [design.md](docs/design.md) matter most |
