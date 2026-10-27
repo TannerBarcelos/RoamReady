@@ -105,7 +105,7 @@ struct DocumentDetailView: View {
                 let payload = try await Task.detached(priority: .userInitiated) { try imported.documentPayload() }.value
                 try Task.checkCancellation()
                 document.attach(payload)
-                library.save()
+                try library.saveOrThrow()
             } catch { failure = error.localizedDescription }
         }
     }

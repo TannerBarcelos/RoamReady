@@ -24,6 +24,7 @@ struct DocumentEditorView: View {
     @State private var failure: String?
     @State private var saving = false
     @State private var prepared = false
+    @State private var createdDocument: StoredDocument?
 
     var body: some View {
         NavigationStack {
@@ -106,27 +107,36 @@ struct DocumentEditorView: View {
         do {
             switch mode {
             case .newFile(let owner, let pending):
-                let payload = try await Task.detached(priority: .userInitiated) { try pending.imported.documentPayload() }.value
-                try Task.checkCancellation()
-                guard payload.file == pending.file else { throw DocumentError.contentIntegrity }
-                try add(metadata, contents: payload, link: nil, to: owner)
+                if let createdDocument {
+                    try createdDocument.update(metadata)
+                } else {
+                    let payload = try await Task.detached(priority: .userInitiated) { try pending.imported.documentPayload() }.value
+                    try Task.checkCancellation()
+                    guard payload.file == pending.file else { throw DocumentError.contentIntegrity }
+                    createdDocument = try add(metadata, contents: payload, link: nil, to: owner)
+                }
             case .newLink(let owner):
                 let url = try DocumentPolicy.link(from: linkText)
                 var withTitle = metadata
                 if withTitle.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { withTitle.title = url.host() ?? "Link" }
-                try add(withTitle, contents: nil, link: url, to: owner)
+                if let createdDocument {
+                    try createdDocument.update(withTitle)
+                    createdDocument.link = url.absoluteString
+                } else {
+                    createdDocument = try add(withTitle, contents: nil, link: url, to: owner)
+                }
             case .edit(let document):
                 try document.update(metadata)
             }
-            library.save()
+            try library.saveOrThrow()
             dismiss()
         } catch { failure = error.localizedDescription }
     }
 
-    private func add(_ metadata: DocumentMetadata, contents: DocumentPayload?, link: URL?, to owner: DocumentOwner) throws {
+    private func add(_ metadata: DocumentMetadata, contents: DocumentPayload?, link: URL?, to owner: DocumentOwner) throws -> StoredDocument {
         switch owner {
-        case .rig(let rig): try StoredDocument.add(metadata, contents: contents, link: link, rig: rig, in: context)
-        case .trip(let trip): try StoredDocument.add(metadata, contents: contents, link: link, trip: trip, in: context)
+        case .rig(let rig): return try StoredDocument.add(metadata, contents: contents, link: link, rig: rig, in: context)
+        case .trip(let trip): return try StoredDocument.add(metadata, contents: contents, link: link, trip: trip, in: context)
         }
     }
 }
