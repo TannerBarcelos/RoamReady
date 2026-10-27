@@ -10,14 +10,14 @@ The [approved visual reference](design-A.png) records the design direction. Curr
 
 ## Navigation and information hierarchy
 
-The root view shows onboarding when there is no profile, then four standard tabs and an Assistant tab on supported AI devices:
+The root view shows onboarding when there is no profile, then five tabs (Trip opens the new-trip sheet). iPhone shows at most five tabs, so on supported AI devices Assistant opens as a sheet from a sparkles button in the Home and Plan toolbars:
 
 | Tab | Primary responsibility |
 | --- | --- |
 | Home | The current trip during its arrival/departure dates, checklist progress, memories, quick trip creation, and local temperature. Before arrival day it shows the next trip's countdown and setup checklist. |
 | Plan | Upcoming/past trips and their booking, checklist, weather, and memory details. |
 | Camp Finder | Online campground/RV park map and search, place details, and saved lists. |
-| Assistant | General camping troubleshooting and follow-up chat, without requiring a trip. Hidden on non-AI devices. |
+| Assistant (toolbar sheet) | General camping troubleshooting and follow-up chat, without requiring a trip. Hidden on non-AI devices. |
 | Profile | Rig/profile settings, default lists, documents, storage/sync, and library management. |
 
 Trip details keep booking information together and link to setup/teardown, **Photos & site notes**, documents, and camping help. Forms group campground, rig, dates, optional site details, booking, timing, and cost so users can save a minimal trip before adding paperwork.

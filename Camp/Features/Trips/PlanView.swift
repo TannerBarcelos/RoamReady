@@ -27,6 +27,7 @@ struct PlanView: View {
             Section { YourCampgroundsLink() }
         }
         .navigationTitle("Plan")
+        .toolbar { ToolbarItem(placement: .topBarTrailing) { AssistantToolbarButton() } }
     }
 }
 

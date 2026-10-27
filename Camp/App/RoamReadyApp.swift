@@ -62,11 +62,12 @@ struct RootView: View {
 }
 
 struct MainTabs: View {
-    enum Destination: Hashable { case home, plan, campFinder, newTrip, assistant, profile }
+    enum Destination: Hashable { case home, plan, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
     @State private var showsAssistant = CampingAssistant.showsGlobalChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
+    @State private var askingAssistant = false
     var body: some View {
         TabView(selection: tabSelection) {
             Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
@@ -74,13 +75,13 @@ struct MainTabs: View {
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
-            if showsAssistant {
-                Tab("Assistant", systemImage: "bubble.left.and.bubble.right", value: .assistant) { AssistantView(isPresentedAsSheet: false) }
-            }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
         }
-        .environment(\.mainTabActions, MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder }))
+        // iPhone shows five tabs at most, so Assistant opens from a toolbar button instead of a sixth tab.
+        .environment(\.mainTabActions, MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder },
+                                                      openAssistant: showsAssistant ? { askingAssistant = true } : nil))
         .sheet(isPresented: $addingTrip) { NewTripView() }
+        .sheet(isPresented: $askingAssistant) { AssistantView() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsGlobalChat }
         }
@@ -97,6 +98,18 @@ struct MainTabs: View {
 struct MainTabActions {
     var addTrip: @MainActor () -> Void = {}
     var showCampFinder: @MainActor () -> Void = {}
+    /// Nil where the Assistant isn't offered (non-AI hardware, iPad, Simulator).
+    var openAssistant: (@MainActor () -> Void)? = nil
+}
+
+/// Opens the global Assistant, on devices that offer it.
+struct AssistantToolbarButton: View {
+    @Environment(\.mainTabActions) private var tabActions
+    var body: some View {
+        if let open = tabActions.openAssistant {
+            Button("Assistant", systemImage: "sparkles", action: open).accessibilityIdentifier("openAssistant")
+        }
+    }
 }
 
 extension EnvironmentValues {
