@@ -1,6 +1,6 @@
 # RoamReady privacy policy
 
-Effective October 27, 2026.
+Effective October 26, 2026.
 
 RoamReady helps you plan camping trips and keep your rig details, checklists, documents and memories together. It requires no RoamReady account. It has no advertising, analytics SDK, tracking, or app-operated backend. We do not sell your data.
 

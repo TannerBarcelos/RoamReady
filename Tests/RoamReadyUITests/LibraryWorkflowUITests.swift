@@ -63,10 +63,10 @@ final class LibraryWorkflowUITests: XCTestCase {
 
         // Verify the real preference, then relaunch at the largest accessibility text size.
         app.navigationTab("Profile").tap()
-        let appearance = app.segmentedControls["appearancePicker"]
-        scrollTo(appearance, in: app)
-        appearance.buttons["Dark"].tap()
-        XCTAssertTrue(appearance.buttons["Dark"].isSelected)
+        let darkOption = app.buttons["appearanceOption-dark"]
+        scrollTo(darkOption, in: app)
+        darkOption.tap()
+        XCTAssertTrue(darkOption.isSelected)
         app.terminate()
         app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()

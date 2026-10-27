@@ -4,7 +4,7 @@
 
 ## V1 audit
 
-See the [v1 readiness audit](v1-audit.md) for requirement-by-requirement evidence, defects fixed, and outstanding release gates. On October 27, 2026, the owner confirmed that v1 keeps chat in memory across sheet dismissal and clears it on app quit. Saved sessions from #65 remain separate work; the existing bounded-history and one-retry context-overflow policy stays in v1.
+See the [v1 readiness audit](v1-audit.md) for requirement-by-requirement evidence, defects fixed, and outstanding release gates. On October 27, 2026, the owner confirmed that v1 keeps chat in memory across sheet dismissal and clears it on app quit. Saved sessions from #65 remain separate work; the existing bounded-history and one-retry context-overflow policy stays in v1. The owner also confirmed iPhone, iPad and Mac in v1, and that AI help stays hidden on devices without Apple Intelligence while checklists remain available everywhere.
 
 ## Current status
 
@@ -66,7 +66,7 @@ See [data coverage](campground-data.md) and the [Camp Finder source guide](campg
 
 ## Store listing preparation
 
-The [privacy policy](privacy-policy.md) is checked in and can be used as the public policy URL after this branch is merged. The public repository's issue tracker provides a support contact. Confirm the final App Store privacy answers against the signed build and its actual capabilities; this document does not create an App Store Connect listing or provision Apple services.
+The [App Store listing preparation](app-store-listing.md) includes copy, URLs and the remaining asset/account steps. The [privacy policy](privacy-policy.md) is checked in and can be used as the public policy URL after this branch is merged. The public repository's issue tracker provides a support contact. Confirm the final App Store privacy answers against the signed build and its actual capabilities; this document does not create an App Store Connect listing or provision Apple services.
 
 ## Native release acceptance
 

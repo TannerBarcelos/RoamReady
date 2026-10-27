@@ -2,33 +2,25 @@ import SwiftUI
 
 struct AppearanceSection: View {
     @AppStorage(AppAppearance.storageKey) private var appearance: AppAppearance = .system
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Section {
-            if dynamicTypeSize.isAccessibilitySize {
-                // Segmented controls have a fixed text size on iPad. Full rows keep every choice readable.
-                ForEach(AppAppearance.allCases) { option in
-                    Button { appearance = option } label: {
-                        HStack {
-                            Text(option.title).foregroundStyle(.primary)
-                            Spacer()
-                            if appearance == option {
-                                Image(systemName: "checkmark").foregroundStyle(.tint).accessibilityHidden(true)
-                            }
+            // Keep the same scalable controls at every text size, including during system changes.
+            ForEach(AppAppearance.allCases) { option in
+                Button { appearance = option } label: {
+                    HStack {
+                        Text(option.title)
+                            .font(.body).foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                        if appearance == option {
+                            Image(systemName: "checkmark").foregroundStyle(.tint).accessibilityHidden(true)
                         }
                     }
-                    .accessibilityAddTraits(appearance == option ? .isSelected : [])
-                    .accessibilityIdentifier("appearanceOption-\(option.rawValue)")
                 }
-            } else {
-                Picker("Appearance", selection: $appearance) {
-                    ForEach(AppAppearance.allCases) { option in
-                        Text(option.title).tag(option)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("appearancePicker")
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(appearance == option ? .isSelected : [])
+                .accessibilityIdentifier("appearanceOption-\(option.rawValue)")
             }
         } header: {
             Text("Appearance")

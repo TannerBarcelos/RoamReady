@@ -36,13 +36,25 @@ struct RigsSection: View {
                         Text("Used by \(rig.activeTrips.count) trips").font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 6)
-                Button("Edit rig", systemImage: "pencil") { editor = .edit(rig) }
-                Button("Default checklists", systemImage: "checklist") { editingDefaults = rig }
-                Button("Reset default checklists", systemImage: "arrow.counterclockwise") { resetting = rig }
-                NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
-                    LabeledContent { Text(String(rig.attachedDocuments.count)) } label: { Label("Manuals & paperwork", systemImage: "folder") }
+                Button { editor = .edit(rig) } label: {
+                    Label("Edit rig", systemImage: "pencil")
+                        .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
                 }
-                Button("Replace rig", systemImage: "arrow.triangle.2.circlepath") { editor = .replace(rig) }
+                Button { editingDefaults = rig } label: {
+                    Label("Default checklists", systemImage: "checklist")
+                        .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                }
+                Button { resetting = rig } label: {
+                    Label("Reset default checklists", systemImage: "arrow.counterclockwise")
+                        .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                }
+                NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
+                    LabeledContent { Text(String(rig.attachedDocuments.count)) } label: { Label("Manuals & paperwork", systemImage: "folder").lineLimit(nil).fixedSize(horizontal: false, vertical: true) }
+                }
+                Button { editor = .replace(rig) } label: {
+                    Label("Replace rig", systemImage: "arrow.triangle.2.circlepath")
+                        .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                }
                 if rigs.needsRigResolution {
                     Button("Archive this rig", systemImage: "archivebox") { rig.archive(); library.save() }
                 }
@@ -89,7 +101,7 @@ struct ArchivedRigsView: View {
                             Text(count == 0 ? "No trips use this rig" : "Shown on \(count) past trips").font(.caption).foregroundStyle(.secondary)
                         }
                     }
-                    NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: { Label("Manuals & paperwork", systemImage: "folder") }
+                    NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: { Label("Manuals & paperwork", systemImage: "folder").lineLimit(nil).fixedSize(horizontal: false, vertical: true) }
                     Button("Make active again", systemImage: "arrow.uturn.backward") { perform { try rig.unarchive() } }
                         .disabled(rigs.active.count >= RigPolicy.maxActiveRigs)
                     if rig.activeTrips.isEmpty {
