@@ -6,11 +6,11 @@
 
 Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27 with the iOS 27 SDK.
 
-The native app uses the local Swift package and Apple frameworks only. There are no external package dependencies.
+The native app uses the local Swift package and Apple frameworks only. There are no external package dependencies. The one deliberate third-party code is the vendored C source of sqlite-vec v0.1.9 (`Sources/CSQLiteVec`, MIT/Apache-2.0, with a provenance note); see [architecture](architecture.md).
 
 ## Open the native project
 
-Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external dependencies.
+Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external package dependencies.
 
 The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
@@ -46,6 +46,7 @@ The Mac workflow runs every package suite with `swift test` on macOS, including 
 | `CampCoreTests` | Rig policy/required details, VIN and plate normalization/validation, step priority/notes, trip dates/bookings, site details, checklist generation, campground identities, Assistant availability states and requests, and time-zone/DST forecast dates. |
 | `CampgroundsTests` | Camp Finder place models, website/phone links, cleaned search text, and unique nearest-first result merging. |
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
+| `DocumentSearchTests` | File-backed FTS5 and sqlite-vec lifecycle (publish, lexical and KNN search, reopen, delete), lexical fallback when embeddings are unavailable, revision and dimension changes making old vectors ineligible, scope allow-list applied before ranking, atomic republish and stale-row exclusion, hostile FTS input and document IDs, and schema-version refusal. |
 | `CampPersistenceTests` | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
 On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) workflow builds the single universal app in Debug and Release, and the [Mac](../.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in both configurations. These jobs use GitHub's `xcode-27` image and never boot a simulator. Package tests retain real-store migration, cascade, export, and persistence coverage.

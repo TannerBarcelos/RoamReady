@@ -10,16 +10,29 @@ The app targets iOS 27.0 on iPhone and iPad, and Mac through Mac Catalyst. The l
 
 ## Package boundaries
 
-[Package.swift](../Package.swift) defines four libraries and their test targets:
+[Package.swift](../Package.swift) defines five libraries (plus the C target `CSQLiteVec`) and their test targets:
 
 | Module | Dependencies | Responsibilities |
 | --- | --- | --- |
 | `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, Assistant availability and request preparation, and campground identities. |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
 | `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
+| `DocumentSearch` | `CSQLiteVec`, system SQLite | The document Assistant's search index: a separate, disposable SQLite file (never SwiftData's store) with FTS5 and sqlite-vec. Versioned schema, atomic per-document publishing, lexical and vector readiness tracked separately, scoped lexical and KNN search with a document ID allow-list applied during candidate selection, safe FTS expressions, and an `EmbeddingProvider` protocol with a deterministic test fake. Embedding revision and dimension come from the provider at runtime. |
+| `CSQLiteVec` | system `libsqlite3` | The vendored sqlite-vec v0.1.9 amalgamation with a one-function registration wrapper. Not edited; see its [provenance note](../Sources/CSQLiteVec/PROVENANCE.md). |
 | `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
 
-The native app links these local products and Apple frameworks. There are no external package dependencies.
+The native app links these local products and Apple frameworks. There are no external package dependencies and no downloaded code. The one deliberate third-party dependency is the C source of [sqlite-vec](https://github.com/asg017/sqlite-vec) v0.1.9 (Alex Garcia; dual MIT / Apache-2.0, used under MIT), vendored unmodified in `Sources/CSQLiteVec` with both license texts and a note recording the release URL and SHA-256 checksums. It is compiled into the app and linked against the system SQLite, so it adds no framework, binary, or network access. It handles only text the app already holds on the device.
+
+### Search package decision
+
+`DocumentSearch` ships as its own local package product, with the C code in a sibling `CSQLiteVec` target. It was not folded into `CampPersistence` or another existing target. Evidence from the foundation work:
+
+- **System SQLite is enough.** The SDK's `libsqlite3` provides FTS5 (the schema's `CREATE VIRTUAL TABLE ... USING fts5` succeeds) and JSON1 on macOS (the `swift test` host) and in the iOS Simulator SDK; there is no bundled SQLite copy. The C target defines `SQLITE_CORE`, so sqlite-vec calls the system library directly and is registered per connection by calling `sqlite3_vec_init` (wrapped as `csqlitevec_register`), not through `sqlite3_auto_extension` or runtime extension loading.
+- **Linking passes on every platform.** `swift test` (macOS) runs the file-backed insert, FTS query, KNN query, close/reopen, and delete cycle. The `RoamReady` scheme built unsigned for `platform=iOS Simulator,name=iPhone 18 Pro` and `platform=macOS,variant=Mac Catalyst` with the product linked through the same local-package reference as the other products. A DEBUG-only launch argument, `-document-search-smoke`, ran the same cycle inside the app and logged `DOCUMENT-SEARCH-SMOKE: PASS (sqlite-vec v0.1.9)` on the iOS 27.0 simulator and in the Mac Catalyst app. iPad uses the same iOS slice and binary as iPhone, so it needs no separate link check.
+- **Why a separate package.** The C target and its linker setting stay out of `CampCore`, `DocumentVault`, and `CampPersistence`, which are Foundation, CryptoKit, and SwiftData only, so their tests and builds are unchanged. The search index must never open SwiftData's store, and a package boundary enforces that: `DocumentSearch` depends on nothing else in this repository.
+- **No new CI.** Package tests are picked up by the existing `swift test` in the Mac workflow, and the iOS and Mac app builds already compile every linked product. No simulator is booted in regular CI.
+
+The index file is disposable: if it can't be opened or reports a newer schema, delete it and rebuild from the documents. The on-device Foundation Models and Apple embedding adapters, extraction, and chunking belong to later work and sit outside this package's interface.
 
 ## Source layout
 

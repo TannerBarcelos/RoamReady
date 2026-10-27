@@ -11,6 +11,7 @@
 		CA0000000000000000000018 /* CampPersistence in Frameworks */ = {isa = PBXBuildFile; productRef = CA0000000000000000000019 /* CampPersistence */; };
 		CA000000000000000000001A /* Campgrounds in Frameworks */ = {isa = PBXBuildFile; productRef = CA000000000000000000001B /* Campgrounds */; };
 		CA000000000000000000001C /* DocumentVault in Frameworks */ = {isa = PBXBuildFile; productRef = CA000000000000000000001D /* DocumentVault */; };
+		CA000000000000000000001E /* DocumentSearch in Frameworks */ = {isa = PBXBuildFile; productRef = CA000000000000000000001F /* DocumentSearch */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 				CA0000000000000000000018 /* CampPersistence in Frameworks */,
 				CA000000000000000000001A /* Campgrounds in Frameworks */,
 				CA000000000000000000001C /* DocumentVault in Frameworks */,
+				CA000000000000000000001E /* DocumentSearch in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,6 +123,7 @@
 				CA0000000000000000000019 /* CampPersistence */,
 				CA000000000000000000001B /* Campgrounds */,
 				CA000000000000000000001D /* DocumentVault */,
+				CA000000000000000000001F /* DocumentSearch */,
 			);
 			productName = RoamReady;
 			productReference = CA0000000000000000000002 /* RoamReady.app */;
@@ -474,6 +477,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference "." */;
 			productName = DocumentVault;
+		};
+		CA000000000000000000001F /* DocumentSearch */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CA0000000000000000000013 /* XCLocalSwiftPackageReference "." */;
+			productName = DocumentSearch;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
