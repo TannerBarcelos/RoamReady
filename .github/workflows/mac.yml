@@ -1,6 +1,6 @@
 name: Mac
 # The Mac app (Mac Catalyst), plus the Swift packages' tests, which run natively on macOS
-# with SwiftData against real stores. The iOS and iPad workflow builds and tests the app on simulators.
+# with SwiftData against real stores. Simulator UI tests run separately, on manual request.
 on:
   push:
     branches: [main]

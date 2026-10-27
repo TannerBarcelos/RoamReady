@@ -23,7 +23,7 @@ def verify(expected):
     for configuration in ("Debug", "Release"):
         output = subprocess.check_output([
             "xcodebuild", "-project", "RoamReady.xcodeproj", "-scheme", "RoamReady",
-            "-configuration", configuration, "-destination", "generic/platform=iOS Simulator",
+            "-configuration", configuration, "-destination", "generic/platform=iOS",
             "-showBuildSettings", "-json",
         ], cwd=ROOT)
         targets = json.loads(output)

@@ -10,7 +10,7 @@ Run everything from the repository root. You need Xcode 27 with the iOS 27 SDK. 
 # Package tests: CampCore, Campgrounds, DocumentVault, CampPersistence (SwiftData on macOS)
 swift test
 
-# Build the app for the simulator (unsigned, as CI does)
+# Build the app for the simulator (unsigned, for local UI work)
 xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath .derivedData \
   CODE_SIGNING_ALLOWED=NO build
@@ -80,5 +80,5 @@ The tabs are Home, Trip (opens the new-trip sheet; it doesn't change tabs), Camp
 
 - Branch from `main` as `feature/…`, `fix/…`, `chore/…`, `docs/…`, or `ci/…`, and merge through a PR.
 - Commit subjects are short and imperative ("Add a debug-only sample-trip seeder").
-- CI runs on every PR. The [iOS and iPad](.github/workflows/app.yml) workflow builds and runs UI tests on iPhone and iPad simulators. The [Mac](.github/workflows/mac.yml) workflow runs `swift test` and builds the Catalyst app.
+- CI runs on every PR and main push. The [iOS and iPad](.github/workflows/app.yml) workflow builds the universal iOS app in Debug/Release without booting a simulator. The [Mac](.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in Debug/Release. The [UI tests](.github/workflows/ui-tests.yml) workflow is manual-only: choose iPhone or iPad when UI or release validation is needed. Do not add simulator launches back to regular CI without the owner's request.
 - When behavior changes, update the matching file in `docs/` (usually `features.md`, `user-guide.md`, or `architecture.md`).
