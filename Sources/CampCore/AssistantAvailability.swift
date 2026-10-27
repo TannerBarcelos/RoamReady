@@ -20,7 +20,7 @@ public enum AssistantAvailability: Equatable, Sendable {
     public var message: String {
         switch self {
         case .ready: "Ask about camping, your rig, or something that isn’t working."
-        case .unsupported: "Assistant requires an iPhone that supports Apple Intelligence (iPhone 15 Pro or later)."
+        case .unsupported: "Assistant requires an iPhone, iPad, or Mac that supports Apple Intelligence."
         case .disabled: "Enable Apple Intelligence in Settings › Apple Intelligence & Siri, then return here."
         case .preparing: "Your on-device model is still downloading or preparing. Check Apple Intelligence in Settings and try again when it’s ready."
         case .unavailable: "Apple’s on-device AI can’t answer right now. Try again in a moment."

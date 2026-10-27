@@ -64,6 +64,7 @@ struct RootView: View {
 struct MainTabs: View {
     enum Destination: Hashable { case home, plan, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
@@ -73,17 +74,19 @@ struct MainTabs: View {
     @State private var conversation = AssistantConversation()
     var body: some View {
         TabView(selection: tabSelection) {
-            Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView() } }
-            Tab("Plan", systemImage: "calendar", value: .plan) { NavigationStack { PlanView() } }
+            Tab("Home", systemImage: "house", value: .home) { NavigationStack { HomeView().assistantToolbarButton() } }
+            Tab("Plan", systemImage: "calendar", value: .plan) { NavigationStack { PlanView().assistantToolbarButton() } }
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
-            Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView() } }
-            Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView() } }
+            Tab("Camp Finder", systemImage: "map", value: .campFinder) { NavigationStack { CampFinderView().assistantToolbarButton() } }
+            Tab("Profile", systemImage: "person.crop.circle", value: .profile) { NavigationStack { ProfileView().assistantToolbarButton() } }
         }
-        // Assistant opens from above the tab bar on every tab, rather than as a sixth tab hidden under More.
-        .tabViewBottomAccessory(isEnabled: showsAssistant) {
-            AssistantChatButton { chatDetent = .large; chatting = true }
+        // Assistant opens from every tab rather than as a sixth tab hidden under More: above the tab bar in
+        // compact width, and from each tab's navigation bar in regular width (iPad, Mac).
+        .tabViewBottomAccessory(isEnabled: showsAssistant && sizeClass != .regular) {
+            AssistantChatButton(action: openAssistant)
         }
+        .environment(\.openAssistant, showsAssistant ? { openAssistant() } : nil)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $chatting) {
             AssistantView(conversation: conversation)
@@ -93,6 +96,10 @@ struct MainTabs: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsChat }
         }
+    }
+    private func openAssistant() {
+        chatDetent = .large
+        chatting = true
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
     private var tabSelection: Binding<Destination> {

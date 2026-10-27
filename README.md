@@ -1,6 +1,6 @@
 # RoamReady
 
-RoamReady is a native iOS app for planning camping trips and keeping rig details, setup and teardown checklists, booking information, documents, and trip memories together.
+RoamReady is a native app for iPhone, iPad, and Mac for planning camping trips and keeping rig details, setup and teardown checklists, booking information, documents, and trip memories together.
 
 Its core workflows work offline, with no account required. Camp Finder helps you explore campgrounds and RV parks through Apple Maps when connected.
 
@@ -15,10 +15,10 @@ Its core workflows work offline, with no account required. Camp Finder helps you
 ## Getting started
 
 1. Open `RoamReady.xcodeproj` on a Mac with Xcode and the iOS 27 SDK.
-2. Select the **RoamReady** scheme and an iOS 27 simulator.
+2. Select the **RoamReady** scheme and an iOS 27 simulator, or **My Mac (Mac Catalyst)**.
 3. Build and run.
 
-RoamReady is a development build targeting iOS 27.0 on iPhone and iPad. Live weather and iCloud sync require Apple capability configuration; physical-device acceptance remains outstanding. See [build and validation](docs/validation.md) for setup and checks.
+RoamReady is a development build targeting iOS 27.0 on iPhone and iPad, and macOS 27 through Mac Catalyst. Live weather and iCloud sync require Apple capability configuration; physical-device acceptance remains outstanding. See [build and validation](docs/validation.md) for setup and checks.
 
 ## Documentation
 

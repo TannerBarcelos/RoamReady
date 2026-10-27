@@ -26,3 +26,30 @@ struct AssistantChatButton: View {
         .accessibilityIdentifier("assistantChatButton")
     }
 }
+
+extension EnvironmentValues {
+    /// Opens the app-wide Assistant chat; nil where Assistant isn't offered.
+    @Entry var openAssistant: (@MainActor () -> Void)? = nil
+}
+
+/// In regular width (iPad, Mac, and large iPhones in landscape) the tab bar isn't at the bottom, so the
+/// chat button sits in each tab's navigation bar instead of above the tab bar.
+private struct AssistantToolbarButton: ViewModifier {
+    @Environment(\.openAssistant) private var openAssistant
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            if sizeClass == .regular, let openAssistant {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Ask RoamReady", systemImage: "sparkles") { openAssistant() }
+                        .accessibilityIdentifier("assistantChatButton")
+                }
+            }
+        }
+    }
+}
+
+extension View {
+    func assistantToolbarButton() -> some View { modifier(AssistantToolbarButton()) }
+}

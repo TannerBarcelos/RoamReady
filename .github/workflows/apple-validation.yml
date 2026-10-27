@@ -42,6 +42,11 @@ jobs:
               -destination 'generic/platform=iOS Simulator' -derivedDataPath .derivedData \
               CODE_SIGNING_ALLOWED=NO build
           done
+      - name: Build for Mac (Mac Catalyst)
+        run: |
+          xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+            -destination 'generic/platform=macOS,variant=Mac Catalyst' -derivedDataPath .derivedData \
+            CODE_SIGNING_ALLOWED=NO build
       - name: Boot the Simulator and warm up the app's first launch
         # A cold Simulator can make the first UI test's launch exceed Xcode's launch timeout,
         # so finish booting and pay for the first install and launch before testing.
