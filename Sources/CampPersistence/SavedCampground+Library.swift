@@ -28,6 +28,14 @@ public struct CampgroundLists {
         return candidates.filter { contains($0, on: list) }.sorted()
     }
 
+    /// Completed trips entered by name only, so there is no campground to save.
+    public var otherPlaces: [String] {
+        Array(Set(trips.filter { $0.campgroundID == nil && $0.isCompleted(asOf: now) }.map(\.campgroundName))).sorted()
+    }
+
+    /// Distinct campgrounds on any list, plus the places camped by name only.
+    public var count: Int { Set(CampgroundList.allCases.flatMap(campgroundIDs(on:))).count + otherPlaces.count }
+
     /// The saved name, or the name of a trip there. Nil for an Apple Maps place with no trip yet:
     /// its name comes from Apple Maps, never from the library.
     public func name(_ campgroundID: String) -> String? {

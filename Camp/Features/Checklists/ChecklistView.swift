@@ -103,7 +103,7 @@ struct ChecklistView: View {
         .sheet(isPresented: $adding) {
             ChecklistStepEditor(step: ChecklistStepDraft(title: "")) { step in trip.addStep(step, to: phase); library.save() }
         }
-        .sheet(isPresented: $showAssistant) { AssistantView(trip: trip, step: helpStep) }
+        .sheet(isPresented: $showAssistant) { TripAssistantSheet(trip: trip, step: helpStep) }
         .confirmationDialog("Save as defaults for \(rigName)?", isPresented: $confirmingDefaults, titleVisibility: .visible) {
             Button("Save as defaults") {
                 do { try trip.saveChecklistsAsDefaults(); library.save(); defaultsSaved = true; failure = nil }

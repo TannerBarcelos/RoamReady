@@ -13,40 +13,68 @@ struct SavedCampgroundsView: View {
     @Environment(LibraryController.self) private var library
     @Environment(CampFinder.self) private var finder
     @Environment(Connectivity.self) private var connectivity
+    @Environment(\.mainTabActions) private var tabActions
+    @Environment(\.dismiss) private var dismiss
     @Query private var saved: [SavedCampground]
     @Query private var trips: [Trip]
     var body: some View {
         let lists = CampgroundLists(saved: saved, trips: trips)
         List {
-            ForEach(CampgroundList.allCases) { list in
-                let ids = lists.campgroundIDs(on: list)
-                Section(list.title) {
-                    if ids.isEmpty {
-                        Text(emptyText(list)).font(.subheadline).foregroundStyle(.secondary)
+            if lists.count == 0 {
+                ContentUnavailableView {
+                    Label { Text("No saved campgrounds") } icon: {
+                        Image(systemName: "bookmark").foregroundStyle(.tint)
                     }
-                    ForEach(ids, id: \.self) { id in
-                        HStack {
-                            row(id, lists: lists)
-                            Spacer()
-                            Button("Remove", systemImage: "minus.circle") {
-                                try? SavedCampground.set(id, name: "", region: "", on: list, false, in: context)
-                                library.save()
-                            }.labelStyle(.iconOnly).buttonStyle(.borderless)
-                                .accessibilityLabel("Remove \(name(id, lists: lists) ?? "this campground") from \(list.title)")
-                        }
-                    }
+                } description: {
+                    Text("Save places as you explore. Your lists stay on this iPhone and open offline.")
                 }
-            }
-            let otherPlaces = Array(Set(trips.filter { $0.campgroundID == nil && $0.isCompleted() }.map(\.campgroundName))).sorted()
-            if !otherPlaces.isEmpty {
                 Section {
-                    ForEach(otherPlaces, id: \.self) { Text($0) }
-                } header: { Text("Other places you’ve camped") } footer: {
-                    Text("Older trips entered by name.")
+                    ForEach(CampgroundList.allCases) { list in
+                        Label { VStack(alignment: .leading, spacing: 2) {
+                            Text(list.title)
+                            Text(list.purpose).font(.caption).foregroundStyle(.secondary)
+                        } } icon: { Image(systemName: list.symbol).foregroundStyle(.tint) }
+                    }
                 }
+                Section {
+                    // Pop back first: this screen is also pushed from Camp Finder itself.
+                    Button("Open Camp Finder", systemImage: "map") { dismiss(); tabActions.showCampFinder() }
+                        .frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
+                }.listRowBackground(Color.clear)
+            } else {
+                listSections(lists)
             }
         }
         .navigationTitle("Your campgrounds")
+    }
+
+    @ViewBuilder private func listSections(_ lists: CampgroundLists) -> some View {
+        ForEach(CampgroundList.allCases) { list in
+            let ids = lists.campgroundIDs(on: list)
+            Section(list.title) {
+                if ids.isEmpty {
+                    Text(emptyText(list)).font(.subheadline).foregroundStyle(.secondary)
+                }
+                ForEach(ids, id: \.self) { id in
+                    HStack {
+                        row(id, lists: lists)
+                        Spacer()
+                        Button("Remove", systemImage: "minus.circle") {
+                            try? SavedCampground.set(id, name: "", region: "", on: list, false, in: context)
+                            library.save()
+                        }.labelStyle(.iconOnly).buttonStyle(.borderless)
+                            .accessibilityLabel("Remove \(name(id, lists: lists) ?? "this campground") from \(list.title)")
+                    }
+                }
+            }
+        }
+        if !lists.otherPlaces.isEmpty {
+            Section {
+                ForEach(lists.otherPlaces, id: \.self) { Text($0) }
+            } header: { Text("Other places you’ve camped") } footer: {
+                Text("Older trips entered by name.")
+            }
+        }
     }
 
     @ViewBuilder private func row(_ id: String, lists: CampgroundLists) -> some View {
@@ -89,12 +117,35 @@ struct SavedCampgroundsView: View {
     }
 }
 
+/// Plan's link to the campground lists, with how many places they hold.
+struct YourCampgroundsLink: View {
+    @Query private var saved: [SavedCampground]
+    @Query private var trips: [Trip]
+    var body: some View {
+        let count = CampgroundLists(saved: saved, trips: trips).count
+        NavigationLink { SavedCampgroundsView() } label: {
+            LabeledContent { Text(count == 0 ? "None yet" : String(count)) } label: {
+                Label("Your campgrounds", systemImage: "bookmark")
+            }
+        }
+    }
+}
+
 extension CampgroundList {
     var symbol: String {
         switch self {
         case .wantToGo: "bookmark"
         case .beenTo: "checkmark.seal"
         case .favorite: "star"
+        }
+    }
+
+    /// What the list is for, shown before anything is saved.
+    var purpose: String {
+        switch self {
+        case .wantToGo: "Places you’re considering, saved from Camp Finder"
+        case .beenTo: "Fills in from your completed trips"
+        case .favorite: "The ones you’d return to"
         }
     }
 }

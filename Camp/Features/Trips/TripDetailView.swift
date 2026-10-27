@@ -63,7 +63,7 @@ struct TripDetailView: View {
             }
         }
         .sheet(isPresented: $showEdit) { EditTripView(trip: trip) }
-        .sheet(isPresented: $showAssistant) { AssistantView(trip: trip, step: nil) }
+        .sheet(isPresented: $showAssistant) { TripAssistantSheet(trip: trip, step: nil) }
         .alert("Delete “\(trip.campgroundName)”, \(trip.dateSummary)?", isPresented: $showDelete) {
             Button("Delete Trip", role: .destructive) {
                 dismiss()

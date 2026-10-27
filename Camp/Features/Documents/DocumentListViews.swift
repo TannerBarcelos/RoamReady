@@ -28,6 +28,24 @@ enum DocumentOwner {
         case .trip(let trip): trip.attachedDocuments
         }
     }
+    var emptyTitle: String {
+        switch self {
+        case .rig: "No manuals or paperwork"
+        case .trip: "No booking documents"
+        }
+    }
+    var emptySymbol: String {
+        switch self {
+        case .rig: "folder"
+        case .trip: "ticket"
+        }
+    }
+    var emptyMessage: String {
+        switch self {
+        case .rig: "Keep your registration, insurance, warranty, and owner’s manuals here so they open offline at the campground."
+        case .trip: "Add your reservation confirmation or campground map so it’s on hand without a signal."
+        }
+    }
 }
 
 /// A selected file awaiting details, already inspected.
@@ -104,7 +122,14 @@ struct DocumentsView: View {
     let owner: DocumentOwner
     let title: String
     var body: some View {
-        List { DocumentVaultSection(owner: owner) }.navigationTitle(title)
+        List {
+            if owner.documents.isEmpty {
+                ContentUnavailableView {
+                    Label { Text(owner.emptyTitle) } icon: { Image(systemName: owner.emptySymbol).foregroundStyle(.tint) }
+                } description: { Text(owner.emptyMessage) }
+            }
+            DocumentVaultSection(owner: owner)
+        }.navigationTitle(title)
     }
 }
 

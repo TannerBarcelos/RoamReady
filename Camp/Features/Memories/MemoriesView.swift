@@ -54,7 +54,13 @@ struct MemoriesView: View {
                 }
                 let photos = trip.sortedPhotos
                 if photos.isEmpty {
-                    Text("Keep the moments you’ll want to come back to.").foregroundStyle(.secondary).padding(.vertical)
+                    ContentUnavailableView {
+                        Label { Text("No photos yet") } icon: {
+                            Image(systemName: "photo.on.rectangle.angled").foregroundStyle(.tint)
+                        }
+                    } description: {
+                        Text("Photograph your site, the view, and the hookups so you can decide whether to book this spot again.")
+                    }
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
                         ForEach(photos) { photo in
