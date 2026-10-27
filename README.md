@@ -1,5 +1,12 @@
 # RoamReady
 
+[![iOS and iPad](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml/badge.svg?branch=main)](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml)
+[![Mac](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml/badge.svg?branch=main)](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml)
+
+<p align="center">
+  <img src="docs/home-screen.png" alt="RoamReady's Home screen showing the next trip, its setup checklist progress, and later trips" width="300">
+</p>
+
 RoamReady is a native app for iPhone, iPad, and Mac for planning camping trips and keeping rig details, setup and teardown checklists, booking information, documents, and trip memories together.
 
 Its core workflows work offline, with no account required. Camp Finder helps you explore campgrounds and RV parks through Apple Maps when connected.
