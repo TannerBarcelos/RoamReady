@@ -35,11 +35,11 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [Apple validation workflow](../.github/workflows/apple-validation.yml) runs these commands directly, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
+Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [CI workflow](../.github/workflows/ci.yml) runs these commands on a Mac, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
 
 ## Test coverage and CI
 
-The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
+CI runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, and the export.
 
 | Suite | Coverage |
 | --- | --- |
@@ -48,7 +48,7 @@ The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the off
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
 | `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. It also runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
+CI runs one job on GitHub's `xcode-27` image (macOS 27). It builds the app unsigned for the iOS Simulator in Debug and Release with the iOS 27 SDK at the project's iOS 27 deployment target, refusing an older SDK, then runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/ci.yml) for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
@@ -95,7 +95,7 @@ SwiftData manages the local store; no raw SQL or SQLite driver is used. Its Clou
 
 See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the next-launch preference, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements are empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of the generated CloudKit schema.
 
-`ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run on Apple CI with the persistence suite.
+`ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run in CI with the persistence suite.
 
 ## Camp Finder and account changes
 
