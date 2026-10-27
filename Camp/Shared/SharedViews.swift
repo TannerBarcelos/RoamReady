@@ -56,6 +56,7 @@ struct RigImage: View {
                 ZStack {
                     Color(.tertiarySystemGroupedBackground)
                     Text(emoji.isEmpty ? type.defaultEmoji : emoji).font(.system(size: size * 0.55))
+                        .accessibilityHidden(true)
                 }
             }
         }

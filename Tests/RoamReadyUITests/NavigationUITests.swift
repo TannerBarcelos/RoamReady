@@ -67,6 +67,7 @@ final class NavigationUITests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(thumbnail.isHittable, "The rig thumbnail needs a labeled image role for VoiceOver")
+        XCTAssertEqual(thumbnail.staticTexts.count, 0, "Decorative emoji must not be exposed as a second text element")
     }
 
     func testAddTripStillPresentsFromProfileAndReturnsToIt() {
