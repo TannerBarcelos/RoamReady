@@ -34,6 +34,13 @@ final class LibraryController {
         catch { saveFailure = "Your latest changes haven’t been saved to this device. \(error.localizedDescription)" }
     }
 
+    /// Use when the caller must not report success until the local write completes.
+    func saveOrThrow() throws {
+        guard let context = container?.mainContext else { throw CocoaError(.fileWriteUnknown) }
+        if context.hasChanges { try context.save() }
+        saveFailure = nil
+    }
+
     /// Erase all data on this device: the library, caches, imports, and settings. The caller has
     /// already deleted the iCloud copy.
     func eraseDevice() async throws {
