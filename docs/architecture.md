@@ -16,10 +16,10 @@ The app targets iOS 27.0 on iPhone and iPad, and Mac through Mac Catalyst. The l
 | --- | --- | --- |
 | `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, Assistant availability and request preparation, and campground identities. |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
-| `DocumentVault` | CryptoKit on Apple platforms; Apple's swift-crypto on Linux | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
+| `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
 
-The native app links these local products and Apple frameworks. There are no non-Apple runtime SDKs. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto) as an external package; its `Crypto` product is linked only on Linux. Package resolution may still fetch that dependency on a Mac.
+The native app links these local products and Apple frameworks. There are no external package dependencies.
 
 ## Source layout
 
@@ -32,7 +32,7 @@ The native app links these local products and Apple frameworks. There are no non
 | [Tests/](../Tests/) | One test target per package module. |
 | [RoamReady.xcodeproj/](../RoamReady.xcodeproj/) | Native app project and shared RoamReady scheme. |
 | [Config/](../Config/) | Optional signed-build capability configuration. |
-| [.github/workflows/apple-validation.yml](../.github/workflows/apple-validation.yml) | Package tests, configuration checks, and native Simulator and Mac Catalyst builds. |
+| [.github/workflows/](../.github/workflows/) | `app.yml`: simulator builds and UI tests on iPhone and iPad (a device matrix); the iPhone job adds configuration checks and a Release build. `mac.yml`: package tests and Debug/Release Mac Catalyst builds on macOS. |
 | [docs/](./) | Product, design, engineering, validation, and planning guides. |
 
 The Xcode project uses filesystem-synchronized groups: new source files under `Camp/` join the app target automatically. `Info.plist` and entitlements are excluded from resource copying.

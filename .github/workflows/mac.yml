@@ -1,0 +1,46 @@
+name: Mac
+# The Mac app (Mac Catalyst), plus the Swift packages' tests, which run natively on macOS
+# with SwiftData against real stores. The iOS and iPad workflow builds and tests the app on simulators.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+# A newer push to the same branch or PR replaces a run that is still going.
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PROJECT: RoamReady.xcodeproj
+  SCHEME: RoamReady
+  DERIVED_DATA: .derivedData
+jobs:
+  build-and-test:
+    name: Build and test (Mac)
+    # The Xcode 27 image (macOS 27, Apple silicon).
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build packages and tests
+        run: swift build --build-tests
+
+      - name: Unit tests
+        run: swift test --skip-build --parallel
+
+      - name: Build the Mac app (Debug and Release)
+        # Catalyst is its own binary, so Release is built here too, not only on iPhone.
+        run: |
+          for BUILD_CONFIGURATION in Debug Release; do
+            xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration "$BUILD_CONFIGURATION" \
+              -destination 'generic/platform=macOS,variant=Mac Catalyst' -derivedDataPath "$DERIVED_DATA" \
+              CODE_SIGNING_ALLOWED=NO
+          done

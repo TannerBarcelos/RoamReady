@@ -6,15 +6,15 @@
 
 Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27 with the iOS 27 SDK.
 
-The native app uses the local Swift package and Apple frameworks. SwiftPM declares Apple's [swift-crypto](https://github.com/apple/swift-crypto), whose `Crypto` product is linked only on Linux for CryptoKit-compatible tests. Initial package resolution may require internet access, including on macOS. There are no non-Apple runtime SDKs.
+The native app uses the local Swift package and Apple frameworks only. There are no external package dependencies.
 
 ## Open the native project
 
-Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository; the only external package is Apple's swift-crypto, used for Linux tests.
+Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external dependencies.
 
 The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
-Swift language mode is 6.0 with strict concurrency. Default MainActor inference is deliberately not enabled: isolation belongs on the app's state-owning declarations. `CampCore` is a Foundation-only package with a lower platform floor so its tests also run on Linux and macOS; the app's deployment target remains iOS 27.0.
+Swift language mode is 6.0 with strict concurrency. Default MainActor inference is deliberately not enabled: isolation belongs on the app's state-owning declarations. `CampCore` is a Foundation-only package with a lower platform floor so its tests run natively on macOS; the app's deployment target remains iOS 27.0.
 
 For a physical device, change the placeholder `com.example.RoamReady` identifier to your own unique bundle identifier and select your development team under Signing & Capabilities. Simulator builds need no development team. A production App Store archive additionally needs your app icon, distribution signing, privacy disclosures, and configured services. No icon assets have been fabricated for this development scaffold.
 
@@ -35,11 +35,11 @@ xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [Apple validation workflow](../.github/workflows/apple-validation.yml) runs these commands directly, verifies the iOS SDK version, and checks the location permission and signed-build WeatherKit/CloudKit configuration.
+Derived data is written to `.derivedData/`. The shared scheme runs the app and includes `RoamReadyUITests`; package tests, including SwiftData on macOS, run separately with `swift test`. The [iOS and iPad](../.github/workflows/app.yml) and [Mac](../.github/workflows/mac.yml) workflows run these commands on macOS runners. The iOS and iPad workflow verifies the iOS SDK version, and its iPhone job also checks the location permission and signed-build WeatherKit/CloudKit configuration.
 
 ## Test coverage and CI
 
-The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the official `swift` container). Apple CI also compiles the SwiftData package and runs its tests on macOS against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, migrating an older store, and the export.
+The Mac workflow runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, migrating an older store, and the export.
 
 | Suite | Coverage |
 | --- | --- |
@@ -48,7 +48,7 @@ The portable Swift suites run in Swift 6 on Linux (a CI job runs them in the off
 | `DocumentVaultTests` | Type detection/import rules, metadata/HTTPS validation, SHA-256, streaming file inspection/staging/cleanup, and legacy AES-GCM decoding and integrity failures. |
 | `CampPersistenceTests` (Apple platforms) | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-Apple CI runs on GitHub's `xcode-27` image (macOS 27) and builds the app unsigned for the iOS Simulator and Mac Catalyst with the iOS 27 SDK at the project's iOS 27 deployment target; the workflow refuses an older SDK. It also runs Assistant presentation/composer UI tests on an iOS 27 simulator using DEBUG-only simulated AI states. It does not verify Foundation Models generation or physical-device behavior. See the [latest workflow results](https://github.com/TannerBarcelos/RoamReady/actions/workflows/apple-validation.yml) for the exact commit and outcome.
+The iOS and iPad workflow runs one job per device (an iPhone and an iPad simulator) on GitHub's `xcode-27` image (macOS 27). Each builds the app unsigned for the iOS Simulator with the iOS 27 SDK at the project's iOS 27 deployment target, refusing an older SDK, and runs the UI tests; the iPhone job also builds Release. The Mac workflow builds the Mac Catalyst app in Debug and Release. The UI tests cover Assistant presentation/composer using DEBUG-only simulated AI states. They do not verify Foundation Models generation or physical-device behavior. See the latest [iOS and iPad](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml) and [Mac](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml) results for the exact commit and outcome.
 
 ## Airplane-mode acceptance pass
 
@@ -95,7 +95,7 @@ SwiftData manages the local store; no raw SQL or SQLite driver is used. Its Clou
 
 See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the next-launch preference, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements are empty. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of the generated CloudKit schema.
 
-`ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run on Apple CI with the persistence suite.
+`ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run in CI with the persistence suite.
 
 ## Camp Finder and account changes
 
@@ -106,12 +106,12 @@ The portable suites cover Assistant availability and requests, campground identi
 1. Add a past trip and a future trip; neither appears as Current trip on Home. Both remain in Plan.
 2. Add a trip spanning today. Verify Home opens its booking, Setup, Teardown, and Photos & site notes directly. With overlapping trips, the earliest arrival is featured.
 3. Check arrival midnight and midnight after departure in the campground’s time zone, including DST and a same-day stay. Leave Home open across midnight and background/reopen the app. Mark complete early, reopen, and edit dates; the card must update without deleting trip data.
-4. On hardware without Apple Intelligence, confirm no Assistant button on Home or Plan and no Ask for camping help. On a supported iPhone, iPad, and Mac, verify the Assistant button appears, the tab bar shows five tabs with no More, and Assistant opens with AI ready, disabled, or preparing, and rechecks eligibility on return from Settings. Disabled/preparing/unavailable states must show the recovery screen and Try again with no conversation, text field, or send button. Re-enabling AI must restore the conversation.
-5. With AI ready and no active trip, ask a general troubleshooting question that matches no checklist. Ask a follow-up referring to the previous answer. Verify the conversation survives tab changes; New chat clears it. Ask trip/checklist help a question its checklist doesn’t cover and verify a generated answer, not saved text.
-6. Switch tabs or dismiss trip help during generation: the pending request cancels, its question is restored, and no late answer appears in a later request. Try a model refusal/failure and confirm a retryable error, with no saved-text substitute. Test in airplane mode after model download.
+4. On hardware without Apple Intelligence, confirm no Ask Assistant bar above the tab bar and no Ask for camping help. On a supported iPhone, iPad, and Mac, verify the Ask Assistant bar appears on every tab, the tab bar shows five tabs with no More, and Assistant opens with AI ready, disabled, or preparing, and rechecks eligibility on return from Settings. Disabled/preparing/unavailable states must show the recovery screen and Try again with no conversation, text field, or send button. Re-enabling AI must restore the conversation.
+5. With AI ready and no active trip, ask a general troubleshooting question that matches no checklist. Ask a follow-up referring to the previous answer. Verify the conversation survives closing and reopening the Assistant; New chat clears it. Ask trip/checklist help a question its checklist doesn’t cover and verify a generated answer, not saved text.
+6. Close the Assistant or dismiss trip help during generation: the pending request cancels, its question is restored, and no late answer appears in a later request. Try a model refusal/failure and confirm a retryable error, with no saved-text substitute. Test in airplane mode after model download.
 7. Check long conversations, keyboard scrolling, Dynamic Type, VoiceOver, and all available tabs on a compact iPhone. Confirm the fixed composer has only a text input and send button, without file/image upload controls. Force-quit/relaunch and confirm chat is not persisted.
 
-The portable tests verify current-trip dates/time zones/DST/early completion, generation without a reference match, and bounded follow-up context. The `RoamReadyUITests` target checks the actual native error screens, absence of chat/composer in unavailable states, hidden Assistant button on unsupported devices, and ready text/send composer. Its `-assistant-ui-test` state override exists only in DEBUG builds and bypasses onboarding without creating trip data. Run it with Xcode’s Test action or `xcodebuild test` using an iOS 27 simulator destination. These tests do not generate AI answers; Foundation Models still needs the physical-device checks above.
+The portable tests verify current-trip dates/time zones/DST/early completion, generation without a reference match, and bounded follow-up context. The `RoamReadyUITests` target checks the actual native error screens, absence of chat/composer in unavailable states, hidden Ask Assistant bar on unsupported devices, and ready text/send composer. Its `-assistant-ui-test` state override exists only in DEBUG builds and bypasses onboarding without creating trip data. Run it with Xcode’s Test action or `xcodebuild test` using an iOS 27 simulator destination. These tests do not generate AI answers; Foundation Models still needs the physical-device checks above.
 
 ## Live on-device Foundation Models smoke test
 

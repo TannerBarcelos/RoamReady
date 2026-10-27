@@ -1,0 +1,95 @@
+name: iOS and iPad
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+# A newer push to the same branch or PR replaces a run that is still going.
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PROJECT: RoamReady.xcodeproj
+  SCHEME: RoamReady
+  DERIVED_DATA: .derivedData
+jobs:
+  build-and-test:
+    name: Build and test (${{ matrix.device }})
+    strategy:
+      # Let the other device finish so one run shows both results.
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+        include:
+          # The app is one universal binary, so the Release build and configuration checks run once.
+          - device: iPhone
+            release-build: true
+    # The Xcode 27 image (macOS 27, Apple silicon).
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Xcode with the iOS 27 SDK
+        run: |
+          xcodebuild -version
+          SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          echo "iOS Simulator SDK: $SDK_VERSION"
+          test "${SDK_VERSION%%.*}" -ge 27
+
+      - name: Lint project, privacy, and Apple capabilities
+        if: matrix.release-build
+        run: |
+          plutil -lint "$PROJECT/project.pbxproj" Camp/Info.plist Camp/Camp.entitlements Camp/PrivacyInfo.xcprivacy Config/Cloud.entitlements
+          test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.weatherkit' Config/Cloud.entitlements)" = true
+          test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.developer.icloud-services:0' Config/Cloud.entitlements)" = CloudKit
+          /usr/libexec/PlistBuddy -c 'Print :NSLocationWhenInUseUsageDescription' Camp/Info.plist > /dev/null
+
+      - name: Build for testing (Debug)
+        run: |
+          xcodebuild build-for-testing -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build Release
+        if: matrix.release-build
+        # Catches optimizer-only failures and code behind #if DEBUG.
+        run: |
+          xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Boot the ${{ matrix.device }} Simulator and warm up the app's first launch
+        # A cold Simulator can make the first UI test's launch exceed Xcode's launch timeout,
+        # so finish booting and pay for the first install and launch before testing.
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json, os, sys; devices = json.load(sys.stdin)["devices"]; print(next(d["udid"] for runtime, items in devices.items() if "iOS-27" in runtime for d in items if d["name"].startswith(os.environ["DEVICE"])))')"
+          echo "Using $(xcrun simctl list devices | grep "$SIMULATOR_ID")"
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
+          xcrun simctl install "$SIMULATOR_ID" "$DERIVED_DATA/Build/Products/Debug-iphonesimulator/RoamReady.app"
+          xcrun simctl launch "$SIMULATOR_ID" com.example.RoamReady
+          sleep 5
+          xcrun simctl terminate "$SIMULATOR_ID" com.example.RoamReady
+
+      - name: UI tests
+        run: |
+          xcodebuild test-without-building -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -derivedDataPath "$DERIVED_DATA" \
+            -parallel-testing-enabled NO -resultBundlePath TestResults.xcresult
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults-${{ matrix.device }}
+          path: TestResults.xcresult
+          if-no-files-found: ignore
+
+      - name: Show crash reports
+        if: failure()
+        run: find ~/Library/Logs/DiagnosticReports -name '*.ips' -mmin -30 -exec head -c 8000 {} \; || true
