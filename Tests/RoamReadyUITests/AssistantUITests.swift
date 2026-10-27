@@ -25,6 +25,30 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.tabBars.buttons["More"].exists)
     }
 
+    func testAssistantIsReachableFromEveryTab() {
+        let app = launch("ready")
+        for tab in ["Home", "Plan", "Camp Finder", "Profile"] {
+            let button = app.tabBars.buttons[tab]
+            XCTAssertTrue(button.waitForExistence(timeout: 10))
+            button.tap()
+            openAssistant(app)
+            XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+            app.buttons["Done"].tap()
+        }
+    }
+
+    func testTripActionPresentsSheetAndPreservesSelectedTab() {
+        let app = launch("unsupported")
+        let plan = app.tabBars.buttons["Plan"]
+        XCTAssertTrue(plan.waitForExistence(timeout: 10))
+        plan.tap()
+        app.tabBars.buttons["Trip"].tap()
+        XCTAssertTrue(app.navigationBars["Add trip"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Save"].isEnabled, "Cannot save a booking without a rig and campground")
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(plan.isSelected)
+    }
+
     func testDisabledAIDisplaysRecoveryInsteadOfConversation() {
         assertUnavailable("disabled", title: "Turn on Apple Intelligence")
     }

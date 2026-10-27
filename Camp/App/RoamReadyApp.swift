@@ -64,6 +64,8 @@ struct RootView: View {
 struct MainTabs: View {
     enum Destination: Hashable { case home, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
@@ -77,6 +79,8 @@ struct MainTabs: View {
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { tabRoot { CampFinderView() } }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { tabRoot { ProfileView() } }
         }
+        // Keep native tab controls stable as text size changes; iPad's floating labels don't scale.
+        .environment(\.horizontalSizeClass, .compact)
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
@@ -85,12 +89,29 @@ struct MainTabs: View {
         }
     }
 
+    private var usesAssistantToolbar: Bool {
+        #if targetEnvironment(macCatalyst)
+        true
+        #else
+        horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
+        #endif
+    }
+
     private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        NavigationStack { content() }
+        NavigationStack {
+            content().toolbar {
+                if showsAssistant && usesAssistantToolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Ask Assistant", systemImage: "sparkles") { askingAssistant = true }
+                            .accessibilityIdentifier("openAssistant")
+                    }
+                }
+            }
+        }
             // The tab content's safe area ends above the native tab bar. Keeping the accessory
             // here lets its glass stay circular instead of the tab accessory's full-width capsule.
             .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
-                if showsAssistant {
+                if showsAssistant && !usesAssistantToolbar {
                     Button { askingAssistant = true } label: {
                         Image(systemName: "sparkles")
                             .font(.title2.weight(.medium))
