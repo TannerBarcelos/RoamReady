@@ -19,10 +19,8 @@ struct SavedCampgroundsView: View {
     @Query private var trips: [Trip]
     var body: some View {
         let lists = CampgroundLists(saved: saved, trips: trips)
-        let otherPlaces = Array(Set(trips.filter { $0.campgroundID == nil && $0.isCompleted() }.map(\.campgroundName))).sorted()
-        let isEmpty = otherPlaces.isEmpty && CampgroundList.allCases.allSatisfy { lists.campgroundIDs(on: $0).isEmpty }
         List {
-            if isEmpty {
+            if lists.count == 0 {
                 ContentUnavailableView {
                     Label { Text("No saved campgrounds") } icon: {
                         Image(systemName: "bookmark").foregroundStyle(.tint)
@@ -44,13 +42,13 @@ struct SavedCampgroundsView: View {
                         .frame(maxWidth: .infinity).buttonStyle(.borderedProminent)
                 }.listRowBackground(Color.clear)
             } else {
-                listSections(lists, otherPlaces: otherPlaces)
+                listSections(lists)
             }
         }
         .navigationTitle("Your campgrounds")
     }
 
-    @ViewBuilder private func listSections(_ lists: CampgroundLists, otherPlaces: [String]) -> some View {
+    @ViewBuilder private func listSections(_ lists: CampgroundLists) -> some View {
         ForEach(CampgroundList.allCases) { list in
             let ids = lists.campgroundIDs(on: list)
             Section(list.title) {
@@ -70,9 +68,9 @@ struct SavedCampgroundsView: View {
                 }
             }
         }
-        if !otherPlaces.isEmpty {
+        if !lists.otherPlaces.isEmpty {
             Section {
-                ForEach(otherPlaces, id: \.self) { Text($0) }
+                ForEach(lists.otherPlaces, id: \.self) { Text($0) }
             } header: { Text("Other places you’ve camped") } footer: {
                 Text("Older trips entered by name.")
             }
@@ -115,6 +113,20 @@ struct SavedCampgroundsView: View {
         case .wantToGo: "Add campgrounds from Camp Finder."
         case .beenTo: "Campgrounds from your completed trips appear here."
         case .favorite: "Star the campgrounds you love in Camp Finder."
+        }
+    }
+}
+
+/// Plan's link to the campground lists, with how many places they hold.
+struct YourCampgroundsLink: View {
+    @Query private var saved: [SavedCampground]
+    @Query private var trips: [Trip]
+    var body: some View {
+        let count = CampgroundLists(saved: saved, trips: trips).count
+        NavigationLink { SavedCampgroundsView() } label: {
+            LabeledContent { Text(count == 0 ? "None yet" : String(count)) } label: {
+                Label("Your campgrounds", systemImage: "bookmark")
+            }
         }
     }
 }

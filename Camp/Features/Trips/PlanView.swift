@@ -24,7 +24,7 @@ struct PlanView: View {
             }
             if !upcoming.isEmpty { Section("Upcoming & current") { ForEach(upcoming) { TripRow(trip: $0) } } }
             if !completed.isEmpty { Section("Completed trips") { ForEach(Array(completed)) { TripRow(trip: $0) } } }
-            Section { NavigationLink { SavedCampgroundsView() } label: { Label("Your campgrounds", systemImage: "bookmark") } }
+            Section { YourCampgroundsLink() }
         }
         .navigationTitle("Plan")
     }
