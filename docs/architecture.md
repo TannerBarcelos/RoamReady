@@ -18,6 +18,7 @@ The app targets iOS 27.0 on iPhone and iPad, and Mac through Mac Catalyst. The l
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
 | `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `DocumentSearch` | `CSQLiteVec`, system SQLite | The document Assistant's search index: a separate, disposable SQLite file (never SwiftData's store) with FTS5 and sqlite-vec. Versioned schema, atomic per-document publishing, lexical and vector readiness tracked separately, scoped lexical and KNN search with a document ID allow-list applied during candidate selection, safe FTS expressions, and an `EmbeddingProvider` protocol with a deterministic test fake. Embedding revision and dimension come from the provider at runtime. |
+| `AssistantEval` | `DocumentSearch`, `CampCore` | The Assistant's retrieval eval: synthetic corpus, runner, and JSON/Markdown reports. Not linked by the app. The `assistant-eval` executable runs it with Apple embeddings. See Retrieval eval below. |
 | `CSQLiteVec` | system `libsqlite3` | The vendored sqlite-vec v0.1.9 amalgamation with a one-function registration wrapper. Not edited; see its [provenance note](../Sources/CSQLiteVec/PROVENANCE.md). |
 | `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. The Assistant's document eligibility rule (`AssistantDocumentEligibility`) and live scope (`Rig.generalAssistantScope()`) also live here, with Sendable index jobs captured on the model context. |
 
@@ -37,6 +38,20 @@ The path from a file to a cited answer, by layer:
 `LibraryController` owns the index lifecycle. It opens `Application Support/Search/documents.sqlite` with file protection and the backup-exclusion flag when the library opens, schedules a sync after every successful save (new, changed, and deleted documents) and on launch, and erases the folder first in Erase all data. If the file can't be opened, or has an older layout, it is deleted and rebuilt from the documents. Sync captures `Sendable` index jobs on the model context's actor and reads, extracts, chunks, and embeds elsewhere; no `@Model` instance crosses actors. Nothing logs document text, vectors, or questions.
 
 The retrieval threshold is intentionally simple. Ranking always returns the nearest passages, so relevance is decided separately: a passage qualifies if it contains the exact fault code the question names (letters plus digits such as `E4`; a different code never qualifies), or a bare number from the question, or at least half of the question's significant words after a light stem. Apple's sentence-embedding distances for related and unrelated pairs overlapped when measured (roughly 1.13–1.20 related, 1.20–1.42 unrelated), so vectors improve ranking only. The synthetic eval cases in `Tests/DocumentAssistantEvalTests` are the regression suite for changing this rule; they run against both lexical-only and vector-assisted search. Retrieval quality on real manuals is not yet measured.
+
+### Retrieval eval
+
+`Sources/AssistantEval` holds the retrieval eval: a versioned synthetic corpus (`Corpus/corpus-v1.json`: invented rigs, trips, and paperwork, no private documents), the runner, and the JSON and Markdown reports. Each question names its scope and its expected evidence by document, document version, page, and a quoted span, grouped into interchangeable evidence units. Chunk IDs never appear in labels. Cases are split into a `dev` and a `heldout` subset, and into `required` cases (a release gate) and `challenge` cases (known-hard, or waiting on a feature such as OCR normalization or language gating), which are aggregated and reported apart.
+
+The runner indexes the corpus into a throwaway `DocumentSearchIndex`, searches with the case's scope allow-list, validates against the live library with `DocumentEvidence.make`, builds the `CampingHelpRequest`, and audits the result per case: Hit@5, Recall@5 (labeled units found in the top 5 over units labeled; overlapping labels merge into one unit), MRR over answerable cases only, exact-code success, scope or exclusion violations, stale evidence, no-evidence false positives, citation validity (including forged IDs and the compact retry), and prompt isolation. It does not run the language model; generated answers stay a manual rubric review, and reports say so.
+
+```bash
+swift test --filter DocumentAssistantEvalTests            # deterministic: lexical search and fake embeddings; runs in the regular package tests
+swift run assistant-eval --mode apple                    # manual: Apple's on-device sentence embeddings; writes EvalReports/retrieval-apple-all.{json,md}
+swift run assistant-eval --mode lexical --subset heldout # also: --mode fake, --subset dev, --out DIR, --corpus FILE
+```
+
+`assistant-eval` exits 0 when every required case passed, 1 when one failed, and 2 when the embedding model is unavailable on the machine. That last case is reported as "not run" with no scores and is never a pass. `EvalReports/` is git-ignored. The same command is available as the manual-only "Assistant eval" workflow; it is not part of the regular CI triggers. The full guide and walkthrough are a later issue.
 
 ### Search package decision
 

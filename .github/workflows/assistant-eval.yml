@@ -1,0 +1,29 @@
+name: Assistant eval
+# Manual only: the retrieval eval with Apple's on-device embeddings. It is deliberately not on push or pull_request.
+# The command exits 2 and reports "not run" when the embedding model isn't on the runner; that is never a pass.
+on:
+  workflow_dispatch:
+    inputs:
+      subset:
+        description: Which cases to run
+        type: choice
+        options: [all, dev, heldout]
+        default: all
+permissions:
+  contents: read
+jobs:
+  eval:
+    name: Retrieval eval (Apple embeddings)
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the eval
+        run: swift run assistant-eval --mode apple --subset "${{ inputs.subset }}" --out EvalReports
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assistant-eval-reports
+          path: EvalReports
+          if-no-files-found: ignore
