@@ -41,7 +41,7 @@ Optional fields can be edited at any time:
 
 The booking card offers **Open booking link**, **View confirmation & documents**, and **Directions** when the corresponding data exists. Planning dates retain their original time zone; forecasts match dates in the campground's time zone, including daylight-saving transitions.
 
-Trips complete the day after departure and can also be marked complete manually. Completed trips linked to a Camp Finder campground contribute to **Have been**. **Cancel & delete trip** permanently deletes the trip and its history after confirmation; it does not cancel the reservation with its provider. Documents become unattached, while the rig, its defaults, and original library photos are kept. See [deletion behavior](erase-data.md).
+Trips complete the day after departure and can also be marked complete manually. Completed trips linked to a Camp Finder campground contribute to **Have been**. **Cancel & delete trip** permanently deletes the trip and its history after confirmation; it does not cancel the reservation with its provider. Documents become unattached (and out of every Assistant scope until assigned to a rig or trip from document details), while the rig, its defaults, and original library photos are kept. See [deletion behavior](erase-data.md).
 
 ## Checklists
 
@@ -68,6 +68,8 @@ Attach rig manuals, registration, insurance, warranties, and trip confirmations 
 Uploaded originals are preserved byte-for-byte, limited to 50 MiB, and checked by SHA-256 on every read. Downloaded files open offline; links require connectivity until a copy is saved. Quick Look, sharing, confirmed deletion, and a Settings zip export are available.
 
 All new files use Apple-managed encrypted SwiftData fields and CloudKit assets; no encryption toggle or app-generated file keys are needed. Existing files remain readable in their original format. A new device must download file content before it can open it offline. See the [document vault](document-vault.md) for storage, encryption, and export details.
+
+**Assign to rig or trip** in document details moves a document to one rig (archived rigs included) or one trip, or leaves it unattached. It is a metadata-only change saved through `StoredDocument.assign(to:)`: a trip clears the direct rig, a rig clears the trip, and bytes and checksum are untouched. A failed save shows an error and keeps the prior assignment. Unattached documents, including paperwork kept after a trip is deleted, stay previewable and shareable but are outside every Assistant scope. Assignment re-evaluates scope and queues indexing only if the document is already eligible; category, the Other opt-in, and the local-content rule still apply.
 
 ## Memories
 

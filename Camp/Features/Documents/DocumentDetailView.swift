@@ -11,6 +11,8 @@ struct DocumentDetailView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     let document: StoredDocument
+    @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    @Query(sort: \Trip.arrival, order: .reverse) private var trips: [Trip]
     @State private var previewURL: URL?
     @State private var fileURL: URL?
     @State private var fileProblem: String?
@@ -29,6 +31,24 @@ struct DocumentDetailView: View {
                 } else {
                     Label("Encrypted in iCloud", systemImage: "lock.icloud")
                 }
+            }
+            Section {
+                Picker("Assign to rig or trip", selection: assignment) {
+                    Text("Unattached").tag(DocumentAssignment.unattached)
+                    Section("Rigs") {
+                        ForEach(rigs) { rig in
+                            Text(rig.archivedAt == nil ? rig.displayName : "\(rig.displayName) (archived)").tag(DocumentAssignment.rig(rig))
+                        }
+                    }
+                    Section("Trips") {
+                        ForEach(trips) { trip in
+                            Text("\(trip.campgroundName) · \(trip.arrival.formatted(date: .abbreviated, time: .omitted))")
+                                .tag(DocumentAssignment.trip(trip))
+                        }
+                    }
+                }
+            } footer: {
+                if document.isUnattached { Text("Unattached documents stay here to open or share, but the Assistant doesn’t read them.") }
             }
             if document.issuedOn != nil || document.expiresOn != nil {
                 Section("Dates") {
@@ -55,6 +75,22 @@ struct DocumentDetailView: View {
             Text("The saved file and details are removed from RoamReady, including on devices that sync with iCloud. Copies you shared elsewhere aren’t affected.")
         }
         .quickLookPreview($previewURL)
+    }
+
+    private var assignment: Binding<DocumentAssignment> {
+        Binding(get: { document.assignment }, set: { assign(to: $0) })
+    }
+
+    /// Keeps the prior assignment if the local save fails.
+    private func assign(to new: DocumentAssignment) {
+        let prior = document.assignment
+        guard new != prior else { return }
+        document.assign(to: new)
+        do { try library.saveOrThrow(); failure = nil }
+        catch {
+            document.assign(to: prior)
+            failure = "Couldn’t save the new assignment. \(error.localizedDescription)"
+        }
     }
 
     @ViewBuilder private var availability: some View {

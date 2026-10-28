@@ -52,6 +52,29 @@ public extension StoredDocument {
         updatedAt = .now
     }
 
+    /// Where this document is attached now. A trip wins if both are somehow set, matching scope rules.
+    var assignment: DocumentAssignment {
+        if let trip { return .trip(trip) }
+        if let rig { return .rig(rig) }
+        return .unattached
+    }
+
+    /// Kept after its trip or rig was deleted, or never attached. Previewable and shareable, but never
+    /// in an Assistant scope.
+    var isUnattached: Bool { rig == nil && trip == nil }
+
+    /// Attach to exactly one owner. A trip derives its rig, so assigning to a trip clears the direct rig.
+    /// Touches no file bytes or checksum; the caller saves and, on failure, calls this again with the
+    /// prior `assignment`.
+    func assign(to assignment: DocumentAssignment) {
+        switch assignment {
+        case .rig(let rig): self.rig = rig; trip = nil
+        case .trip(let trip): self.trip = trip; rig = nil
+        case .unattached: rig = nil; trip = nil
+        }
+        updatedAt = .now
+    }
+
     /// Capture model values on its context's actor; verify/decrypt/write the snapshot elsewhere.
     func contentSnapshot() throws -> DocumentContentSnapshot {
         guard let file else { throw DocumentError.linkOnly }
@@ -93,4 +116,11 @@ public struct DocumentContentSnapshot: Sendable {
     public func verifiedBytes() throws -> Data {
         try LegacyDocumentSealing.open(bytes, key: key, documentID: documentID, expecting: file)
     }
+}
+
+/// The one place a document belongs: a rig, a trip, or nowhere.
+public enum DocumentAssignment: Hashable {
+    case rig(Rig)
+    case trip(Trip)
+    case unattached
 }
