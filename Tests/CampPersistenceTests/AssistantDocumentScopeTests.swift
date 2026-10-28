@@ -34,6 +34,17 @@ struct AssistantDocumentScopeTests {
         #expect(rig.generalAssistantScope().documentIDs == [manual.documentID, service.documentID, warranty.documentID, reservation.documentID])
     }
 
+    @Test func photographedPaperworkIsInScopeLikeAPDF() throws {
+        let jpeg = Data([0xFF, 0xD8, 0xFF, 0xE0]) + Data((0..<2_000).map { UInt8(truncatingIfNeeded: $0) })
+        let photo = try StoredDocument.add(DocumentMetadata(title: "Photo of warranty card", category: .warranty),
+                                           contents: DocumentPayload(bytes: jpeg, filename: "card.jpg"), link: nil, rig: rig, in: context)
+        #expect(photo.file?.contentType == .jpeg)
+        #expect(rig.generalAssistantScope().documentIDs == [photo.documentID])
+        // The category rule still applies to images.
+        try photo.update(DocumentMetadata(title: "Photo", category: .insurance))
+        #expect(rig.generalAssistantScope().isEmpty)
+    }
+
     @Test func registrationInsuranceAndOtherAreNeverInScope() throws {
         try add(.registration, rig: rig)
         try add(.insurance, rig: rig)

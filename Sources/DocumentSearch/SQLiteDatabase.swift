@@ -60,6 +60,7 @@ final class SQLiteDatabase {
     enum Value: Sendable {
         case null
         case int(Int64)
+        case real(Double)
         case text(String)
         case blob(Data)
     }
@@ -84,6 +85,7 @@ final class SQLiteDatabase {
             switch value {
             case .null: rc = sqlite3_bind_null(statement, index)
             case .int(let number): rc = sqlite3_bind_int64(statement, index, number)
+            case .real(let number): rc = sqlite3_bind_double(statement, index, number)
             case .text(let text):
                 // Embedded NULs would silently truncate the value.
                 let clean = text.contains("\0") ? text.replacingOccurrences(of: "\0", with: " ") : text

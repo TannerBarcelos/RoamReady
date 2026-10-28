@@ -10,10 +10,16 @@ public enum AssistantDocumentEligibility {
     /// opts a document in, which is not built yet, so it stays out.
     public static let searchableCategories: Set<DocumentCategory> = [.manual, .maintenance, .warranty, .reservation]
 
-    /// A document the Assistant can read has a searchable category and original text stored on this device.
-    /// Only PDFs are read so far; photographed paperwork needs text recognition, which comes later.
+    /// Formats the reader can open: PDFs (text layer, with text recognition for pages that have none) and
+    /// image documents (text recognition). The reader reports a file it still can't use as having no usable
+    /// text, so listing a format here never loops on a bad file.
+    public static let readableContentTypes: Set<DocumentContentType> = Set(DocumentContentType.allCases)
+
+    /// A document the Assistant can read has a searchable category, a readable format, and original bytes
+    /// stored on this device.
     public static func isSearchable(category: DocumentCategory, file: DocumentFile?, availability: DocumentAvailability) -> Bool {
-        searchableCategories.contains(category) && availability == .offline && file?.contentType == .pdf
+        searchableCategories.contains(category) && availability == .offline
+            && file.map { readableContentTypes.contains($0.contentType) } == true
     }
 }
 

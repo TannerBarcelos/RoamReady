@@ -3,11 +3,13 @@ import SwiftData
 import PDFKit
 import CampCore
 import CampPersistence
+import DocumentVault
+import ImageIO
 
 /// Opens a cited document at the cited page. If the file has since been replaced or deleted it says so
 /// instead of showing a different file at an old citation.
 struct DocumentSourceView: View {
-    enum Phase { case loading, ready(URL), changed, gone, failed }
+    enum Phase { case loading, ready(URL), readyImage(URL), changed, gone, failed }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
@@ -26,6 +28,10 @@ struct DocumentSourceView: View {
                         .ignoresSafeArea(edges: .bottom)
                         .accessibilityIdentifier("citedPageViewer")
                         .accessibilityLabel(source.pageDescription.map { "\(source.title), \($0)" } ?? source.title)
+                case .readyImage(let url):
+                    ScannedImageView(url: url)
+                        .accessibilityIdentifier("citedPageViewer")
+                        .accessibilityLabel(source.title)
                 case .changed:
                     unavailable("This document has changed", "It was replaced after this answer, so the cited page may not match. Ask again to get an answer from the current file.")
                 case .gone:
@@ -59,7 +65,11 @@ struct DocumentSourceView: View {
     private func load() async {
         guard let document = context.document(withID: source.documentID) else { phase = .gone; return }
         guard document.checksum == source.checksum else { phase = .changed; return }
-        do { phase = .ready(try await library.documentFiles.url(for: document)) }
+        let isImage = document.file?.contentType.isImage == true
+        do {
+            let url = try await library.documentFiles.url(for: document)
+            phase = isImage ? .readyImage(url) : .ready(url)
+        }
         catch is CancellationError { }
         catch { phase = .failed }
     }
@@ -90,5 +100,34 @@ struct PDFPageView: UIViewRepresentable {
         // The view has no size yet on first layout; go again once it has.
         view.go(to: target)
         DispatchQueue.main.async { view.go(to: PDFDestination(page: target, at: CGPoint(x: 0, y: target.bounds(for: .mediaBox).height))) }
+    }
+}
+
+/// An image document at a size the screen can hold: decoded with ImageIO to a bounded thumbnail rather than
+/// loading every pixel of a large photo.
+struct ScannedImageView: View {
+    let url: URL
+    @State private var image: UIImage?
+
+    var body: some View {
+        ScrollView([.horizontal, .vertical]) {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity)
+            } else {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            }
+        }
+        .task {
+            let url = url
+            image = await Task.detached { () -> UIImage? in
+                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+                let options: [CFString: Any] = [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 2_400
+                ]
+                return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary).map { UIImage(cgImage: $0) }
+            }.value
+        }
     }
 }

@@ -128,6 +128,40 @@ final class DocumentEvidenceTests: XCTestCase {
         XCTAssertTrue(request.instructions.contains("Never state a specification") == false)
     }
 
+    // MARK: Scanned text
+
+    private func scanned(_ confidence: Double?) -> DocumentEvidence {
+        DocumentEvidence.make(question: "error code E4", candidates: [
+            DocumentEvidenceCandidate(documentID: heater, indexedChecksum: "c1", page: 12, section: nil, text: fault, ocrConfidence: confidence)
+        ], live: [heater: live(heater)])
+    }
+
+    func testLowConfidenceScansAreMarkedAndTheModelIsToldNotToStateThemAsExact() {
+        let evidence = scanned(0.4)
+        XCTAssertTrue(evidence.excerpts[0].source.isLowConfidenceScan)
+        let request = CampingHelpRequest(question: "What does E4 mean?", steps: [], rigType: nil, step: nil, scope: .general, documents: evidence)
+        XCTAssertTrue(request.prompt.contains("scanned text, low confidence: may be misread"))
+        XCTAssertTrue(request.instructions.contains("may be misread"))
+        XCTAssertTrue(request.instructions.contains("Never state a specification"))
+    }
+
+    func testConfidentScansAreMarkedScannedWithoutTheWarning() {
+        let evidence = scanned(0.95)
+        XCTAssertTrue(evidence.excerpts[0].source.isScanned)
+        XCTAssertFalse(evidence.excerpts[0].source.isLowConfidenceScan)
+        let request = CampingHelpRequest(question: "What does E4 mean?", steps: [], rigType: nil, step: nil, scope: .general, documents: evidence)
+        XCTAssertTrue(request.prompt.contains("scanned text"))
+        XCTAssertFalse(request.prompt.contains("may be misread"))
+        XCTAssertFalse(request.instructions.contains("may be misread"))
+    }
+
+    func testATextLayerIsNeverMarked() {
+        let evidence = scanned(nil)
+        XCTAssertFalse(evidence.excerpts[0].source.isScanned)
+        let request = CampingHelpRequest(question: "What does E4 mean?", steps: [], rigType: nil, step: nil, scope: .general, documents: evidence)
+        XCTAssertFalse(request.prompt.contains("scanned"))
+    }
+
     func testNoEvidenceInstructsTheModelToSayDocumentsDontCover() {
         let request = CampingHelpRequest(question: "What is the tire pressure?", steps: [], rigType: nil, step: nil, scope: .general,
                                          documents: DocumentEvidence(excerpts: []))
