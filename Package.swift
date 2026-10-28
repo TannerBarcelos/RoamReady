@@ -33,6 +33,8 @@ let package = Package(
         .testTarget(name: "CampgroundsTests", dependencies: ["Campgrounds", "CampCore"]),
         .testTarget(name: "DocumentVaultTests", dependencies: ["DocumentVault"]),
         .testTarget(name: "DocumentSearchTests", dependencies: ["DocumentSearch"]),
+        /// Synthetic retrieval eval cases: search, relevance, and evidence validation together. No private documents.
+        .testTarget(name: "DocumentAssistantEvalTests", dependencies: ["DocumentSearch", "CampCore"]),
         .testTarget(name: "CampPersistenceTests", dependencies: ["CampPersistence", "CampCore", "DocumentVault"])
     ]
 )

@@ -9,6 +9,8 @@ public enum DocumentSearchError: Error, Equatable, Sendable {
     case unsupportedBuild(String)
     /// The file was written by a newer schema than this build understands.
     case newerSchema(Int)
+    /// The file was written by an older layout. The index is disposable: delete it and index again.
+    case outdatedSchema(Int)
     case closed
     case invalidInput(String)
 }
