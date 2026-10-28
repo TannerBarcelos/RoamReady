@@ -11,7 +11,15 @@ import DocumentSearch
 /// The index is disposable. Nothing here logs document text, vectors, or questions.
 @MainActor @Observable
 final class DocumentAssistantIndex {
-    enum Status: Equatable { case indexing, ready, noUsableText, englishOnly }
+    enum Status: Equatable {
+        case indexing
+        case ready
+        /// Some pages were left unread because the recognition caps were reached.
+        case readPartially
+        /// Final for this file: it is recorded and not read again until it changes.
+        case noUsableText(NoUsableTextReason)
+        case englishOnly
+    }
 
     /// This session's view of each document's indexing, for status UI later.
     private(set) var statuses: [UUID: Status] = [:]
@@ -115,6 +123,7 @@ final class DocumentAssistantIndex {
                 let prepared = await Task.detached(priority: .utility) { Self.prepare(job.content) }.value
                 try Task.checkCancellation()
                 guard self.index === index else { return }
+                guard prepared.isFinal else { statuses[job.documentID] = nil; continue }
                 let published = IndexedDocument(id: job.documentID.uuidString, checksum: job.checksum,
                                              extractionVersion: DocumentTextExtractor.version,
                                              chunkingVersion: PassageChunker.version, language: prepared.language)
@@ -144,15 +153,28 @@ final class DocumentAssistantIndex {
         var passages: [IndexedPassage]
         var language: String
         var status: Status
+        /// False when the reader failed for a reason that says nothing about the file: nothing is recorded, so
+        /// the next sync tries again.
+        var isFinal = true
     }
 
     private nonisolated static func prepare(_ content: DocumentContentSnapshot) -> Prepared {
-        guard let bytes = try? content.verifiedBytes(), let extraction = DocumentTextExtractor.extract(from: bytes) else {
-            return Prepared(passages: [], language: "und", status: .noUsableText)
+        guard let bytes = try? content.verifiedBytes() else {
+            return Prepared(passages: [], language: "und", status: .noUsableText(.unreadable))
+        }
+        let extraction = DocumentTextExtractor.extract(from: bytes)
+        if extraction.outcome == .retryLater {
+            return Prepared(passages: [], language: extraction.language, status: .indexing, isFinal: false)
+        }
+        if case .noUsableText(let reason) = extraction.outcome {
+            return Prepared(passages: [], language: extraction.language, status: .noUsableText(reason))
         }
         guard extraction.isEnglish else { return Prepared(passages: [], language: extraction.language, status: .englishOnly) }
         let passages = PassageChunker.passages(from: extraction.pages)
-        return Prepared(passages: passages, language: extraction.language, status: passages.isEmpty ? .noUsableText : .ready)
+        guard !passages.isEmpty else { return Prepared(passages: [], language: extraction.language, status: .noUsableText(.noText)) }
+        var status = Status.ready
+        if case .ready(_, let skipped) = extraction.outcome, skipped > 0 { status = .readPartially }
+        return Prepared(passages: passages, language: extraction.language, status: status)
     }
 
     // MARK: Asking
@@ -183,7 +205,8 @@ final class DocumentAssistantIndex {
         let candidates = result.hits.compactMap { hit -> DocumentEvidenceCandidate? in
             UUID(uuidString: hit.documentID).map {
                 DocumentEvidenceCandidate(documentID: $0, indexedChecksum: hit.checksum, page: hit.page,
-                                          pageLabel: hit.pageLabel, section: hit.section, text: hit.text)
+                                          pageLabel: hit.pageLabel, section: hit.section, text: hit.text,
+                                          ocrConfidence: hit.ocrConfidence)
             }
         }
         // Check the library again, now, so a document deleted, reassigned, or replaced during the search is dropped.

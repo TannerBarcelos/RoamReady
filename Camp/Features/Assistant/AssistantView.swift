@@ -134,7 +134,7 @@ struct AssistantView: View {
                             Image(systemName: "doc.text").foregroundStyle(.tint)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(source.title).font(.subheadline).foregroundStyle(.primary)
-                                Text([source.category, source.pageDescription].compactMap { $0 }.joined(separator: " · "))
+                                Text([source.category, source.pageDescription, source.isScanned ? "Scanned" : nil].compactMap { $0 }.joined(separator: " · "))
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer(minLength: 8)
@@ -148,6 +148,12 @@ struct AssistantView: View {
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens the document at the cited page")
                     .accessibilityIdentifier("assistantSourceRow")
+                }
+                if answer.sources.contains(where: \.isLowConfidenceScan) {
+                    Label("Part of this comes from a scan that may be misread. Check the original page before relying on any number or part code.",
+                          systemImage: "exclamationmark.triangle")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("assistantScanCaution")
                 }
             }
         } else if answer.coverage == .notCovered {

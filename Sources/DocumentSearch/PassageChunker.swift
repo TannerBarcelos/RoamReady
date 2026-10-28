@@ -8,11 +8,14 @@ public struct ExtractedPage: Equatable, Sendable {
     /// The label printed on the page, when the file defines one.
     public var label: String?
     public var text: String
+    /// How sure text recognition was of this page, 0...1. Nil for text read from the file's own text layer.
+    public var ocrConfidence: Double?
 
-    public init(ordinal: Int, label: String? = nil, text: String) {
+    public init(ordinal: Int, label: String? = nil, text: String, ocrConfidence: Double? = nil) {
         self.ordinal = ordinal
         self.label = label
         self.text = text
+        self.ocrConfidence = ocrConfidence
     }
 }
 
@@ -20,7 +23,7 @@ public struct ExtractedPage: Equatable, Sendable {
 /// exact; a heading starts a new passage and names the section of the passages that follow it.
 public enum PassageChunker {
     /// Bump when the rules below change, so existing indexes are rebuilt.
-    public static let version = 1
+    public static let version = 2
     /// Upper bound of a passage's text. Also keeps each passage within what a sentence embedding handles well.
     public static let maximumCharacters = 900
     static let minimumCharacters = 12
@@ -37,7 +40,8 @@ public enum PassageChunker {
             func flush() {
                 let text = buffer.trimmingCharacters(in: .whitespacesAndNewlines)
                 if hasBody, text.count >= minimumCharacters {
-                    result.append(IndexedPassage(text: text, page: page.ordinal, section: section, pageLabel: label))
+                    result.append(IndexedPassage(text: text, page: page.ordinal, section: section, pageLabel: label,
+                                                  ocrConfidence: page.ocrConfidence))
                 }
                 buffer = ""
                 hasBody = false
@@ -68,7 +72,8 @@ public enum PassageChunker {
 
     /// Short, unpunctuated lines such as "TROUBLESHOOTING" or "Winterizing the water system".
     private static func isHeading(_ line: String) -> Bool {
-        guard line.count <= maximumHeadingLength, line.split(separator: " ").count <= 8,
+        // A recognized table row ("Front | 35 psi") is data, not a title.
+        guard !line.contains(" | "), line.count <= maximumHeadingLength, line.split(separator: " ").count <= 8,
               let last = line.last, !".,;:!?".contains(last) else { return false }
         let letters = line.filter(\.isLetter)
         guard letters.count >= 3 else { return false }

@@ -45,12 +45,16 @@ public struct IndexedPassage: Equatable, Sendable {
     /// The label printed on the page ("iv", "A-3"), when it differs from the ordinal.
     public var pageLabel: String?
     public var section: String?
+    /// Provenance: how sure text recognition was of this passage's page, 0...1. Nil when the text came from
+    /// the file's own text layer, which is exact.
+    public var ocrConfidence: Double?
 
-    public init(text: String, page: Int? = nil, section: String? = nil, pageLabel: String? = nil) {
+    public init(text: String, page: Int? = nil, section: String? = nil, pageLabel: String? = nil, ocrConfidence: Double? = nil) {
         self.text = text
         self.page = page
         self.pageLabel = pageLabel
         self.section = section
+        self.ocrConfidence = ocrConfidence
     }
 }
 
@@ -64,6 +68,8 @@ public struct SearchHit: Equatable, Sendable {
     public var pageLabel: String?
     public var section: String?
     public var text: String
+    /// Recognition confidence of the page this passage was read from; nil for a text layer.
+    public var ocrConfidence: Double?
     /// Fused rank score; higher is better.
     public var score: Double
     public var matchedLexically: Bool
@@ -87,7 +93,7 @@ public struct DocumentReadiness: Equatable, Sendable {
 /// touches SwiftData's store, and everything in it can be rebuilt from the documents, so a file that can't
 /// be opened may simply be deleted.
 public actor DocumentSearchIndex {
-    public static let schemaVersion = 2
+    public static let schemaVersion = 3
     /// The vendored sqlite-vec release, for diagnostics.
     public static var sqliteVecVersion: String { String(cString: csqlitevec_version()) }
 
@@ -119,11 +125,12 @@ public actor DocumentSearchIndex {
                       .int(Int64(document.chunkingVersion)), .text(document.language),
                       document.rigID.map(Value.text) ?? .null, document.tripID.map(Value.text) ?? .null])
             for (ordinal, passage) in passages.enumerated() {
-                try database.run("INSERT INTO passages (doc_id, generation, ordinal, page, page_label, section, text) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                try database.run("INSERT INTO passages (doc_id, generation, ordinal, page, page_label, section, text, ocr_confidence) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                                  [.text(document.id), .int(generation), .int(Int64(ordinal)),
                                   passage.page.map { Value.int(Int64($0)) } ?? .null,
                                   passage.pageLabel.map(Value.text) ?? .null,
-                                  passage.section.map(Value.text) ?? .null, .text(passage.text)])
+                                  passage.section.map(Value.text) ?? .null, .text(passage.text),
+                                  passage.ocrConfidence.map(Value.real) ?? .null])
                 try database.run("INSERT INTO passages_fts (rowid, text) VALUES (last_insert_rowid(), ?)", [.text(passage.text)])
             }
         }
@@ -236,7 +243,7 @@ public actor DocumentSearchIndex {
     private func lexicalCandidates(_ question: String, allowList: String, limit: Int) throws -> [SearchHit] {
         guard let match = FTSQuery.match(from: question) else { return [] }
         return try database.query("""
-            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text, p.page_label, d.checksum
+            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text, p.page_label, d.checksum, p.ocr_confidence
             FROM passages_fts
             JOIN passages p ON p.id = passages_fts.rowid
             JOIN documents d ON d.doc_id = p.doc_id AND d.generation = p.generation
@@ -255,7 +262,7 @@ public actor DocumentSearchIndex {
         // Eligible rows are live generations in scope whose vectors share the query's revision and dimension;
         // sqlite-vec applies the rowid filter while it selects the k nearest.
         return try database.query("""
-            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text, p.page_label, d.checksum
+            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text, p.page_label, d.checksum, p.ocr_confidence
             FROM (
                 SELECT rowid, distance FROM \(table)
                 WHERE embedding MATCH ? AND k = ?
@@ -293,6 +300,7 @@ public actor DocumentSearchIndex {
         SearchHit(passageID: row.int(0), documentID: row.text(1), checksum: row.text(7), ordinal: Int(row.int(2)),
                   page: row.isNull(3) ? nil : Int(row.int(3)), pageLabel: row.optionalText(6),
                   section: row.optionalText(4), text: row.text(5),
+                  ocrConfidence: row.isNull(8) ? nil : row.double(8),
                   score: 0, matchedLexically: false, matchedByVector: false)
     }
 
@@ -370,7 +378,8 @@ public actor DocumentSearchIndex {
                         page INTEGER,
                         page_label TEXT,
                         section TEXT,
-                        text TEXT NOT NULL
+                        text TEXT NOT NULL,
+                        ocr_confidence REAL
                     )
                     """)
                 try database.run("CREATE INDEX passages_by_document ON passages (doc_id, generation)")
