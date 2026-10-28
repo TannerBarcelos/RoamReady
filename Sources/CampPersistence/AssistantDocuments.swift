@@ -28,6 +28,14 @@ public extension StoredDocument {
     func isInGeneralScope(of rig: Rig) -> Bool {
         isAssistantSearchable && self.rig === rig && trip == nil
     }
+
+    /// What Assistant help from a trip may search: the trip's own eligible documents, and eligible documents
+    /// attached directly to the trip's rig (archived or not). Another trip's documents are never in scope.
+    func isInTripScope(of trip: Trip) -> Bool {
+        guard isAssistantSearchable else { return false }
+        if self.trip != nil { return self.trip === trip }
+        return rig != nil && rig === trip.rig
+    }
 }
 
 /// The allow-list for one question, and the live facts needed to re-check it after searching.
@@ -36,16 +44,79 @@ public struct AssistantDocumentScope: Sendable {
     public let live: [UUID: LiveDocument]
     public var documentIDs: Set<UUID> { Set(live.keys) }
     public var isEmpty: Bool { live.isEmpty }
+
+    static let empty = AssistantDocumentScope(live: [:])
+
+    init(live: [UUID: LiveDocument]) { self.live = live }
+
+    init(_ documents: [StoredDocument]) {
+        live = Dictionary(documents.map {
+            ($0.documentID, LiveDocument(id: $0.documentID, title: $0.title, category: $0.category.title,
+                                         checksum: $0.checksum, isInScope: true))
+        }, uniquingKeysWith: { first, _ in first })
+    }
 }
 
 public extension Rig {
     /// Reads the library now. Call it again right before building a prompt instead of trusting an earlier result.
     func generalAssistantScope() -> AssistantDocumentScope {
-        let documents = (self.documents ?? []).filter { $0.isInGeneralScope(of: self) }
-        return AssistantDocumentScope(live: Dictionary(documents.map {
-            ($0.documentID, LiveDocument(id: $0.documentID, title: $0.title, category: $0.category.title,
-                                         checksum: $0.checksum, isInScope: true))
-        }, uniquingKeysWith: { first, _ in first }))
+        AssistantDocumentScope((documents ?? []).filter { $0.isInGeneralScope(of: self) })
+    }
+}
+
+public extension Trip {
+    /// Reads the library now, like `Rig.generalAssistantScope()`.
+    func tripAssistantScope() -> AssistantDocumentScope {
+        let own = (documents ?? []).filter { $0.isInTripScope(of: self) }
+        let fromRig = (rig?.documents ?? []).filter { $0.isInTripScope(of: self) }
+        return AssistantDocumentScope(own + fromRig)
+    }
+}
+
+/// Which rig, and which trip if any, a request is for. Captured when the question is asked and used for the
+/// whole request, so a rig switch or navigation while it runs can't change what it searches.
+/// Identity is the models' persistent IDs; renaming a rig or trip doesn't make it a different scope.
+public struct AssistantScopeTarget: Hashable, Sendable {
+    public let rigID: PersistentIdentifier?
+    public let tripID: PersistentIdentifier?
+    public let summary: AssistantScopeSummary
+
+    public var isTrip: Bool { tripID != nil }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool { lhs.rigID == rhs.rigID && lhs.tripID == rhs.tripID }
+    public func hash(into hasher: inout Hasher) { hasher.combine(rigID); hasher.combine(tripID) }
+
+    /// General Assistant: the active rig only. Pass nil when there is none.
+    public static func general(rig: Rig?) -> AssistantScopeTarget {
+        AssistantScopeTarget(rigID: rig?.persistentModelID, tripID: nil,
+                             summary: AssistantScopeSummary(rigName: rig?.displayName, rigIsArchived: rig?.isArchived ?? false))
+    }
+
+    public static func trip(_ trip: Trip) -> AssistantScopeTarget {
+        AssistantScopeTarget(rigID: trip.rig?.persistentModelID, tripID: trip.persistentModelID,
+                             summary: AssistantScopeSummary(rigName: trip.rig?.displayName, tripName: trip.campgroundName,
+                                                            rigIsArchived: trip.rig?.isArchived ?? false))
+    }
+}
+
+public extension ModelContext {
+    /// The documents a request for this target may search, read from the library now. Only the target's own IDs
+    /// are used. General Assistant never reads a trip's documents, and refuses a rig that has been archived or
+    /// deleted since the question was asked.
+    func documentScope(for target: AssistantScopeTarget) -> AssistantDocumentScope {
+        if let tripID = target.tripID {
+            var descriptor = FetchDescriptor<Trip>(predicate: #Predicate { $0.persistentModelID == tripID })
+            descriptor.fetchLimit = 1
+            guard let trip = (try? fetch(descriptor))?.first, !trip.isDeleted else { return .empty }
+            // A trip moved to another rig is a different scope; don't answer from the new rig's documents.
+            guard trip.rig?.persistentModelID == target.rigID else { return .empty }
+            return trip.tripAssistantScope()
+        }
+        guard let rigID = target.rigID else { return .empty }
+        var descriptor = FetchDescriptor<Rig>(predicate: #Predicate { $0.persistentModelID == rigID })
+        descriptor.fetchLimit = 1
+        guard let rig = (try? fetch(descriptor))?.first, !rig.isDeleted, !rig.isArchived else { return .empty }
+        return rig.generalAssistantScope()
     }
 }
 
