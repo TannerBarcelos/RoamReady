@@ -99,6 +99,17 @@ Every answer comes from the model; there are no canned replies. Trip/checklist h
 
 Assistant works on iPhone, iPad, and Mac wherever Apple’s runtime reports Apple Intelligence available; there is no app-side device list. Disabled Apple Intelligence, a model not yet ready, and other runtime unavailability states show the recovery screen. Checklists and their notes remain available offline everywhere. Initial model download requires connectivity.
 
+### Answers from your documents
+
+General chat also reads the active rig's documents, on this device and offline. A Manual, Service & maintenance, Warranty, or Reservation document attached to the rig counts once its PDF is saved on the device; Registration, Insurance, Other, links without a saved copy, and documents attached to a trip or to nothing are never read. (Trip and checklist help doesn't read documents yet, and photographed or scanned paperwork isn't read yet.)
+
+- **Indexing** starts by itself after a PDF is saved or a link's copy is saved, and again on launch. Text comes from the PDF's text layer page by page, keeping each page's number and printed label, and is split into short passages that never cross a page. Passages are searched by exact words (so a fault code or part number such as `E4` or `11-2047-B` is found as written) and by meaning, using Apple's English sentence embeddings. If the embedding model isn't on the device, search uses exact words alone. The index is stored once, reused when the app opens again, and only a changed or new file is read again. Non-English documents are kept but not read in this version.
+- **Asking** searches only the active rig's eligible documents, uses what is already indexed, and never waits for the rest. While it works the chat shows "Searching your documents…".
+- **Answers** cite passages as `[S1]`-style markers that the app resolves. Only sources the model actually cited from the excerpts it was given appear, as a Sources list under the answer (document title, type, and page). An ID that wasn't supplied is dropped.
+- **Opening a source** shows the PDF at the cited page. If the file was replaced or deleted since the answer, it says so instead.
+- **Not covered:** when no passage is relevant, the answer says the documents don't cover it, with no invented specifications. A passage is relevant if it contains the exact fault code asked about, or a number from the question, or at least half of the question's significant words (see `DocumentRelevance`). An answer that doesn't cite anything is labelled general advice.
+- **Safety and privacy:** excerpts are untrusted text. Instructions inside a document are ignored and links in it are never opened. Document text, vectors, and questions are never logged or sent off the device. The index is excluded from backups and removed by Erase all data.
+
 There is no hosted AI or model picker in v1. See the [identity and AI contract](account-and-offline-contract.md#apple-only-ai) for exact device identifiers and runtime policy; remote models are proposed for v2 (#34).
 
 ## Appearance

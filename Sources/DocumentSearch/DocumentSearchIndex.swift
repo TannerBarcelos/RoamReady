@@ -30,6 +30,12 @@ public struct IndexedDocumentRecord: Equatable, Sendable {
     public var checksum: String
     public var extractionVersion: Int
     public var chunkingVersion: Int
+
+    /// Whether the stored passages still describe this file under the current rules, so the document can be
+    /// used as it is, without reading it again.
+    public func isCurrent(checksum: String, extractionVersion: Int) -> Bool {
+        self.checksum == checksum && self.extractionVersion == extractionVersion && chunkingVersion == PassageChunker.version
+    }
 }
 
 public struct IndexedPassage: Equatable, Sendable {

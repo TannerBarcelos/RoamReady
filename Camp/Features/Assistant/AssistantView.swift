@@ -31,6 +31,7 @@ struct AssistantView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(LibraryController.self) private var library
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     let trip: Trip?
     let step: ChecklistStep?
@@ -38,6 +39,8 @@ struct AssistantView: View {
     /// Borrowed from whoever owns the conversation's lifetime.
     @Bindable var chat: AssistantConversation
     @State private var pendingQuestion: String?
+    @State private var searchingDocuments = false
+    @State private var openedSource: DocumentSource?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
 
@@ -105,6 +108,42 @@ struct AssistantView: View {
                 }
             }
             .onDisappear { cancelRequest() }
+            .sheet(item: $openedSource) { DocumentSourceView(source: $0) }
+        }
+    }
+
+    /// What the answer rested on: validated sources, or a plain note when it rested on none.
+    @ViewBuilder private func documentNotes(for answer: CampingAnswer) -> some View {
+        if !answer.sources.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Sources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                ForEach(answer.sources) { source in
+                    Button { openedSource = source } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "doc.text").foregroundStyle(.tint)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(source.title).font(.subheadline).foregroundStyle(.primary)
+                                Text([source.category, source.pageDescription].compactMap { $0 }.joined(separator: " · "))
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens the document at the cited page")
+                    .accessibilityIdentifier("assistantSourceRow")
+                }
+            }
+        } else if answer.coverage == .notCovered {
+            Text("Your documents don’t cover this.").font(.caption).foregroundStyle(.secondary)
+                .accessibilityIdentifier("assistantNotCovered")
+        } else if answer.coverage == .uncited {
+            Text("General advice. No document was cited.").font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -128,6 +167,7 @@ struct AssistantView: View {
                             Text(exchange.answer.text).textSelection(.enabled)
                                 .accessibilityIdentifier("assistantGeneratedReply")
                             Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
+                            documentNotes(for: exchange.answer)
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
                             }
@@ -138,7 +178,8 @@ struct AssistantView: View {
                     }
                     if let pendingQuestion {
                         userMessage(pendingQuestion)
-                        ProgressView("Thinking…").accessibilityLabel("Assistant is answering")
+                        ProgressView(searchingDocuments ? "Searching your documents…" : "Thinking…")
+                            .accessibilityLabel(searchingDocuments ? "Assistant is searching your documents" : "Assistant is answering")
                     }
                     if let generationFailure = chat.generationFailure {
                         VStack(alignment: .leading, spacing: 10) {
@@ -212,6 +253,7 @@ struct AssistantView: View {
         task = nil
         if let pendingQuestion, chat.question.isEmpty { chat.question = pendingQuestion }
         pendingQuestion = nil
+        searchingDocuments = false
     }
 
     private func ask() {
@@ -232,11 +274,21 @@ struct AssistantView: View {
         pendingQuestion = submitted
         chat.generationFailure = nil
         chat.question = ""
+        // General chat reads the active rig's documents. Trip and checklist help don't yet.
+        let documentRig = trip == nil ? rig : nil
+        let index = library.documentAssistant
         task = Task {
             do {
+                var evidence: DocumentEvidence?
+                if let documentRig {
+                    searchingDocuments = true
+                    evidence = await index.evidence(for: submitted, rig: documentRig)
+                    searchingDocuments = false
+                    try Task.checkCancellation()
+                }
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
-                                                       history: history, rigContext: rigContext)
+                                                       history: history, rigContext: rigContext, documents: evidence)
                 guard !Task.isCancelled else { return }
                 refreshAvailability()
                 guard !Task.isCancelled, showsConversation else { return }
@@ -249,6 +301,7 @@ struct AssistantView: View {
                 chat.question = submitted
             }
             pendingQuestion = nil
+            searchingDocuments = false
             task = nil
         }
     }

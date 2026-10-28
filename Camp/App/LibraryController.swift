@@ -12,6 +12,23 @@ final class LibraryController {
     private(set) var saveFailure: String?
     private(set) var iCloud = ICloudSettings(containerIdentifier: Bundle.main.object(forInfoDictionaryKey: "RoamReadyMirroringContainerIdentifier") as? String)
     let documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appending(path: "Documents", directoryHint: .isDirectory))
+    /// The Assistant's document search index. This controller opens it with the library, keeps it current as
+    /// documents change, and erases it with everything else.
+    let documentAssistant = DocumentAssistantIndex(directory: LibraryController.searchDirectory)
+    /// Not in the library folder: the index is disposable, never synced, and excluded from backups.
+    private static var searchDirectory: URL {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-document-assistant-fixture") {
+            // The fixture owns a throwaway index; the real one is never touched.
+            return URL.temporaryDirectory.appending(path: "DocumentAssistantFixture-Search", directoryHint: .isDirectory)
+        }
+        if let index = arguments.firstIndex(of: "-workflow-ui-test"), arguments.indices.contains(index + 1) {
+            return directory.appending(path: "Search", directoryHint: .isDirectory)
+        }
+        #endif
+        return URL.applicationSupportDirectory.appending(path: "Search", directoryHint: .isDirectory)
+    }
     private static var directory: URL {
         #if DEBUG
         // Each workflow test owns a real disk library; relaunch keeps it, other tests never see it.
@@ -31,6 +48,8 @@ final class LibraryController {
             if ProcessInfo.processInfo.arguments.contains("-navigation-ui-test") {
                 container = try NavigationUITestLibrary.make()
                 openFailure = nil
+                documentAssistant.open()
+                if let context = container?.mainContext { documentAssistant.scheduleSync(in: context) }
                 return
             }
             #endif
@@ -42,6 +61,8 @@ final class LibraryController {
             #endif
             iCloud.startObserving()
             openFailure = nil
+            documentAssistant.open()
+            if let container { documentAssistant.scheduleSync(in: container.mainContext) }
         } catch {
             openFailure = "RoamReady couldn’t open your library. Nothing was deleted. \(error.localizedDescription)"
         }
@@ -50,7 +71,7 @@ final class LibraryController {
     /// Writes pending changes now. SwiftData also saves on its own; this surfaces a failure.
     func save() {
         guard let context = container?.mainContext, context.hasChanges else { return }
-        do { try context.save(); saveFailure = nil }
+        do { try context.save(); saveFailure = nil; documentAssistant.scheduleSync(in: context) }
         catch { saveFailure = "Your latest changes haven’t been saved to this device. \(error.localizedDescription)" }
     }
 
@@ -59,14 +80,16 @@ final class LibraryController {
         guard let context = container?.mainContext else { throw CocoaError(.fileWriteUnknown) }
         if context.hasChanges { try context.save() }
         saveFailure = nil
+        documentAssistant.scheduleSync(in: context)
     }
 
     /// Erase all data on this device: the library, caches, imports, and settings. The caller has
     /// already deleted the iCloud copy.
     func eraseDevice() async throws {
+        await documentAssistant.erase()
         await close()
         let fileManager = FileManager.default
-        for location in [Self.directory, documentFiles.directory, WeatherStore.directory]
+        for location in [Self.directory, Self.searchDirectory, documentFiles.directory, WeatherStore.directory]
         where fileManager.fileExists(atPath: location.path) {
             try fileManager.removeItem(at: location)
         }

@@ -90,6 +90,33 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 5), "Reopening keeps the chat")
     }
 
+    /// Import → index → ask → cited source → PDF at the cited page, using the fixture's synthetic manual and a
+    /// stubbed model that cites it. Indexing runs in the background, so the question is retried until the
+    /// manual is ready.
+    func testAnswerCitesTheManualAndTheSourceOpensAtTheCitedPage() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-document-assistant-fixture", "-assistant-ui-test", "ready",
+                               "-assistant-generation-test", "document"]
+        app.launch()
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        let source = app.buttons["assistantSourceRow"].firstMatch
+        for _ in 0..<6 where !source.exists {
+            input.tap()
+            input.typeText("What does fault code E4 mean on my water heater?")
+            app.buttons["assistantSend"].tap()
+            _ = source.waitForExistence(timeout: 10)
+        }
+        XCTAssertTrue(source.exists, "A validated source row appears under the answer")
+        XCTAssertEqual(app.buttons.matching(identifier: "assistantSourceRow").count, 1, "Another rig's manual is never cited")
+        XCTAssertTrue(source.label.contains("Water Heater Manual"))
+        XCTAssertTrue(source.label.contains("Page 2"))
+        source.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Page 2"].exists)
+    }
+
     func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
         let app = launch("ready", generation: "failure")
         openAssistant(app)

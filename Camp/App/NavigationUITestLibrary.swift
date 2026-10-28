@@ -13,6 +13,7 @@ enum NavigationUITestLibrary {
         context.insert(CamperProfile(name: "Riley", experience: .comfortable))
         let rig = try Rig.add(RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries",
                                       year: 2024, lengthFeet: 19.5), to: context)
+        if DocumentAssistantFixture.isRequested { try DocumentAssistantFixture.seed(rig: rig, in: context) }
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: .now)
         for (name, start, end) in [("Current Pines", -1, 1), ("Overlapping Creek", 0, 2),

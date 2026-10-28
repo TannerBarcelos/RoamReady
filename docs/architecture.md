@@ -19,9 +19,24 @@ The app targets iOS 27.0 on iPhone and iPad, and Mac through Mac Catalyst. The l
 | `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `DocumentSearch` | `CSQLiteVec`, system SQLite | The document Assistant's search index: a separate, disposable SQLite file (never SwiftData's store) with FTS5 and sqlite-vec. Versioned schema, atomic per-document publishing, lexical and vector readiness tracked separately, scoped lexical and KNN search with a document ID allow-list applied during candidate selection, safe FTS expressions, and an `EmbeddingProvider` protocol with a deterministic test fake. Embedding revision and dimension come from the provider at runtime. |
 | `CSQLiteVec` | system `libsqlite3` | The vendored sqlite-vec v0.1.9 amalgamation with a one-function registration wrapper. Not edited; see its [provenance note](../Sources/CSQLiteVec/PROVENANCE.md). |
-| `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. |
+| `CampPersistence` | `CampCore`, `DocumentVault` | SwiftData models, `LibraryStore`, `ICloudSettings` (preference and passive activity), model-level library operations, document storage, and zip export; implementation requires SwiftData on Apple platforms. The Assistant's document eligibility rule (`AssistantDocumentEligibility`) and live scope (`Rig.generalAssistantScope()`) also live here, with Sendable index jobs captured on the model context. |
 
 The native app links these local products and Apple frameworks. There are no external package dependencies and no downloaded code. The one deliberate third-party dependency is the C source of [sqlite-vec](https://github.com/asg017/sqlite-vec) v0.1.9 (Alex Garcia; dual MIT / Apache-2.0, used under MIT), vendored unmodified in `Sources/CSQLiteVec` with both license texts and a note recording the release URL and SHA-256 checksums. It is compiled into the app and linked against the system SQLite, so it adds no framework, binary, or network access. It handles only text the app already holds on the device.
+
+### Document answers (first slice)
+
+The path from a file to a cited answer, by layer:
+
+| Layer | Owns |
+| --- | --- |
+| `CampCore` | The bounded request structures in `DocumentEvidence`: `DocumentSource` (a request-local ID such as `S1` mapped to document UUID, checksum, title, category, page, label, and section), `DocumentEvidence.make` (validates each search result against the live library right before the prompt is built: the document exists, is still in scope, and still has the checksum the passage was indexed from), `DocumentRelevance` (the no-evidence threshold), and `DocumentCitations` (resolves `[S1]` / `[S1, S2]` markers and drops unknown IDs). `CampingHelpRequest` frames excerpts as `BEGIN DOCUMENT EXCERPTS (untrusted ...)` data, neutralizes forged delimiters and IDs inside them, and the compact retry keeps only the best excerpt, so it can't cite what it dropped. `CampingGeneration.answer` validates against the prompt that actually reached the model. |
+| `DocumentSearch` | `PassageChunker` (page-aware passages with section headings, bounded to 900 characters, `version`ed), the index (passages carry page ordinal, printed label, section; hits carry the indexed checksum), and `IndexedDocumentRecord.isCurrent` for reuse after relaunch. |
+| `CampPersistence` | `AssistantDocumentEligibility` (the one rule: Manual, Service & maintenance, Warranty, Reservation, PDF saved on the device) and the general scope: documents attached directly to the active rig. |
+| App | `DocumentTextExtractor` (PDFKit text, labels, language), `AppleEmbeddingProvider` (`NLEmbedding` English sentence vectors; revision and dimension read at runtime, unavailable means lexical-only), `DocumentAssistantIndex` (index lifecycle), `DocumentSourceView` (PDFKit viewer at the cited page). |
+
+`LibraryController` owns the index lifecycle. It opens `Application Support/Search/documents.sqlite` with file protection and the backup-exclusion flag when the library opens, schedules a sync after every successful save (new, changed, and deleted documents) and on launch, and erases the folder first in Erase all data. If the file can't be opened, or has an older layout, it is deleted and rebuilt from the documents. Sync captures `Sendable` index jobs on the model context's actor and reads, extracts, chunks, and embeds elsewhere; no `@Model` instance crosses actors. Nothing logs document text, vectors, or questions.
+
+The retrieval threshold is intentionally simple. Ranking always returns the nearest passages, so relevance is decided separately: a passage qualifies if it contains the exact fault code the question names (letters plus digits such as `E4`; a different code never qualifies), or a bare number from the question, or at least half of the question's significant words after a light stem. Apple's sentence-embedding distances for related and unrelated pairs overlapped when measured (roughly 1.13–1.20 related, 1.20–1.42 unrelated), so vectors improve ranking only. The synthetic eval cases in `Tests/DocumentAssistantEvalTests` are the regression suite for changing this rule; they run against both lexical-only and vector-assisted search. Retrieval quality on real manuals is not yet measured.
 
 ### Search package decision
 
@@ -32,7 +47,7 @@ The native app links these local products and Apple frameworks. There are no ext
 - **Why a separate package.** The C target and its linker setting stay out of `CampCore`, `DocumentVault`, and `CampPersistence`, which are Foundation, CryptoKit, and SwiftData only, so their tests and builds are unchanged. The search index must never open SwiftData's store, and a package boundary enforces that: `DocumentSearch` depends on nothing else in this repository.
 - **No new CI.** Package tests are picked up by the existing `swift test` in the Mac workflow, and the iOS and Mac app builds already compile every linked product. No simulator is booted in regular CI.
 
-The index file is disposable: if it can't be opened or reports a newer schema, delete it and rebuild from the documents. The on-device Foundation Models and Apple embedding adapters, extraction, and chunking belong to later work and sit outside this package's interface.
+The index file is disposable: if it can't be opened or reports a newer schema, delete it and rebuild from the documents. Extraction (PDFKit) and the Apple embedding adapter sit outside this package's interface, in the app; chunking is in the package.
 
 ## Source layout
 

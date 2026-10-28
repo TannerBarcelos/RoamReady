@@ -7,6 +7,9 @@ import FoundationModels
 struct CampingAnswer: Sendable {
     let text: String
     let sourceURL: String?
+    /// Document passages the model cited, validated against what the request supplied.
+    var sources: [DocumentSource] = []
+    var coverage: DocumentCoverage = .notSearched
     var mode: String { "Apple Intelligence · Generated on this device · Check against your manual" }
 }
 
@@ -83,32 +86,34 @@ enum CampingAssistant {
     /// Model failures reach the UI as retryable errors rather than being replaced with saved text.
     static func answer(question: String, steps candidates: [ChecklistStepDraft], rigType: RigType?, step: ChecklistStepDraft?,
                        scope: CampingHelpRequest.Scope = .checklist, history: [CampingChatTurn] = [],
-                       rigContext: CampingRigContext? = nil) async throws -> CampingAnswer {
+                       rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType,
-                                         step: step, scope: scope, history: history, rigContext: rigContext)
-        let text: String
+                                         step: step, scope: scope, history: history, rigContext: rigContext,
+                                         documents: documents)
+        let reply: CampingReply
         do {
             #if DEBUG
             if let generator = uiTestGenerator {
-                text = try await CampingGeneration.reply(to: request, using: generator)
+                reply = try await CampingGeneration.answer(to: request, using: generator)
             } else {
-                text = try await generate(request)
+                reply = try await generate(request)
             }
             #else
-            text = try await generate(request)
+            reply = try await generate(request)
             #endif
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             throw (error as? CampingChatFailure) ?? .failed
         }
-        return CampingAnswer(text: text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL)
+        return CampingAnswer(text: reply.text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL,
+                             sources: reply.sources, coverage: reply.coverage)
     }
 
-    private static func generate(_ request: CampingHelpRequest) async throws -> String {
+    private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {
         #if canImport(FoundationModels)
-        return try await CampingGeneration.reply(to: request, using: AppleCampingResponseGenerator())
+        return try await CampingGeneration.answer(to: request, using: AppleCampingResponseGenerator())
         #else
         throw CampingChatFailure.notReady
         #endif
@@ -117,8 +122,15 @@ enum CampingAssistant {
     #if DEBUG
     private struct UITestGenerator: CampingResponseGenerating {
         let fails: Bool
+        /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
+        var citesDocuments = false
         func respond(to prompt: String, instructions: String) async throws -> String {
             if fails { throw CampingChatFailure.failed }
+            if citesDocuments {
+                return prompt.contains("\n[S1] ")
+                    ? "Per your manual, error code E4 means the water heater igniter failed to light. Turn the unit off and wait five minutes before retrying. [S1]"
+                    : "Your documents don't cover that."
+            }
             return "Test response: keep drinking water in a clean, covered container."
         }
     }
@@ -131,6 +143,7 @@ enum CampingAssistant {
         switch arguments[index + 1] {
         case "reply": return UITestGenerator(fails: false)
         case "failure": return UITestGenerator(fails: true)
+        case "document": return UITestGenerator(fails: false, citesDocuments: true)
         default: return nil
         }
     }
