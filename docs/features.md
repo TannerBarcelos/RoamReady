@@ -81,6 +81,8 @@ Capture photos with the native camera or import locally available photos while o
 
 Camp Finder is online-only discovery through Apple Maps (MapKit), with no server or API key. The map shows campground and RV park points of interest as you pan; tap one to open its detail. Use **Near me**, **Search this area**, or search by campground name, city, park, or ZIP. Location permission is optional; text search works without it.
 
+On iPhone Duo's open display, the results sit beside a map that fills the rest of the screen. On the cover display, and on every other device, the map stays at the top of the results list. Moving between the two keeps the search text, results, map position, and open place, and doesn't search again.
+
 Details include an address, **Website** for booking, **Call**, **Directions**, and Apple's **Photos, ratings & hours** place card where available. Save places to **Want to go**, **Have been**, or **Favorites**. **Add trip** prefills the campground identity, name, coordinates, and time zone; the time zone can be checked or set manually.
 
 The app does not infer prices, hookups, amenities, rig fit, accessibility, or booking availability. There are no amenity/length/budget filters or **Use my rig** control. Apple Maps coverage is partial; an empty search does not mean there are no campgrounds. Offline, Camp Finder explains that it needs a connection and offers retry. Apple can throttle searches per device, with a specific explanation in the app.
