@@ -25,14 +25,25 @@ public struct IndexedDocument: Equatable, Sendable {
     }
 }
 
+/// What the index remembers about a published document.
+public struct IndexedDocumentRecord: Equatable, Sendable {
+    public var checksum: String
+    public var extractionVersion: Int
+    public var chunkingVersion: Int
+}
+
 public struct IndexedPassage: Equatable, Sendable {
     public var text: String
+    /// One-based page ordinal in the file, the number a viewer jumps to.
     public var page: Int?
+    /// The label printed on the page ("iv", "A-3"), when it differs from the ordinal.
+    public var pageLabel: String?
     public var section: String?
 
-    public init(text: String, page: Int? = nil, section: String? = nil) {
+    public init(text: String, page: Int? = nil, section: String? = nil, pageLabel: String? = nil) {
         self.text = text
         self.page = page
+        self.pageLabel = pageLabel
         self.section = section
     }
 }
@@ -40,8 +51,11 @@ public struct IndexedPassage: Equatable, Sendable {
 public struct SearchHit: Equatable, Sendable {
     public var passageID: Int64
     public var documentID: String
+    /// Checksum of the original file this passage was indexed from.
+    public var checksum: String
     public var ordinal: Int
     public var page: Int?
+    public var pageLabel: String?
     public var section: String?
     public var text: String
     /// Fused rank score; higher is better.
@@ -67,7 +81,7 @@ public struct DocumentReadiness: Equatable, Sendable {
 /// touches SwiftData's store, and everything in it can be rebuilt from the documents, so a file that can't
 /// be opened may simply be deleted.
 public actor DocumentSearchIndex {
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
     /// The vendored sqlite-vec release, for diagnostics.
     public static var sqliteVecVersion: String { String(cString: csqlitevec_version()) }
 
@@ -99,9 +113,10 @@ public actor DocumentSearchIndex {
                       .int(Int64(document.chunkingVersion)), .text(document.language),
                       document.rigID.map(Value.text) ?? .null, document.tripID.map(Value.text) ?? .null])
             for (ordinal, passage) in passages.enumerated() {
-                try database.run("INSERT INTO passages (doc_id, generation, ordinal, page, section, text) VALUES (?, ?, ?, ?, ?, ?)",
+                try database.run("INSERT INTO passages (doc_id, generation, ordinal, page, page_label, section, text) VALUES (?, ?, ?, ?, ?, ?, ?)",
                                  [.text(document.id), .int(generation), .int(Int64(ordinal)),
                                   passage.page.map { Value.int(Int64($0)) } ?? .null,
+                                  passage.pageLabel.map(Value.text) ?? .null,
                                   passage.section.map(Value.text) ?? .null, .text(passage.text)])
                 try database.run("INSERT INTO passages_fts (rowid, text) VALUES (last_insert_rowid(), ?)", [.text(passage.text)])
             }
@@ -153,6 +168,14 @@ public actor DocumentSearchIndex {
             for id in stale { try removeVectors(for: id) }
         }
         return stale
+    }
+
+    /// Every published document and the checksum it was indexed from, so a caller can tell what is missing,
+    /// superseded, or no longer in the library.
+    public func indexedDocuments() throws -> [String: IndexedDocumentRecord] {
+        Dictionary(uniqueKeysWithValues: try database.query("SELECT doc_id, checksum, extraction_version, chunking_version FROM documents") {
+            ($0.text(0), IndexedDocumentRecord(checksum: $0.text(1), extractionVersion: Int($0.int(2)), chunkingVersion: Int($0.int(3))))
+        })
     }
 
     public func remove(documentID: String) throws {
@@ -207,7 +230,7 @@ public actor DocumentSearchIndex {
     private func lexicalCandidates(_ question: String, allowList: String, limit: Int) throws -> [SearchHit] {
         guard let match = FTSQuery.match(from: question) else { return [] }
         return try database.query("""
-            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text
+            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text, p.page_label, d.checksum
             FROM passages_fts
             JOIN passages p ON p.id = passages_fts.rowid
             JOIN documents d ON d.doc_id = p.doc_id AND d.generation = p.generation
@@ -226,7 +249,7 @@ public actor DocumentSearchIndex {
         // Eligible rows are live generations in scope whose vectors share the query's revision and dimension;
         // sqlite-vec applies the rowid filter while it selects the k nearest.
         return try database.query("""
-            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text
+            SELECT p.id, p.doc_id, p.ordinal, p.page, p.section, p.text, p.page_label, d.checksum
             FROM (
                 SELECT rowid, distance FROM \(table)
                 WHERE embedding MATCH ? AND k = ?
@@ -237,6 +260,7 @@ public actor DocumentSearchIndex {
                       AND d.vector_ready = 1 AND d.embedding_revision = ? AND d.embedding_dimension = ?)
             ) v
             JOIN passages p ON p.id = v.rowid
+            JOIN documents d ON d.doc_id = p.doc_id AND d.generation = p.generation
             ORDER BY v.distance
             """, [.blob(Self.blob(query)), .int(Int64(limit)), .text(allowList), .text(profile.revision), .int(Int64(profile.dimension))]) {
             Self.hit($0)
@@ -260,8 +284,9 @@ public actor DocumentSearchIndex {
     }
 
     private static func hit(_ row: SQLiteDatabase.Row) -> SearchHit {
-        SearchHit(passageID: row.int(0), documentID: row.text(1), ordinal: Int(row.int(2)),
-                  page: row.isNull(3) ? nil : Int(row.int(3)), section: row.optionalText(4), text: row.text(5),
+        SearchHit(passageID: row.int(0), documentID: row.text(1), checksum: row.text(7), ordinal: Int(row.int(2)),
+                  page: row.isNull(3) ? nil : Int(row.int(3)), pageLabel: row.optionalText(6),
+                  section: row.optionalText(4), text: row.text(5),
                   score: 0, matchedLexically: false, matchedByVector: false)
     }
 
@@ -307,6 +332,9 @@ public actor DocumentSearchIndex {
         let version = Int(try database.scalarInt("PRAGMA user_version") ?? 0)
         guard version <= schemaVersion else { throw DocumentSearchError.newerSchema(version) }
         guard version < schemaVersion else { return }
+        // The index is disposable, so an older layout is rebuilt rather than migrated: the caller deletes the
+        // file and indexes the documents again.
+        guard version == 0 else { throw DocumentSearchError.outdatedSchema(version) }
         do {
             try database.transaction {
                 try database.run("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
@@ -334,6 +362,7 @@ public actor DocumentSearchIndex {
                         generation INTEGER NOT NULL,
                         ordinal INTEGER NOT NULL,
                         page INTEGER,
+                        page_label TEXT,
                         section TEXT,
                         text TEXT NOT NULL
                     )
