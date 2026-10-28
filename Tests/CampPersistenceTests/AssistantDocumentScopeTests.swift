@@ -84,4 +84,85 @@ struct AssistantDocumentScopeTests {
         #expect(try job.content.verifiedBytes() == Self.pdf)
         #expect(try context.indexJob(documentID: manual.documentID, checksum: "stale") == nil)
     }
+
+    // MARK: Assignment
+
+    private func newTrip(_ name: String) throws -> Trip {
+        try Trip.create(TripDraft(campgroundName: name, arrival: .now, departure: .now.addingTimeInterval(86_400)), rig: rig, in: context)
+    }
+
+    @Test func assigningToATripClearsTheRigAndToARigClearsTheTrip() throws {
+        let manual = try add(.manual, rig: rig)
+        let trip = try newTrip("Pines")
+        let before = (manual.checksum, manual.content?.protectedBytes)
+        manual.assign(to: .trip(trip))
+        #expect(manual.rig == nil && manual.trip === trip)
+        #expect(manual.assignment == .trip(trip))
+        #expect(rig.generalAssistantScope().isEmpty)
+        manual.assign(to: .rig(rig))
+        #expect(manual.trip == nil && manual.rig === rig)
+        #expect(rig.generalAssistantScope().documentIDs == [manual.documentID])
+        #expect(manual.checksum == before.0 && manual.content?.protectedBytes == before.1)
+        #expect(try manual.contents() == Self.pdf)
+    }
+
+    @Test func archivedRigsCanOwnDocumentsButTheirScopeIsTheirOwn() throws {
+        let archived = Rig()
+        context.insert(archived)
+        archived.archivedAt = .now
+        let manual = try add(.manual, rig: nil)
+        manual.assign(to: .rig(archived))
+        #expect(manual.assignment == .rig(archived))
+        #expect(rig.generalAssistantScope().isEmpty)
+    }
+
+    @Test func unattachedDocumentsAreOutOfScopeEvenWhenOtherwiseEligible() throws {
+        let manual = try add(.manual, rig: rig)
+        manual.assign(to: .unattached)
+        #expect(manual.isUnattached && manual.isAssistantSearchable)
+        #expect(rig.generalAssistantScope().isEmpty)
+        // Index rows may be stale; the live scope is what gates answers.
+        #expect(rig.generalAssistantScope().live[manual.documentID] == nil)
+    }
+
+    @Test func assignmentNeverBypassesCategoryOrContentRules() throws {
+        let insurance = try add(.insurance, rig: nil)
+        let other = try add(.other, rig: nil)
+        let link = try add(.manual, rig: nil, file: false)
+        for document in [insurance, other, link] { document.assign(to: .rig(rig)) }
+        #expect(rig.generalAssistantScope().isEmpty)
+        #expect(try context.indexableDocuments().isEmpty)
+    }
+
+    @Test func assignmentMakesAnEligibleUnattachedDocumentIndexable() throws {
+        let manual = try add(.manual, rig: nil)
+        #expect(try context.indexableDocuments().count == 1)
+        manual.assign(to: .rig(rig))
+        #expect(rig.generalAssistantScope().documentIDs == [manual.documentID])
+    }
+
+    @Test func aDeletedTripsReservationStaysUnattachedUntilAssignedToAnotherTrip() throws {
+        let first = try newTrip("First")
+        let second = try newTrip("Second")
+        let reservation = try add(.reservation, rig: nil, trip: first)
+        context.delete(first)
+        try context.save()
+        #expect(reservation.isUnattached)
+        #expect(rig.generalAssistantScope().isEmpty)
+        #expect(second.documents?.isEmpty ?? true)
+        reservation.assign(to: .trip(second))
+        try context.save()
+        #expect(second.documents?.map(\.documentID) == [reservation.documentID])
+        #expect(reservation.isAssistantSearchable && !reservation.isUnattached)
+        // Trip scope itself is resolved by the trip-scope work; a trip's document is never in the rig's general scope.
+        #expect(rig.generalAssistantScope().isEmpty)
+    }
+
+    @Test func restoringThePriorAssignmentAfterAFailedSaveKeepsTheOldOwner() throws {
+        let manual = try add(.manual, rig: rig)
+        let prior = manual.assignment
+        manual.assign(to: .trip(try newTrip("Pines")))
+        manual.assign(to: prior)
+        #expect(manual.rig === rig && manual.trip == nil)
+    }
 }

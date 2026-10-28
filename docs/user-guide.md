@@ -60,6 +60,8 @@ Use your rig's **Manuals & paperwork**, a trip's **View confirmation & documents
 
 Files can be up to 50 MiB. Imported originals already on the device open offline. A link needs a connection until a copy is saved; **Waiting to download from iCloud** means the file is not yet on this device. New files are encrypted automatically when synced to your private iCloud; there is no separate encryption setting.
 
+To move a document, open it and use **Assign to rig or trip**. A document belongs to one rig or one trip: choosing a trip removes its direct rig, and choosing a rig removes its trip. Archived rigs are listed too, and your file is never changed. If saving fails, you see an error and the document keeps its previous assignment. Unattached documents can still be opened and shared, but the Assistant doesn’t read them until you assign them. Assigning never overrides which document types the Assistant can read.
+
 Documents retained after a trip or rig is deleted appear in **Profile → Unattached documents**. See the [document vault](document-vault.md) for protection and availability details.
 
 ## Add memories
