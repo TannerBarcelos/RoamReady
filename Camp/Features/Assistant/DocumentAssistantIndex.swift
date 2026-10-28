@@ -157,11 +157,12 @@ final class DocumentAssistantIndex {
 
     // MARK: Asking
 
-    /// Evidence for a general-chat question, or nil when no document is in scope and indexed yet (the chat then
-    /// answers as it always has). Uses whatever is ready now and never waits for indexing.
-    func evidence(for question: String, rig: Rig) async -> DocumentEvidence? {
+    /// Evidence for a question in the scope it was asked in, or nil when no document is in scope and indexed
+    /// yet (the chat then answers as it always has). Uses whatever is ready now and never waits for indexing.
+    /// The target is the request's own snapshot; nothing here reads the screen's current rig or trip.
+    func evidence(for question: String, target: AssistantScopeTarget, in context: ModelContext) async -> DocumentEvidence? {
         guard let index else { return nil }
-        let scope = rig.generalAssistantScope()
+        let scope = context.documentScope(for: target)
         guard !scope.isEmpty else { return nil }
         let readiness = (try? await index.readiness(of: Set(scope.documentIDs.map(\.uuidString)))) ?? [:]
         // Only documents indexed from the file the library holds now may be searched.
@@ -186,6 +187,6 @@ final class DocumentAssistantIndex {
             }
         }
         // Check the library again, now, so a document deleted, reassigned, or replaced during the search is dropped.
-        return DocumentEvidence.make(question: question, candidates: candidates, live: rig.generalAssistantScope().live)
+        return DocumentEvidence.make(question: question, candidates: candidates, live: context.documentScope(for: target).live)
     }
 }

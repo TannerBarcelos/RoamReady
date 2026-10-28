@@ -7,6 +7,8 @@ struct CampingExchange: Identifiable {
     let id = UUID()
     let question: String
     let answer: CampingAnswer
+    /// What this question was allowed to read. Only exchanges from the current scope reach a new prompt.
+    let scope: AssistantScopeTarget
 }
 
 /// The global chat, owned above its sheet so it survives closing and reopening the Assistant.
@@ -32,6 +34,7 @@ struct AssistantView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(LibraryController.self) private var library
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     let trip: Trip?
     let step: ChecklistStep?
@@ -49,6 +52,12 @@ struct AssistantView: View {
         self.trip = trip
         self.step = step
         self.isPresentedAsSheet = isPresentedAsSheet
+    }
+
+    /// General chat reads the active rig; trip and checklist help read that trip and its rig.
+    private var currentTarget: AssistantScopeTarget {
+        if let trip { return .trip(trip) }
+        return .general(rig: rigs.active.first)
     }
 
     private var answering: Bool { pendingQuestion != nil }
@@ -108,6 +117,8 @@ struct AssistantView: View {
                 }
             }
             .onDisappear { cancelRequest() }
+            // A different rig or trip is a different set of paperwork: drop the running request.
+            .onChange(of: currentTarget) { _, _ in cancelRequest() }
             .sheet(item: $openedSource) { DocumentSourceView(source: $0) }
         }
     }
@@ -147,6 +158,19 @@ struct AssistantView: View {
         }
     }
 
+    private var scopeBanner: some View {
+        let summary = currentTarget.summary
+        return Label(summary.text, systemImage: "doc.text.magnifyingglass")
+            .font(.footnote).foregroundStyle(.secondary)
+            .lineLimit(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20).padding(.vertical, 8)
+            .background(.bar)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(summary.accessibilityText)
+            .accessibilityIdentifier("assistantScope")
+    }
+
     private var conversation: some View {
         ScrollViewReader { scroll in
             ScrollView {
@@ -167,6 +191,9 @@ struct AssistantView: View {
                             Text(exchange.answer.text).textSelection(.enabled)
                                 .accessibilityIdentifier("assistantGeneratedReply")
                             Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
+                            if exchange.scope != currentTarget {
+                                Text("Asked in \(exchange.scope.summary.text)").font(.caption).foregroundStyle(.secondary)
+                            }
                             documentNotes(for: exchange.answer)
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
@@ -195,6 +222,7 @@ struct AssistantView: View {
                 .padding(.bottom, 12)
             }
             .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .top, spacing: 0) { scopeBanner }
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             .onChange(of: chat.exchanges.count) { _, _ in
                 withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
@@ -260,6 +288,8 @@ struct AssistantView: View {
         refreshAvailability()
         guard canSend else { return }
         let submitted = chat.question.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Everything this request reads is captured now. A scope change cancels it (see onChange above).
+        let target = currentTarget
         let rig = trip == nil ? rigs.active.first : trip?.rig
         let rigContext = rig.map { CampingRigContext($0) }
         let steps: [ChecklistStepDraft]
@@ -270,19 +300,20 @@ struct AssistantView: View {
         } else {
             steps = []
         }
-        let history = chat.exchanges.suffix(CampingHelpRequest.maximumHistoryTurns).map { CampingChatTurn(question: $0.question, answer: $0.answer.text) }
+        let history = AssistantConversationRules.history(
+            chat.exchanges.map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
+        let retrievalQuestion = AssistantConversationRules.retrievalQuestion(submitted, after: history)
         pendingQuestion = submitted
         chat.generationFailure = nil
         chat.question = ""
-        // General chat reads the active rig's documents. Trip and checklist help don't yet.
-        let documentRig = trip == nil ? rig : nil
         let index = library.documentAssistant
+        let context = modelContext
         task = Task {
             do {
                 var evidence: DocumentEvidence?
-                if let documentRig {
+                if target.rigID != nil || target.isTrip {
                     searchingDocuments = true
-                    evidence = await index.evidence(for: submitted, rig: documentRig)
+                    evidence = await index.evidence(for: retrievalQuestion, target: target, in: context)
                     searchingDocuments = false
                     try Task.checkCancellation()
                 }
@@ -291,8 +322,8 @@ struct AssistantView: View {
                                                        history: history, rigContext: rigContext, documents: evidence)
                 guard !Task.isCancelled else { return }
                 refreshAvailability()
-                guard !Task.isCancelled, showsConversation else { return }
-                chat.exchanges.append(CampingExchange(question: submitted, answer: answer))
+                guard !Task.isCancelled, showsConversation, currentTarget == target else { return }
+                chat.exchanges.append(CampingExchange(question: submitted, answer: answer, scope: target))
             } catch {
                 guard !Task.isCancelled else { return }
                 refreshAvailability()
