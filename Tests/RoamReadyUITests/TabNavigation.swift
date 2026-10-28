@@ -11,4 +11,14 @@ extension XCUIApplication {
             NSNumber(value: XCUIElement.ElementType.cell.rawValue)
         )).firstMatch
     }
+
+    /// Ask Assistant as a native bar item. Duo's open layout can show trailing items in a vertical
+    /// toolbar instead of the navigation bar, so both are checked.
+    var barAssistantButton: XCUIElement {
+        descendants(matching: .any).matching(NSPredicate(
+            format: "elementType == %@ OR elementType == %@",
+            NSNumber(value: XCUIElement.ElementType.navigationBar.rawValue),
+            NSNumber(value: XCUIElement.ElementType.toolbar.rawValue)
+        )).descendants(matching: .button)["openAssistant"].firstMatch
+    }
 }
