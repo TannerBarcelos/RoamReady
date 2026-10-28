@@ -98,11 +98,14 @@ struct MainTabs: View {
         }
     }
 
+    /// Mac, iPad, Duo, and accessibility text sizes put the Assistant in the navigation bar; other
+    /// iPhones keep the floating button. Duo always uses the toolbar so folding or unfolding never
+    /// moves the button between the bar and the corner.
     private var usesAssistantToolbar: Bool {
         #if targetEnvironment(macCatalyst)
         true
         #else
-        horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
+        usesDuoWorkspace || horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
         #endif
     }
 
