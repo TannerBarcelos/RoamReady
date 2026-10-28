@@ -142,7 +142,10 @@ public struct DocumentEvidence: Equatable, Sendable {
     }
 
     func promptBlock(compact: Bool) -> String {
-        let shown = compact ? compactExcerpts : budgeted
+        promptBlock(excerpts: compact ? compactExcerpts : budgeted)
+    }
+
+    func promptBlock(excerpts shown: [DocumentExcerpt]) -> String {
         let body = shown.map { excerpt -> String in
             let source = excerpt.source
             let place = [source.category, source.pageDescription, source.section].compactMap { $0 }.joined(separator: " · ")

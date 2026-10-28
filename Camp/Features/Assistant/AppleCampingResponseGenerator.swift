@@ -16,7 +16,7 @@ struct AppleCampingResponseGenerator: CampingResponseGenerating {
         // Fresh sessions plus bounded recent turns avoid an ever-growing model transcript.
         let session = LanguageModelSession(model: model, instructions: instructions)
         do {
-            let result = try await session.respond(to: prompt, options: GenerationOptions(maximumResponseTokens: 512))
+            let result = try await session.respond(to: prompt, options: GenerationOptions(maximumResponseTokens: PromptBudget.outputTokens))
             try Task.checkCancellation()
             return result.content
         } catch is CancellationError {
@@ -34,6 +34,16 @@ struct AppleCampingResponseGenerator: CampingResponseGenerating {
             if Task.isCancelled { throw CancellationError() }
             throw CampingChatFailure.failed
         }
+    }
+}
+
+/// Token counts and the context window come from the model itself, so the budget never rests on a
+/// characters-per-token guess. A failed count makes the planner fall back to its conservative estimator.
+struct AppleTokenCounter: PromptTokenCounting {
+    var contextSize: Int? { SystemLanguageModel.default.contextSize }
+
+    func tokenCount(of text: String) async throws -> Int {
+        try await SystemLanguageModel.default.tokenCount(for: text)
     }
 }
 #endif
