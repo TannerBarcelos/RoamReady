@@ -79,7 +79,8 @@ struct MainTabs: View {
     @State private var assistantConversation = AssistantConversation()
     var body: some View {
         TabView(selection: tabSelection) {
-            Tab("Home", systemImage: "house", value: .home) { tabRoot { HomeView() } }
+            // On Duo, Home brings its own split view instead of the tab's stack.
+            Tab("Home", systemImage: "house", value: .home) { tabRoot(stacked: !usesDuoWorkspace) { HomeWorkspace() } }
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { tabRoot { CampFinderView() } }
@@ -104,8 +105,8 @@ struct MainTabs: View {
         #endif
     }
 
-    private func tabRoot<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        NavigationStack {
+    private func tabRoot<Content: View>(stacked: Bool = true, @ViewBuilder content: () -> Content) -> some View {
+        stack(stacked) {
             content().toolbar {
                 if showsAssistant && usesAssistantToolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -134,6 +135,10 @@ struct MainTabs: View {
                     .padding(.bottom, 8)
                 }
             }
+    }
+
+    @ViewBuilder private func stack<Content: View>(_ stacked: Bool, @ViewBuilder content: () -> Content) -> some View {
+        if stacked { NavigationStack(root: content) } else { content() }
     }
 
     private var tabActions: MainTabActions {

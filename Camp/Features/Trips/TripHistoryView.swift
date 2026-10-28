@@ -22,14 +22,19 @@ struct TripHistoryView: View {
 struct TripRow: View {
     let trip: Trip
     var body: some View {
-        NavigationLink { TripDetailView(trip: trip) } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(trip.campgroundName).font(.headline)
-                Text(trip.dateSummary).font(.subheadline).foregroundStyle(.secondary)
-                if !trip.siteNumber.isEmpty { Text("Site \(trip.siteNumber)").font(.caption).foregroundStyle(.secondary) }
-                if trip.isCompleted() { Label("Completed", systemImage: "checkmark.seal").font(.caption).foregroundStyle(.secondary) }
-            }.padding(.vertical, 4)
-        }
-        .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
+        NavigationLink { TripDetailView(trip: trip) } label: { TripRowLabel(trip: trip) }
+            .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
+    }
+}
+
+struct TripRowLabel: View {
+    let trip: Trip
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(trip.campgroundName).font(.headline)
+            Text(trip.dateSummary).font(.subheadline).foregroundStyle(.secondary)
+            if !trip.siteNumber.isEmpty { Text("Site \(trip.siteNumber)").font(.caption).foregroundStyle(.secondary) }
+            if trip.isCompleted() { Label("Completed", systemImage: "checkmark.seal").font(.caption).foregroundStyle(.secondary) }
+        }.padding(.vertical, 4)
     }
 }
