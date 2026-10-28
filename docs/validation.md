@@ -125,3 +125,30 @@ Before release, use a physical iPhone, iPad, or Mac that supports Apple Intellig
 Simulator CI deliberately skips this opt-in hardware test. Its deterministic send/error UI tests use separate DEBUG-only simulated generators, which are excluded from Release builds. Package tests verify that Send reaches the generator without a trip/reference match, errors and cancellations propagate, empty answers fail, overlong questions are preserved for shortening, and context overflow retries only once. Native UI tests check successful Send and failure/retry presentation. Real generation must still be verified on the physical device; simulator or fake replies do not establish it.
 
 The production adapter follows Apple’s [Foundation Models generation guide](https://developer.apple.com/documentation/foundationmodels/generating-content-and-performing-tasks-with-foundation-models), [language support guidance](https://developer.apple.com/documentation/foundationmodels/supporting-languages-and-locales-with-foundation-models), and [iOS 27 model error API](https://developer.apple.com/documentation/foundationmodels/languagemodelerror).
+
+## Duo resize audit
+
+Issue #90 checked onboarding, Profile, Documents, Photos, and the Assistant after the iPhone Duo foundation (#83) began passing the real horizontal size class through `MainTabs`. In Debug, `-duo-ui-test` with `-navigation-ui-test` also adds one trip photo and one image document to Current Pines, so Photos and Documents have something to open; other fixture runs are unchanged.
+
+What was run (iOS 27.1 iPhone Duo simulator, closed cover display only, about 466×678 pt, with a vertical tab bar and status column on the trailing edge):
+
+- Home, Photos & site notes, and the Trip photo sheet were inspected on the cover display. Rotation has no effect there; the simulator can't unfold, so the open display and the fold/unfold transition weren't exercised.
+- The planned landscape and accessibility-text-size tours with `-duo-ui-test` on an iPhone 18 Pro clone didn't complete, because the shared host was overloaded and the XCUITest runner timed out. Everything else below comes from reading the code.
+
+Fixed:
+
+- **Photo tiles overflowed their grid column.** `LocalPhoto` is aspect-fill, and with only a fixed height its frame took the image's natural width (about 200 pt for a 3:2 photo). Each tile overflowed its column and spilled past the card's leading edge, clipping the caption ([before](validation/duo-cover-photos-overflow-before.png)). The same was true of the 300 pt photo in Trip photo. Both now take their column or row width before the height is applied. This also happens on regular iPhones whenever a column is narrower than the photo's natural width, so the fix applies everywhere; the navigation fixtures have no photos, so the regular-iPhone baselines don't change.
+
+Checked with no change needed:
+
+- Size class: none of these screens read `horizontalSizeClass`. Onboarding is outside `MainTabs`, so it already got the real size class, on Duo and everywhere else. Sheets (Add trip, the Assistant, Settings, editors, Trip photo) take their presentation style from the window, not from the SwiftUI size-class override, so Duo doesn't change how they're presented.
+- Keeping a view through a resize: the photo sheet (`sheet(item:)` in `MemoriesView`) and the document preview (`quickLookPreview` in `DocumentDetailView`, prepared by a `.task` keyed on checksum and availability) only depend on the view's identity. None of the audited screens switch their view tree on size class, so a resize keeps both open.
+- Fold avoidance: every audited screen uses native `List`, `Form`, or `ScrollView` inside the safe area, with nothing pinned with `ignoresSafeArea` except the full-screen camera. Content on the cover display stops before the trailing status column and tab bar.
+- Keyboard: the onboarding action bar and the Assistant composer are `safeAreaInset`s, so they stay above the keyboard. Forms scroll the focused field into view.
+
+Remaining:
+
+- On the cover display, the floating Assistant button (owned by `MainTabs`, #89) overlaps the trailing end of list rows and the Photos footer text.
+- In iPhone landscape with the keyboard up, the onboarding action bar (progress, button, and hint) leaves little room for the rig form. This isn't specific to Duo.
+- At accessibility text sizes, `DocumentRow`'s category and expiry line is a single `HStack` and can truncate. This isn't specific to Duo.
+- Still to verify on hardware or a newer simulator: the open (unfolded) display, the live fold/unfold resize with a document preview and a photo open, the hinge region on the open display, and the iPhone landscape and accessibility-size passes with `-duo-ui-test`.
