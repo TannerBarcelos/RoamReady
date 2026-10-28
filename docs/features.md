@@ -26,6 +26,8 @@ There is one active rig per owner, controlled by `RigPolicy.maxActiveRigs`. Edit
 
 Home shows the earliest-arriving active trip, checklist progress, memories, local save status, and quick trip creation. Active means today falls within the inclusive arrival/departure dates in the campground’s time zone and the trip has not been marked complete. The card disappears after departure day; other current and upcoming trips remain accessible on Home, including overlapping bookings. Completed trips live in **Profile › Trip history**, newest first, alongside **Your campgrounds**. Home refreshes at campground midnight and on foregrounding, without storing an active flag. The tab bar has Home, Trip (add), Camp Finder, and Profile. Profile’s gear opens Settings for appearance, iCloud, export, library maintenance, and app information.
 
+On iPhone Duo, Home shows the selected trip beside it. The current trip is selected at first, or else the next upcoming one; overlapping trips follow Home's rule and choose the earliest arrival (`featuredTrip(asOf:)` in `CampCore`). Picking another trip replaces the details. If that trip is deleted, the details go back to the featured trip. With no current or upcoming trip, the details side is empty.
+
 A trip represents one booking at one campground. Campground name, rig, and dates are required. Create a trip from a Camp Finder listing online or enter its campground by name offline. RoamReady records a booking; it does not make reservations.
 
 Optional fields can be edited at any time:

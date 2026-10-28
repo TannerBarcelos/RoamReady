@@ -97,6 +97,8 @@ Each window's root applies `observesDuoWorkspace()` ([DuoWorkspace.swift](../Cam
 
 `MainTabs` forces a compact horizontal size class everywhere except the Duo workspace, where the scene's own size class passes through. Tab selection, the Add trip and Assistant sheets, and the Assistant conversation stay in `MainTabs`, above the content that resizes. Debug builds force the workspace with `-duo-ui-test`.
 
+Home's root is `HomeWorkspace` ([HomeWorkspace.swift](../Camp/Features/Home/HomeWorkspace.swift)). It owns Home's clock and, on Duo, a `NavigationSplitView` with its selection, a `HomeDestination?` value holding a trip's `PersistentIdentifier` rather than the model. Because this state lives above both columns, it survives the display changing size. `MainTabs` doesn't wrap Home in its stack on Duo. Other iPhones keep Home in that stack with push links. The detail shows the picked trip while it still exists, or else the featured one (`displayedTrip(selected:asOf:)` in `CampCore`). With `-navigation-ui-test`, `-empty-library` keeps the fixture profile and rig but adds no trips.
+
 The device-local appearance preference is stored through `AppAppearance`/`@AppStorage` and applied at the window root. System follows the OS; Light/Dark overrides also apply to navigation and sheets.
 
 ## Domain rules

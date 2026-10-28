@@ -36,8 +36,9 @@ final class NavigationUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Upcoming Lake"].exists)
         app.staticTexts["Past Meadows"].tap()
         XCTAssertTrue(app.navigationBars["Past Meadows"].waitForExistence(timeout: 5))
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // The Duo cover display moves bar buttons into a side rail, outside the navigation bar.
+        app.buttons["BackButton"].firstMatch.tap()
+        app.buttons["BackButton"].firstMatch.tap()
         app.buttons["savedCampgroundsLink"].tap()
         XCTAssertTrue(app.navigationBars["Your campgrounds"].waitForExistence(timeout: 5))
     }
