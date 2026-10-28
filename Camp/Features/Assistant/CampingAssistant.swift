@@ -113,7 +113,7 @@ enum CampingAssistant {
 
     private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {
         #if canImport(FoundationModels)
-        return try await CampingGeneration.answer(to: request, using: AppleCampingResponseGenerator())
+        return try await CampingGeneration.answer(to: request, using: AppleCampingResponseGenerator(), counter: AppleTokenCounter())
         #else
         throw CampingChatFailure.notReady
         #endif

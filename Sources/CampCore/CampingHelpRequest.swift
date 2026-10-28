@@ -22,7 +22,11 @@ public struct CampingHelpRequest: Sendable {
     public let prompt: String
     public let compactPrompt: String
     public let questionExceedsLimit: Bool
-    private let rigContext: CampingRigContext?
+    let rigContext: CampingRigContext?
+    // Kept so the token budget can rebuild a smaller prompt from the same inputs.
+    let question: String
+    let history: [CampingChatTurn]
+    let rigType: RigType?
     /// Validated excerpts from the owner's documents, or nil when none were searched.
     public let documents: DocumentEvidence?
 
@@ -65,6 +69,9 @@ public struct CampingHelpRequest: Sendable {
         self.scope = scope
         self.rigContext = rigContext
         self.documents = documents
+        self.question = question
+        self.history = history
+        self.rigType = rigType
         questionExceedsLimit = question.count > 1500
         // Follow-ups such as “What should I check next?” retain the previous question's topic.
         let search = (history.suffix(1).map(\.question) + [question]).joined(separator: " ").lowercased()
