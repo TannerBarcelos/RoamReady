@@ -4,10 +4,10 @@ import CampCore
 import DocumentVault
 
 /// Which documents the Assistant may read. This is the one place the rule lives, so later scopes (a trip's
-/// own documents, the Other opt-in, assignment) extend it rather than adding second copies.
+/// own documents, assignment) extend it rather than adding second copies.
 public enum AssistantDocumentEligibility {
-    /// Included by default. Registration and Insurance are never included; Other is off until the owner
-    /// opts a document in, which is not built yet, so it stays out.
+    /// Included by default. Registration and Insurance are never included, even if a stale opt-in or index
+    /// row exists. Other is included only when the owner opts that document in.
     public static let searchableCategories: Set<DocumentCategory> = [.manual, .maintenance, .warranty, .reservation]
 
     /// Formats the reader can open: PDFs (text layer, with text recognition for pages that have none) and
@@ -15,19 +15,25 @@ public enum AssistantDocumentEligibility {
     /// text, so listing a format here never loops on a bad file.
     public static let readableContentTypes: Set<DocumentContentType> = Set(DocumentContentType.allCases)
 
-    /// A document the Assistant can read has a searchable category, a readable format, and original bytes
-    /// stored on this device.
-    public static func isSearchable(category: DocumentCategory, file: DocumentFile?, availability: DocumentAvailability) -> Bool {
-        searchableCategories.contains(category) && availability == .offline
+    /// Only Other documents can be opted in.
+    public static func isEligible(category: DocumentCategory, includeInAssistant: Bool) -> Bool {
+        searchableCategories.contains(category) || (category == .other && includeInAssistant)
+    }
+
+    /// A document the Assistant can read has an eligible category, a readable format, and original bytes
+    /// stored on this device. A link without a saved copy has no file, so it never qualifies.
+    public static func isSearchable(category: DocumentCategory, includeInAssistant: Bool = false, file: DocumentFile?,
+                                    availability: DocumentAvailability) -> Bool {
+        isEligible(category: category, includeInAssistant: includeInAssistant) && availability == .offline
             && file.map { readableContentTypes.contains($0.contentType) } == true
     }
 
     /// Where a document stands for indexing, or nil when it will never be a candidate (wrong category, or a
     /// link whose content was never saved). A document whose details arrived before its bytes is waiting, not
     /// excluded: it is indexed once the bytes land.
-    public static func indexAvailability(category: DocumentCategory, file: DocumentFile?, availability: DocumentAvailability) -> IndexAvailability? {
-        guard searchableCategories.contains(category), file != nil else { return nil }
-        if isSearchable(category: category, file: file, availability: .offline) {
+    public static func indexAvailability(category: DocumentCategory, includeInAssistant: Bool = false, file: DocumentFile?, availability: DocumentAvailability) -> IndexAvailability? {
+        guard isEligible(category: category, includeInAssistant: includeInAssistant), file != nil else { return nil }
+        if isSearchable(category: category, includeInAssistant: includeInAssistant, file: file, availability: .offline) {
             switch availability {
             case .offline: return .ready
             case .awaitingDownload: return .waitingForDownload
@@ -48,7 +54,7 @@ public enum IndexAvailability: Equatable, Sendable {
 public extension StoredDocument {
     /// Eligible by category and content, wherever it is attached.
     var isAssistantSearchable: Bool {
-        !isDeleted && AssistantDocumentEligibility.isSearchable(category: category, file: file, availability: availability)
+        !isDeleted && AssistantDocumentEligibility.isSearchable(category: category, includeInAssistant: includeInAssistant, file: file, availability: availability)
     }
 
     /// What the general Assistant may search for this rig: eligible documents attached directly to it.
@@ -175,7 +181,7 @@ public extension ModelContext {
     func indexableDocuments() throws -> [IndexableDocument] {
         try fetch(FetchDescriptor<StoredDocument>()).compactMap {
             guard !$0.isDeleted, let checksum = $0.checksum,
-                  let availability = AssistantDocumentEligibility.indexAvailability(category: $0.category, file: $0.file, availability: $0.availability)
+                  let availability = AssistantDocumentEligibility.indexAvailability(category: $0.category, includeInAssistant: $0.includeInAssistant, file: $0.file, availability: $0.availability)
             else { return nil }
             return IndexableDocument(documentID: $0.documentID, checksum: checksum, availability: availability)
         }

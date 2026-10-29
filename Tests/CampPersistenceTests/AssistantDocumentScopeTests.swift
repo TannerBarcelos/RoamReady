@@ -52,6 +52,58 @@ struct AssistantDocumentScopeTests {
         #expect(rig.generalAssistantScope().isEmpty)
     }
 
+    @Test func everyCategoryFollowsTheEligibilityRule() throws {
+        let included: [DocumentCategory] = [.manual, .maintenance, .warranty, .reservation]
+        for category in included {
+            let doc = try add(category, rig: rig)
+            #expect(doc.isAssistantSearchable)
+            doc.includeInAssistant = true
+            #expect(doc.isAssistantSearchable)
+        }
+        for category in [DocumentCategory.registration, .insurance] {
+            let doc = try add(category, rig: rig)
+            #expect(!doc.isAssistantSearchable)
+            // The opt-in never lets these in, even if one is stored (older build, sync, stale index row).
+            doc.includeInAssistant = true
+            #expect(!doc.isAssistantSearchable)
+            #expect(!rig.generalAssistantScope().documentIDs.contains(doc.documentID))
+        }
+        #expect(rig.generalAssistantScope().documentIDs.count == included.count)
+    }
+
+    @Test func otherIsOffUntilOptedInAndOffAgainImmediately() throws {
+        let other = try add(.other, rig: rig)
+        #expect(!other.includeInAssistant)
+        #expect(rig.generalAssistantScope().isEmpty)
+        #expect(try context.indexableDocuments().isEmpty)
+        other.includeInAssistant = true
+        #expect(rig.generalAssistantScope().documentIDs == [other.documentID])
+        #expect(try context.indexableDocuments().map(\.documentID) == [other.documentID])
+        other.includeInAssistant = false
+        #expect(rig.generalAssistantScope().isEmpty)
+        #expect(try context.indexableDocuments().isEmpty)
+    }
+
+    @Test func optedInOtherStillNeedsSavedContentAndAScope() throws {
+        let link = try add(.other, rig: rig, file: false)
+        link.includeInAssistant = true
+        #expect(!link.isAssistantSearchable)
+        link.attach(try DocumentPayload(bytes: Self.pdf, filename: "saved.pdf"))
+        #expect(link.isAssistantSearchable && rig.generalAssistantScope().documentIDs == [link.documentID])
+        let unattached = try add(.other, rig: nil)
+        unattached.includeInAssistant = true
+        #expect(unattached.isAssistantSearchable && !unattached.isInGeneralScope(of: rig))
+    }
+
+    @Test func recategorizingAnOptedInOtherDocumentDropsItFromScope() throws {
+        let other = try add(.other, rig: rig)
+        other.includeInAssistant = true
+        try other.update(DocumentMetadata(title: "Card", category: .insurance))
+        #expect(rig.generalAssistantScope().isEmpty)
+        try other.update(DocumentMetadata(title: "Card", category: .other))
+        #expect(rig.generalAssistantScope().documentIDs == [other.documentID])
+    }
+
     @Test func linksWithoutSavedContentUnattachedAndOtherOwnersAreOutOfScope() throws {
         try add(.manual, rig: rig, file: false)
         try add(.manual, rig: nil)
