@@ -40,7 +40,7 @@ private actor FakeSource: DocumentIndexSource {
         reads.append(document.id)
         if isBlocking { await withCheckedContinuation { waiters.append($0) } }
         if failing.contains(document.id) { throw Failure() }
-        return content[document.id] ?? .noUsableText
+        return content[document.id] ?? .noUsableText(.noText)
     }
 }
 
@@ -123,7 +123,7 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
 
     func testNewDocumentsAreIndexedAutomaticallyAndReportTheirState() async throws {
         await source.set(doc("a"), pages: ["Error code E4 means the igniter failed to light."])
-        await source.set(doc("scan"), result: .noUsableText)
+        await source.set(doc("scan"), result: .noUsableText(.noText))
         await source.set(doc("photo", availability: .unsupported))
         let coordinator = coordinator()
         await coordinator.open()
@@ -131,7 +131,7 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
         await coordinator.waitUntilIdle()
 
         let states = await coordinator.documentStates()
-        XCTAssertEqual(states, ["a": .ready, "scan": .noUsableText, "photo": .unsupported])
+        XCTAssertEqual(states, ["a": .ready, "scan": .noUsableText(.noText), "photo": .unsupported])
         let result = await coordinator.search("E4", live: ["a": "c1"])
         XCTAssertEqual(result?.hits.first?.page, 1)
     }
@@ -473,7 +473,7 @@ final class ReconciliationPlanTests: XCTestCase {
         ]
         let indexed = [
             "current": record("a"), "replaced": record("b1"), "waitingReplacement": record("e1"), "image": record("f"),
-            "scan": record("g", outcome: .noUsableText), "deleted": record("z")
+            "scan": record("g", outcome: .noUsableText(.noText)), "deleted": record("z")
         ]
         let plan = ReconciliationPlan.make(library: library, indexed: indexed, extractionVersion: 1, exhausted: ["stuck"])
 
@@ -483,7 +483,7 @@ final class ReconciliationPlanTests: XCTestCase {
         XCTAssertEqual(plan.states["replaced"], .queued)
         XCTAssertEqual(plan.states["waiting"], .waitingForDownload)
         XCTAssertEqual(plan.states["image"], .unsupported)
-        XCTAssertEqual(plan.states["scan"], .noUsableText)
+        XCTAssertEqual(plan.states["scan"], .noUsableText(.noText))
         XCTAssertEqual(plan.states["stuck"], .retryableFailure)
     }
 

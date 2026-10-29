@@ -130,10 +130,10 @@ final class IndexGenerationTests: XCTestCase {
     func testNonIndexableOutcomesAreRecordedSoTheyAreNotReadAgain() async throws {
         let index = try DocumentSearchIndex(url: temporaryURL())
         var scanned = document(checksum: "a")
-        scanned.outcome = .noUsableText
+        scanned.outcome = .noUsableText(.noText)
         try await index.publish(scanned, passages: [])
         let record = try await index.indexedDocuments()["d"]
-        XCTAssertEqual(record?.outcome, .noUsableText)
+        XCTAssertEqual(record?.outcome, .noUsableText(.noText))
         XCTAssertEqual(record?.isCurrent(checksum: "a", extractionVersion: 1), true)
     }
 

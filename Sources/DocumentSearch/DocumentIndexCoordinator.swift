@@ -247,9 +247,9 @@ public actor DocumentIndexCoordinator {
             case .changed:
                 set(id, .queued)
                 pending = true
-            case .noUsableText:
-                try await index.publish(published(.noUsableText, "und"), passages: [])
-                set(id, .noUsableText)
+            case .noUsableText(let reason):
+                try await index.publish(published(.noUsableText(reason), "und"), passages: [])
+                set(id, .noUsableText(reason))
                 failures[id] = nil
             case .text(let text) where !text.isEnglish:
                 try await index.publish(published(.englishOnly, text.language), passages: [])
@@ -258,12 +258,13 @@ public actor DocumentIndexCoordinator {
             case .text(let text):
                 let passages = PassageChunker.passages(from: text.pages)
                 guard !passages.isEmpty else {
-                    try await index.publish(published(.noUsableText, text.language), passages: [])
-                    set(id, .noUsableText)
+                    try await index.publish(published(.noUsableText(.noText), text.language), passages: [])
+                    set(id, .noUsableText(.noText))
                     failures[id] = nil
                     return
                 }
-                let staging = try await index.beginStaging(published(.ready, text.language))
+                let outcome: IndexOutcome = text.skippedPages > 0 ? .readPartially : .ready
+                let staging = try await index.beginStaging(published(outcome, text.language))
                 token = staging
                 var done = 0
                 set(id, .indexing(done: 0, of: passages.count))
@@ -276,7 +277,7 @@ public actor DocumentIndexCoordinator {
                 try await yieldToInteractiveWork(session)
                 try await index.commit(staging, embedding: provider)
                 token = nil
-                set(id, .ready)
+                set(id, outcome == .readPartially ? .readPartially : .ready)
                 failures[id] = nil
             }
         } catch {

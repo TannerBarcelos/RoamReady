@@ -3,8 +3,38 @@ import CSQLiteVec
 
 /// What reading a document yielded. A document with nothing to search is still recorded, so it is not read
 /// again until its file or the extraction rules change.
-public enum IndexOutcome: String, Equatable, Sendable {
-    case ready, noUsableText, englishOnly
+public enum IndexOutcome: Equatable, Sendable {
+    case ready
+    /// Some pages were left unread because a recognition cap was reached.
+    case readPartially
+    case englishOnly
+    case noUsableText(NoUsableTextReason)
+
+    var storageValue: String {
+        switch self {
+        case .ready: "ready"
+        case .readPartially: "readPartially"
+        case .englishOnly: "englishOnly"
+        case .noUsableText(.empty): "noUsableText:empty"
+        case .noUsableText(.encrypted): "noUsableText:encrypted"
+        case .noUsableText(.unreadable): "noUsableText:unreadable"
+        case .noUsableText(.tooLarge): "noUsableText:tooLarge"
+        case .noUsableText(.noText): "noUsableText:noText"
+        }
+    }
+
+    init(storageValue: String) {
+        switch storageValue {
+        case "readPartially": self = .readPartially
+        case "englishOnly": self = .englishOnly
+        case "noUsableText:empty": self = .noUsableText(.empty)
+        case "noUsableText:encrypted": self = .noUsableText(.encrypted)
+        case "noUsableText:unreadable": self = .noUsableText(.unreadable)
+        case "noUsableText:tooLarge": self = .noUsableText(.tooLarge)
+        case "noUsableText:noText", "noUsableText": self = .noUsableText(.noText)
+        default: self = .ready
+        }
+    }
 }
 
 /// What the index records about one document snapshot. A new checksum, extraction version, or chunking
@@ -171,7 +201,7 @@ public actor DocumentSearchIndex {
                 """, [.text(document.id), .int(generation), .text(document.checksum), .int(Int64(document.extractionVersion)),
                       .int(Int64(document.chunkingVersion)), .text(document.language),
                       document.rigID.map(Value.text) ?? .null, document.tripID.map(Value.text) ?? .null,
-                      .text(document.outcome.rawValue)])
+                      .text(document.outcome.storageValue)])
             return StagingToken(documentID: document.id, generation: generation)
         }
     }
@@ -288,7 +318,7 @@ public actor DocumentSearchIndex {
     public func indexedDocuments() throws -> [String: IndexedDocumentRecord] {
         Dictionary(uniqueKeysWithValues: try database.query("SELECT doc_id, checksum, extraction_version, chunking_version, outcome FROM documents") {
             ($0.text(0), IndexedDocumentRecord(checksum: $0.text(1), extractionVersion: Int($0.int(2)), chunkingVersion: Int($0.int(3)),
-                                               outcome: IndexOutcome(rawValue: $0.text(4)) ?? .ready))
+                                               outcome: IndexOutcome(storageValue: $0.text(4))))
         })
     }
 

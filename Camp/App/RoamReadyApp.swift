@@ -38,6 +38,7 @@ struct RoamReadyApp: App {
             #endif
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { library.save() }
+                library.documentAssistant.setActive(phase == .active)
             }
         }
     }

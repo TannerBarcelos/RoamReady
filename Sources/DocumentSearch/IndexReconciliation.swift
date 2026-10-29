@@ -7,9 +7,11 @@ public enum DocumentIndexState: Equatable, Sendable {
     /// Passages written so far out of all of them. Counts, not a time estimate.
     case indexing(done: Int, of: Int)
     case ready
+    /// Some pages were left unread because a recognition cap was reached.
+    case readPartially
     /// The details arrived (iCloud) before the file. This is waiting, not a failure.
     case waitingForDownload
-    case noUsableText
+    case noUsableText(NoUsableTextReason)
     /// The text is not English, which document answers do not use yet.
     case englishOnly
     /// A kind of file the Assistant can't read.
@@ -42,17 +44,20 @@ public struct ExtractedDocument: Equatable, Sendable {
     public var pages: [ExtractedPage]
     public var language: String
     public var isEnglish: Bool
+    /// Pages left unread because a cap was reached.
+    public var skippedPages: Int
 
-    public init(pages: [ExtractedPage], language: String, isEnglish: Bool) {
+    public init(pages: [ExtractedPage], language: String, isEnglish: Bool, skippedPages: Int = 0) {
         self.pages = pages
         self.language = language
         self.isEnglish = isEnglish
+        self.skippedPages = skippedPages
     }
 }
 
 public enum DocumentReadResult: Equatable, Sendable {
     case text(ExtractedDocument)
-    case noUsableText
+    case noUsableText(NoUsableTextReason)
     /// The bytes aren't on this device yet.
     case waitingForDownload
     /// The library no longer holds the file this was asked to read. The next pass sees the new one.
@@ -95,7 +100,8 @@ public struct ReconciliationPlan: Equatable, Sendable {
                 if let record, record.isCurrent(checksum: document.checksum, extractionVersion: extractionVersion) {
                     plan.states[document.id] = switch record.outcome {
                     case .ready: .ready
-                    case .noUsableText: .noUsableText
+                    case .readPartially: .readPartially
+                    case .noUsableText(let reason): .noUsableText(reason)
                     case .englishOnly: .englishOnly
                     }
                 } else if exhausted.contains(document.id) {
