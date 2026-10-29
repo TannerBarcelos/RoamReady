@@ -51,7 +51,7 @@ struct HomeView: View {
                     }.padding(.vertical, 6)
                 }
                 .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
-                NavigationLink { ChecklistView(trip: trip) } label: {
+                checklistLink(trip, .setup) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Continue setup").font(.headline)
                         ProgressSummary(steps: trip.steps(.setup))
@@ -60,7 +60,7 @@ struct HomeView: View {
             } header: { Text("Current trip") }
             Section("Your trip") {
                 ForEach(ChecklistPhase.allCases) { phase in
-                    NavigationLink { ChecklistView(trip: trip, initialPhase: phase) } label: {
+                    checklistLink(trip, phase) {
                         let steps = trip.steps(phase)
                         Label("\(phase.title) checklist", systemImage: "checklist")
                         Spacer(); Text("\(steps.filter(\.isFinished).count) / \(steps.count)").foregroundStyle(.secondary)
@@ -82,7 +82,7 @@ struct HomeView: View {
                     }.padding(.vertical, 6)
                 }
                 .accessibilityIdentifier("tripRow-\(next.campgroundName)")
-                NavigationLink { ChecklistView(trip: next) } label: {
+                checklistLink(next, .setup) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Review setup checklist").font(.headline)
                         ProgressSummary(steps: next.steps(.setup))
@@ -113,6 +113,16 @@ struct HomeView: View {
             NavigationLink(value: HomeDestination.trip(trip.persistentModelID), label: label)
         } else {
             NavigationLink(destination: { TripDetailView(trip: trip) }, label: label)
+        }
+    }
+
+    /// Pushes the checklist on iPhone; on Duo, shows it in the column beside Home.
+    @ViewBuilder private func checklistLink<Label: View>(_ trip: Trip, _ phase: ChecklistPhase,
+                                                         @ViewBuilder label: () -> Label) -> some View {
+        if selection != nil {
+            NavigationLink(value: HomeDestination.checklist(trip.persistentModelID, phase), label: label)
+        } else {
+            NavigationLink(destination: { ChecklistView(trip: trip, initialPhase: phase) }, label: label)
         }
     }
 }
