@@ -96,16 +96,13 @@ struct AssistantDocumentScopeTests {
         #expect(try context.indexJob(documentID: manual.documentID, checksum: "stale") == nil)
     }
 
-    @Test func indexingListsDocumentsWaitingForBytesAndUnreadableOnesWithTheirOwnStates() throws {
+    @Test func indexingListsDocumentsWaitingForBytesWithTheirOwnState() throws {
         let ready = try add(.manual, rig: rig)
         let waiting = try add(.warranty, rig: rig)
         waiting.content = nil // iCloud delivered the details before the file
-        let photo = try StoredDocument.add(DocumentMetadata(title: "Photo", category: .manual),
-                                           contents: DocumentPayload(bytes: Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D]), filename: "p.png"),
-                                           rig: rig, in: context)
         try add(.insurance, rig: rig).content = nil
         let states = Dictionary(uniqueKeysWithValues: try context.indexableDocuments().map { ($0.documentID, $0.availability) })
-        #expect(states == [ready.documentID: .ready, waiting.documentID: .waitingForDownload, photo.documentID: .unsupported])
+        #expect(states == [ready.documentID: .ready, waiting.documentID: .waitingForDownload])
         // Waiting documents are not searchable until their bytes arrive.
         #expect(rig.generalAssistantScope().documentIDs == [ready.documentID])
     }

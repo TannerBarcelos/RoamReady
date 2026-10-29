@@ -4,6 +4,7 @@ import SwiftData
 import CampCore
 import CampPersistence
 import DocumentSearch
+import DocumentVault
 
 /// The app's side of the document search index for a library session: where the index lives, feeding it the
 /// library, answering scoped searches, and erasing it. `LibraryController` creates and drives it. The rules
