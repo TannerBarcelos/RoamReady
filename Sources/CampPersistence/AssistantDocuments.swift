@@ -31,9 +31,9 @@ public enum AssistantDocumentEligibility {
     /// Where a document stands for indexing, or nil when it will never be a candidate (wrong category, or a
     /// link whose content was never saved). A document whose details arrived before its bytes is waiting, not
     /// excluded: it is indexed once the bytes land.
-    public static func indexAvailability(category: DocumentCategory, file: DocumentFile?, availability: DocumentAvailability) -> IndexAvailability? {
-        guard searchableCategories.contains(category), file != nil else { return nil }
-        if isSearchable(category: category, file: file, availability: .offline) {
+    public static func indexAvailability(category: DocumentCategory, includeInAssistant: Bool = false, file: DocumentFile?, availability: DocumentAvailability) -> IndexAvailability? {
+        guard isEligible(category: category, includeInAssistant: includeInAssistant), file != nil else { return nil }
+        if isSearchable(category: category, includeInAssistant: includeInAssistant, file: file, availability: .offline) {
             switch availability {
             case .offline: return .ready
             case .awaitingDownload: return .waitingForDownload
@@ -181,7 +181,7 @@ public extension ModelContext {
     func indexableDocuments() throws -> [IndexableDocument] {
         try fetch(FetchDescriptor<StoredDocument>()).compactMap {
             guard !$0.isDeleted, let checksum = $0.checksum,
-                  let availability = AssistantDocumentEligibility.indexAvailability(category: $0.category, file: $0.file, availability: $0.availability)
+                  let availability = AssistantDocumentEligibility.indexAvailability(category: $0.category, includeInAssistant: $0.includeInAssistant, file: $0.file, availability: $0.availability)
             else { return nil }
             return IndexableDocument(documentID: $0.documentID, checksum: checksum, availability: availability)
         }
