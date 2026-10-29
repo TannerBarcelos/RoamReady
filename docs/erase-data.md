@@ -6,7 +6,7 @@ RoamReady has no accounts (see [identity contract](account-and-offline-contract.
 
 1. The screen lists everything that is erased; the owner turns on "I understand this can't be undone" and confirms.
 2. **iCloud**: when the build syncs (a container is configured), SwiftData's mirroring zone (`com.apple.coredata.cloudkit.zone`) is deleted from the app's private CloudKit database. This needs a connection and a signed-in iCloud account; without them the flow stops before anything is erased. Builds without a container skip this step, so erasing works offline.
-3. **This device**: the library closes, then the SwiftData store directory (with its external photo and document files), document imports, the forecast cache, and stored preferences are deleted. The app reopens empty at onboarding.
+3. **This device**: the search index writer stops and is awaited, then the library closes, then the SwiftData store directory (with its external photo and document files), the search index folder, document imports and previews, the forecast cache, temporary files, and stored preferences are deleted. The app reopens empty at onboarding.
 
 A failure names the step and stops, so a half-erased library never looks finished. Other devices using the same iCloud account see the zone removed: mirroring stops and their local copy stays until erased there.
 
@@ -18,3 +18,14 @@ Apple's mirroring tracks deletions in persistent history, so a device that was o
 
 - **Note revisions of live trips:** proposed to keep the 50 most recent per trip. Not implemented yet; this needs a decision.
 - Erase all data removes everything, locally and in iCloud.
+
+## The search index
+
+The Assistant's document search index is a disposable SQLite file in `Application Support/Search`, outside the library folder, excluded from backups, and never synced. Erasing removes it in this order, so nothing can bring it back:
+
+1. `DocumentIndexCoordinator.erase()` marks the session erased, cancels the running pass, and **waits for it to finish**. An index job that is mid-read or mid-write cannot write after this point: every write is guarded by the session, and the pass is awaited before anything is deleted.
+2. The database connection is closed.
+3. `documents.sqlite`, its `-wal`, `-shm`, and `-journal` sidecars, and the whole `Search` folder (including any staging files) are deleted. The document states the coordinator reported are cleared.
+4. `LibraryController.eraseDevice()` then deletes the library, the document preview cache, and every `RoamReady*` item in the temporary folder: staged imports (`RoamReady-Import-*`), the export archive, and photo previews. It deletes the `Search` folder again as a backstop and fails with a visible step if anything can't be removed.
+
+After the erase the coordinator ignores saves, foreground events, waiting-document polls, and searches. A fresh, empty library starts a new session explicitly; a library with nothing to index creates no index file, and a new file appears only when a readable document needs indexing. The index holds document text, so it is covered by the same "everything is erased" promise as the originals; the originals themselves are SwiftData content and are removed with the store.

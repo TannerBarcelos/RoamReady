@@ -23,7 +23,7 @@ final class CorpusEvalTests: XCTestCase {
 
         let tags = Set(corpus.cases.flatMap { $0.tags ?? [] })
         for needed in ["paraphrase", "exact-code", "reservation", "two-rigs", "two-trips", "moved", "deleted", "opt-in", "excluded-category",
-                       "unavailable-bytes", "stale", "conflict", "conflict-control", "unanswerable", "injection", "ocr-noise", "compact-retry"] {
+                       "unavailable-bytes", "stale", "conflict", "conflict-control", "saved-trip", "unanswerable", "injection", "ocr-noise", "compact-retry"] {
             XCTAssertTrue(tags.contains(needed), "no case is tagged \(needed)")
         }
         // Labels are keyed by document and version, so chunk IDs can't be among them.

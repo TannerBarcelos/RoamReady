@@ -148,6 +148,17 @@ struct AssistantDocumentScopeTests {
         #expect(try context.indexJob(documentID: manual.documentID, checksum: "stale") == nil)
     }
 
+    @Test func indexingListsDocumentsWaitingForBytesWithTheirOwnState() throws {
+        let ready = try add(.manual, rig: rig)
+        let waiting = try add(.warranty, rig: rig)
+        waiting.content = nil // iCloud delivered the details before the file
+        try add(.insurance, rig: rig).content = nil
+        let states = Dictionary(uniqueKeysWithValues: try context.indexableDocuments().map { ($0.documentID, $0.availability) })
+        #expect(states == [ready.documentID: .ready, waiting.documentID: .waitingForDownload])
+        // Waiting documents are not searchable until their bytes arrive.
+        #expect(rig.generalAssistantScope().documentIDs == [ready.documentID])
+    }
+
     // MARK: Assignment
 
     private func newTrip(_ name: String) throws -> Trip {

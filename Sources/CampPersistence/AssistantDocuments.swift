@@ -27,6 +27,28 @@ public enum AssistantDocumentEligibility {
         isEligible(category: category, includeInAssistant: includeInAssistant) && availability == .offline
             && file.map { readableContentTypes.contains($0.contentType) } == true
     }
+
+    /// Where a document stands for indexing, or nil when it will never be a candidate (wrong category, or a
+    /// link whose content was never saved). A document whose details arrived before its bytes is waiting, not
+    /// excluded: it is indexed once the bytes land.
+    public static func indexAvailability(category: DocumentCategory, file: DocumentFile?, availability: DocumentAvailability) -> IndexAvailability? {
+        guard searchableCategories.contains(category), file != nil else { return nil }
+        if isSearchable(category: category, file: file, availability: .offline) {
+            switch availability {
+            case .offline: return .ready
+            case .awaitingDownload: return .waitingForDownload
+            case .onlineOnly: return nil
+            }
+        }
+        return availability == .onlineOnly ? nil : .unsupported
+    }
+}
+
+public enum IndexAvailability: Equatable, Sendable {
+    case ready
+    case waitingForDownload
+    /// Stored on this device, but of a kind the Assistant can't read yet.
+    case unsupported
 }
 
 public extension StoredDocument {
@@ -144,14 +166,24 @@ public struct DocumentIndexJob: Sendable {
 public struct IndexableDocument: Sendable, Equatable {
     public let documentID: UUID
     public let checksum: String
+    public let availability: IndexAvailability
+
+    public init(documentID: UUID, checksum: String, availability: IndexAvailability = .ready) {
+        self.documentID = documentID
+        self.checksum = checksum
+        self.availability = availability
+    }
 }
 
 public extension ModelContext {
-    /// Every document the Assistant could ever read, wherever it is attached.
+    /// Every document the Assistant could ever read, wherever it is attached, including those still waiting
+    /// for their bytes and those it can't read, so each can show its own state.
     func indexableDocuments() throws -> [IndexableDocument] {
         try fetch(FetchDescriptor<StoredDocument>()).compactMap {
-            guard $0.isAssistantSearchable, let checksum = $0.checksum else { return nil }
-            return IndexableDocument(documentID: $0.documentID, checksum: checksum)
+            guard !$0.isDeleted, let checksum = $0.checksum,
+                  let availability = AssistantDocumentEligibility.indexAvailability(category: $0.category, file: $0.file, availability: $0.availability)
+            else { return nil }
+            return IndexableDocument(documentID: $0.documentID, checksum: checksum, availability: availability)
         }
     }
 

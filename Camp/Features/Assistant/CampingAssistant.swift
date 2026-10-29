@@ -10,6 +10,8 @@ struct CampingAnswer: Sendable {
     /// Document passages the model cited, validated against what the request supplied.
     var sources: [DocumentSource] = []
     var coverage: DocumentCoverage = .notSearched
+    /// The question was about the booking, so the saved trip is listed beside any document sources.
+    var usedSavedTrip = false
     var mode: String { "Apple Intelligence · Generated on this device · Check against your manual" }
 }
 
@@ -86,13 +88,18 @@ enum CampingAssistant {
     /// Model failures reach the UI as retryable errors rather than being replaced with saved text.
     static func answer(question: String, steps candidates: [ChecklistStepDraft], rigType: RigType?, step: ChecklistStepDraft?,
                        scope: CampingHelpRequest.Scope = .checklist, history: [CampingChatTurn] = [],
-                       rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil) async throws -> CampingAnswer {
+                       rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
+                       tripFacts: TripBookingFacts? = nil,
+                       onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
+        onStage?(.preparing)
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType,
                                          step: step, scope: scope, history: history, rigContext: rigContext,
-                                         documents: documents)
+                                         documents: documents, tripFacts: tripFacts)
         let reply: CampingReply
         do {
+            try Task.checkCancellation()
+            onStage?(.writing)
             #if DEBUG
             if let generator = uiTestGenerator {
                 reply = try await CampingGeneration.answer(to: request, using: generator)
@@ -108,7 +115,7 @@ enum CampingAssistant {
             throw (error as? CampingChatFailure) ?? .failed
         }
         return CampingAnswer(text: reply.text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL,
-                             sources: reply.sources, coverage: reply.coverage)
+                             sources: reply.sources, coverage: reply.coverage, usedSavedTrip: reply.usedSavedTrip)
     }
 
     private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {
@@ -124,8 +131,15 @@ enum CampingAssistant {
         let fails: Bool
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
+        /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
+        var delaysFirstCall = false
+        /// Fails the first question only, so Retry can succeed.
+        var failsFirstCall = false
         func respond(to prompt: String, instructions: String) async throws -> String {
-            if fails { throw CampingChatFailure.failed }
+            CampingAssistant.uiTestCalls += 1
+            let isFirst = CampingAssistant.uiTestCalls == 1
+            if delaysFirstCall && isFirst { try await Task.sleep(for: .seconds(3)) }
+            if fails || (failsFirstCall && isFirst) { throw CampingChatFailure.failed }
             if citesDocuments {
                 return prompt.contains("\n[S1] ")
                     ? "Per your manual, error code E4 means the water heater igniter failed to light. Turn the unit off and wait five minutes before retrying. [S1]"
@@ -134,6 +148,8 @@ enum CampingAssistant {
             return "Test response: keep drinking water in a clean, covered container."
         }
     }
+
+    fileprivate static var uiTestCalls = 0
 
     private static var uiTestGenerator: UITestGenerator? {
         guard uiTestingAvailability == .ready else { return nil }
@@ -144,6 +160,8 @@ enum CampingAssistant {
         case "reply": return UITestGenerator(fails: false)
         case "failure": return UITestGenerator(fails: true)
         case "document": return UITestGenerator(fails: false, citesDocuments: true)
+        case "slow": return UITestGenerator(fails: false, delaysFirstCall: true)
+        case "failure-once": return UITestGenerator(fails: false, failsFirstCall: true)
         default: return nil
         }
     }
