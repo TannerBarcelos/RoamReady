@@ -18,6 +18,8 @@ final class AssistantConversation {
     var question = ""
     var exchanges: [CampingExchange] = []
     var generationFailure: CampingChatFailure?
+    /// The question Retry resubmits, kept apart from the message field the person may have edited since.
+    var failedQuestion: String?
 }
 
 /// Trip and checklist help: a fresh conversation each time the sheet opens. The sheet's closure reruns
@@ -41,8 +43,7 @@ struct AssistantView: View {
     let isPresentedAsSheet: Bool
     /// Borrowed from whoever owns the conversation's lifetime.
     @Bindable var chat: AssistantConversation
-    @State private var pendingQuestion: String?
-    @State private var searchingDocuments = false
+    @State private var progress = AssistantProgress()
     @State private var openedSource: DocumentSource?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
@@ -60,7 +61,8 @@ struct AssistantView: View {
         return .general(rig: rigs.active.first)
     }
 
-    private var answering: Bool { pendingQuestion != nil }
+    private var pendingQuestion: String? { progress.isActive ? progress.question : nil }
+    private var answering: Bool { progress.isActive }
     private var showsConversation: Bool { availability.showsConversation }
     private var canSend: Bool {
         showsConversation && !answering && !chat.question.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -89,7 +91,7 @@ struct AssistantView: View {
                 if showsConversation {
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
-                            chat.exchanges = []; chat.question = ""; chat.generationFailure = nil
+                            chat.exchanges = []; chat.question = ""; chat.generationFailure = nil; chat.failedQuestion = nil
                         }.disabled(answering || chat.exchanges.isEmpty)
                     }
                 }
@@ -234,15 +236,16 @@ struct AssistantView: View {
                     }
                     if let pendingQuestion {
                         userMessage(pendingQuestion)
-                        ProgressView(searchingDocuments ? "Searching your documents…" : "Thinking…")
-                            .accessibilityLabel(searchingDocuments ? "Assistant is searching your documents" : "Assistant is answering")
+                        stageList
                     }
                     if let generationFailure = chat.generationFailure {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Couldn’t get a response", systemImage: "exclamationmark.bubble")
                                 .font(.headline)
                             Text(generationFailure.localizedDescription).foregroundStyle(.secondary)
-                            Button("Try again", action: ask).disabled(!canSend)
+                            Button("Retry", action: retry)
+                                .disabled(answering || chat.failedQuestion == nil)
+                                .accessibilityIdentifier("assistantRetry")
                         }
                     }
                     Color.clear.frame(height: 1).id("bottom")
@@ -260,6 +263,21 @@ struct AssistantView: View {
                 withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
             }
         }
+    }
+
+    /// Only the stages this request reached: finished ones are checked, the current one spins.
+    private var stageList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(progress.stages.enumerated()), id: \.offset) { index, stage in
+                if index == progress.stages.count - 1 {
+                    ProgressView(stage.title)
+                } else {
+                    Label(stage.title, systemImage: "checkmark.circle").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("assistantProgress")
     }
 
     private func userMessage(_ text: String) -> some View {
@@ -309,14 +327,28 @@ struct AssistantView: View {
         task?.cancel()
         task = nil
         if let pendingQuestion, chat.question.isEmpty { chat.question = pendingQuestion }
-        pendingQuestion = nil
-        searchingDocuments = false
+        // Forgetting the request id is what stops its late results; see `progress.isCurrent`.
+        progress.cancel()
+    }
+
+    private func announce(_ text: String?) {
+        guard let text else { return }
+        AccessibilityNotification.Announcement(text).post()
     }
 
     private func ask() {
         refreshAvailability()
         guard canSend else { return }
-        let submitted = chat.question.trimmingCharacters(in: .whitespacesAndNewlines)
+        submit(chat.question.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    private func retry() {
+        refreshAvailability()
+        guard showsConversation, !answering, let question = chat.failedQuestion else { return }
+        submit(question)
+    }
+
+    private func submit(_ submitted: String) {
         // Everything this request reads is captured now. A scope change cancels it (see onChange above).
         let target = currentTarget
         let rig = trip == nil ? rigs.active.first : trip?.rig
@@ -333,37 +365,45 @@ struct AssistantView: View {
         let history = AssistantConversationRules.history(
             chat.exchanges.map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
         let retrievalQuestion = AssistantConversationRules.retrievalQuestion(submitted, after: history)
-        pendingQuestion = submitted
+        let request = progress.begin(question: submitted)
         chat.generationFailure = nil
-        chat.question = ""
+        chat.failedQuestion = nil
+        // A retry leaves anything newly typed in the field alone.
+        if chat.question.trimmingCharacters(in: .whitespacesAndNewlines) == submitted { chat.question = "" }
         let index = library.documentAssistant
         let context = modelContext
         task = Task {
             do {
                 var evidence: DocumentEvidence?
                 if target.rigID != nil || target.isTrip {
-                    searchingDocuments = true
+                    announce(progress.advance(to: .searchingDocuments, for: request))
                     evidence = await index.evidence(for: retrievalQuestion, target: target, in: context)
-                    searchingDocuments = false
                     try Task.checkCancellation()
                 }
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        history: history, rigContext: rigContext, documents: evidence,
-                                                       tripFacts: tripFacts)
-                guard !Task.isCancelled else { return }
+                                                       tripFacts: tripFacts,
+                                                       onStage: { stage in
+                    guard progress.isCurrent(request) else { return }
+                    announce(progress.advance(to: stage, for: request))
+                })
                 refreshAvailability()
-                guard !Task.isCancelled, showsConversation, currentTarget == target else { return }
+                // Canceled or superseded work ends here without touching the conversation.
+                guard !Task.isCancelled, progress.isCurrent(request) else { return }
+                guard showsConversation, currentTarget == target else { cancelRequest(); return }
                 chat.exchanges.append(CampingExchange(question: submitted, answer: answer, scope: target))
+                progress.finish(request)
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, progress.isCurrent(request) else { return }
                 refreshAvailability()
-                guard !Task.isCancelled, showsConversation else { return }
-                chat.generationFailure = (error as? CampingChatFailure) ?? .failed
+                guard !Task.isCancelled, progress.isCurrent(request), showsConversation else { return }
+                let failure = (error as? CampingChatFailure) ?? .failed
+                announce(progress.fail(request, with: failure))
+                chat.generationFailure = failure
+                chat.failedQuestion = submitted
                 chat.question = submitted
             }
-            pendingQuestion = nil
-            searchingDocuments = false
             task = nil
         }
     }
