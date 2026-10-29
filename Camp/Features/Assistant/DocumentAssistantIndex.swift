@@ -134,8 +134,34 @@ final class DocumentAssistantIndex {
             }
         }
         // Check the library again, now, so a document deleted, reassigned, or replaced during the search is dropped.
-        return DocumentEvidence.make(question: question, candidates: candidates, live: context.documentScope(for: target).live)
-            .capturing(readiness)
+        let liveNow = context.documentScope(for: target).live
+        let evidence = DocumentEvidence.make(question: question, candidates: candidates, live: liveNow)
+        guard target.isTrip, let followUp = await bookingFollowUp(for: question, live: liveNow, coordinator: coordinator) else {
+            return evidence.capturing(readiness)
+        }
+        return evidence.merging(followUp: followUp).capturing(readiness)
+    }
+
+    /// A booking question can match one confirmation and miss another that says something different. One more
+    /// search, still inside the trip's allow-list and limited to its Reservation documents, fetches the competing
+    /// passage so the camper sees both values. Nothing is written; failures just leave the first result.
+    private func bookingFollowUp(for question: String, live: [UUID: LiveDocument],
+                                 coordinator: DocumentIndexCoordinator) async -> DocumentEvidence? {
+        guard let query = BookingFactQuestion.followUpQuery(for: question) else { return nil }
+        let reservations = Dictionary(uniqueKeysWithValues: live
+            .filter { $0.value.category == DocumentCategory.reservation.title }
+            .compactMap { id, document in document.checksum.map { (id.uuidString, $0) } })
+        guard !reservations.isEmpty,
+              let result = await coordinator.search(query, live: reservations, limit: 8),
+              !Task.isCancelled else { return nil }
+        let candidates = result.hits.compactMap { hit -> DocumentEvidenceCandidate? in
+            UUID(uuidString: hit.documentID).map {
+                DocumentEvidenceCandidate(documentID: $0, indexedChecksum: hit.checksum, page: hit.page,
+                                          pageLabel: hit.pageLabel, section: hit.section, text: hit.text)
+            }
+        }
+        // Validated against the library as it is now, like the first pass.
+        return DocumentEvidence.make(question: query, candidates: candidates, live: live)
     }
 }
 
