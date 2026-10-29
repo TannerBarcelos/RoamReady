@@ -146,10 +146,13 @@ sources: reply.sources, coverage: reply.coverage, readiness: reply.readiness,
         var delaysFirstCall = false
         /// Fails the first question only, so Retry can succeed.
         var failsFirstCall = false
+        /// Waits before every answer, so a UI test can resize or rotate while it's generating.
+        var delay: Duration = .zero
         func respond(to prompt: String, instructions: String) async throws -> String {
             CampingAssistant.uiTestCalls += 1
             let isFirst = CampingAssistant.uiTestCalls == 1
             if delaysFirstCall && isFirst { try await Task.sleep(for: .seconds(3)) }
+            if delay > .zero { try await Task.sleep(for: delay) }
             if fails || (failsFirstCall && isFirst) { throw CampingChatFailure.failed }
             if citesDocuments {
                 return prompt.contains("\n[S1] ")
@@ -171,6 +174,7 @@ sources: reply.sources, coverage: reply.coverage, readiness: reply.readiness,
               arguments.indices.contains(index + 1) else { return nil }
         switch arguments[index + 1] {
         case "reply": return UITestGenerator(fails: false)
+        case "slow-reply": return UITestGenerator(fails: false, delay: .seconds(4))
         case "failure": return UITestGenerator(fails: true)
         case "document": return UITestGenerator(fails: false, citesDocuments: true)
         case "slow": return UITestGenerator(fails: false, delaysFirstCall: true)

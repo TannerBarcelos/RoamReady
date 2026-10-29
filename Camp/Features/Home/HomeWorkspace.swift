@@ -29,6 +29,7 @@ struct HomeWorkspace: View {
             if usesDuoWorkspace {
                 NavigationSplitView(preferredCompactColumn: $compactColumn) {
                     HomeView(now: now, selection: listSelection)
+                        .assistantToolbarItem()
                 } detail: {
                     detail
                 }

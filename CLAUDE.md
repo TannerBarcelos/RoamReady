@@ -48,7 +48,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `-document-search-smoke` | Runs a file-backed FTS5 + sqlite-vec lifecycle in a temp folder and logs `DOCUMENT-SEARCH-SMOKE: PASS` or `FAIL` ([DocumentSearchSmokeCheck.swift](Camp/App/DocumentSearchSmokeCheck.swift)) |
 | `-navigation-ui-test` | Uses an in-memory library with fixture trips; the real library is never opened ([NavigationUITestLibrary.swift](Camp/App/NavigationUITestLibrary.swift)) |
 | `-assistant-ui-test <state>` | Sets the Assistant's availability to `ready`, `disabled`, `preparing`, `unsupported`, `unavailable`, or `unsupported-language`, and skips onboarding |
-| `-assistant-generation-test <reply\|failure>` | Gives the Assistant a stubbed reply or failure |
+| `-assistant-generation-test <reply\|slow-reply\|failure>` | Gives the Assistant a stubbed reply or failure; `slow-reply` waits 4 seconds so a test can resize while it generates |
 | `-assistant-device-smoke` | Skips onboarding for the Assistant smoke test on a real device |
 | `-duo-ui-test` | Forces the iPhone Duo workspace without hinge hardware ([DuoWorkspace.swift](Camp/Shared/DuoWorkspace.swift)); combine with `-navigation-ui-test` to skip onboarding |
 | `-assistant-generation-test document` | With `-assistant-ui-test ready`: a stubbed model that answers from the first supplied document excerpt and cites it as `[S1]` |

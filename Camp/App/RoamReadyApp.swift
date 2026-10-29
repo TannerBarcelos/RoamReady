@@ -98,24 +98,21 @@ struct MainTabs: View {
         }
     }
 
+    /// Mac, iPad, Duo, and accessibility text sizes put the Assistant in the navigation bar; other
+    /// iPhones keep the floating button. Duo always uses the toolbar so folding or unfolding never
+    /// moves the button between the bar and the corner.
     private var usesAssistantToolbar: Bool {
         #if targetEnvironment(macCatalyst)
         true
         #else
-        horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
+        usesDuoWorkspace || horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
         #endif
     }
 
     private func tabRoot<Content: View>(stacked: Bool = true, @ViewBuilder content: () -> Content) -> some View {
         stack(stacked) {
-            content().toolbar {
-                if showsAssistant && usesAssistantToolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Ask Assistant", systemImage: "sparkles") { askingAssistant = true }
-                            .accessibilityIdentifier("openAssistant")
-                    }
-                }
-            }
+            // Unstacked roots bring their own navigation container and place the item inside it.
+            if stacked { content().assistantToolbarItem() } else { content() }
         }
             // The tab content's safe area ends above the native tab bar. Keeping the accessory
             // here lets its glass stay circular instead of the tab accessory's full-width capsule.
@@ -143,7 +140,9 @@ struct MainTabs: View {
     }
 
     private var tabActions: MainTabActions {
-        MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
+        var actions = MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
+        if showsAssistant && usesAssistantToolbar { actions.askAssistant = { askingAssistant = true } }
+        return actions
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
     private var tabSelection: Binding<Destination> {
@@ -157,6 +156,27 @@ struct MainTabs: View {
 struct MainTabActions {
     var addTrip: @MainActor () -> Void = {}
     var showCampFinder: @MainActor () -> Void = {}
+    /// Set when the Assistant belongs in the navigation bar rather than the floating button.
+    var askAssistant: (@MainActor () -> Void)?
+}
+
+extension View {
+    /// The Assistant's navigation bar button, when `MainTabs` puts it there.
+    func assistantToolbarItem() -> some View { modifier(AssistantToolbarItem()) }
+}
+
+private struct AssistantToolbarItem: ViewModifier {
+    @Environment(\.mainTabActions) private var actions
+    func body(content: Content) -> some View {
+        content.toolbar {
+            if let askAssistant = actions.askAssistant {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Ask Assistant", systemImage: "sparkles") { askAssistant() }
+                        .accessibilityIdentifier("openAssistant")
+                }
+            }
+        }
+    }
 }
 
 extension EnvironmentValues {
