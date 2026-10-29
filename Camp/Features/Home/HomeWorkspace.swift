@@ -7,9 +7,10 @@ import CampPersistence
 /// keep them while the display folds and gain destinations without holding stale models.
 enum HomeDestination: Hashable {
     case trip(PersistentIdentifier)
+    case checklist(PersistentIdentifier, ChecklistPhase)
 
-    var tripID: PersistentIdentifier? {
-        switch self { case .trip(let id): id }
+    var tripID: PersistentIdentifier {
+        switch self { case .trip(let id), .checklist(let id, _): id }
     }
 }
 
@@ -42,12 +43,21 @@ struct HomeWorkspace: View {
                             .accessibilityLabel(shownTrip?.campgroundName ?? "None")
                             .accessibilityIdentifier("homeDetailTrip")
                             .allowsHitTesting(false)
+                        Color.clear.frame(width: 1, height: 1)
+                            .accessibilityElement()
+                            .accessibilityLabel(shownChecklist?.title ?? "None")
+                            .accessibilityIdentifier("homeDetailChecklist")
+                            .allowsHitTesting(false)
                     }
                 }
                 #endif
             } else {
                 HomeView(now: now)
             }
+        }
+        // A deleted trip takes its pick with it, so the detail falls back to the featured trip.
+        .onChange(of: trips.map(\.persistentModelID)) { _, ids in
+            if let id = selection?.tripID, !ids.contains(id) { selection = nil }
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -66,21 +76,37 @@ struct HomeWorkspace: View {
         }
     }
 
-    private var shownTrip: Trip? { trips.displayedTrip(selected: selection?.tripID, asOf: now) }
+    /// The pick, while its trip is still in the library.
+    private var validSelection: HomeDestination? {
+        selection.flatMap { pick in trips.contains { $0.persistentModelID == pick.tripID } ? pick : nil }
+    }
+
+    private var shownTrip: Trip? { trips.displayedTrip(selected: validSelection?.tripID, asOf: now) }
+
+    private var shownChecklist: ChecklistPhase? {
+        if case .checklist(_, let phase)? = validSelection { phase } else { nil }
+    }
 
     /// Side by side, the featured trip is highlighted until the owner picks another. Collapsed,
     /// only a pick counts, so Home stays in front until a trip is tapped.
     private var listSelection: Binding<HomeDestination?> {
         Binding(get: {
-            horizontalSizeClass == .compact ? selection : shownTrip.map { .trip($0.persistentModelID) }
+            horizontalSizeClass == .compact ? validSelection
+                : validSelection ?? shownTrip.map { .trip($0.persistentModelID) }
         }, set: { selection = $0 })
     }
 
     @ViewBuilder private var detail: some View {
         if let trip = shownTrip {
-            // A new trip starts a fresh stack rather than keeping the last trip's pushed screens.
-            NavigationStack { TripDetailView(trip: trip) }
-                .id(trip.persistentModelID)
+            // A new pick starts a fresh stack rather than keeping the last pick's pushed screens.
+            NavigationStack {
+                if let phase = shownChecklist {
+                    ChecklistView(trip: trip, initialPhase: phase)
+                } else {
+                    TripDetailView(trip: trip)
+                }
+            }
+            .id(validSelection ?? .trip(trip.persistentModelID))
         } else {
             ContentUnavailableView("No trip to show", systemImage: "tent",
                                    description: Text("Your current or next trip appears here."))
