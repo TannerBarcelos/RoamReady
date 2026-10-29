@@ -133,11 +133,14 @@ Issue #90 checked onboarding, Profile, Documents, Photos, and the Assistant afte
 What was run (iOS 27.1 iPhone Duo simulator, closed cover display only, about 466×678 pt, with a vertical tab bar and status column on the trailing edge):
 
 - Home, Photos & site notes, and the Trip photo sheet were inspected on the cover display. Rotation has no effect there; the simulator can't unfold, so the open display and the fold/unfold transition weren't exercised.
-- The planned landscape and accessibility-text-size tours with `-duo-ui-test` on an iPhone 18 Pro clone didn't complete, because the shared host was overloaded and the XCUITest runner timed out. Everything else below comes from reading the code.
+- `NavigationUITests`, `LibraryWorkflowUITests`, `DuoWorkspaceUITests`, and `DuoHomeUITests` pass on the iPhone Duo and iPhone 18 Pro simulators. The landscape and accessibility-text-size tours with `-duo-ui-test` weren't run, so the findings below for those come from reading the code.
 
 Fixed:
 
 - **Photo tiles overflowed their grid column.** `LocalPhoto` is aspect-fill, and with only a fixed height its frame took the image's natural width (about 200 pt for a 3:2 photo). Each tile overflowed its column and spilled past the card's leading edge, clipping the caption ([before](validation/duo-cover-photos-overflow-before.png)). The same was true of the 300 pt photo in Trip photo. Both now take their column or row width before the height is applied. This also happens on regular iPhones whenever a column is narrower than the photo's natural width, so the fix applies everywhere; the navigation fixtures have no photos, so the regular-iPhone baselines don't change.
+
+- **Onboarding's workflow test tapped through the bottom bar.** On the short cover display, the Tent card can scroll under the onboarding action bar while XCUITest still reports it as hittable. The tap then landed on **Set up my travel trailer** instead. The app was behaving correctly, so only `LibraryWorkflowUITests` changed: it now scrolls until the card is clear of the bar. The test passes on the iPhone Duo and iPhone 18 Pro simulators.
+- The floating Assistant button overlapped the trailing end of list rows on the cover display. #89 moves the Assistant into the toolbar on Duo, which removes the overlap.
 
 Checked with no change needed:
 
@@ -148,7 +151,6 @@ Checked with no change needed:
 
 Remaining:
 
-- On the cover display, the floating Assistant button (owned by `MainTabs`, #89) overlaps the trailing end of list rows and the Photos footer text.
 - In iPhone landscape with the keyboard up, the onboarding action bar (progress, button, and hint) leaves little room for the rig form. This isn't specific to Duo.
 - At accessibility text sizes, `DocumentRow`'s category and expiry line is a single `HStack` and can truncate. This isn't specific to Duo.
 - Still to verify on hardware or a newer simulator: the open (unfolded) display, the live fold/unfold resize with a document preview and a photo open, the hinge region on the open display, and the iPhone landscape and accessibility-size passes with `-duo-ui-test`.
