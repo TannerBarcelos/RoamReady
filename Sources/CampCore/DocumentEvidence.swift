@@ -89,10 +89,18 @@ public struct DocumentEvidence: Equatable, Sendable {
     public let excerpts: [DocumentExcerpt]
     /// True when documents were in scope and searched, even if nothing was relevant.
     public let searched: Bool
+    /// How ready each document in scope was when the question was asked.
+    public let readiness: ScopeReadiness
 
-    public init(excerpts: [DocumentExcerpt], searched: Bool = true) {
+    public init(excerpts: [DocumentExcerpt], searched: Bool = true, readiness: ScopeReadiness = .empty) {
         self.excerpts = excerpts
         self.searched = searched
+        self.readiness = readiness
+    }
+
+    /// The same evidence with the scope's readiness captured, for the request that is about to be asked.
+    public func capturing(_ readiness: ScopeReadiness) -> DocumentEvidence {
+        DocumentEvidence(excerpts: excerpts, searched: searched, readiness: readiness)
     }
 
     public var isEmpty: Bool { excerpts.isEmpty }
@@ -175,6 +183,10 @@ public struct DocumentEvidence: Equatable, Sendable {
 
     /// Rules for the model, added to its instructions whenever documents were searched.
     var instructions: String {
+        baseInstructions + (readiness.promptNote(sanitizing: Self.neutralized).map { "\n\n" + $0 } ?? "")
+    }
+
+    private var baseInstructions: String {
         if excerpts.isEmpty {
             return """
 
