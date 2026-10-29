@@ -82,6 +82,76 @@ On an iOS simulator or device:
 
 These visual checks are not covered by the package tests.
 
+## Regular-iPhone layout baselines (Duo)
+
+The iPhone Duo work (#82–#91) changes layouts only on Duo. Regular iPhones must keep their current layouts, navigation, tab behavior, and Assistant placement. The screenshots in [validation/duo-baselines](validation/duo-baselines/) record the regular-iPhone layouts from `main` at 7c99419, before any Duo change. Compare each Duo slice against them.
+
+| | Small iPhone | Large iPhone |
+| --- | --- | --- |
+| Simulator | iPhone 17e | iPhone Air (the largest iPhone simulator installed; there is no Pro Max) |
+| OS | iOS 27.0 (24A434) | iOS 27.0 (24A434) |
+| File prefix | `small-` | `large-` |
+
+- **Text sizes:** `default` is the system default (`content_size large`); `ax3` is Accessibility Extra Large (`content_size accessibility-extra-large`).
+- **Orientations:** `portrait` and `landscape` (landscape left).
+- **Appearance:** Light. Captured on Oct 27–28, 2026, so dates in the fixture trips show those days.
+- **Files:** `<device>-<text size>-<orientation>-<screen>.png`, scaled so the longest side is 900 px. There are 48: the small iPhone at the default text size is missing. Its captures came out at the accessibility size because the text-size change didn't take effect, so they were left out. Recapture that set with the steps below.
+
+| Screen | How it's reached | Launch arguments |
+| --- | --- | --- |
+| `onboarding` | A fresh install, no flags (opens the real, empty library) | none |
+| `home` | Launch | `-assistant-ui-test ready -navigation-ui-test` |
+| `trip-detail` | Home › Current Pines | same |
+| `checklist` | Trip details › Setup | same |
+| `camp-finder` | The Camp Finder tab, after 4 seconds for map tiles | same |
+| `profile` | The Profile tab | same |
+| `assistant-entry` | Home, showing the sparkle button or the toolbar's Ask Assistant | same |
+| `assistant-sheet` | The Assistant sheet, opened from Home | same |
+
+`-navigation-ui-test` uses the in-memory fixture library ([NavigationUITestLibrary.swift](../Camp/App/NavigationUITestLibrary.swift)), so the trips are Current Pines, Overlapping Creek, Upcoming Lake, and Past Meadows. Their dates are relative to today, so later captures match except for the dates, the clock, and Camp Finder's map tiles.
+
+What the baselines show today:
+
+- On the large iPhone at the default size in portrait, the Assistant is the round sparkle button above the tab bar.
+- On the large iPhone in landscape, the width class is regular, so the Assistant is **Ask Assistant** in the toolbar even at the default size.
+- At the accessibility size, the Assistant is in the toolbar on both iPhones and in both orientations.
+- The tab bar always shows Home, Trip, Camp Finder, and Profile.
+
+### Recapture the baselines
+
+`LayoutBaselineUITests` ([LayoutBaselineUITests.swift](../Tests/RoamReadyUITests/LayoutBaselineUITests.swift)) takes the screenshots. It skips itself unless `ROAMREADY_BASELINE_DIR` is set, so the regular UI test run is unaffected. Use your own simulator clones so other simulator work isn't disturbed:
+
+```sh
+SMALL=$(xcrun simctl clone "iPhone 17e" baseline-small)   # pick the iOS 27.0 device if there are several
+LARGE=$(xcrun simctl clone "iPhone Air" baseline-large)
+xcrun simctl boot "$SMALL"; xcrun simctl boot "$LARGE"
+
+xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+  -destination "id=$SMALL" -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO build-for-testing
+
+OUT=/tmp/duo-baselines
+for device in small large; do
+  udid=$SMALL; [[ $device == large ]] && udid=$LARGE
+  for size in large accessibility-extra-large; do
+    label=default; [[ $size != large ]] && label=ax3
+    xcrun simctl uninstall "$udid" com.tannerdev.roamready   # fresh install, so onboarding shows
+    xcrun simctl ui "$udid" content_size "$size"
+    xcrun simctl ui "$udid" content_size                      # confirm it took effect
+    TEST_RUNNER_ROAMREADY_BASELINE_DIR=$OUT TEST_RUNNER_ROAMREADY_BASELINE_PREFIX=$device-$label \
+      xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -destination "id=$udid" \
+      -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO test-without-building \
+      -only-testing:RoamReadyUITests/LayoutBaselineUITests
+  done
+  xcrun simctl ui "$udid" content_size large
+done
+
+xcrun simctl delete "$SMALL" "$LARGE"
+```
+
+Each run takes several minutes per device and text size. The simulator must stay booted for the whole run: if `simctl ui` reports the device is shut down, the text size was not applied and that run must be repeated. XCTest stores landscape screenshots in portrait pixels with an orientation tag. Before committing, scale them with ImageIO using `kCGImageSourceCreateThumbnailWithTransform` (and `kCGImageSourceThumbnailMaxPixelSize` 900), which stores them upright; plain `sips -Z` keeps the tag.
+
+To check a Duo slice, run the same capture on its branch and compare the images file by file. Regular iPhones should differ only in dates, the clock, and map tiles.
+
 ## Apple capability configuration
 
 The default `Camp.entitlements` includes Mac sandbox permissions but no CloudKit or WeatherKit capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. Location (when in use, approximate by default) is requested when the owner taps Home weather or Camp Finder’s Near me. Weather requests round it to about 1 km; Camp Finder uses it to search Apple Maps. Manual trip entry and text search work without location permission.
