@@ -96,7 +96,7 @@ CloudKit subscription delivery also needs the appropriate Push Notifications cap
 
 SwiftData manages the local store; no raw SQL or SQLite driver is used. Its CloudKit mirroring (`NSPersistentCloudKitContainer` underneath) manages cloud transfers and external binary data. There is no custom CloudKit transport.
 
-See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the next-launch preference, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements contain only Mac sandbox permissions. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of the generated CloudKit schema.
+See [offline-storage.md](offline-storage.md) for new-container provisioning, default-on sync and the next-launch preference, schema-change rules, asset behavior, and physical-device acceptance. Default entitlements contain only Mac sandbox permissions. Native mirroring requires a new CloudKit container, Push Notifications provisioning, and deployment of the generated CloudKit schema. Before the first Production deployment, confirm the Development schema includes `StoredDocument.includeInAssistant`; after it, only additive changes are allowed.
 
 `ICloudSettingsTests` cover session-stable preferences, next-launch application in both directions, unconfigured builds, and passive activity/error reporting without a global delivery claim. These run in CI with the persistence suite.
 
