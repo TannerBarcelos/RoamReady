@@ -146,4 +146,25 @@ final class TripBookingFactsTests: XCTestCase {
         XCTAssertEqual(merged.excerpts.last?.text, "Check-in time moved to 4 pm.")
         XCTAssertEqual(merged.merging(followUp: competing), merged, "the same passage is not added twice")
     }
+
+    // MARK: Prompt budget
+
+    func testFullPlanMatchesThePromptAndCountsTheSavedFacts() async throws {
+        let request = CampingHelpRequest(question: "What time is check-in?", steps: [], rigType: nil, step: nil, scope: .checklist,
+                                         documents: evidence("Confirmation", page: 1, text: "Check-in time is 3 pm."),
+                                         tripFacts: TripBookingFacts(draft()))
+        let plan = try await request.plan(.full, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+        XCTAssertEqual(plan.prompt, request.prompt)
+        XCTAssertGreaterThan(plan.usage.savedTrip, 0)
+    }
+
+    func testTightBudgetKeepsSavedFactsAndQuestionWhileDroppingConversation() async throws {
+        let history = (0..<3).map { CampingChatTurn(question: "q\($0) " + String(repeating: "a", count: 300), answer: String(repeating: "b", count: 900)) }
+        let request = CampingHelpRequest(question: "What time is check-in?", steps: [], rigType: nil, step: nil, scope: .checklist,
+                                         history: history, tripFacts: TripBookingFacts(draft()))
+        let plan = try await request.plan(.full, counter: ConservativeTokenEstimator(), budget: PromptBudget(contextSize: 1800))
+        XCTAssertTrue(plan.prompt.contains(TripBookingFacts.beginMarker))
+        XCTAssertTrue(plan.prompt.contains("What time is check-in?"))
+        XCTAssertLessThan(plan.usage.conversation, 900)
+    }
 }
