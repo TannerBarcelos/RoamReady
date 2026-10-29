@@ -14,6 +14,8 @@ public enum DocumentIndexState: Equatable, Sendable {
     case noUsableText(NoUsableTextReason)
     /// The text is not English, which document answers do not use yet.
     case englishOnly
+    /// Only the English passages are used; the rest are another language or couldn't be classified.
+    case englishPartial
     /// A kind of file the Assistant can't read.
     case unsupported
     /// Reading or indexing failed in a way another try may fix.
@@ -103,6 +105,7 @@ public struct ReconciliationPlan: Equatable, Sendable {
                     case .readPartially: .readPartially
                     case .noUsableText(let reason): .noUsableText(reason)
                     case .englishOnly: .englishOnly
+                    case .englishPartial: .englishPartial
                     }
                 } else if exhausted.contains(document.id) {
                     plan.states[document.id] = .retryableFailure
