@@ -21,6 +21,7 @@ final class AssistantUITests: XCTestCase {
         guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("iPad uses the toolbar") }
         let app = launch("ready")
         XCTAssertTrue(app.buttons["openAssistant"].waitForExistence(timeout: 10))
+        if app.descendants(matching: .any)["duoWorkspace"].exists { throw XCTSkip("Duo uses the toolbar") }
         XCTAssertFalse(app.barAssistantButton.exists, "The floating button stays out of the bars")
     }
 
