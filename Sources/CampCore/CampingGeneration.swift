@@ -38,6 +38,8 @@ public struct CampingReply: Equatable, Sendable {
     public let sources: [DocumentSource]
     public let droppedCitationCount: Int
     public let coverage: DocumentCoverage
+    /// The question was about the booking and the saved trip's facts were supplied, so they are a source too.
+    public let usedSavedTrip: Bool
 }
 
 /// A testable send path. The app supplies Apple's on-device adapter; there is no remote adapter.
@@ -53,14 +55,16 @@ public enum CampingGeneration {
                               counter: any PromptTokenCounting = ConservativeTokenEstimator()) async throws -> CampingReply {
         let (text, sent) = try await generate(request, using: generator, counter: counter)
         guard request.documents != nil else {
-            return CampingReply(text: text, sources: [], droppedCitationCount: 0, coverage: .notSearched)
+            return CampingReply(text: text, sources: [], droppedCitationCount: 0, coverage: .notSearched,
+                                usedSavedTrip: request.usesSavedTrip)
         }
         // With nothing supplied there is nothing citable, whatever the model wrote.
         let manifest = sent.sources
         let resolved = DocumentCitations.resolve(text, manifest: manifest)
         let coverage: DocumentCoverage = manifest.isEmpty ? .notCovered : (resolved.sources.isEmpty ? .uncited : .cited)
         return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
-                            droppedCitationCount: resolved.droppedCount, coverage: coverage)
+                            droppedCitationCount: resolved.droppedCount, coverage: coverage,
+                            usedSavedTrip: request.usesSavedTrip)
     }
 
     private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating,

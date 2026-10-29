@@ -65,7 +65,7 @@ struct PromptShape: Equatable, Sendable {
 
     /// The next smaller prompt, or nil at the floor. The order is the compaction priority: old conversation
     /// first, then saved checklist context, then the weakest evidence, then evidence text, and the
-    /// current question last. The strongest excerpt and the question outlast everything else.
+    /// current question last. Saved trip facts are small and never shrunk. The strongest excerpt and the question outlast everything else.
     func shrunk() -> PromptShape? {
         var next = self
         if historyTurns > 0 {
@@ -102,6 +102,8 @@ public struct PromptUsage: Equatable, Sendable {
     public let instructions: Int
     public let conversation: Int
     public let checklist: Int
+    /// The trip's saved booking facts. Never shrunk: they and the question outlast everything else.
+    public let savedTrip: Int
     public let evidence: Int
     public let question: Int
     /// Instructions plus prompt, counted as whole texts. This is what the budget is checked against.
@@ -165,7 +167,7 @@ extension CampingHelpRequest {
     }
 
     private struct Rendered {
-        var conversation = "", checklist = "", evidence = "", question = ""
+        var conversation = "", checklist = "", savedTrip = "", evidence = "", question = ""
         var prompt = ""
         var sources: [DocumentSource] = []
     }
@@ -175,6 +177,7 @@ extension CampingHelpRequest {
         out.conversation = Self.conversationText(history.suffix(shape.historyTurns))
         out.checklist = String(passages.prefix(shape.checklistCharacters))
         out.question = String(question.prefix(shape.questionCharacters))
+        out.savedTrip = tripFacts?.promptBlock() ?? ""
         let shown = (documents?.budgeted ?? []).prefix(shape.excerptCount).map {
             DocumentExcerpt(source: $0.source, text: String($0.text.prefix(shape.excerptCharacters)))
         }
@@ -182,7 +185,7 @@ extension CampingHelpRequest {
         if let documents { out.evidence = documents.promptBlock(excerpts: shown) }
         out.prompt = Self.render(category: (rigContext?.type ?? rigType)?.title ?? "Unknown",
                                  conversation: shape.conversation ? out.conversation : nil,
-                                 checklist: out.checklist, evidence: documents == nil ? nil : out.evidence,
+                                 checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip, evidence: documents == nil ? nil : out.evidence,
                                  question: out.question)
         return out
     }
@@ -203,6 +206,7 @@ extension CampingHelpRequest {
                     instructions: instructionTokens,
                     conversation: shape.conversation ? try await measurer.count(rendered.conversation) : 0,
                     checklist: try await measurer.count(rendered.checklist),
+                    savedTrip: tripFacts == nil ? 0 : try await measurer.count(rendered.savedTrip),
                     evidence: documents == nil ? 0 : try await measurer.count(rendered.evidence),
                     question: try await measurer.count(rendered.question),
                     total: instructionTokens + promptTokens, limit: budget.inputLimit)
