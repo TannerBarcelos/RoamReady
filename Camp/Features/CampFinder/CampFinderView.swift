@@ -8,14 +8,23 @@ import CampPersistence
 /// Camp Finder (#26): campgrounds and RV parks from Apple Maps. The map shows only campground
 /// and RV park places, so they appear as you pan; tap one, or search, to see its details.
 /// Online only in v1. Nothing here is user data; saving and trips go through SwiftData.
+///
+/// On Duo's open display the results sit beside a map that fills the rest of the content area;
+/// everywhere else the map stays at the top of the list. The search, camera, and selection live
+/// here, above that switch, so moving between the layouts keeps them and doesn't search again.
 struct CampFinderView: View {
     @Environment(CampFinder.self) private var finder
+    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var search = CampFinderSearch()
     @State private var location = LocationProvider()
     @State private var text = ""
     @State private var camera = MapCameraPosition.userLocation(fallback: .automatic)
     @State private var visibleRegion: MKCoordinateRegion?
+    /// Where the map was last left, so a rebuilt map opens in the same place.
+    @State private var lastCamera: MapCamera?
     @State private var tapped: MapFeature?
+    /// The campground whose details are open after a tap on the map.
     @State private var opened: CampgroundListing?
     @State private var tapFailure: CampFinderError?
     @State private var locating = false
@@ -30,10 +39,59 @@ struct CampFinderView: View {
             }
     }
 
+    /// Only Duo's open display puts the map beside the results. Other iPhones, iPad, and Mac
+    /// receive a compact size class from `MainTabs`, so they keep the stacked layout.
+    private var showsMapBesideResults: Bool { usesDuoWorkspace && horizontalSizeClass == .regular }
+
     private var content: some View {
+        // The stack stays put while its contents switch, so the modifiers below (the search field,
+        // the first search, and cancel on leaving) don't run again when the layout changes.
+        ZStack {
+            if showsMapBesideResults {
+                HStack(spacing: 0) {
+                    results(includesMap: false)
+                        .frame(minWidth: 280, idealWidth: 360, maxWidth: 400)
+                    Divider().ignoresSafeArea(edges: .bottom)
+                    map.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                results(includesMap: true)
+            }
+        }
+        .navigationDestination(for: CampgroundListing.self) { CampgroundDetailView(listing: $0) }
+        .navigationDestination(item: $opened) { CampgroundDetailView(listing: $0) }
+        // Always shown: the default placement hides the field under the large title until the list is pulled down.
+        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
+        .onSubmit(of: .search) {
+            guard cleanedSearchText(text) != nil else { return }
+            search.run(.text(text, near: visibleRegion), using: finder)
+        }
+        .onChange(of: tapped) { _, feature in
+            guard let feature else { return }
+            tapped = nil
+            Task {
+                do { opened = try await finder.listing(for: feature); tapFailure = nil }
+                catch { tapFailure = error as? CampFinderError ?? .failed }
+            }
+        }
+        .onChange(of: search.results.map(\.id)) { _, _ in fitResults() }
+        .onChange(of: showsMapBesideResults) { _, _ in
+            // The map is rebuilt in its new place; open it where the person left it.
+            if let lastCamera, !camera.followsUserLocation { camera = .camera(lastCamera) }
+        }
+        .task {
+            // Searches nearby on its own only when permission was already given; never prompts on open.
+            if search.phase == .idle, location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways {
+                searchNearMe()
+            }
+        }
+        .onDisappear { search.cancel() }
+    }
+
+    private func results(includesMap: Bool) -> some View {
         List {
             Section {
-                map
+                if includesMap { listMap }
                 HStack {
                     Button { searchNearMe() } label: { Label("Near me", systemImage: "location.fill") }
                         .buttonStyle(.bordered).disabled(locating)
@@ -62,30 +120,7 @@ struct CampFinderView: View {
                 }
             }
         }
-        .navigationDestination(for: CampgroundListing.self) { CampgroundDetailView(listing: $0) }
-        .navigationDestination(item: $opened) { CampgroundDetailView(listing: $0) }
-        // Always shown: the default placement hides the field under the large title until the list is pulled down.
-        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
-        .onSubmit(of: .search) {
-            guard cleanedSearchText(text) != nil else { return }
-            search.run(.text(text, near: visibleRegion), using: finder)
-        }
-        .onChange(of: tapped) { _, feature in
-            guard let feature else { return }
-            tapped = nil
-            Task {
-                do { opened = try await finder.listing(for: feature); tapFailure = nil }
-                catch { tapFailure = error as? CampFinderError ?? .failed }
-            }
-        }
-        .onChange(of: search.results.map(\.id)) { _, _ in fitResults() }
-        .task {
-            // Searches nearby on its own only when permission was already given; never prompts on open.
-            if search.phase == .idle, location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways {
-                searchNearMe()
-            }
-        }
-        .onDisappear { search.cancel() }
+        .accessibilityIdentifier("campFinderResults")
     }
 
     private var map: some View {
@@ -94,10 +129,15 @@ struct CampFinderView: View {
         }
         .mapStyle(.standard(pointsOfInterest: .including(CampFinder.categories)))
         .mapControls { MapUserLocationButton(); MapCompass(); MapScaleView() }
-        .onMapCameraChange(frequency: .onEnd) { visibleRegion = $0.region }
-        .frame(height: 320).clipShape(RoundedRectangle(cornerRadius: 16))
-        .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+        .onMapCameraChange(frequency: .onEnd) { visibleRegion = $0.region; lastCamera = $0.camera }
         .accessibilityLabel("Map of campgrounds and RV parks")
+        .accessibilityIdentifier("campFinderMap")
+    }
+
+    private var listMap: some View {
+        map
+            .frame(height: 320).clipShape(RoundedRectangle(cornerRadius: 16))
+            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
     }
 
     @ViewBuilder private var status: some View {

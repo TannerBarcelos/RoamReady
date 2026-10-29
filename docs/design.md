@@ -53,6 +53,8 @@ The app targets iPhone and iPad in portrait and landscape, and Mac through Mac C
 
 On iPhone Duo the app detects the hinge and lets screens use the open display's width instead of the compact width used on other iPhones, iPad, and Mac. It keeps the same four tabs, and Trip still opens Add trip without changing tabs. Home is a native two-column split view there: Home on the leading side and the selected trip's details on the trailing side, starting with the current or next trip. With neither, the trailing side shows a quiet empty state while Home keeps its create actions. When the split view collapses on the cover display, Home is in front and a trip opens on top of it, as on other iPhones.
 
+Camp Finder uses the open display's regular width to put its results list beside a map that fills the remaining content area; the map sits outside the scrolling list. At compact width it falls back to the stacked map and results. The search, camera, and selection are held above that switch so changing layouts doesn't reset them.
+
 Rig thumbnails expose a single labeled image to VoiceOver for both photos and emoji. Their decorative contents stay within the thumbnail; surrounding rig details and actions scale with Dynamic Type.
 
 Release acceptance must still verify large text, VoiceOver labels and order, reduced motion/transparency, light/dark contrast, rotation, iPad split view, long campground names, and outdoor readability. Treat these as validation requirements, not completed accessibility certification. The [validation guide](validation.md#airplane-mode-acceptance-pass) includes the device checklist.
