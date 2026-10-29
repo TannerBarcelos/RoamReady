@@ -95,7 +95,8 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
         configuration.waitingPollInterval = .milliseconds(40)
         configuration.interactivePollInterval = .milliseconds(5)
         configure(&configuration)
-        return DocumentIndexCoordinator(directory: directory, source: source, embedding: provider, extractionVersion: 1, configuration: configuration)
+        return DocumentIndexCoordinator(directory: directory, source: source, embedding: provider, extractionVersion: 1,
+                                        languageDetector: AlwaysEnglish(), configuration: configuration)
     }
 
     private func doc(_ id: String, _ checksum: String = "c1", _ availability: LibraryDocument.Availability = .ready) -> LibraryDocument {
@@ -185,13 +186,13 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
     }
 
     func testShuttingDownMidIndexLeavesOnlyTheOldGenerationAndTheNextRunFinishes() async throws {
-        await source.set(doc("a", "v1"), pages: ["Old edition igniter text."])
+        await source.set(doc("a", "v1"), pages: ["The old edition igniter text."])
         let first = coordinator()
         await first.reconcile(.startup)
         await first.waitUntilIdle()
 
         await source.block()
-        await source.set(doc("a", "v2"), pages: ["New edition igniter text."])
+        await source.set(doc("a", "v2"), pages: ["The new edition igniter text."])
         await first.reconcile(.change)
         await eventually("the replacement to start reading") { await source.reads.count == 2 }
         let shutdown = Task { await first.shutdown() }
@@ -202,7 +203,7 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
         await second.reconcile(.startup)
         await second.waitUntilIdle()
         let result = await second.search("igniter", live: ["a": "v2"])
-        XCTAssertEqual(texts(result), ["New edition igniter text."])
+        XCTAssertEqual(texts(result), ["The new edition igniter text."])
     }
 
     func testLargeDocumentsAreStagedInPageAlignedBatchesAndPublishedOnce() async throws {
@@ -280,7 +281,7 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
     }
 
     func testAReplacementWaitingForItsBytesDropsTheSupersededGeneration() async throws {
-        await source.set(doc("a", "v1"), pages: ["Old edition igniter text."])
+        await source.set(doc("a", "v1"), pages: ["The old edition igniter text."])
         let coordinator = coordinator()
         await coordinator.reconcile(.startup)
         await coordinator.waitUntilIdle()
@@ -492,4 +493,9 @@ final class ReconciliationPlanTests: XCTestCase {
                                            indexed: ["a": record("a", version: 1)], extractionVersion: 2)
         XCTAssertEqual(plan.index.map(\.id), ["a"])
     }
+}
+
+/// These tests are about the index lifecycle, so their short synthetic passages count as English.
+private struct AlwaysEnglish: LanguageDetecting {
+    func hypotheses(for text: String) -> [String: Double] { ["en": 1] }
 }

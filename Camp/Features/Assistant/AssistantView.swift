@@ -221,7 +221,7 @@ struct AssistantView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(exchange.answer.text).textSelection(.enabled)
                                 .accessibilityIdentifier("assistantGeneratedReply")
-                            Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary)
+                            if !exchange.answer.isNotice { Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary) }
                             if exchange.scope != currentTarget {
                                 Text("Asked in \(exchange.scope.summary.text)").font(.caption).foregroundStyle(.secondary)
                             }
@@ -363,7 +363,7 @@ struct AssistantView: View {
             steps = []
         }
         let history = AssistantConversationRules.history(
-            chat.exchanges.map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
+            chat.exchanges.filter { !$0.answer.isNotice }.map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
         let retrievalQuestion = AssistantConversationRules.retrievalQuestion(submitted, after: history)
         let request = progress.begin(question: submitted)
         chat.generationFailure = nil
@@ -376,6 +376,14 @@ struct AssistantView: View {
             do {
                 var evidence: DocumentEvidence?
                 if target.rigID != nil || target.isTrip {
+                    // Document questions are English only: explain instead of searching or translating.
+                    if index.needsEnglish(submitted, target: target, in: context) {
+                        guard !Task.isCancelled, progress.isCurrent(request), currentTarget == target else { return }
+                        chat.exchanges.append(CampingExchange(question: submitted, answer: .englishOnlyNotice, scope: target))
+                        progress.finish(request)
+                        task = nil
+                        return
+                    }
                     announce(progress.advance(to: .searchingDocuments, for: request))
                     evidence = await index.evidence(for: retrievalQuestion, target: target, in: context)
                     try Task.checkCancellation()

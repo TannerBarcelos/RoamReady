@@ -1,5 +1,12 @@
 import Foundation
 
+#if !canImport(NaturalLanguage)
+/// Without a recognizer nothing can be confirmed as English, so nothing is admitted.
+private struct EnglishOnlyUnavailableDetector: LanguageDetecting {
+    func hypotheses(for text: String) -> [String: Double] { [:] }
+}
+#endif
+
 /// Keeps the search index true to the library for one session. All indexing goes through here, one job at a
 /// time: a pass compares the library with the index (metadata only), removes what is gone, then reads and
 /// stages each missing or replaced document in short batches, yielding to searches between batches.
@@ -37,6 +44,7 @@ public actor DocumentIndexCoordinator {
     private let source: any DocumentIndexSource
     private let provider: (any EmbeddingProvider)?
     private let extractionVersion: Int
+    private let languageDetector: any LanguageDetecting
     private let configuration: Configuration
 
     private var phase = Phase.closed
@@ -56,12 +64,22 @@ public actor DocumentIndexCoordinator {
     public private(set) var rebuildCount = 0
 
     public init(directory: URL, source: any DocumentIndexSource, embedding provider: (any EmbeddingProvider)? = nil,
-                extractionVersion: Int, configuration: Configuration = Configuration()) {
+                extractionVersion: Int, languageDetector: (any LanguageDetecting)? = nil,
+                configuration: Configuration = Configuration()) {
         self.directory = directory
         self.source = source
         self.provider = provider
         self.extractionVersion = extractionVersion
+        self.languageDetector = languageDetector ?? Self.systemDetector
         self.configuration = configuration
+    }
+
+    private static var systemDetector: any LanguageDetecting {
+        #if canImport(NaturalLanguage)
+        NaturalLanguageDetector()
+        #else
+        EnglishOnlyUnavailableDetector()
+        #endif
     }
 
     private var indexURL: URL { directory.appending(path: Self.fileName) }
@@ -251,20 +269,26 @@ public actor DocumentIndexCoordinator {
                 try await index.publish(published(.noUsableText(reason), "und"), passages: [])
                 set(id, .noUsableText(reason))
                 failures[id] = nil
-            case .text(let text) where !text.isEnglish:
-                try await index.publish(published(.englishOnly, text.language), passages: [])
-                set(id, .englishOnly)
-                failures[id] = nil
             case .text(let text):
-                let passages = PassageChunker.passages(from: text.pages)
-                guard !passages.isEmpty else {
+                let chunked = PassageChunker.passages(from: text.pages)
+                guard !chunked.isEmpty else {
                     try await index.publish(published(.noUsableText(.noText), text.language), passages: [])
                     set(id, .noUsableText(.noText))
                     failures[id] = nil
                     return
                 }
-                let outcome: IndexOutcome = text.skippedPages > 0 ? .readPartially : .ready
-                let staging = try await index.beginStaging(published(outcome, text.language))
+                // Only confidently English passages are staged, so nothing else can reach search, FTS included.
+                let admission = DocumentLanguagePolicy.admit(chunked, using: languageDetector)
+                guard !admission.admitted.isEmpty else {
+                    try await index.publish(published(.englishOnly, admission.language), passages: [])
+                    set(id, .englishOnly)
+                    failures[id] = nil
+                    return
+                }
+                let passages = admission.admitted
+                let outcome: IndexOutcome = admission.coverage == .partial ? .englishPartial
+                    : (text.skippedPages > 0 ? .readPartially : .ready)
+                let staging = try await index.beginStaging(published(outcome, admission.language))
                 token = staging
                 var done = 0
                 set(id, .indexing(done: 0, of: passages.count))
@@ -277,7 +301,7 @@ public actor DocumentIndexCoordinator {
                 try await yieldToInteractiveWork(session)
                 try await index.commit(staging, embedding: provider)
                 token = nil
-                set(id, outcome == .readPartially ? .readPartially : .ready)
+                set(id, outcome == .englishPartial ? .englishPartial : (outcome == .readPartially ? .readPartially : .ready))
                 failures[id] = nil
             }
         } catch {
