@@ -131,6 +131,77 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(app.buttons["assistantSend"].isEnabled)
     }
 
+    func testSlowRequestShowsOnlyStagesThatHappened() {
+        let app = launch("ready", generation: "slow")
+        openAssistant(app)
+        ask(app, "How do I keep drinking water clean?")
+        let progress = app.descendants(matching: .any)["assistantProgress"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Writing an answer…"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Thinking…"].exists)
+        XCTAssertFalse(app.progressIndicators.matching(NSPredicate(format: "label CONTAINS '%'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        XCTAssertFalse(progress.exists, "Stages disappear once the answer arrives")
+    }
+
+    func testClosingTheSheetCancelsTheRequestAndLeavesNoLateReply() {
+        let app = launch("ready", generation: "slow")
+        openAssistant(app)
+        ask(app, "How do I keep drinking water clean?")
+        XCTAssertTrue(app.staticTexts["Writing an answer…"].waitForExistence(timeout: 5))
+        app.buttons["closeAssistant"].tap()
+        sleep(5)
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["assistantGeneratedReply"].exists, "A canceled request never adds a reply")
+        XCTAssertFalse(app.descendants(matching: .any)["assistantProgress"].exists)
+        XCTAssertEqual(input.value as? String, "How do I keep drinking water clean?", "The question returns to the field")
+    }
+
+    func testSecondQuestionIsNotOverwrittenByTheCanceledFirst() {
+        let app = launch("ready", generation: "slow")
+        openAssistant(app)
+        ask(app, "First question")
+        XCTAssertTrue(app.staticTexts["Writing an answer…"].waitForExistence(timeout: 5))
+        app.buttons["closeAssistant"].tap()
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        // The canceled question returned to the field; the follow-up text is added to it.
+        input.typeText(" Second question")
+        app.buttons["assistantSend"].tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        sleep(4)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "assistantGeneratedReply").count, 1)
+        func shown(_ text: String) -> Bool {
+            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch.exists
+        }
+        XCTAssertTrue(shown("Second question"))
+    }
+
+    func testRetryResubmitsTheSameQuestion() {
+        let app = launch("ready", generation: "failure-once")
+        openAssistant(app)
+        ask(app, "How do I keep drinking water clean?")
+        let retry = app.buttons["assistantRetry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Couldn’t get a response"].exists)
+        retry.tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
+        XCTAssertFalse(retry.exists)
+    }
+
+    private func ask(_ app: XCUIApplication, _ text: String) {
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText(text)
+        app.buttons["assistantSend"].tap()
+    }
+
     /// Opt in via the scheme's Test environment on an actual eligible iPhone, with its model ready.
     /// This path never sets simulated availability or generation flags.
     func testLiveOnDeviceFoundationModelsResponseAndFollowUp() throws {
