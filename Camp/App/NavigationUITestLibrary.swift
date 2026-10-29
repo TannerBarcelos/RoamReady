@@ -14,6 +14,7 @@ enum NavigationUITestLibrary {
         let rig = try Rig.add(RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries",
                                       year: 2024, lengthFeet: 19.5), to: context)
         if DocumentAssistantFixture.isRequested { try DocumentAssistantFixture.seed(rig: rig, in: context) }
+        if DocumentReadinessFixture.isRequested { try DocumentReadinessFixture.seed(rig: rig, in: context) }
         // `-empty-library` keeps the profile and rig but adds no trips.
         if ProcessInfo.processInfo.arguments.contains("-empty-library") {
             try context.save()

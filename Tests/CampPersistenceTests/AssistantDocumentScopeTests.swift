@@ -239,4 +239,29 @@ struct AssistantDocumentScopeTests {
         manual.assign(to: prior)
         #expect(manual.rig === rig && manual.trip == nil)
     }
+
+    @Test func readinessListsDownloadingDocumentsThatSearchDoesNot() throws {
+        let manual = try add(.manual, title: "Manual", rig: rig)
+        let arriving = try add(.warranty, title: "Warranty", rig: rig)
+        arriving.content?.protectedBytes = nil
+        try add(.insurance, title: "Insurance", rig: rig)
+        let target = AssistantScopeTarget.general(rig: rig)
+        #expect(context.documentScope(for: target).documentIDs == [manual.documentID])
+        let readiness = context.readinessDocuments(for: target)
+        #expect(Set(readiness.map(\.id)) == [manual.documentID, arriving.documentID])
+        #expect(readiness.first { $0.id == arriving.documentID }?.waitingForDownload == true)
+        #expect(readiness.first { $0.id == manual.documentID }?.waitingForDownload == false)
+    }
+
+    @Test func readinessFollowsTheSameScopeAsSearch() throws {
+        let trip = try newTrip("Pines")
+        let own = try add(.reservation, title: "Confirmation", rig: nil, trip: trip)
+        let rigManual = try add(.manual, title: "Manual", rig: rig)
+        let other = try newTrip("Lake")
+        try add(.reservation, title: "Other confirmation", rig: nil, trip: other)
+        try add(.manual, title: "Unattached", rig: nil)
+        let ids = Set(context.readinessDocuments(for: .trip(trip)).map(\.id))
+        #expect(ids == [own.documentID, rigManual.documentID])
+        #expect(Set(context.readinessDocuments(for: .general(rig: rig)).map(\.id)) == [rigManual.documentID])
+    }
 }

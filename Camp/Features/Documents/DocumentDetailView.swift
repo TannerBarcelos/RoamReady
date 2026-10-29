@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import QuickLook
+import CampCore
 import CampPersistence
 import DocumentVault
 
@@ -31,6 +32,9 @@ struct DocumentDetailView: View {
                 } else {
                     Label("Encrypted in iCloud", systemImage: "lock.icloud")
                 }
+            }
+            if let status = library.documentAssistant.status(of: document) {
+                DocumentStatusSection(status: status) { library.documentAssistant.retryFailures() }
             }
             Section {
                 Picker("Assign to rig or trip", selection: assignment) {

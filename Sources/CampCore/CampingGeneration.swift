@@ -29,6 +29,9 @@ public enum DocumentCoverage: Equatable, Sendable {
     /// Relevant excerpts were supplied but the answer cites none of them: general advice.
     case uncited
     case cited
+    /// Nothing relevant was found, and some documents in scope couldn't be searched (still indexing, waiting
+    /// for download, unreadable). The answer can't yet speak for them.
+    case unfinished
 }
 
 public struct CampingReply: Equatable, Sendable {
@@ -38,6 +41,8 @@ public struct CampingReply: Equatable, Sendable {
     public let sources: [DocumentSource]
     public let droppedCitationCount: Int
     public let coverage: DocumentCoverage
+    /// Readiness of the request's scope when it was asked.
+    public let readiness: ScopeReadiness
     /// The question was about the booking and the saved trip's facts were supplied, so they are a source too.
     public let usedSavedTrip: Bool
 }
@@ -54,17 +59,18 @@ public enum CampingGeneration {
     public static func answer(to request: CampingHelpRequest, using generator: any CampingResponseGenerating,
                               counter: any PromptTokenCounting = ConservativeTokenEstimator()) async throws -> CampingReply {
         let (text, sent) = try await generate(request, using: generator, counter: counter)
-        guard request.documents != nil else {
+        guard let documents = request.documents else {
             return CampingReply(text: text, sources: [], droppedCitationCount: 0, coverage: .notSearched,
-                                usedSavedTrip: request.usesSavedTrip)
+                                readiness: .empty, usedSavedTrip: request.usesSavedTrip)
         }
         // With nothing supplied there is nothing citable, whatever the model wrote.
         let manifest = sent.sources
         let resolved = DocumentCitations.resolve(text, manifest: manifest)
-        let coverage: DocumentCoverage = manifest.isEmpty ? .notCovered : (resolved.sources.isEmpty ? .uncited : .cited)
+        let unfinished = documents.readiness.hasUnusableDocuments
+        let coverage: DocumentCoverage = manifest.isEmpty ? (unfinished ? .unfinished : .notCovered) : (resolved.sources.isEmpty ? .uncited : .cited)
         return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
                             droppedCitationCount: resolved.droppedCount, coverage: coverage,
-                            usedSavedTrip: request.usesSavedTrip)
+                            readiness: request.documents?.readiness ?? .empty, usedSavedTrip: request.usesSavedTrip)
     }
 
     private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating,

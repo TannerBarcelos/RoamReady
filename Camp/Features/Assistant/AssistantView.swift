@@ -47,6 +47,8 @@ struct AssistantView: View {
     @State private var openedSource: DocumentSource?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
+    /// What the Assistant can use in the scope on screen. Refreshed as indexing changes.
+    @State private var readiness = ScopeReadiness.empty
 
     init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true, chat: AssistantConversation) {
         _chat = Bindable(wrappedValue: chat)
@@ -105,6 +107,7 @@ struct AssistantView: View {
             }
             .onAppear {
                 refreshAvailability()
+                refreshReadiness()
                 if let step, chat.exchanges.isEmpty, chat.question.isEmpty {
                     chat.question = "What should I know about \(step.title.lowercased())?"
                 }
@@ -120,7 +123,8 @@ struct AssistantView: View {
             }
             .onDisappear { cancelRequest() }
             // A different rig or trip is a different set of paperwork: drop the running request.
-            .onChange(of: currentTarget) { _, _ in cancelRequest() }
+            .onChange(of: currentTarget) { _, _ in cancelRequest(); refreshReadiness() }
+            .onChange(of: library.documentAssistant.statuses) { _, _ in refreshReadiness() }
             .sheet(item: $openedSource) { DocumentSourceView(source: $0) }
         }
     }
@@ -226,6 +230,8 @@ struct AssistantView: View {
                                 Text("Asked in \(exchange.scope.summary.text)").font(.caption).foregroundStyle(.secondary)
                             }
                             documentNotes(for: exchange.answer)
+                            AnswerReadinessNote(answer: exchange.answer, current: exchange.scope == currentTarget ? readiness : nil,
+                                                canRetry: showsConversation && !answering) { askAgain(exchange) }
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
                             }
@@ -254,7 +260,9 @@ struct AssistantView: View {
                 .padding(.bottom, 12)
             }
             .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .top, spacing: 0) { scopeBanner }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) { scopeBanner; AssistantReadinessSummary(readiness: readiness) }
+            }
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             .onChange(of: chat.exchanges.count) { _, _ in
                 withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
@@ -318,6 +326,10 @@ struct AssistantView: View {
         .background(.bar)
     }
 
+    private func refreshReadiness() {
+        readiness = library.documentAssistant.readiness(for: currentTarget, in: modelContext)
+    }
+
     private func refreshAvailability() {
         availability = CampingAssistant.globalAvailability
         if !availability.showsConversation { cancelRequest() }
@@ -348,7 +360,16 @@ struct AssistantView: View {
         submit(question)
     }
 
-    private func submit(_ submitted: String) {
+    /// Asks an earlier question again, after documents it was missing became ready. The earlier answer stays,
+    /// the message field keeps whatever is typed in it, and only the turns before that exchange reach the
+    /// prompt, as they did the first time, so the "not ready" answer can't color the new one.
+    private func askAgain(_ exchange: CampingExchange) {
+        refreshAvailability()
+        guard showsConversation, !answering else { return }
+        submit(exchange.question, retrying: exchange)
+    }
+
+    private func submit(_ submitted: String, retrying retried: CampingExchange? = nil) {
         // Everything this request reads is captured now. A scope change cancels it (see onChange above).
         let target = currentTarget
         let rig = trip == nil ? rigs.active.first : trip?.rig
@@ -363,13 +384,14 @@ struct AssistantView: View {
             steps = []
         }
         let history = AssistantConversationRules.history(
-            chat.exchanges.filter { !$0.answer.isNotice }.map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
+            chat.exchanges.prefix { $0.id != retried?.id }.filter { !$0.answer.isNotice }
+                .map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
         let retrievalQuestion = AssistantConversationRules.retrievalQuestion(submitted, after: history)
         let request = progress.begin(question: submitted)
         chat.generationFailure = nil
         chat.failedQuestion = nil
         // A retry leaves anything newly typed in the field alone.
-        if chat.question.trimmingCharacters(in: .whitespacesAndNewlines) == submitted { chat.question = "" }
+        if retried == nil, chat.question.trimmingCharacters(in: .whitespacesAndNewlines) == submitted { chat.question = "" }
         let index = library.documentAssistant
         let context = modelContext
         task = Task {
@@ -410,7 +432,7 @@ struct AssistantView: View {
                 announce(progress.fail(request, with: failure))
                 chat.generationFailure = failure
                 chat.failedQuestion = submitted
-                chat.question = submitted
+                if retried == nil { chat.question = submitted }
             }
             task = nil
         }
