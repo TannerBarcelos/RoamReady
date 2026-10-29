@@ -57,6 +57,8 @@ public struct AnswerSources: Equatable, Sendable {
             switch coverage {
             case .notSearched: note = .noDocuments
             case .notCovered: note = .notCovered
+            // The readiness note already explains an answer that couldn't yet use every document.
+            case .unfinished: note = nil
             case .uncited, .cited: note = .generalAdvice
             }
         }

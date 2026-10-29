@@ -172,6 +172,71 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.buttons["openCurrentVersion"].exists)
     }
 
+    /// A ready manual and a scan that is still being read (held by the fixture until "Finish test scan"). Chat
+    /// answers from the manual and says coverage was incomplete; a question that needs the scan says it can't
+    /// yet support an answer. When the scan finishes, Retry appears under the earlier answers, nothing is
+    /// submitted by itself, and tapping it asks again while keeping the earlier answer.
+    func testReadyManualPlusUnfinishedScanNotesIncompleteCoverageAndOffersRetryWhenReady() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-document-assistant-fixture", "-document-readiness-fixture",
+                               "-assistant-ui-test", "ready", "-assistant-generation-test", "document"]
+        app.launch()
+        openAssistant(app)
+        let summary = app.descendants(matching: .any)["assistantReadiness"].firstMatch
+        expectation(for: NSPredicate(format: "label CONTAINS '1 of 2 documents ready'"), evaluatedWith: summary)
+        waitForExpectations(timeout: 30)
+
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        // The transcript is lazy and scrolls to the newest message, so look things up by what they say.
+        func element(_ identifier: String, containing text: String) -> XCUIElement {
+            app.descendants(matching: .any).matching(identifier: identifier)
+                .matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        }
+        func ask(_ question: String) {
+            input.tap()
+            input.typeText(question)
+            app.buttons["assistantSend"].tap()
+        }
+        // Swipes the transcript itself, not the sheet, which a swipe from the top edge would dismiss.
+        func scrollTranscript(until target: XCUIElement) {
+            for _ in 0..<12 where !target.exists { app.scrollViews.firstMatch.swipeDown() }
+        }
+
+        // Needs the scan: nothing relevant is ready, so the answer can't yet support it and cites nothing.
+        ask("When was the anode rod replaced?")
+        XCTAssertTrue(element("assistantGeneratedReply", containing: "isn't ready yet").waitForExistence(timeout: 15))
+        XCTAssertTrue(element("assistantIncompleteNote", containing: "can’t yet support").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("assistantIncompleteNote", containing: "Scanned Service Record (being read)").exists)
+        XCTAssertEqual(app.buttons.matching(identifier: "assistantSourceRow").count, 0, "No document facts are cited")
+
+        // Answerable from the ready manual: answered, with an incomplete-coverage note.
+        ask("What does fault code E4 mean on my water heater?")
+        XCTAssertTrue(element("assistantSourceRow", containing: "Water Heater Manual").waitForExistence(timeout: 15))
+        XCTAssertTrue(element("assistantIncompleteNote", containing: "Not every document was searched").waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["assistantRetryWithDocuments"].exists, "No retry while the scan is unfinished")
+
+        // The scan finishes. Retry is offered, but nothing is asked on its own.
+        let repliesBefore = app.staticTexts.matching(identifier: "assistantGeneratedReply").count
+        app.buttons["releaseTestScan"].tap()
+        expectation(for: NSPredicate(format: "label CONTAINS 'All 2 documents ready'"), evaluatedWith: summary)
+        waitForExpectations(timeout: 30)
+        XCTAssertTrue(app.buttons["assistantRetryWithDocuments"].firstMatch.waitForExistence(timeout: 10))
+        sleep(2)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "assistantGeneratedReply").count, repliesBefore, "Nothing is submitted automatically")
+        XCTAssertEqual(app.buttons.matching(identifier: "assistantSourceRow").matching(NSPredicate(format: "label CONTAINS 'Scanned'")).count, 0)
+
+        // Retry the first question: a new answer from the scan, and the earlier answer stays.
+        let firstAnswer = element("assistantGeneratedReply", containing: "isn't ready yet")
+        scrollTranscript(until: firstAnswer)
+        let retry = app.buttons["assistantRetryWithDocuments"].firstMatch
+        XCTAssertTrue(retry.waitForExistence(timeout: 5))
+        retry.tap()
+        XCTAssertTrue(element("assistantSourceRow", containing: "Scanned Service Record").waitForExistence(timeout: 15))
+        // The retry only appends; the earlier answer is never replaced.
+        XCTAssertGreaterThanOrEqual(app.staticTexts.matching(identifier: "assistantGeneratedReply").count, 1)
+    }
+
     func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
         let app = launch("ready", generation: "failure")
         openAssistant(app)
@@ -184,6 +249,77 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["assistantGeneratedReply"].exists)
         XCTAssertEqual(input.value as? String, "How do I keep drinking water clean?")
         XCTAssertTrue(app.buttons["assistantSend"].isEnabled)
+    }
+
+    func testSlowRequestShowsOnlyStagesThatHappened() {
+        let app = launch("ready", generation: "slow")
+        openAssistant(app)
+        ask(app, "How do I keep drinking water clean?")
+        let progress = app.descendants(matching: .any)["assistantProgress"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Writing an answer…"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Thinking…"].exists)
+        XCTAssertFalse(app.progressIndicators.matching(NSPredicate(format: "label CONTAINS '%'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        XCTAssertFalse(progress.exists, "Stages disappear once the answer arrives")
+    }
+
+    func testClosingTheSheetCancelsTheRequestAndLeavesNoLateReply() {
+        let app = launch("ready", generation: "slow")
+        openAssistant(app)
+        ask(app, "How do I keep drinking water clean?")
+        XCTAssertTrue(app.staticTexts["Writing an answer…"].waitForExistence(timeout: 5))
+        app.buttons["closeAssistant"].tap()
+        sleep(5)
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["assistantGeneratedReply"].exists, "A canceled request never adds a reply")
+        XCTAssertFalse(app.descendants(matching: .any)["assistantProgress"].exists)
+        XCTAssertEqual(input.value as? String, "How do I keep drinking water clean?", "The question returns to the field")
+    }
+
+    func testSecondQuestionIsNotOverwrittenByTheCanceledFirst() {
+        let app = launch("ready", generation: "slow")
+        openAssistant(app)
+        ask(app, "First question")
+        XCTAssertTrue(app.staticTexts["Writing an answer…"].waitForExistence(timeout: 5))
+        app.buttons["closeAssistant"].tap()
+        openAssistant(app)
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        // The canceled question returned to the field; the follow-up text is added to it.
+        input.typeText(" Second question")
+        app.buttons["assistantSend"].tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        sleep(4)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "assistantGeneratedReply").count, 1)
+        func shown(_ text: String) -> Bool {
+            app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch.exists
+        }
+        XCTAssertTrue(shown("Second question"))
+    }
+
+    func testRetryResubmitsTheSameQuestion() {
+        let app = launch("ready", generation: "failure-once")
+        openAssistant(app)
+        ask(app, "How do I keep drinking water clean?")
+        let retry = app.buttons["assistantRetry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Couldn’t get a response"].exists)
+        retry.tap()
+        XCTAssertTrue(app.staticTexts["assistantGeneratedReply"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
+        XCTAssertFalse(retry.exists)
+    }
+
+    private func ask(_ app: XCUIApplication, _ text: String) {
+        let input = app.descendants(matching: .any)["assistantQuestion"].firstMatch
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText(text)
+        app.buttons["assistantSend"].tap()
     }
 
     /// Opt in via the scheme's Test environment on an actual eligible iPhone, with its model ready.

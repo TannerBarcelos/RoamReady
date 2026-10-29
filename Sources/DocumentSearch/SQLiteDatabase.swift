@@ -13,6 +13,15 @@ public enum DocumentSearchError: Error, Equatable, Sendable {
     case outdatedSchema(Int)
     case closed
     case invalidInput(String)
+    /// The staged generation was replaced, abandoned, or lost to a restart.
+    case staleStaging
+
+    /// SQLite says the file is damaged or isn't a database at all. The index is disposable, so the answer is
+    /// to delete it and index again.
+    public var isCorruption: Bool {
+        guard case .sqlite(let code, _) = self else { return false }
+        return code == 11 || code == 26 // SQLITE_CORRUPT, SQLITE_NOTADB
+    }
 }
 
 private let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)

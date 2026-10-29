@@ -23,7 +23,7 @@ public struct ExtractedPage: Equatable, Sendable {
 /// exact; a heading starts a new passage and names the section of the passages that follow it.
 public enum PassageChunker {
     /// Bump when the rules below change, so existing indexes are rebuilt.
-    public static let version = 2
+    public static let version = 3
     /// Upper bound of a passage's text. Also keeps each passage within what a sentence embedding handles well.
     public static let maximumCharacters = 900
     static let minimumCharacters = 12

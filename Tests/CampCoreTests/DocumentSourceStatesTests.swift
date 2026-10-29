@@ -57,6 +57,10 @@ final class DocumentSourceStatesTests: XCTestCase {
         XCTAssertEqual(AnswerSources(coverage: .notSearched, cited: [], searched: []).note, .noDocuments)
     }
 
+    func testUnfinishedAnswerLeavesItsExplanationToTheReadinessNote() {
+        XCTAssertNil(AnswerSources(coverage: .unfinished, cited: [], searched: []).note)
+    }
+
     // MARK: Reply
 
     private func evidence() -> DocumentEvidence {

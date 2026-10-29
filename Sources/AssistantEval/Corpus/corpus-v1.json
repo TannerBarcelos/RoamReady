@@ -301,10 +301,10 @@
       "evidence": [ { "id": "igniter", "anyOf": [ { "document": "aqua-manual", "version": "v1", "page": 14, "quote": "check that the propane supply valve is fully open" } ] } ]
     },
     {
-      "id": "non-english-question", "subset": "heldout", "kind": "challenge", "tags": ["language", "unanswerable"], "pendingFeature": "Language gating for document questions",
+      "id": "non-english-question", "subset": "heldout", "kind": "required", "tags": ["language", "unanswerable"],
       "question": "¿Qué significa el código E4 en mi calentador de agua?",
       "scope": { "rig": "a" }, "answerable": false,
-      "notes": "Document questions in another language should get an English-only explanation instead of an answer. The gate is not built; today the exact code still matches."
+      "notes": "Document questions in another language get an English-only explanation instead of an answer. The question is never searched, so the exact code E4 in it matches nothing."
     }
   ]
 }
