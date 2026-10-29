@@ -51,16 +51,23 @@ public extension StoredDocument {
         !isDeleted && AssistantDocumentEligibility.isSearchable(category: category, file: file, availability: availability)
     }
 
+    /// Eligible by category and content, but its file hasn't arrived from iCloud yet. It joins the scope
+    /// when it lands; until then readiness shows it as waiting.
+    var isAwaitingAssistantDownload: Bool {
+        !isDeleted && availability == .awaitingDownload
+            && AssistantDocumentEligibility.isSearchable(category: category, file: file, availability: .offline)
+    }
+
     /// What the general Assistant may search for this rig: eligible documents attached directly to it.
     /// A document that belongs to a trip, or to nothing, is out of scope.
-    func isInGeneralScope(of rig: Rig) -> Bool {
-        isAssistantSearchable && self.rig === rig && trip == nil
+    func isInGeneralScope(of rig: Rig, includingDownloads: Bool = false) -> Bool {
+        (isAssistantSearchable || (includingDownloads && isAwaitingAssistantDownload)) && self.rig === rig && trip == nil
     }
 
     /// What Assistant help from a trip may search: the trip's own eligible documents, and eligible documents
     /// attached directly to the trip's rig (archived or not). Another trip's documents are never in scope.
-    func isInTripScope(of trip: Trip) -> Bool {
-        guard isAssistantSearchable else { return false }
+    func isInTripScope(of trip: Trip, includingDownloads: Bool = false) -> Bool {
+        guard isAssistantSearchable || (includingDownloads && isAwaitingAssistantDownload) else { return false }
         if self.trip != nil { return self.trip === trip }
         return rig != nil && rig === trip.rig
     }
@@ -90,6 +97,11 @@ public extension Rig {
     func generalAssistantScope() -> AssistantDocumentScope {
         AssistantDocumentScope((documents ?? []).filter { $0.isInGeneralScope(of: self) })
     }
+
+    /// The scope's documents with those still downloading, so readiness can show them as waiting.
+    func generalReadinessDocuments() -> [StoredDocument] {
+        (documents ?? []).filter { $0.isInGeneralScope(of: self, includingDownloads: true) }
+    }
 }
 
 public extension Trip {
@@ -98,6 +110,11 @@ public extension Trip {
         let own = (documents ?? []).filter { $0.isInTripScope(of: self) }
         let fromRig = (rig?.documents ?? []).filter { $0.isInTripScope(of: self) }
         return AssistantDocumentScope(own + fromRig)
+    }
+
+    /// Like `tripAssistantScope()`, plus documents still downloading.
+    func tripReadinessDocuments() -> [StoredDocument] {
+        ((documents ?? []) + (rig?.documents ?? [])).filter { $0.isInTripScope(of: self, includingDownloads: true) }
     }
 }
 
@@ -132,19 +149,47 @@ public extension ModelContext {
     /// are used. General Assistant never reads a trip's documents, and refuses a rig that has been archived or
     /// deleted since the question was asked.
     func documentScope(for target: AssistantScopeTarget) -> AssistantDocumentScope {
+        guard let owner = scopeOwner(for: target) else { return .empty }
+        switch owner {
+        case .trip(let trip): return trip.tripAssistantScope()
+        case .rig(let rig): return rig.generalAssistantScope()
+        }
+    }
+
+    /// The documents in the target's scope with their file state, for showing readiness: eligible documents
+    /// whose files are here, and those whose files are still arriving. Read live, like `documentScope(for:)`.
+    func readinessDocuments(for target: AssistantScopeTarget) -> [ScopedDocument] {
+        guard let owner = scopeOwner(for: target) else { return [] }
+        let documents: [StoredDocument]
+        switch owner {
+        case .trip(let trip): documents = trip.tripReadinessDocuments()
+        case .rig(let rig): documents = rig.generalReadinessDocuments()
+        }
+        var seen = Set<UUID>()
+        return documents.filter { seen.insert($0.documentID).inserted }.map {
+            ScopedDocument(id: $0.documentID, title: $0.title, waitingForDownload: $0.availability == .awaitingDownload)
+        }
+    }
+
+    private enum ScopeOwner {
+        case rig(Rig)
+        case trip(Trip)
+    }
+
+    private func scopeOwner(for target: AssistantScopeTarget) -> ScopeOwner? {
         if let tripID = target.tripID {
             var descriptor = FetchDescriptor<Trip>(predicate: #Predicate { $0.persistentModelID == tripID })
             descriptor.fetchLimit = 1
-            guard let trip = (try? fetch(descriptor))?.first, !trip.isDeleted else { return .empty }
+            guard let trip = (try? fetch(descriptor))?.first, !trip.isDeleted else { return nil }
             // A trip moved to another rig is a different scope; don't answer from the new rig's documents.
-            guard trip.rig?.persistentModelID == target.rigID else { return .empty }
-            return trip.tripAssistantScope()
+            guard trip.rig?.persistentModelID == target.rigID else { return nil }
+            return .trip(trip)
         }
-        guard let rigID = target.rigID else { return .empty }
+        guard let rigID = target.rigID else { return nil }
         var descriptor = FetchDescriptor<Rig>(predicate: #Predicate { $0.persistentModelID == rigID })
         descriptor.fetchLimit = 1
-        guard let rig = (try? fetch(descriptor))?.first, !rig.isDeleted, !rig.isArchived else { return .empty }
-        return rig.generalAssistantScope()
+        guard let rig = (try? fetch(descriptor))?.first, !rig.isDeleted, !rig.isArchived else { return nil }
+        return .rig(rig)
     }
 }
 
