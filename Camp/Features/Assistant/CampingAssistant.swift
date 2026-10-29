@@ -10,6 +10,8 @@ struct CampingAnswer: Sendable {
     /// Document passages the model cited, validated against what the request supplied.
     var sources: [DocumentSource] = []
     var coverage: DocumentCoverage = .notSearched
+    /// How ready the scope's documents were when this was asked.
+    var readiness: ScopeReadiness = .empty
     var mode: String { "Apple Intelligence · Generated on this device · Check against your manual" }
 }
 
@@ -108,7 +110,7 @@ enum CampingAssistant {
             throw (error as? CampingChatFailure) ?? .failed
         }
         return CampingAnswer(text: reply.text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL,
-                             sources: reply.sources, coverage: reply.coverage)
+                             sources: reply.sources, coverage: reply.coverage, readiness: reply.readiness)
     }
 
     private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {
@@ -129,7 +131,9 @@ enum CampingAssistant {
             if citesDocuments {
                 return prompt.contains("\n[S1] ")
                     ? "Per your manual, error code E4 means the water heater igniter failed to light. Turn the unit off and wait five minutes before retrying. [S1]"
-                    : "Your documents don't cover that."
+                    : (instructions.contains("could not be searched")
+                        ? "A document isn't ready yet, so I can't support an answer about that from it yet."
+                        : "Your documents don't cover that.")
             }
             return "Test response: keep drinking water in a clean, covered container."
         }

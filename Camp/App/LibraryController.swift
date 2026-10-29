@@ -20,6 +20,12 @@ final class LibraryController {
     private static var searchDirectory: URL {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-document-readiness-fixture") {
+            // Starts empty every launch, so the held scan is never found already indexed.
+            let fresh = URL.temporaryDirectory.appending(path: "DocumentReadinessFixture-Search", directoryHint: .isDirectory)
+            try? FileManager.default.removeItem(at: fresh)
+            return fresh
+        }
         if arguments.contains("-document-assistant-fixture") {
             // The fixture owns a throwaway index; the real one is never touched.
             return URL.temporaryDirectory.appending(path: "DocumentAssistantFixture-Search", directoryHint: .isDirectory)

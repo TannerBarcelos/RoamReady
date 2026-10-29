@@ -14,7 +14,7 @@ import DocumentVault
 /// The index is disposable. Nothing here logs document text, vectors, or questions.
 @MainActor @Observable
 final class DocumentAssistantIndex {
-    /// This session's view of each document's indexing, for status UI later.
+    /// This session's view of each document's indexing.
     private(set) var statuses: [UUID: DocumentIndexState] = [:]
     private(set) var isOpen = false
 
@@ -75,20 +75,51 @@ final class DocumentAssistantIndex {
         Task { await coordinator.setActive(active) }
     }
 
+    // MARK: Readiness
+
+    /// What the Assistant can use in this target's scope right now, from this session's index states.
+    func readiness(for target: AssistantScopeTarget, in context: ModelContext) -> ScopeReadiness {
+        ScopeReadiness.make(documents: context.readinessDocuments(for: target), states: statuses.mapValues(AssistantDocumentStatus.init))
+    }
+
+    /// One document's status for its details, or nil when the Assistant never reads it (wrong category, or a
+    /// link whose content was never saved).
+    func status(of document: StoredDocument) -> AssistantDocumentStatus? {
+        guard AssistantDocumentEligibility.indexAvailability(category: document.category, file: document.file,
+                                                             availability: document.availability) != nil else { return nil }
+        if let state = statuses[document.documentID] { return AssistantDocumentStatus(state) }
+        return ScopedDocument(id: document.documentID, title: document.title,
+                              waitingForDownload: document.availability == .awaitingDownload).fallbackReadiness
+    }
+
+    /// Gives documents that failed to read a fresh set of attempts. Never needed for waiting or finished ones.
+    func retryFailures() {
+        guard let coordinator else { return }
+        Task { await coordinator.reconcile(.startup) }
+    }
+
     // MARK: Asking
 
     /// Evidence for a question in the scope it was asked in, or nil when no document is in scope and indexed
-    /// yet (the chat then answers as it always has). Uses whatever is ready now and never waits for indexing.
+    /// yet and nothing in scope is unfinished (the chat then answers as it always has). Uses whatever is ready
+    /// now and never waits for indexing.
     /// The target is the request's own snapshot; nothing here reads the screen's current rig or trip.
     func evidence(for question: String, target: AssistantScopeTarget, in context: ModelContext) async -> DocumentEvidence? {
         guard let coordinator else { return nil }
         let scope = context.documentScope(for: target)
+        // Captured with the request, so the answer can say what was and wasn't covered when it was asked.
+        let states = await coordinator.documentStates()
+        let readiness = ScopeReadiness.make(
+            documents: context.readinessDocuments(for: target),
+            states: Dictionary(uniqueKeysWithValues: states.compactMap { id, state in UUID(uuidString: id).map { ($0, AssistantDocumentStatus(state)) } }))
+        // With nothing searchable yet, a scope that still has unfinished documents is worth saying so about.
+        let unsearched = readiness.isComplete ? nil : DocumentEvidence(excerpts: [], readiness: readiness)
         // Only documents indexed from the file the library holds now may be searched, so a replaced file's
         // old passages and a deleted or reassigned document's stale rows are never candidates.
         let live = Dictionary(uniqueKeysWithValues: scope.live.compactMap { id, document in document.checksum.map { (id.uuidString, $0) } })
         guard !live.isEmpty,
               let result = await coordinator.search(question, live: live, limit: 8),
-              !Task.isCancelled else { return nil }
+              !Task.isCancelled else { return unsearched }
         #if DEBUG
         // Counts only, never text, and only for the fixture.
         if ProcessInfo.processInfo.arguments.contains("-document-assistant-fixture") {
@@ -104,6 +135,7 @@ final class DocumentAssistantIndex {
         }
         // Check the library again, now, so a document deleted, reassigned, or replaced during the search is dropped.
         return DocumentEvidence.make(question: question, candidates: candidates, live: context.documentScope(for: target).live)
+            .capturing(readiness)
     }
 }
 
@@ -116,7 +148,7 @@ final class LibraryDocumentSource: DocumentIndexSource {
     init(context: ModelContext) { self.context = context }
 
     func library() async throws -> [LibraryDocument] {
-        try context.indexableDocuments().map { document in
+        let documents = try context.indexableDocuments().map { document in
             let availability: LibraryDocument.Availability = switch document.availability {
             case .ready: .ready
             case .waitingForDownload: .waitingForDownload
@@ -124,9 +156,17 @@ final class LibraryDocumentSource: DocumentIndexSource {
             }
             return LibraryDocument(id: document.documentID.uuidString, checksum: document.checksum, availability: availability)
         }
+        #if DEBUG
+        return DocumentReadinessFixture.ordered(documents)
+        #else
+        return documents
+        #endif
     }
 
     func read(_ document: LibraryDocument) async throws -> DocumentReadResult {
+        #if DEBUG
+        try await DocumentReadinessFixture.holdIfNeeded(document)
+        #endif
         guard let id = UUID(uuidString: document.id) else { return .changed }
         // Capture on this actor; read, extract, and chunk elsewhere.
         guard let job = try context.indexJob(documentID: id, checksum: document.checksum) else {
