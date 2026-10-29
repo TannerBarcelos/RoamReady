@@ -12,6 +12,7 @@ public extension AssistantDocumentStatus {
         case .waitingForDownload: self = .waitingForDownload
         case .noUsableText(let reason): self = .noUsableText(NoTextCause(reason))
         case .englishOnly: self = .englishOnly
+        case .englishPartial: self = .englishPartial
         case .unsupported: self = .unsupported
         case .retryableFailure: self = .retryableFailure
         }

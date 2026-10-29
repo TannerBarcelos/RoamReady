@@ -14,6 +14,8 @@ public struct EvalOptions: Sendable {
     public var commit: String?
     /// How many passages a search returns. Hit@5, Recall@5, and the reciprocal rank are read from these.
     public var searchLimit = 8
+    /// Reads passage and question language, as the app does with NaturalLanguage.
+    public var languageDetector: any LanguageDetecting = NaturalLanguageDetector()
     public var generationNote = "The generated-answer suite is a manual human-rubric review and is not automated by this harness."
 
     public init() {}
@@ -50,12 +52,14 @@ public enum EvalRunner {
             let pages = doc.pages.map { ExtractedPage(ordinal: $0.ordinal, label: $0.label, text: $0.text) }
             let record = IndexedDocument(id: uuid(doc.id).uuidString, checksum: doc.indexedChecksum, extractionVersion: extractionVersion,
                                          chunkingVersion: PassageChunker.version, language: "en")
-            try await index.publish(record, passages: PassageChunker.passages(from: pages), embedding: provider)
+            let admission = DocumentLanguagePolicy.admit(PassageChunker.passages(from: pages), using: options.languageDetector)
+            try await index.publish(record, passages: admission.admitted, embedding: provider)
         }
 
         var results: [EvalReport.CaseResult] = []
         for item in corpus.cases where options.subsets.contains(item.subset) {
-            results.append(try await runCase(item, corpus: corpus, index: index, provider: provider, limit: options.searchLimit))
+            results.append(try await runCase(item, corpus: corpus, index: index, provider: provider, limit: options.searchLimit,
+                                          detector: options.languageDetector))
         }
         await index.close()
 
@@ -80,14 +84,17 @@ public enum EvalRunner {
     // MARK: One case
 
     private static func runCase(_ item: EvalCorpus.Case, corpus: EvalCorpus, index: DocumentSearchIndex,
-                                provider: (any EmbeddingProvider)?, limit: Int) async throws -> EvalReport.CaseResult {
+                                provider: (any EmbeddingProvider)?, limit: Int,
+                                detector: any LanguageDetecting) async throws -> EvalReport.CaseResult {
         let byUUID = Dictionary(uniqueKeysWithValues: corpus.documents.map { (uuid($0.id), $0) })
         let units = try corpus.units(for: item)
 
         let allowList = Set(corpus.documents.filter { doc in
             doc.isIndexed && verdict(doc, item.scope, corpus, state: (item.staleAllowList ?? false) ? .indexed : .live).inScope
         }.map { uuid($0.id).uuidString })
-        let search = try await index.search(item.question, documentIDs: allowList, limit: limit, embedding: provider)
+        // A confidently non-English question is answered with the English-only explanation, never searched.
+        let needsEnglish = !allowList.isEmpty && DocumentLanguagePolicy.check(question: item.question, using: detector) == .needsEnglish
+        let search = try await index.search(item.question, documentIDs: needsEnglish ? [] : allowList, limit: limit, embedding: provider)
 
         // The live library, as the Assistant captures it right before building the prompt.
         var live: [UUID: LiveDocument] = [:]

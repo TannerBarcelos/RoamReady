@@ -174,6 +174,9 @@ public final class StoredDocument {
     public var expiresOn: Date?
     public var createdAt: Date = Date.now
     public var updatedAt: Date = Date.now
+    /// The owner's per-document opt-in for the Assistant. Only an Other document honors it; every other
+    /// category is decided by `AssistantDocumentEligibility`. Additive attribute: older records read as off.
+    public var includeInAssistant: Bool = false
     public var rig: Rig?
     public var trip: Trip?
     /// Separate so listing documents never loads file bytes, and so a file can arrive from iCloud

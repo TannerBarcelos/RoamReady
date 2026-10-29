@@ -100,6 +100,13 @@ final class DocumentAssistantIndex {
 
     // MARK: Asking
 
+    /// Whether a question about the documents in this scope is confidently not English. General chat with
+    /// nothing in scope is untouched, and a short or code-only question ("E4?") is never turned away.
+    func needsEnglish(_ question: String, target: AssistantScopeTarget, in context: ModelContext) -> Bool {
+        guard !context.documentScope(for: target).isEmpty else { return false }
+        return DocumentLanguagePolicy.check(question: question, using: NaturalLanguageDetector()) == .needsEnglish
+    }
+
     /// Evidence for a question in the scope it was asked in, or nil when no document is in scope and indexed
     /// yet and nothing in scope is unfinished (the chat then answers as it always has). Uses whatever is ready
     /// now and never waits for indexing.
@@ -136,7 +143,7 @@ final class DocumentAssistantIndex {
         // Check the library again, now, so a document deleted, reassigned, or replaced during the search is dropped.
         let liveNow = context.documentScope(for: target).live
         let evidence = DocumentEvidence.make(question: question, candidates: candidates, live: liveNow)
-        guard target.isTrip, let followUp = await bookingFollowUp(for: question, live: liveNow, coordinator: coordinator) else {
+        guard target.isTrip, let followUp = await bookingFollowUp(for: question, checksums: live, live: liveNow, in: coordinator) else {
             return evidence.capturing(readiness)
         }
         return evidence.merging(followUp: followUp).capturing(readiness)
@@ -145,12 +152,10 @@ final class DocumentAssistantIndex {
     /// A booking question can match one confirmation and miss another that says something different. One more
     /// search, still inside the trip's allow-list and limited to its Reservation documents, fetches the competing
     /// passage so the camper sees both values. Nothing is written; failures just leave the first result.
-    private func bookingFollowUp(for question: String, live: [UUID: LiveDocument],
-                                 coordinator: DocumentIndexCoordinator) async -> DocumentEvidence? {
+    private func bookingFollowUp(for question: String, checksums: [String: String], live: [UUID: LiveDocument],
+                                 in coordinator: DocumentIndexCoordinator) async -> DocumentEvidence? {
         guard let query = BookingFactQuestion.followUpQuery(for: question) else { return nil }
-        let reservations = Dictionary(uniqueKeysWithValues: live
-            .filter { $0.value.category == DocumentCategory.reservation.title }
-            .compactMap { id, document in document.checksum.map { (id.uuidString, $0) } })
+        let reservations = checksums.filter { id, _ in UUID(uuidString: id).flatMap { live[$0] }?.category == DocumentCategory.reservation.title }
         guard !reservations.isEmpty,
               let result = await coordinator.search(query, live: reservations, limit: 8),
               !Task.isCancelled else { return nil }

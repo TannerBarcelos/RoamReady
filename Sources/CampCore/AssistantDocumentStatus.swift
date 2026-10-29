@@ -28,11 +28,13 @@ public enum AssistantDocumentStatus: Equatable, Sendable {
     case waitingForDownload
     case noUsableText(NoTextCause)
     case englishOnly
+    /// Mixed-language: the English passages are used, the rest left out.
+    case englishPartial
     case unsupported
     case retryableFailure
 
     /// Whether the Assistant can answer from this document now.
-    public var isUsable: Bool { self == .ready || self == .readPartially }
+    public var isUsable: Bool { self == .ready || self == .readPartially || self == .englishPartial }
 
     /// Not usable yet, but expected to be, or worth another try. A final answer such as "English only" is not.
     public var mayBecomeReady: Bool {
@@ -44,7 +46,7 @@ public enum AssistantDocumentStatus: Equatable, Sendable {
 
     public var nextAction: NextAction {
         switch self {
-        case .ready, .readPartially, .englishOnly: .none
+        case .ready, .readPartially, .englishPartial, .englishOnly: .none
         case .queued, .extracting, .indexing, .waitingForDownload: .wait
         case .noUsableText, .unsupported: .replaceFile
         case .retryableFailure: .retry
@@ -61,6 +63,7 @@ public enum AssistantDocumentStatus: Equatable, Sendable {
         case .waitingForDownload: "Waiting for download"
         case .noUsableText: "No usable text"
         case .englishOnly: "English only"
+        case .englishPartial: "English parts only"
         case .unsupported: "Not supported"
         case .retryableFailure: "Couldn’t read yet"
         }
@@ -77,6 +80,7 @@ public enum AssistantDocumentStatus: Equatable, Sendable {
         case .waitingForDownload: "waiting for download"
         case .noUsableText: "no usable text"
         case .englishOnly: "English only"
+        case .englishPartial: "English parts only"
         case .unsupported: "not supported"
         case .retryableFailure: "couldn’t be read yet"
         }
@@ -102,7 +106,7 @@ public enum AssistantDocumentStatus: Equatable, Sendable {
         case .waitingForDownload: .waiting
         case .retryableFailure: .retry
         case .noUsableText, .englishOnly, .unsupported: .unusable
-        case .readPartially: .partial
+        case .readPartially, .englishPartial: .partial
         }
     }
 
@@ -125,6 +129,7 @@ public enum AssistantDocumentStatus: Equatable, Sendable {
             case .noText: "No readable text was found. Replace it with a clearer scan or photo."
             }
         case .englishOnly: "The Assistant only uses English text for now. The file stays here to open and share."
+        case .englishPartial: "Only the English passages are used; text in other languages is left out."
         case .unsupported: "The Assistant can’t read this kind of file. Replace it with a PDF or a photo."
         case .retryableFailure: "Reading hit a snag. Try again."
         }

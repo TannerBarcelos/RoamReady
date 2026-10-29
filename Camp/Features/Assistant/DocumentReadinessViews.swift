@@ -5,7 +5,7 @@ extension AssistantDocumentStatus {
     var systemImage: String {
         switch self {
         case .ready: "checkmark.circle.fill"
-        case .readPartially: "checkmark.circle"
+        case .readPartially, .englishPartial: "checkmark.circle"
         case .queued, .extracting, .indexing: "clock"
         case .waitingForDownload: "icloud.and.arrow.down"
         case .retryableFailure: "exclamationmark.arrow.triangle.2.circlepath"

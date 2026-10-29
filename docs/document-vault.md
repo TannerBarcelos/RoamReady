@@ -43,6 +43,8 @@ CloudKit doesn't permit changing an existing field from unencrypted to encrypted
 
 Older app-encrypted documents are opened by the read-only `LegacyDocumentSealing` AES-GCM decoder. New writes never generate keys or seals. Replacing a document writes its verified original bytes to the new encrypted field and clears that document's legacy bytes/key. Editing metadata does not rewrite or require downloading the attachment. Legacy protection metadata remains accurate until content is replaced; legacy unmarked binary fields may contain inline data or automatically encrypted assets, so they must not be described as uniformly lacking asset encryption.
 
+`StoredDocument.includeInAssistant` (`Bool`, default `false`) stores the per-document Assistant opt-in for Other documents. It is an additive, unencrypted, non-unique attribute; older records read as off, and no existing attribute changed. The CloudKit schema has not been deployed to Production yet (owner-confirmed Oct 29, 2026), so this attribute ships in the initial schema: it must be present in the Development schema before the first Production deployment. After that deployment only additive changes are allowed. Eligibility ignores it for every category except Other.
+
 No bulk rewrite is performed. Old app builds do not understand the new fields; test and deploy compatible client versions. Exercise every new field in a signed development build, inspect the generated CloudKit schema, and promote it before releasing these clients. The default development build remains local-only until a real CloudKit container and signing capabilities are configured.
 
 ## Availability, preview, and export

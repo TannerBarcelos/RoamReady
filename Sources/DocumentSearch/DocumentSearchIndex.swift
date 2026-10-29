@@ -7,7 +7,10 @@ public enum IndexOutcome: Equatable, Sendable {
     case ready
     /// Some pages were left unread because a recognition cap was reached.
     case readPartially
+    /// No passage is confidently English, so nothing is searched.
     case englishOnly
+    /// Only the confidently English passages are searched; the rest are another language or unclassified.
+    case englishPartial
     case noUsableText(NoUsableTextReason)
 
     var storageValue: String {
@@ -15,6 +18,7 @@ public enum IndexOutcome: Equatable, Sendable {
         case .ready: "ready"
         case .readPartially: "readPartially"
         case .englishOnly: "englishOnly"
+        case .englishPartial: "englishPartial"
         case .noUsableText(.empty): "noUsableText:empty"
         case .noUsableText(.encrypted): "noUsableText:encrypted"
         case .noUsableText(.unreadable): "noUsableText:unreadable"
@@ -27,6 +31,7 @@ public enum IndexOutcome: Equatable, Sendable {
         switch storageValue {
         case "readPartially": self = .readPartially
         case "englishOnly": self = .englishOnly
+        case "englishPartial": self = .englishPartial
         case "noUsableText:empty": self = .noUsableText(.empty)
         case "noUsableText:encrypted": self = .noUsableText(.encrypted)
         case "noUsableText:unreadable": self = .noUsableText(.unreadable)
@@ -145,7 +150,7 @@ public struct DocumentReadiness: Equatable, Sendable {
 /// touches SwiftData's store, and everything in it can be rebuilt from the documents, so a file that can't
 /// be opened may simply be deleted.
 public actor DocumentSearchIndex {
-    public static let schemaVersion = 4
+    public static let schemaVersion = 5
     /// The vendored sqlite-vec release, for diagnostics.
     public static var sqliteVecVersion: String { String(cString: csqlitevec_version()) }
 

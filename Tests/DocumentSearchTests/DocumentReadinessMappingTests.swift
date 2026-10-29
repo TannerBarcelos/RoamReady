@@ -7,7 +7,7 @@ final class DocumentReadinessMappingTests: XCTestCase {
         let pairs: [(DocumentIndexState, AssistantDocumentStatus)] = [
             (.queued, .queued), (.extracting, .extracting), (.indexing(done: 3, of: 9), .indexing(done: 3, of: 9)),
             (.ready, .ready), (.readPartially, .readPartially), (.waitingForDownload, .waitingForDownload),
-            (.englishOnly, .englishOnly), (.unsupported, .unsupported), (.retryableFailure, .retryableFailure),
+            (.englishOnly, .englishOnly), (.englishPartial, .englishPartial), (.unsupported, .unsupported), (.retryableFailure, .retryableFailure),
             (.noUsableText(.empty), .noUsableText(.empty)), (.noUsableText(.encrypted), .noUsableText(.encrypted)),
             (.noUsableText(.unreadable), .noUsableText(.unreadable)), (.noUsableText(.tooLarge), .noUsableText(.tooLarge)),
             (.noUsableText(.noText), .noUsableText(.noText))
