@@ -9,6 +9,8 @@ struct CampingAnswer: Sendable {
     let sourceURL: String?
     /// Document passages the model cited, validated against what the request supplied.
     var sources: [DocumentSource] = []
+    /// Excerpts the model saw and did not cite.
+    var searched: [DocumentSource] = []
     var coverage: DocumentCoverage = .notSearched
     var mode: String { "Apple Intelligence · Generated on this device · Check against your manual" }
 }
@@ -108,7 +110,7 @@ enum CampingAssistant {
             throw (error as? CampingChatFailure) ?? .failed
         }
         return CampingAnswer(text: reply.text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL,
-                             sources: reply.sources, coverage: reply.coverage)
+                             sources: reply.sources, searched: reply.searched, coverage: reply.coverage)
     }
 
     private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {

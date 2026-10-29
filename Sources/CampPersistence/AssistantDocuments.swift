@@ -164,4 +164,12 @@ public extension ModelContext {
         descriptor.fetchLimit = 1
         return (try? fetch(descriptor))?.first
     }
+
+    /// Whether a cited source still points at the file it was read from, checked when the source is opened.
+    func availability(of source: DocumentSource) -> SourceAvailability {
+        let live = document(withID: source.documentID).map {
+            LiveSourceDocument(checksum: $0.checksum, hasLocalContent: $0.availability == .offline)
+        }
+        return SourceResolution.availability(of: source, live: live)
+    }
 }

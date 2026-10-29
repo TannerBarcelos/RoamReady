@@ -38,6 +38,8 @@ public struct CampingReply: Equatable, Sendable {
     public let sources: [DocumentSource]
     public let droppedCitationCount: Int
     public let coverage: DocumentCoverage
+    /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
+    public var searched: [DocumentSource] = []
 }
 
 /// A testable send path. The app supplies Apple's on-device adapter; there is no remote adapter.
@@ -60,7 +62,8 @@ public enum CampingGeneration {
         let resolved = DocumentCitations.resolve(text, manifest: manifest)
         let coverage: DocumentCoverage = manifest.isEmpty ? .notCovered : (resolved.sources.isEmpty ? .uncited : .cited)
         return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
-                            droppedCitationCount: resolved.droppedCount, coverage: coverage)
+                            droppedCitationCount: resolved.droppedCount, coverage: coverage,
+                            searched: manifest.filter { !resolved.sources.contains($0) })
     }
 
     private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating,

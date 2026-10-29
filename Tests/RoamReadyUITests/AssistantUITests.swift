@@ -117,6 +117,61 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Page 2"].exists)
     }
 
+    /// Canned chat from `-document-source-states-fixture`: one answer each for a cited source, a replaced
+    /// document, a deleted one, and an uncited answer. Needs no model or index.
+    private func launchSourceStates() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-document-assistant-fixture", "-document-source-states-fixture",
+                               "-assistant-ui-test", "ready"]
+        app.launch()
+        openAssistant(app)
+        XCTAssertTrue(app.staticTexts["Press the ignition button for ten seconds."].waitForExistence(timeout: 10))
+        return app
+    }
+
+    private func sourceRow(_ app: XCUIApplication, containing title: String) -> XCUIElement {
+        app.buttons.matching(identifier: "assistantSourceRow").matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+    }
+
+    func testCitedSourcesAndSearchedReferencesAreLabeledApart() {
+        let app = launchSourceStates()
+        let cited = sourceRow(app, containing: "Water Heater Manual")
+        XCTAssertTrue(cited.exists)
+        XCTAssertTrue(cited.label.hasPrefix("Source:"))
+        XCTAssertTrue(app.staticTexts["Sources"].exists)
+        let searched = app.buttons.matching(identifier: "assistantSearchedRow").firstMatch
+        XCTAssertTrue(searched.exists)
+        XCTAssertTrue(searched.label.hasPrefix("Searched, not cited:"), "VoiceOver hears that it was only searched")
+        XCTAssertTrue(app.staticTexts["References searched"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'used'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["General advice. No document was cited."].exists, "An uncited answer says why")
+    }
+
+    func testCitedSourceOpensAtItsPage() {
+        let app = launchSourceStates()
+        let cited = sourceRow(app, containing: "Water Heater Manual")
+        cited.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Page 2"].exists)
+    }
+
+    func testReplacedSourceShowsChangedAndOpensTheCurrentFileOnlyOnRequest() {
+        let app = launchSourceStates()
+        sourceRow(app, containing: "Furnace Manual").tap()
+        XCTAssertTrue(app.staticTexts["Changed since this answer"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists, "The new file is not opened silently")
+        app.buttons["openCurrentVersion"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
+    }
+
+    func testDeletedSourceShowsNoLongerInYourLibrary() {
+        let app = launchSourceStates()
+        sourceRow(app, containing: "Awning Manual").tap()
+        XCTAssertTrue(app.staticTexts["No longer in your library"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists)
+        XCTAssertFalse(app.buttons["openCurrentVersion"].exists)
+    }
+
     func testModelFailureRestoresQuestionAndNeverShowsAnAIAnswer() {
         let app = launch("ready", generation: "failure")
         openAssistant(app)

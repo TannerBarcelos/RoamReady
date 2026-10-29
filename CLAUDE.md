@@ -52,6 +52,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `-assistant-device-smoke` | Skips onboarding for the Assistant smoke test on a real device |
 | `-duo-ui-test` | Forces the iPhone Duo workspace without hinge hardware ([DuoWorkspace.swift](Camp/Shared/DuoWorkspace.swift)); combine with `-navigation-ui-test` to skip onboarding |
 | `-assistant-generation-test document` | With `-assistant-ui-test ready`: a stubbed model that answers from the first supplied document excerpt and cites it as `[S1]` |
+| `-document-source-states-fixture` | With `-navigation-ui-test -document-assistant-fixture -assistant-ui-test ready`: opens the Assistant on a canned chat with a cited source, a replaced document, a deleted document, and an uncited answer |
 | `-document-assistant-fixture` | With `-navigation-ui-test`: adds a synthetic water heater manual to the fixture rig (and one unattached manual that must never be searched), with a throwaway search index in the temp folder that is reused across launches ([DocumentAssistantFixture.swift](Camp/App/DocumentAssistantFixture.swift)). Logs only counts (`DOCUMENT-INDEX`, `DOCUMENT-SEARCH`) |
 
 ## Where things are

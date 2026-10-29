@@ -106,6 +106,11 @@ struct AssistantView: View {
                 if let step, chat.exchanges.isEmpty, chat.question.isEmpty {
                     chat.question = "What should I know about \(step.title.lowercased())?"
                 }
+                #if DEBUG
+                if DocumentAssistantFixture.showsSourceStates, chat.exchanges.isEmpty {
+                    chat.exchanges = DocumentAssistantFixture.sourceStateExchanges(scope: currentTarget, in: modelContext)
+                }
+                #endif
             }
             .task(id: scenePhase) {
                 guard scenePhase == .active else { return }
@@ -123,45 +128,68 @@ struct AssistantView: View {
         }
     }
 
-    /// What the answer rested on: validated sources, or a plain note when it rested on none.
+    /// What the answer rested on: validated sources, references that were only searched, or a plain note when it
+    /// rested on no document. Checklist attribution is shown separately, below.
     @ViewBuilder private func documentNotes(for answer: CampingAnswer) -> some View {
-        if !answer.sources.isEmpty {
+        let sections = AnswerSources(coverage: answer.coverage, cited: answer.sources, searched: answer.searched)
+        if !sections.cited.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Sources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                ForEach(answer.sources) { source in
-                    Button { openedSource = source } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "doc.text").foregroundStyle(.tint)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(source.title).font(.subheadline).foregroundStyle(.primary)
-                                Text([source.category, source.pageDescription, source.isScanned ? "Scanned" : nil].compactMap { $0 }.joined(separator: " · "))
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer(minLength: 8)
-                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                        .contentShape(RoundedRectangle(cornerRadius: 12))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("Opens the document at the cited page")
-                    .accessibilityIdentifier("assistantSourceRow")
-                }
-                if answer.sources.contains(where: \.isLowConfidenceScan) {
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(sections.cited) { sourceRow($0, searchedOnly: false) }
+                if sections.cited.contains(where: \.isLowConfidenceScan) {
                     Label("Part of this comes from a scan that may be misread. Check the original page before relying on any number or part code.",
                           systemImage: "exclamationmark.triangle")
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("assistantScanCaution")
                 }
             }
-        } else if answer.coverage == .notCovered {
-            Text("Your documents don’t cover this.").font(.caption).foregroundStyle(.secondary)
-                .accessibilityIdentifier("assistantNotCovered")
-        } else if answer.coverage == .uncited {
-            Text("General advice. No document was cited.").font(.caption).foregroundStyle(.secondary)
+        } else if let note = sections.note {
+            Text(AnswerSources.text(for: note)).font(.caption).foregroundStyle(.secondary)
+                .accessibilityIdentifier(note == .notCovered ? "assistantNotCovered" : "assistantUncitedNote")
         }
+        if !sections.searched.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("References searched").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    .accessibilityAddTraits(.isHeader)
+                Text("Looked at, but not cited in this answer.").font(.caption2).foregroundStyle(.secondary)
+                ForEach(sections.searched) { sourceRow($0, searchedOnly: true) }
+            }
+        }
+    }
+
+    /// Cited sources are solid cards with a document icon; searched references are dashed and lighter, with a
+    /// search icon. VoiceOver hears which kind each is.
+    private func sourceRow(_ source: DocumentSource, searchedOnly: Bool) -> some View {
+        let detail = [source.category, source.pageDescription, source.isScanned ? "Scanned" : nil].compactMap { $0 }.joined(separator: " · ")
+        return Button { openedSource = source } label: {
+            HStack(spacing: 10) {
+                Image(systemName: searchedOnly ? "magnifyingglass" : "doc.text")
+                    .foregroundStyle(searchedOnly ? Color.secondary : Color.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(source.title).font(.subheadline).foregroundStyle(searchedOnly ? .secondary : .primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                if searchedOnly {
+                    RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                } else {
+                    RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemGroupedBackground))
+                }
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(searchedOnly ? "Searched, not cited: \(source.title), \(detail)" : "Source: \(source.title), \(detail)")
+        .accessibilityHint(searchedOnly ? "Opens the document at the page that was searched" : "Opens the document at the cited page")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier(searchedOnly ? "assistantSearchedRow" : "assistantSourceRow")
     }
 
     private var scopeBanner: some View {
@@ -203,6 +231,7 @@ struct AssistantView: View {
                             documentNotes(for: exchange.answer)
                             if let source = exchange.answer.sourceURL, let url = URL(string: source) {
                                 Link("Checklist background: Camping World", destination: url).font(.caption)
+                                    .accessibilityIdentifier("assistantChecklistAttribution")
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
