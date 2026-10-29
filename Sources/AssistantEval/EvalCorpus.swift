@@ -1,11 +1,26 @@
 import Foundation
+import CampCore
 
 /// The versioned synthetic corpus: invented rigs, trips, and paperwork, plus the questions asked of them and
 /// the evidence each answer needs. Labels name a document, its version, a page, and a quoted span. They never
 /// name a chunk, so changing the chunker doesn't invalidate them.
 public struct EvalCorpus: Codable, Equatable, Sendable {
     public struct Rig: Codable, Equatable, Sendable { public var id: String; public var name: String }
-    public struct Trip: Codable, Equatable, Sendable { public var id: String; public var name: String; public var rig: String }
+    /// What the owner saved on a trip. The Assistant shows these apart from document excerpts.
+    public struct SavedFacts: Codable, Equatable, Sendable {
+        /// "2026-06-12". Civil days in `timeZone`.
+        public var arrival: String
+        public var departure: String
+        public var timeZone: String
+        public var checkInMinutes: Int?
+        public var checkOutMinutes: Int?
+        public var siteNumber: String?
+        public var confirmationNumber: String?
+    }
+    public struct Trip: Codable, Equatable, Sendable {
+        public var id: String; public var name: String; public var rig: String
+        public var saved: SavedFacts?
+    }
 
     public struct Page: Codable, Equatable, Sendable {
         public var ordinal: Int
@@ -85,6 +100,9 @@ public struct EvalCorpus: Codable, Equatable, Sendable {
         /// Forged source IDs or delimiters inside the document that must not reach the prompt verbatim.
         public var forgedMarkers: [String]?
         public var compactRetry: Bool?
+        /// Text the trip's saved-facts block must show (for example "2:00 PM"), in its own block and not among the
+        /// document excerpts. Needs a scope trip with saved facts.
+        public var savedValues: [String]?
         public var pendingFeature: String?
         public var notes: String?
     }
@@ -128,6 +146,12 @@ public struct EvalCorpus: Codable, Equatable, Sendable {
         try unique(cases.map(\.id), "case")
         try unique(rigs.map(\.id), "rig")
         try unique(trips.map(\.id), "trip")
+        for trip in trips where trip.saved != nil {
+            guard let saved = trip.saved, TimeZone(identifier: saved.timeZone) != nil,
+                  Self.civilDay(saved.arrival, in: saved.timeZone) != nil, Self.civilDay(saved.departure, in: saved.timeZone) != nil else {
+                throw EvalError.corpus("Trip \(trip.id) has saved facts with an invalid date or time zone.")
+            }
+        }
         for trip in trips where !rigs.contains(where: { $0.id == trip.rig }) {
             throw EvalError.corpus("Trip \(trip.id) names an unknown rig.")
         }
@@ -140,6 +164,9 @@ public struct EvalCorpus: Codable, Equatable, Sendable {
         for item in cases {
             if let rig = item.scope.rig, !rigs.contains(where: { $0.id == rig }) { throw EvalError.corpus("\(item.id): unknown rig.") }
             if let trip = item.scope.trip, !trips.contains(where: { $0.id == trip }) { throw EvalError.corpus("\(item.id): unknown trip.") }
+            if item.savedValues != nil, trips.first(where: { $0.id == item.scope.trip })?.saved == nil {
+                throw EvalError.corpus("\(item.id): savedValues needs a trip with saved facts.")
+            }
             guard (item.scope.rig == nil) != (item.scope.trip == nil) else { throw EvalError.corpus("\(item.id): scope needs exactly one of rig or trip.") }
             let groups = item.evidence ?? []
             guard item.answerable == !groups.isEmpty else { throw EvalError.corpus("\(item.id): answerable cases need evidence and unanswerable ones none.") }
@@ -148,6 +175,27 @@ public struct EvalCorpus: Codable, Equatable, Sendable {
                 for span in group.anyOf { _ = try range(of: span, in: item.id) }
             }
         }
+    }
+
+    /// Noon on a civil day, so the same day shows in any later formatting in that zone.
+    static func civilDay(_ text: String, in zone: String) -> Date? {
+        let parts = text.split(separator: "-").compactMap { Int($0) }
+        guard parts.count == 3, let tz = TimeZone(identifier: zone) else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = tz
+        return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12))
+    }
+
+    /// The trip's saved facts as the app would capture them from a stored trip.
+    public func savedFacts(forTrip id: String?) -> TripBookingFacts? {
+        guard let id, let trip = trips.first(where: { $0.id == id }), let saved = trip.saved,
+              let arrival = Self.civilDay(saved.arrival, in: saved.timeZone),
+              let departure = Self.civilDay(saved.departure, in: saved.timeZone) else { return nil }
+        var draft = TripDraft(campgroundName: trip.name, arrival: arrival, departure: departure,
+                              planningTimeZoneIdentifier: saved.timeZone, campgroundTimeZoneIdentifier: saved.timeZone)
+        draft.checkInMinutes = saved.checkInMinutes; draft.checkOutMinutes = saved.checkOutMinutes
+        draft.siteNumber = saved.siteNumber ?? ""; draft.confirmationNumber = saved.confirmationNumber
+        return TripBookingFacts(draft)
     }
 
     private func isValidOwner(_ owner: String) -> Bool {

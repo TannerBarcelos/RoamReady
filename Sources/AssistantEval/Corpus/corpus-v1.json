@@ -7,9 +7,14 @@
     { "id": "b", "name": "Ridgeline fifth wheel" }
   ],
   "trips": [
-    { "id": "t1", "name": "Pinecrest Lake, June", "rig": "a" },
+    { "id": "t1", "name": "Pinecrest Lake, June", "rig": "a",
+      "saved": { "arrival": "2026-06-12", "departure": "2026-06-15", "timeZone": "America/Denver", "checkInMinutes": 900, "checkOutMinutes": 660, "siteNumber": "A-203" } },
     { "id": "t3", "name": "Lakeview Point, September", "rig": "a" },
-    { "id": "t2", "name": "Cedar Hollow, August", "rig": "b" }
+    { "id": "t2", "name": "Cedar Hollow, August", "rig": "b" },
+    { "id": "t4", "name": "Meadow Ridge, October", "rig": "a",
+      "saved": { "arrival": "2026-10-09", "departure": "2026-10-11", "timeZone": "America/Denver", "checkInMinutes": 840, "siteNumber": "D-4", "confirmationNumber": "MR-5521" } },
+    { "id": "t5", "name": "Basin Lake, July", "rig": "a",
+      "saved": { "arrival": "2026-07-10", "departure": "2026-07-12", "timeZone": "America/Denver", "checkInMinutes": 840 } }
   ],
   "documents": [
     {
@@ -104,6 +109,19 @@
     {
       "id": "cedar-confirmation", "title": "Cedar Hollow Confirmation", "category": "Reservation", "version": "v1", "owner": "trip:t2",
       "pages": [ { "ordinal": 1, "text": "Reservation for site B-17. Check-in time is 2 pm. The gate code is 9035." } ]
+    },
+    {
+      "id": "meadow-confirmation", "title": "Meadow Ridge Confirmation", "category": "Reservation", "version": "v1", "owner": "trip:t4",
+      "pages": [
+        { "ordinal": 1, "text": "Reservation for site D-4. Arrival Friday, October 9. Departure Sunday, October 11. Check-in time is 3 pm. Check-out time is 11 am." }
+      ]
+    },
+    {
+      "id": "basin-confirmation", "title": "Basin Lake Confirmation", "category": "Reservation", "version": "v1", "owner": "trip:t5",
+      "pages": [
+        { "ordinal": 1, "text": "Reservation for the Basin Lake campground. Check-in time is 2 pm Mountain time on Friday, July 10." },
+        { "ordinal": 2, "text": "Shuttle check-in time is 4 pm Eastern time on Thursday, July 9 at the airport desk. The shuttle is a separate booking." }
+      ]
     }
   ],
   "cases": [
@@ -170,10 +188,10 @@
       "evidence": [ { "id": "dates", "anyOf": [ { "document": "pinecrest-confirmation", "version": "v1", "page": 1, "quote": "Arrival Friday, June 12. Departure Monday, June 15" } ] } ]
     },
     {
-      "id": "conflict-checkin", "subset": "dev", "kind": "required", "tags": ["conflict", "reservation"],
+      "id": "conflict-checkin", "subset": "dev", "kind": "required", "tags": ["conflict", "reservation", "saved-trip"],
       "question": "What time is check-in?",
-      "scope": { "trip": "t1" }, "answerable": true,
-      "notes": "Two confirmations disagree (3 pm and 4 pm). Both must reach the model; presenting both is a generation behavior that the manual rubric checks.",
+      "scope": { "trip": "t1" }, "answerable": true, "savedValues": ["3:00 PM"],
+      "notes": "Two confirmations disagree (3 pm and 4 pm), and the saved trip says 3 pm. Both must reach the model; presenting both is a generation behavior that the manual rubric checks.",
       "evidence": [
         { "id": "original", "anyOf": [ { "document": "pinecrest-confirmation", "version": "v1", "page": 1, "quote": "Check-in time is 3 pm" } ] },
         { "id": "amended", "anyOf": [ { "document": "pinecrest-amended", "version": "v1", "page": 1, "quote": "Check-in time moved to 4 pm" } ] }
@@ -187,6 +205,23 @@
       "evidence": [
         { "id": "original", "anyOf": [ { "document": "pinecrest-confirmation", "version": "v1", "page": 1, "quote": "Check-in time is 3 pm" } ] },
         { "id": "amended", "anyOf": [ { "document": "pinecrest-amended", "version": "v1", "page": 1, "quote": "Check-in time moved to 4 pm" } ] }
+      ]
+    },
+    {
+      "id": "conflict-saved-vs-confirmation", "subset": "dev", "kind": "required", "tags": ["conflict", "reservation", "saved-trip"],
+      "question": "What time is check-in?",
+      "scope": { "trip": "t4" }, "answerable": true, "savedValues": ["2:00 PM"],
+      "notes": "The saved trip says 2 pm and the confirmation says 3 pm. The saved value must reach the prompt in its own block and the confirmation passage must be retrieved, so both values can be shown with their sources.",
+      "evidence": [ { "id": "confirmation", "anyOf": [ { "document": "meadow-confirmation", "version": "v1", "page": 1, "quote": "Check-in time is 3 pm" } ] } ]
+    },
+    {
+      "id": "non-conflict-time-zone", "subset": "heldout", "kind": "required", "tags": ["conflict-control", "reservation", "saved-trip"],
+      "question": "What time is check-in?",
+      "scope": { "trip": "t5" }, "answerable": true, "savedValues": ["2:00 PM", "America/Denver"],
+      "notes": "Saved 2 pm Mountain on Friday matches the confirmation. The 4 pm shuttle check-in is Eastern time on Thursday: a different event, not a conflict. Both passages are supplied with their dates and zones so the model can tell.",
+      "evidence": [
+        { "id": "campground", "anyOf": [ { "document": "basin-confirmation", "version": "v1", "page": 1, "quote": "Check-in time is 2 pm Mountain time on Friday" } ] },
+        { "id": "shuttle", "anyOf": [ { "document": "basin-confirmation", "version": "v1", "page": 2, "quote": "Shuttle check-in time is 4 pm Eastern time on Thursday" } ] }
       ]
     },
     {

@@ -81,6 +81,7 @@ public struct DocumentExcerpt: Equatable, Sendable {
 /// The bounded, validated evidence for one request.
 public struct DocumentEvidence: Equatable, Sendable {
     public static let maximumExcerpts = 4
+    public static let maximumFollowUpExcerpts = 2
     public static let maximumExcerptCharacters = 700
     public static let maximumPromptCharacters = 2400
     public static let maximumCompactCharacters = 400
@@ -142,6 +143,24 @@ public struct DocumentEvidence: Equatable, Sendable {
             excerpts.append(DocumentExcerpt(source: source, text: text))
         }
         return DocumentEvidence(excerpts: excerpts, searched: searched)
+    }
+
+    /// Adds passages from a targeted follow-up search, such as a second confirmation that disagrees with the
+    /// first. They are kept ahead of the weakest first-pass excerpts rather than dropped when the cap is full, so
+    /// a competing passage that was found is never lost to ranking. IDs stay "S1"... in order.
+    public func merging(followUp: DocumentEvidence) -> DocumentEvidence {
+        let added = followUp.excerpts.filter { extra in
+            !excerpts.contains { $0.source.documentID == extra.source.documentID && $0.source.page == extra.source.page && $0.text == extra.text }
+        }.prefix(Self.maximumFollowUpExcerpts)
+        guard !added.isEmpty else { return self }
+        var merged = Array(excerpts.prefix(Self.maximumExcerpts - added.count))
+        for extra in added {
+            let source = extra.source
+            merged.append(DocumentExcerpt(source: DocumentSource(
+                id: "S\(merged.count + 1)", documentID: source.documentID, checksum: source.checksum, title: source.title,
+                category: source.category, page: source.page, pageLabel: source.pageLabel, section: source.section), text: extra.text))
+        }
+        return DocumentEvidence(excerpts: merged, searched: searched || followUp.searched)
     }
 
     // MARK: Prompt text

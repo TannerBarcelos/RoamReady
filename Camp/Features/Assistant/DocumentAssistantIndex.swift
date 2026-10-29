@@ -4,6 +4,7 @@ import SwiftData
 import CampCore
 import CampPersistence
 import DocumentSearch
+import DocumentVault
 
 /// Owns the document search index for a library session: where it lives, keeping it current with the
 /// documents, answering scoped searches, and erasing it. `LibraryController` creates and drives it.
@@ -210,6 +211,31 @@ final class DocumentAssistantIndex {
             }
         }
         // Check the library again, now, so a document deleted, reassigned, or replaced during the search is dropped.
-        return DocumentEvidence.make(question: question, candidates: candidates, live: context.documentScope(for: target).live)
+        let live = context.documentScope(for: target).live
+        let evidence = DocumentEvidence.make(question: question, candidates: candidates, live: live)
+        guard target.isTrip, let followUp = await bookingFollowUp(for: question, allowList: allowList, live: live, in: index) else {
+            return evidence
+        }
+        return evidence.merging(followUp: followUp)
+    }
+
+    /// A booking question can match one confirmation and miss another that says something different. One more
+    /// search, still inside the trip's allow-list and limited to its Reservation documents, fetches the competing
+    /// passage so the camper sees both values. Nothing is written; failures just leave the first result.
+    private func bookingFollowUp(for question: String, allowList: Set<String>, live: [UUID: LiveDocument],
+                                 in index: DocumentSearchIndex) async -> DocumentEvidence? {
+        guard let query = BookingFactQuestion.followUpQuery(for: question) else { return nil }
+        let reservations = allowList.filter { id in UUID(uuidString: id).flatMap { live[$0] }?.category == DocumentCategory.reservation.title }
+        guard !reservations.isEmpty,
+              let result = try? await index.search(query, documentIDs: reservations, limit: 8, embedding: provider),
+              !Task.isCancelled else { return nil }
+        let candidates = result.hits.compactMap { hit -> DocumentEvidenceCandidate? in
+            UUID(uuidString: hit.documentID).map {
+                DocumentEvidenceCandidate(documentID: $0, indexedChecksum: hit.checksum, page: hit.page,
+                                          pageLabel: hit.pageLabel, section: hit.section, text: hit.text)
+            }
+        }
+        // Validated against the library as it is now, like the first pass.
+        return DocumentEvidence.make(question: query, candidates: candidates, live: live)
     }
 }

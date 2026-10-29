@@ -127,9 +127,10 @@ struct AssistantView: View {
 
     /// What the answer rested on: validated sources, or a plain note when it rested on none.
     @ViewBuilder private func documentNotes(for answer: CampingAnswer) -> some View {
-        if !answer.sources.isEmpty {
+        if !answer.sources.isEmpty || answer.usedSavedTrip {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Sources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if answer.usedSavedTrip { savedTripRow }
                 ForEach(answer.sources) { source in
                     Button { openedSource = source } label: {
                         HStack(spacing: 10) {
@@ -157,6 +158,10 @@ struct AssistantView: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("assistantScanCaution")
                 }
+                if answer.sources.isEmpty, answer.coverage == .notCovered {
+                    Text("Your documents don’t cover this.").font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("assistantNotCovered")
+                }
             }
         } else if answer.coverage == .notCovered {
             Text("Your documents don’t cover this.").font(.caption).foregroundStyle(.secondary)
@@ -164,6 +169,24 @@ struct AssistantView: View {
         } else if answer.coverage == .uncited {
             Text("General advice. No document was cited.").font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    /// The trip's own saved details, named as a source so they are told apart from documents. Not tappable:
+    /// the Assistant never edits them, and the camper changes them in the trip.
+    private var savedTripRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "calendar").foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Saved trip").font(.subheadline)
+                Text("Details you entered · Not changed").font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("assistantSavedTripSource")
     }
 
     private var scopeBanner: some View {
@@ -330,6 +353,7 @@ struct AssistantView: View {
         let target = currentTarget
         let rig = trip == nil ? rigs.active.first : trip?.rig
         let rigContext = rig.map { CampingRigContext($0) }
+        let tripFacts = trip.map { TripBookingFacts($0) }
         let steps: [ChecklistStepDraft]
         if let trip {
             steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
@@ -359,6 +383,7 @@ struct AssistantView: View {
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        history: history, rigContext: rigContext, documents: evidence,
+                                                       tripFacts: tripFacts,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
                     announce(progress.advance(to: stage, for: request))

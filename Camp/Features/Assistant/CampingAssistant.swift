@@ -10,6 +10,8 @@ struct CampingAnswer: Sendable {
     /// Document passages the model cited, validated against what the request supplied.
     var sources: [DocumentSource] = []
     var coverage: DocumentCoverage = .notSearched
+    /// The question was about the booking, so the saved trip is listed beside any document sources.
+    var usedSavedTrip = false
     var mode: String { "Apple Intelligence · Generated on this device · Check against your manual" }
 }
 
@@ -87,12 +89,13 @@ enum CampingAssistant {
     static func answer(question: String, steps candidates: [ChecklistStepDraft], rigType: RigType?, step: ChecklistStepDraft?,
                        scope: CampingHelpRequest.Scope = .checklist, history: [CampingChatTurn] = [],
                        rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
+                       tripFacts: TripBookingFacts? = nil,
                        onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         onStage?(.preparing)
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType,
                                          step: step, scope: scope, history: history, rigContext: rigContext,
-                                         documents: documents)
+                                         documents: documents, tripFacts: tripFacts)
         let reply: CampingReply
         do {
             try Task.checkCancellation()
@@ -112,7 +115,7 @@ enum CampingAssistant {
             throw (error as? CampingChatFailure) ?? .failed
         }
         return CampingAnswer(text: reply.text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL,
-                             sources: reply.sources, coverage: reply.coverage)
+                             sources: reply.sources, coverage: reply.coverage, usedSavedTrip: reply.usedSavedTrip)
     }
 
     private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {

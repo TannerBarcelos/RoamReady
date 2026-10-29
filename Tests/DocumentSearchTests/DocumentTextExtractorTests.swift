@@ -14,19 +14,38 @@ final class DocumentTextExtractorTests: XCTestCase {
     static let winter = ["Winterizing the water system", "Drain the fresh water tank before winter storage.",
                          "Open every faucet and the low point drains."]
 
-    /// The first recognition on a machine can fail or take a long time while Vision prepares its model, which
-    /// is also what `retryLater` is for. Wait until it works so the assertions below test the extractor.
-    nonisolated(unsafe) private static var warmedUp = false
+    /// Whether Vision recognizes text on this host, probed once for the whole suite. The probe runs on its own
+    /// thread so a Vision call that never returns is abandoned after the timeout instead of blocking the run.
+    /// Vision can need a few tries while it prepares its model (which is also what `retryLater` is for), so
+    /// the probe retries within the timeout.
+    private static let visionAvailable: Bool = {
+        let result = ProbeResult()
+        let done = DispatchSemaphore(value: 0)
+        let thread = Thread {
+            let fixture = pdf([.scan(bitmap(torque))])
+            while !result.isFinished {
+                if case .ready = DocumentTextExtractor.extract(from: fixture).outcome { result.succeed(); break }
+                Thread.sleep(forTimeInterval: 1)
+            }
+            done.signal()
+        }
+        thread.start()
+        let finished = done.wait(timeout: .now() + 30) == .success
+        result.finish()
+        return finished && result.succeeded
+    }()
+
+    private final class ProbeResult: @unchecked Sendable {
+        private let lock = NSLock()
+        private var ok = false, over = false
+        var succeeded: Bool { lock.withLock { ok } }
+        var isFinished: Bool { lock.withLock { over } }
+        func succeed() { lock.withLock { ok = true; over = true } }
+        func finish() { lock.withLock { over = true } }
+    }
 
     override func setUpWithError() throws {
-        guard !Self.warmedUp else { return }
-        let fixture = Self.pdf([.scan(Self.bitmap(Self.torque))])
-        let deadline = Date().addingTimeInterval(240)
-        while Date() < deadline {
-            if case .ready = DocumentTextExtractor.extract(from: fixture).outcome { Self.warmedUp = true; return }
-            Thread.sleep(forTimeInterval: 2)
-        }
-        throw XCTSkip("Vision text recognition is not available on this host")
+        guard Self.visionAvailable else { throw XCTSkip("Vision OCR unavailable on this host") }
     }
 
     // MARK: Fixtures
