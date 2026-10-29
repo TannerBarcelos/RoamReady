@@ -107,7 +107,9 @@ Assistant works on iPhone, iPad, and Mac wherever Apple’s runtime reports Appl
 
 ### Answers from your documents
 
-The Assistant reads eligible documents on this device and offline, in the **Assistant scope** shown at the top of the chat. A Manual, Service & maintenance, Warranty, or Reservation document counts once its PDF or photo is saved on the device; Registration, Insurance, Other, links without a saved copy, and documents attached to nothing are never read.
+The Assistant reads eligible documents on this device and offline, in the **Assistant scope** shown at the top of the chat. A Manual, Service & maintenance, Warranty, or Reservation document counts once its PDF or photo is saved on the device. Registration and Insurance are never read, even if an opt-in is somehow stored on one. Other is read only when the owner turns on **Include in Assistant** for that document (off by default). A link counts only after a copy is saved on the device, and chat never fetches a URL. Documents attached to nothing are never read. The rule lives in `AssistantDocumentEligibility`.
+
+The opt-in is `StoredDocument.includeInAssistant`, shown in document details for Other documents only. Changing it saves through the library, which schedules the index sync: turning it on queues indexing, and turning it off removes the document from the index and from the next question's allow-list. It syncs through the existing iCloud mirroring.
 
 - **General chat** (the sparkle button) is scoped to the active rig ("Rig: Forest River No Boundaries"): documents attached directly to that rig. It never reads a trip's documents and never picks a current or next booking.
 - **Trip and checklist help** is scoped to that trip and its rig ("Trip: Pines · Rig: Forest River No Boundaries"): the trip's own documents plus the rig's. A past trip uses its rig even after the rig was replaced, shown as "(archived)". Another trip's documents are never read, even for the same rig.

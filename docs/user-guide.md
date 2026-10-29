@@ -62,6 +62,8 @@ Files can be up to 50 MiB. Imported originals already on the device open offline
 
 To move a document, open it and use **Assign to rig or trip**. A document belongs to one rig or one trip: choosing a trip removes its direct rig, and choosing a rig removes its trip. Archived rigs are listed too, and your file is never changed. If saving fails, you see an error and the document keeps its previous assignment. Unattached documents can still be opened and shared, but the Assistant doesn’t read them until you assign them. Assigning never overrides which document types the Assistant can read.
 
+The Assistant reads Manual, Service & maintenance, Warranty, and Reservation documents automatically, and never reads Registration or Insurance. For an **Other** document, open it and turn on **Include in Assistant**; it is off until you do, and turning it off stops the Assistant using it right away. A link is read only after you save a copy on your device. The setting syncs with iCloud.
+
 Documents retained after a trip or rig is deleted appear in **Profile → Unattached documents**. See the [document vault](document-vault.md) for protection and availability details.
 
 ## Add memories
