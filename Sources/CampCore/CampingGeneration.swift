@@ -43,40 +43,47 @@ public struct CampingReply: Equatable, Sendable {
 /// A testable send path. The app supplies Apple's on-device adapter; there is no remote adapter.
 @MainActor
 public enum CampingGeneration {
-    public static func reply(to request: CampingHelpRequest, using generator: any CampingResponseGenerating) async throws -> String {
-        try await generate(request, using: generator).text
+    public static func reply(to request: CampingHelpRequest, using generator: any CampingResponseGenerating,
+                             counter: any PromptTokenCounting = ConservativeTokenEstimator()) async throws -> String {
+        try await generate(request, using: generator, counter: counter).text
     }
 
     /// Like `reply`, and resolves citations against the manifest of whichever prompt reached the model.
-    public static func answer(to request: CampingHelpRequest, using generator: any CampingResponseGenerating) async throws -> CampingReply {
-        let (text, compact) = try await generate(request, using: generator)
-        guard let documents = request.documents else {
+    public static func answer(to request: CampingHelpRequest, using generator: any CampingResponseGenerating,
+                              counter: any PromptTokenCounting = ConservativeTokenEstimator()) async throws -> CampingReply {
+        let (text, sent) = try await generate(request, using: generator, counter: counter)
+        guard request.documents != nil else {
             return CampingReply(text: text, sources: [], droppedCitationCount: 0, coverage: .notSearched)
         }
         // With nothing supplied there is nothing citable, whatever the model wrote.
-        let manifest = documents.manifest(compact: compact)
+        let manifest = sent.sources
         let resolved = DocumentCitations.resolve(text, manifest: manifest)
         let coverage: DocumentCoverage = manifest.isEmpty ? .notCovered : (resolved.sources.isEmpty ? .uncited : .cited)
         return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
                             droppedCitationCount: resolved.droppedCount, coverage: coverage)
     }
 
-    private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating) async throws -> (text: String, compact: Bool) {
+    private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating,
+                                 counter: any PromptTokenCounting) async throws -> (text: String, sent: PromptPlan) {
         try Task.checkCancellation()
         guard !request.questionExceedsLimit else { throw CampingChatFailure.contextTooLong }
+        let budget = PromptBudget(contextSize: counter.contextSize)
+        var plan = try await request.plan(.full, counter: counter, budget: budget)
         let response: String
-        var compact = false
         do {
-            response = try await generator.respond(to: request.prompt, instructions: request.instructions)
+            response = try await generator.respond(to: plan.prompt, instructions: plan.instructions)
         } catch CampingChatFailure.contextTooLong {
-            // Each adapter call starts a fresh session. Retry once without old turns or long notes.
+            // Each adapter call starts a fresh session. Retry once with its own, smaller source list; it never
+            // carries more than the attempt it replaces.
             try Task.checkCancellation()
-            compact = true
-            response = try await generator.respond(to: request.compactPrompt, instructions: request.instructions)
+            let retry = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
+            guard retry.prompt != plan.prompt else { throw CampingChatFailure.contextTooLong }
+            plan = retry
+            response = try await generator.respond(to: plan.prompt, instructions: plan.instructions)
         }
         try Task.checkCancellation()
         let text = response.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw CampingChatFailure.failed }
-        return (text, compact)
+        return (text, plan)
     }
 }
