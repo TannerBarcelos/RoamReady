@@ -2,9 +2,9 @@ import XCTest
 
 @MainActor
 final class NavigationUITests: XCTestCase {
-    private func launch() -> XCUIApplication {
+    private func launch(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test"]
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test"] + extraArguments
         app.launch()
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         return app
@@ -50,7 +50,7 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["appearanceOption-system"].exists)
         let export = app.buttons["prepareLibraryExport"]
-        for _ in 0..<4 {
+        for _ in 0..<5 {
             if export.isHittable { break }
             app.swipeUp()
         }
@@ -63,7 +63,7 @@ final class NavigationUITests: XCTestCase {
         let app = launch()
         app.navigationTab("Profile").tap()
         let thumbnail = app.images["Your travel trailer"]
-        for _ in 0..<4 {
+        for _ in 0..<5 {
             if thumbnail.isHittable { break }
             app.swipeUp()
         }
@@ -79,5 +79,28 @@ final class NavigationUITests: XCTestCase {
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationTab("Profile").isSelected)
+    }
+
+    /// Fast, deterministic version of the Profile audit in the disk workflow test: the fixture library
+    /// has a rig, so the scrolled rig section is reachable without onboarding.
+    func testProfileRigSectionPassesDynamicTypeAuditAtLargestSize() throws {
+        let app = launch(extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        app.navigationTab("Profile").tap()
+        try audit(app)
+        let replace = app.buttons["replaceRig"]
+        for _ in 0..<12 {
+            if replace.isHittable { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(replace.isHittable)
+        try audit(app)
+    }
+
+    private func audit(_ app: XCUIApplication) throws {
+        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped]) { issue in
+            print("Accessibility audit: \(issue.auditType.rawValue) \(issue.compactDescription)\n\(issue.detailedDescription)")
+            if let element = issue.element { print("Audit element: \(element.debugDescription)") }
+            return false // Report every finding; never waive an issue.
+        }
     }
 }
