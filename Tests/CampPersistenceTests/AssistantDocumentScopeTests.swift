@@ -52,6 +52,58 @@ struct AssistantDocumentScopeTests {
         #expect(rig.generalAssistantScope().isEmpty)
     }
 
+    @Test func everyCategoryFollowsTheEligibilityRule() throws {
+        let included: [DocumentCategory] = [.manual, .maintenance, .warranty, .reservation]
+        for category in included {
+            let doc = try add(category, rig: rig)
+            #expect(doc.isAssistantSearchable)
+            doc.includeInAssistant = true
+            #expect(doc.isAssistantSearchable)
+        }
+        for category in [DocumentCategory.registration, .insurance] {
+            let doc = try add(category, rig: rig)
+            #expect(!doc.isAssistantSearchable)
+            // The opt-in never lets these in, even if one is stored (older build, sync, stale index row).
+            doc.includeInAssistant = true
+            #expect(!doc.isAssistantSearchable)
+            #expect(!rig.generalAssistantScope().documentIDs.contains(doc.documentID))
+        }
+        #expect(rig.generalAssistantScope().documentIDs.count == included.count)
+    }
+
+    @Test func otherIsOffUntilOptedInAndOffAgainImmediately() throws {
+        let other = try add(.other, rig: rig)
+        #expect(!other.includeInAssistant)
+        #expect(rig.generalAssistantScope().isEmpty)
+        #expect(try context.indexableDocuments().isEmpty)
+        other.includeInAssistant = true
+        #expect(rig.generalAssistantScope().documentIDs == [other.documentID])
+        #expect(try context.indexableDocuments().map(\.documentID) == [other.documentID])
+        other.includeInAssistant = false
+        #expect(rig.generalAssistantScope().isEmpty)
+        #expect(try context.indexableDocuments().isEmpty)
+    }
+
+    @Test func optedInOtherStillNeedsSavedContentAndAScope() throws {
+        let link = try add(.other, rig: rig, file: false)
+        link.includeInAssistant = true
+        #expect(!link.isAssistantSearchable)
+        link.attach(try DocumentPayload(bytes: Self.pdf, filename: "saved.pdf"))
+        #expect(link.isAssistantSearchable && rig.generalAssistantScope().documentIDs == [link.documentID])
+        let unattached = try add(.other, rig: nil)
+        unattached.includeInAssistant = true
+        #expect(unattached.isAssistantSearchable && !unattached.isInGeneralScope(of: rig))
+    }
+
+    @Test func recategorizingAnOptedInOtherDocumentDropsItFromScope() throws {
+        let other = try add(.other, rig: rig)
+        other.includeInAssistant = true
+        try other.update(DocumentMetadata(title: "Card", category: .insurance))
+        #expect(rig.generalAssistantScope().isEmpty)
+        try other.update(DocumentMetadata(title: "Card", category: .other))
+        #expect(rig.generalAssistantScope().documentIDs == [other.documentID])
+    }
+
     @Test func linksWithoutSavedContentUnattachedAndOtherOwnersAreOutOfScope() throws {
         try add(.manual, rig: rig, file: false)
         try add(.manual, rig: nil)
@@ -94,6 +146,17 @@ struct AssistantDocumentScopeTests {
         let job = try #require(try context.indexJob(documentID: manual.documentID, checksum: checksum))
         #expect(try job.content.verifiedBytes() == Self.pdf)
         #expect(try context.indexJob(documentID: manual.documentID, checksum: "stale") == nil)
+    }
+
+    @Test func indexingListsDocumentsWaitingForBytesWithTheirOwnState() throws {
+        let ready = try add(.manual, rig: rig)
+        let waiting = try add(.warranty, rig: rig)
+        waiting.content = nil // iCloud delivered the details before the file
+        try add(.insurance, rig: rig).content = nil
+        let states = Dictionary(uniqueKeysWithValues: try context.indexableDocuments().map { ($0.documentID, $0.availability) })
+        #expect(states == [ready.documentID: .ready, waiting.documentID: .waitingForDownload])
+        // Waiting documents are not searchable until their bytes arrive.
+        #expect(rig.generalAssistantScope().documentIDs == [ready.documentID])
     }
 
     // MARK: Assignment
@@ -175,5 +238,30 @@ struct AssistantDocumentScopeTests {
         manual.assign(to: .trip(try newTrip("Pines")))
         manual.assign(to: prior)
         #expect(manual.rig === rig && manual.trip == nil)
+    }
+
+    @Test func readinessListsDownloadingDocumentsThatSearchDoesNot() throws {
+        let manual = try add(.manual, title: "Manual", rig: rig)
+        let arriving = try add(.warranty, title: "Warranty", rig: rig)
+        arriving.content?.protectedBytes = nil
+        try add(.insurance, title: "Insurance", rig: rig)
+        let target = AssistantScopeTarget.general(rig: rig)
+        #expect(context.documentScope(for: target).documentIDs == [manual.documentID])
+        let readiness = context.readinessDocuments(for: target)
+        #expect(Set(readiness.map(\.id)) == [manual.documentID, arriving.documentID])
+        #expect(readiness.first { $0.id == arriving.documentID }?.waitingForDownload == true)
+        #expect(readiness.first { $0.id == manual.documentID }?.waitingForDownload == false)
+    }
+
+    @Test func readinessFollowsTheSameScopeAsSearch() throws {
+        let trip = try newTrip("Pines")
+        let own = try add(.reservation, title: "Confirmation", rig: nil, trip: trip)
+        let rigManual = try add(.manual, title: "Manual", rig: rig)
+        let other = try newTrip("Lake")
+        try add(.reservation, title: "Other confirmation", rig: nil, trip: other)
+        try add(.manual, title: "Unattached", rig: nil)
+        let ids = Set(context.readinessDocuments(for: .trip(trip)).map(\.id))
+        #expect(ids == [own.documentID, rigManual.documentID])
+        #expect(Set(context.readinessDocuments(for: .general(rig: rig)).map(\.id)) == [rigManual.documentID])
     }
 }

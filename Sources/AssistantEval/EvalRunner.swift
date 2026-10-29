@@ -14,6 +14,8 @@ public struct EvalOptions: Sendable {
     public var commit: String?
     /// How many passages a search returns. Hit@5, Recall@5, and the reciprocal rank are read from these.
     public var searchLimit = 8
+    /// Reads passage and question language, as the app does with NaturalLanguage.
+    public var languageDetector: any LanguageDetecting = NaturalLanguageDetector()
     public var generationNote = "The generated-answer suite is a manual human-rubric review and is not automated by this harness."
 
     public init() {}
@@ -50,12 +52,14 @@ public enum EvalRunner {
             let pages = doc.pages.map { ExtractedPage(ordinal: $0.ordinal, label: $0.label, text: $0.text) }
             let record = IndexedDocument(id: uuid(doc.id).uuidString, checksum: doc.indexedChecksum, extractionVersion: extractionVersion,
                                          chunkingVersion: PassageChunker.version, language: "en")
-            try await index.publish(record, passages: PassageChunker.passages(from: pages), embedding: provider)
+            let admission = DocumentLanguagePolicy.admit(PassageChunker.passages(from: pages), using: options.languageDetector)
+            try await index.publish(record, passages: admission.admitted, embedding: provider)
         }
 
         var results: [EvalReport.CaseResult] = []
         for item in corpus.cases where options.subsets.contains(item.subset) {
-            results.append(try await runCase(item, corpus: corpus, index: index, provider: provider, limit: options.searchLimit))
+            results.append(try await runCase(item, corpus: corpus, index: index, provider: provider, limit: options.searchLimit,
+                                          detector: options.languageDetector))
         }
         await index.close()
 
@@ -80,14 +84,17 @@ public enum EvalRunner {
     // MARK: One case
 
     private static func runCase(_ item: EvalCorpus.Case, corpus: EvalCorpus, index: DocumentSearchIndex,
-                                provider: (any EmbeddingProvider)?, limit: Int) async throws -> EvalReport.CaseResult {
+                                provider: (any EmbeddingProvider)?, limit: Int,
+                                detector: any LanguageDetecting) async throws -> EvalReport.CaseResult {
         let byUUID = Dictionary(uniqueKeysWithValues: corpus.documents.map { (uuid($0.id), $0) })
         let units = try corpus.units(for: item)
 
         let allowList = Set(corpus.documents.filter { doc in
             doc.isIndexed && verdict(doc, item.scope, corpus, state: (item.staleAllowList ?? false) ? .indexed : .live).inScope
         }.map { uuid($0.id).uuidString })
-        let search = try await index.search(item.question, documentIDs: allowList, limit: limit, embedding: provider)
+        // A confidently non-English question is answered with the English-only explanation, never searched.
+        let needsEnglish = !allowList.isEmpty && DocumentLanguagePolicy.check(question: item.question, using: detector) == .needsEnglish
+        let search = try await index.search(item.question, documentIDs: needsEnglish ? [] : allowList, limit: limit, embedding: provider)
 
         // The live library, as the Assistant captures it right before building the prompt.
         var live: [UUID: LiveDocument] = [:]
@@ -145,7 +152,21 @@ public enum EvalRunner {
             return DocumentEvidenceCandidate(documentID: id, indexedChecksum: hit.checksum, page: hit.page, pageLabel: hit.pageLabel,
                                              section: hit.section, text: hit.text)
         }
-        let evidence = DocumentEvidence.make(question: item.question, candidates: candidates, live: live)
+        var evidence = DocumentEvidence.make(question: item.question, candidates: candidates, live: live)
+        // The Assistant's targeted follow-up for booking questions, among the trip's Reservation documents only.
+        if item.scope.trip != nil, let query = BookingFactQuestion.followUpQuery(for: item.question) {
+            let reservations = allowList.filter { id in UUID(uuidString: id).flatMap { live[$0] }?.category == "Reservation" }
+            if !reservations.isEmpty {
+                let followUp = try await index.search(query, documentIDs: reservations, limit: limit, embedding: provider)
+                let extra = followUp.hits.compactMap { hit -> DocumentEvidenceCandidate? in
+                    UUID(uuidString: hit.documentID).map {
+                        DocumentEvidenceCandidate(documentID: $0, indexedChecksum: hit.checksum, page: hit.page, pageLabel: hit.pageLabel,
+                                                  section: hit.section, text: hit.text)
+                    }
+                }
+                evidence = evidence.merging(followUp: DocumentEvidence.make(question: query, candidates: extra, live: live))
+            }
+        }
         var promptCovered = Set<Int>()
         var evidenceRows: [EvalReport.EvidenceRow] = []
         var scopeViolations: [EvalReport.Violation] = []
@@ -176,9 +197,12 @@ public enum EvalRunner {
         }
 
         // Citations and prompt handling, on the request the Assistant would build.
-        let request = CampingHelpRequest(question: item.question, steps: [], rigType: nil, step: nil, scope: .general, documents: evidence)
+        let savedFacts = corpus.savedFacts(forTrip: item.scope.trip)
+        let request = CampingHelpRequest(question: item.question, steps: [], rigType: nil, step: nil,
+                                         scope: item.scope.trip == nil ? .general : .checklist, documents: evidence, tripFacts: savedFacts)
         let citationFailures = Self.citationFailures(evidence: evidence, byUUID: byUUID, scope: item.scope, corpus: corpus)
         let promptFailures = Self.promptFailures(item, request: request, evidence: evidence, units: units, covered: covered)
+            + Self.savedFactFailures(item, request: request, savedFacts: savedFacts)
 
         // Metrics and explanations.
         let answerable = item.answerable
@@ -307,6 +331,35 @@ public enum EvalRunner {
         }
         return failures
     }
+
+    /// The saved trip's facts stay in their own block, apart from the excerpts, and are never changed by building a prompt.
+    private static func savedFactFailures(_ item: EvalCorpus.Case, request: CampingHelpRequest, savedFacts: TripBookingFacts?) -> [String] {
+        guard let savedFacts else { return [] }
+        var failures: [String] = []
+        let prompt = request.prompt
+        let begin = TripBookingFacts.beginMarker, end = TripBookingFacts.endMarker
+        guard prompt.components(separatedBy: begin).count == 2, prompt.components(separatedBy: end).count == 2,
+              let block = prompt.components(separatedBy: begin).last?.components(separatedBy: end).first else {
+            return ["The saved-facts block is missing or its delimiters are duplicated."]
+        }
+        let excerpts = prompt.components(separatedBy: "BEGIN DOCUMENT EXCERPTS").last ?? ""
+        for value in item.savedValues ?? [] {
+            if !block.contains(value) { failures.append("The saved value \"\(value)\" is missing from the saved-facts block.") }
+            if excerpts.contains("saved") && excerpts.contains(value) && block.contains(value), prompt.components(separatedBy: "BEGIN DOCUMENT EXCERPTS").count == 2,
+               excerpts.components(separatedBy: "END DOCUMENT EXCERPTS").first?.contains(TripBookingFacts.beginMarker) == true {
+                failures.append("The saved-facts block sits inside the document excerpts.")
+            }
+        }
+        if !request.compactPrompt.contains(begin) { failures.append("The compact prompt dropped the saved-facts block.") }
+        if !request.instructions.contains("Do not choose between them") || !request.instructions.contains("Never say you checked all") {
+            failures.append("The conflict rules did not reach the model's instructions.")
+        }
+        // Prompt building reads a value snapshot; the facts must equal themselves afterward.
+        if savedFacts != corpusCopy(of: savedFacts) { failures.append("Saved trip facts changed while the request was built.") }
+        return failures
+    }
+
+    private static func corpusCopy(of facts: TripBookingFacts) -> TripBookingFacts { facts }
 
     // MARK: Scope
 

@@ -29,7 +29,7 @@ enum DocumentAssistantFixture {
             .documentID = UUID(uuidString: "00000000-0000-4000-8000-0000000000B2")!
     }
 
-    private static func payload(filename: String, pages: [(heading: String, body: String)]) throws -> DocumentPayload {
+    static func payload(filename: String, pages: [(heading: String, body: String)]) throws -> DocumentPayload {
         // Rendering stamps a creation date, so the first render is kept and reused: the same bytes mean the same
         // checksum on the next launch, which is what lets the index be reused.
         let cached = URL.temporaryDirectory.appending(path: "DocumentAssistantFixture-\(filename)")

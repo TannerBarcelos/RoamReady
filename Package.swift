@@ -29,7 +29,7 @@ let package = Package(
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
         /// The document Assistant's search index: its own disposable SQLite file with FTS5 and sqlite-vec.
-        .target(name: "DocumentSearch", dependencies: ["CSQLiteVec"]),
+        .target(name: "DocumentSearch", dependencies: ["CSQLiteVec", "CampCore"]),
         /// The Assistant's retrieval eval: a versioned synthetic corpus, the runner, and JSON and Markdown reports.
         .target(name: "AssistantEval", dependencies: ["DocumentSearch", "CampCore"], resources: [.copy("Corpus")]),
         /// The manual command for the same eval with Apple's embeddings. Reports "not run" when they're unavailable.
@@ -37,7 +37,7 @@ let package = Package(
         .testTarget(name: "CampCoreTests", dependencies: ["CampCore"]),
         .testTarget(name: "CampgroundsTests", dependencies: ["Campgrounds", "CampCore"]),
         .testTarget(name: "DocumentVaultTests", dependencies: ["DocumentVault"]),
-        .testTarget(name: "DocumentSearchTests", dependencies: ["DocumentSearch"]),
+        .testTarget(name: "DocumentSearchTests", dependencies: ["DocumentSearch", "CampCore"]),
         /// Synthetic retrieval eval cases: search, relevance, and evidence validation together. No private documents.
         .testTarget(name: "DocumentAssistantEvalTests", dependencies: ["DocumentSearch", "CampCore", "AssistantEval"]),
         .testTarget(name: "CampPersistenceTests", dependencies: ["CampPersistence", "CampCore", "DocumentVault"])

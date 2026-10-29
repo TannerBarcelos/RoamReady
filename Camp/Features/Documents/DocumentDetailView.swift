@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import QuickLook
+import CampCore
 import CampPersistence
 import DocumentVault
 
@@ -32,6 +33,9 @@ struct DocumentDetailView: View {
                     Label("Encrypted in iCloud", systemImage: "lock.icloud")
                 }
             }
+            if let status = library.documentAssistant.status(of: document) {
+                DocumentStatusSection(status: status) { library.documentAssistant.retryFailures() }
+            }
             Section {
                 Picker("Assign to rig or trip", selection: assignment) {
                     Text("Unattached").tag(DocumentAssignment.unattached)
@@ -49,6 +53,15 @@ struct DocumentDetailView: View {
                 }
             } footer: {
                 if document.isUnattached { Text("Unattached documents stay here to open or share, but the Assistant doesn’t read them.") }
+            }
+            if document.category == .other {
+                Section {
+                    Toggle("Include in Assistant", isOn: includeInAssistant)
+                } footer: {
+                    Text(document.file == nil
+                         ? "The Assistant only reads documents saved on this device. Save a copy of the link first."
+                         : "Lets the Assistant read this document to answer questions. Off by default.")
+                }
             }
             if document.issuedOn != nil || document.expiresOn != nil {
                 Section("Dates") {
@@ -79,6 +92,22 @@ struct DocumentDetailView: View {
 
     private var assignment: Binding<DocumentAssignment> {
         Binding(get: { document.assignment }, set: { assign(to: $0) })
+    }
+
+    /// Saving schedules the index sync, which indexes the document or drops it from retrieval right away.
+    private var includeInAssistant: Binding<Bool> {
+        Binding(get: { document.includeInAssistant }, set: { setIncludeInAssistant($0) })
+    }
+
+    private func setIncludeInAssistant(_ on: Bool) {
+        let prior = document.includeInAssistant
+        guard on != prior else { return }
+        document.includeInAssistant = on
+        do { try library.saveOrThrow(); failure = nil }
+        catch {
+            document.includeInAssistant = prior
+            failure = "Couldn’t save this setting. \(error.localizedDescription)"
+        }
     }
 
     /// Keeps the prior assignment if the local save fails.

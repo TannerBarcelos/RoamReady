@@ -52,7 +52,9 @@ These exist only in Debug builds (`#if DEBUG`).
 | `-assistant-device-smoke` | Skips onboarding for the Assistant smoke test on a real device |
 | `-duo-ui-test` | Forces the iPhone Duo workspace without hinge hardware ([DuoWorkspace.swift](Camp/Shared/DuoWorkspace.swift)); combine with `-navigation-ui-test` to skip onboarding |
 | `-assistant-generation-test document` | With `-assistant-ui-test ready`: a stubbed model that answers from the first supplied document excerpt and cites it as `[S1]` |
+| `-assistant-generation-test slow` / `failure-once` | With `-assistant-ui-test ready`: `slow` holds the first question for 3 seconds so a test can see stages or close the sheet mid-request; `failure-once` fails the first question and answers later ones, for Retry |
 | `-document-assistant-fixture` | With `-navigation-ui-test`: adds a synthetic water heater manual to the fixture rig (and one unattached manual that must never be searched), with a throwaway search index in the temp folder that is reused across launches ([DocumentAssistantFixture.swift](Camp/App/DocumentAssistantFixture.swift)). Logs only counts (`DOCUMENT-INDEX`, `DOCUMENT-SEARCH`) |
+| `-document-readiness-fixture` | With `-navigation-ui-test -document-assistant-fixture`: adds "Scanned Service Record" to the fixture rig and holds its indexing open, so the manual is ready while the scan stays being read. The chat shows a debug-only "Finish test scan" button that lets it finish. The search index starts empty every launch ([DocumentReadinessFixture.swift](Camp/App/DocumentReadinessFixture.swift)) |
 
 ## Where things are
 

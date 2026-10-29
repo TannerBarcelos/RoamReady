@@ -19,7 +19,7 @@ final class CorpusEvalTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(corpus.cases.filter { $0.subset == subset && $0.kind == .required }.count, 8, "\(subset) needs required cases")
         }
         XCTAssertFalse(corpus.cases.filter { $0.kind == .challenge }.isEmpty)
-        XCTAssertTrue(corpus.cases.filter { $0.kind == .challenge && $0.pendingFeature != nil }.count >= 2, "pending-feature cases are challenge cases")
+        XCTAssertTrue(corpus.cases.filter { $0.kind == .challenge && $0.pendingFeature != nil }.count >= 1, "pending-feature cases are challenge cases")
 
         let tags = Set(corpus.cases.flatMap { $0.tags ?? [] })
         for needed in ["paraphrase", "exact-code", "reservation", "two-rigs", "two-trips", "moved", "deleted", "opt-in", "excluded-category",

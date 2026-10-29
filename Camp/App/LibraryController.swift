@@ -13,12 +13,19 @@ final class LibraryController {
     private(set) var iCloud = ICloudSettings(containerIdentifier: Bundle.main.object(forInfoDictionaryKey: "RoamReadyMirroringContainerIdentifier") as? String)
     let documentFiles = DocumentFileCache(directory: URL.cachesDirectory.appending(path: "Documents", directoryHint: .isDirectory))
     /// The Assistant's document search index. This controller opens it with the library, keeps it current as
-    /// documents change, and erases it with everything else.
+    /// documents change, and erases it with everything else. It belongs to the library session, not to the
+    /// Assistant sheet, so indexing continues after the sheet closes.
     let documentAssistant = DocumentAssistantIndex(directory: LibraryController.searchDirectory)
     /// Not in the library folder: the index is disposable, never synced, and excluded from backups.
     private static var searchDirectory: URL {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-document-readiness-fixture") {
+            // Starts empty every launch, so the held scan is never found already indexed.
+            let fresh = URL.temporaryDirectory.appending(path: "DocumentReadinessFixture-Search", directoryHint: .isDirectory)
+            try? FileManager.default.removeItem(at: fresh)
+            return fresh
+        }
         if arguments.contains("-document-assistant-fixture") {
             // The fixture owns a throwaway index; the real one is never touched.
             return URL.temporaryDirectory.appending(path: "DocumentAssistantFixture-Search", directoryHint: .isDirectory)
@@ -48,8 +55,7 @@ final class LibraryController {
             if ProcessInfo.processInfo.arguments.contains("-navigation-ui-test") {
                 container = try NavigationUITestLibrary.make()
                 openFailure = nil
-                documentAssistant.open()
-                if let context = container?.mainContext { documentAssistant.scheduleSync(in: context) }
+                if let context = container?.mainContext { documentAssistant.open(context: context) }
                 return
             }
             #endif
@@ -61,8 +67,7 @@ final class LibraryController {
             #endif
             iCloud.startObserving()
             openFailure = nil
-            documentAssistant.open()
-            if let container { documentAssistant.scheduleSync(in: container.mainContext) }
+            if let container { documentAssistant.open(context: container.mainContext) }
         } catch {
             openFailure = "RoamReady couldn’t open your library. Nothing was deleted. \(error.localizedDescription)"
         }
@@ -71,7 +76,7 @@ final class LibraryController {
     /// Writes pending changes now. SwiftData also saves on its own; this surfaces a failure.
     func save() {
         guard let context = container?.mainContext, context.hasChanges else { return }
-        do { try context.save(); saveFailure = nil; documentAssistant.scheduleSync(in: context) }
+        do { try context.save(); saveFailure = nil; documentAssistant.scheduleSync() }
         catch { saveFailure = "Your latest changes haven’t been saved to this device. \(error.localizedDescription)" }
     }
 
@@ -80,11 +85,12 @@ final class LibraryController {
         guard let context = container?.mainContext else { throw CocoaError(.fileWriteUnknown) }
         if context.hasChanges { try context.save() }
         saveFailure = nil
-        documentAssistant.scheduleSync(in: context)
+        documentAssistant.scheduleSync()
     }
 
-    /// Erase all data on this device: the library, caches, imports, and settings. The caller has
-    /// already deleted the iCloud copy.
+    /// Erase all data on this device: the library, the search index, caches, imports, and settings. The caller
+    /// has already deleted the iCloud copy. The index writer is stopped first, so nothing it was doing can
+    /// recreate its files after they are removed.
     func eraseDevice() async throws {
         await documentAssistant.erase()
         await close()
@@ -92,6 +98,11 @@ final class LibraryController {
         for location in [Self.directory, Self.searchDirectory, documentFiles.directory, WeatherStore.directory]
         where fileManager.fileExists(atPath: location.path) {
             try fileManager.removeItem(at: location)
+        }
+        // Staged imports, the export archive, and photo previews are kept in the temporary folder.
+        let temporary = fileManager.temporaryDirectory
+        for name in (try? fileManager.contentsOfDirectory(atPath: temporary.path)) ?? [] where name.hasPrefix("RoamReady") {
+            try fileManager.removeItem(at: temporary.appending(path: name))
         }
         if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
         iCloud = ICloudSettings(containerIdentifier: iCloud.containerIdentifier)
