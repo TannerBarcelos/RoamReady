@@ -7,7 +7,7 @@ struct CampingExchange: Identifiable {
     let id = UUID()
     let question: String
     let answer: CampingAnswer
-    /// What this question was allowed to read. Only exchanges from the current scope reach a new prompt.
+    /// What this question was allowed to read. A different scope starts a new model session.
     let scope: AssistantScopeTarget
 }
 
@@ -15,6 +15,8 @@ struct CampingExchange: Identifiable {
 /// Kept in memory only; conversations are never saved to the library.
 @MainActor @Observable
 final class AssistantConversation {
+    /// The model session behind these exchanges. Its transcript, not the exchanges, is what the model sees.
+    @ObservationIgnored let session = CampingAssistant.makeChat()
     var question = ""
     var exchanges: [CampingExchange] = []
     var generationFailure: CampingChatFailure?
@@ -94,6 +96,7 @@ struct AssistantView: View {
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
                             chat.exchanges = []; chat.question = ""; chat.generationFailure = nil; chat.failedQuestion = nil
+                            chat.session.reset()
                         }.disabled(answering || chat.exchanges.isEmpty)
                     }
                 }
@@ -387,8 +390,8 @@ struct AssistantView: View {
     }
 
     /// Asks an earlier question again, after documents it was missing became ready. The earlier answer stays,
-    /// the message field keeps whatever is typed in it, and only the turns before that exchange reach the
-    /// prompt, as they did the first time, so the "not ready" answer can't color the new one.
+    /// the message field keeps whatever is typed in it, and only the turns before that exchange are sent, as
+    /// they were the first time, so the "not ready" answer can't color the new one.
     private func askAgain(_ exchange: CampingExchange) {
         refreshAvailability()
         guard showsConversation, !answering else { return }
@@ -409,10 +412,11 @@ struct AssistantView: View {
         } else {
             steps = []
         }
-        let history = AssistantConversationRules.history(
-            chat.exchanges.prefix { $0.id != retried?.id }.filter { !$0.answer.isNotice }
-                .map { ScopedChatTurn(scope: $0.scope, question: $0.question, answer: $0.answer.text) }, in: target)
-        let retrievalQuestion = AssistantConversationRules.retrievalQuestion(submitted, after: history)
+        let session = chat.session
+        // An exchange that was never a model turn has no turns before it in the session.
+        let before = retried.map { $0.answer.turnID ?? "" }
+        let retrievalQuestion = AssistantConversationRules.retrievalQuestion(
+            submitted, after: session.previousQuestion(in: target, before: before))
         let request = progress.begin(question: submitted)
         chat.generationFailure = nil
         chat.failedQuestion = nil
@@ -438,16 +442,21 @@ struct AssistantView: View {
                 }
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
-                                                       history: history, rigContext: rigContext, documents: evidence,
+                                                       chat: session, chatScope: target, before: before,
+                                                       rigContext: rigContext, documents: evidence,
                                                        tripFacts: tripFacts,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
                     announce(progress.advance(to: stage, for: request))
                 })
                 refreshAvailability()
-                // Canceled or superseded work ends here without touching the conversation.
-                guard !Task.isCancelled, progress.isCurrent(request) else { return }
-                guard showsConversation, currentTarget == target else { cancelRequest(); return }
+                // Canceled or superseded work ends here without touching the conversation, and an answer
+                // nobody sees leaves the session too.
+                guard !Task.isCancelled, progress.isCurrent(request), showsConversation, currentTarget == target else {
+                    if let turnID = answer.turnID { session.forget(turnID) }
+                    if !Task.isCancelled, progress.isCurrent(request) { cancelRequest() }
+                    return
+                }
                 chat.exchanges.append(CampingExchange(question: submitted, answer: answer, scope: target))
                 progress.finish(request)
             } catch {

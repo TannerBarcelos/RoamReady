@@ -25,15 +25,11 @@ private final class ScriptedGenerator: CampingResponseGenerating {
 final class PromptBudgetTests: XCTestCase {
     private let manual = UUID()
 
-    /// Everything shrinkable is present and large: three old turns, long checklist guidance, four excerpts.
+    /// Everything shrinkable is present and large: long checklist guidance and four excerpts.
     private func request(question: String = "What does error code E4 mean on my water heater?",
-                         turns: Int = 3, excerpts: Int = 4) -> CampingHelpRequest {
+                         excerpts: Int = 4) -> CampingHelpRequest {
         let steps = (1...6).map {
             ChecklistStepDraft(title: "Water heater step \($0)", detail: String(repeating: "Check the water heater error code carefully. ", count: 20))
-        }
-        let history = (0..<turns).map { $0 + 1 }.map {
-            CampingChatTurn(question: "Old water heater question \($0) " + String(repeating: "q", count: 300),
-                            answer: "Old answer \($0) " + String(repeating: "a", count: 900))
         }
         let candidates = (1...excerpts).map {
             DocumentEvidenceCandidate(documentID: manual, indexedChecksum: "c1", page: $0, section: "Troubleshooting",
@@ -42,7 +38,7 @@ final class PromptBudgetTests: XCTestCase {
         let live = LiveDocument(id: manual, title: "Water Heater Manual", category: "Manual", checksum: "c1", isInScope: true)
         let evidence = DocumentEvidence.make(question: "error code E4 water heater", candidates: candidates, live: [manual: live])
         return CampingHelpRequest(question: question, steps: steps, rigType: nil, step: nil, scope: .general,
-                                  history: history, documents: evidence)
+                                  documents: evidence)
     }
 
     private func budget(inputLimit: Int) -> PromptBudget {
@@ -88,7 +84,7 @@ final class PromptBudgetTests: XCTestCase {
         let budget = PromptBudget(contextSize: 4096)
         let plan = try await request.plan(.full, counter: FakeCounter(), budget: budget)
         let usage = plan.usage
-        for part in [usage.instructions, usage.conversation, usage.checklist, usage.evidence, usage.question] {
+        for part in [usage.instructions, usage.checklist, usage.evidence, usage.question] {
             XCTAssertGreaterThan(part, 0)
         }
         XCTAssertLessThanOrEqual(usage.total, budget.inputLimit)
@@ -111,7 +107,7 @@ final class PromptBudgetTests: XCTestCase {
         XCTAssertTrue(shrunkAtLeastOnce)
     }
 
-    func testCompactionDropsOldConversationBeforeEvidenceAndKeepsTheQuestionLast() async throws {
+    func testShrinkingTrimsChecklistBeforeEvidenceAndKeepsTheQuestionLast() async throws {
         let request = request()
         let initial = request.initialShape(.full)
         XCTAssertEqual(initial.excerptCount, 3, "the 2,400-character evidence cap already leaves the 4th out")
@@ -122,13 +118,11 @@ final class PromptBudgetTests: XCTestCase {
             guard let plan = try? await request.plan(.full, counter: FakeCounter(), budget: budget(inputLimit: limit)) else { break }
             let shape = plan.shape
             // Parts only ever shrink as the budget does.
-            XCTAssertLessThanOrEqual(shape.historyTurns, previous.historyTurns)
             XCTAssertLessThanOrEqual(shape.checklistCharacters, previous.checklistCharacters)
             XCTAssertLessThanOrEqual(shape.excerptCount, previous.excerptCount)
             XCTAssertLessThanOrEqual(shape.excerptCharacters, previous.excerptCharacters)
             XCTAssertLessThanOrEqual(shape.questionCharacters, previous.questionCharacters)
             // Nothing later in the order shrinks while something earlier remains.
-            if shape.checklistCharacters < initial.checklistCharacters { XCTAssertEqual(shape.historyTurns, 0) }
             if shape.excerptCount < initial.excerptCount { XCTAssertEqual(shape.checklistCharacters, 0) }
             if shape.excerptCharacters < initial.excerptCharacters { XCTAssertEqual(shape.excerptCount, 1) }
             if shape.questionCharacters < initial.questionCharacters {
@@ -137,26 +131,15 @@ final class PromptBudgetTests: XCTestCase {
             // The question and the strongest excerpt are never dropped.
             XCTAssertTrue(plan.prompt.contains("Current question: What does error code E4"))
             XCTAssertEqual(plan.sources.first?.id, "S1")
-            for (name, hit) in [("history", shape.historyTurns < initial.historyTurns),
-                                ("checklist", shape.checklistCharacters < initial.checklistCharacters),
+            for (name, hit) in [("checklist", shape.checklistCharacters < initial.checklistCharacters),
                                 ("weaker evidence", shape.excerptCount < initial.excerptCount),
                                 ("evidence text", shape.excerptCharacters < initial.excerptCharacters),
                                 ("question", shape.questionCharacters < initial.questionCharacters)]
             where hit && seen.insert(name).inserted { order.append(name) }
             previous = shape
         }
-        XCTAssertEqual(order, ["history", "checklist", "weaker evidence", "evidence text"],
+        XCTAssertEqual(order, ["checklist", "weaker evidence", "evidence text"],
                        "each stage must be reached in priority order; the question is shortened only at the floor")
-    }
-
-    func testStrongestEvidenceAndTheQuestionSurviveWhereHistoryDoesNot() async throws {
-        let request = request()
-        // Large enough for instructions, one excerpt, and the question, but not the three old turns too.
-        let full = try await request.plan(.full, counter: FakeCounter(), budget: PromptBudget(contextSize: 100_000))
-        let tight = try await request.plan(.full, counter: FakeCounter(), budget: budget(inputLimit: full.usage.total - full.usage.conversation - 10))
-        XCTAssertFalse(tight.prompt.contains("Old water heater question"))
-        XCTAssertEqual(tight.sources.count, 3, "dropping history alone is enough, so all evidence stays")
-        XCTAssertTrue(tight.prompt.contains("Current question: What does error code E4"))
     }
 
     func testFixedInstructionsThatCannotFitFailInsteadOfSendingAnOverflow() async {
@@ -181,8 +164,8 @@ final class PromptBudgetTests: XCTestCase {
     @MainActor func testPreflightShrinksTheFirstAttemptAndCitationsToDroppedPassagesAreRejected() async throws {
         let request = request()
         let full = try await request.plan(.full, counter: FakeCounter(), budget: PromptBudget(contextSize: 100_000))
-        // A window that can't hold the history, the checklist context, and the third excerpt.
-        let limit = full.usage.total - full.usage.conversation - full.usage.checklist - 100
+        // A window that can't hold the checklist context and the third excerpt.
+        let limit = full.usage.total - full.usage.checklist - 100
         let window = limit + PromptBudget.outputTokens + PromptBudget.reservedTokens
         let generator = ScriptedGenerator([.success("E4 is the igniter [S1] [S3].")])
         let reply = try await CampingGeneration.answer(to: request, using: generator, counter: FakeCounter(contextSize: window))
@@ -213,7 +196,6 @@ final class PromptBudgetTests: XCTestCase {
         let retry = request.initialShape(.compact).limited(by: squeezed)
         XCTAssertEqual(retry.excerptCharacters, 200, "the compact default of 400 would be larger than what already failed")
         XCTAssertEqual(retry.checklistCharacters, 250)
-        XCTAssertFalse(retry.conversation)
         XCTAssertEqual(retry.excerptCount, 1)
     }
 
@@ -221,9 +203,12 @@ final class PromptBudgetTests: XCTestCase {
         let request = CampingHelpRequest(question: "Hi", steps: [], rigType: nil, step: nil, scope: .general,
                                          documents: DocumentEvidence(excerpts: []))
         let generator = ScriptedGenerator([.failure(.contextTooLong), .success("unused")])
-        // No history or checklist and no excerpts: only the conversation block differs, so a retry is still smaller.
-        _ = try? await CampingGeneration.answer(to: request, using: generator)
-        XCTAssertEqual(generator.prompts.count, 2)
+        // No history, checklist, or excerpts: the compact retry would be the same request, so it isn't sent.
+        do {
+            _ = try await CampingGeneration.answer(to: request, using: generator)
+            XCTFail("An identical retry would overflow again")
+        } catch { XCTAssertEqual(error as? CampingChatFailure, .contextTooLong) }
+        XCTAssertEqual(generator.prompts.count, 1)
         let squeezed = ScriptedGenerator([.failure(.contextTooLong)])
         do {
             let tiny = FakeCounter(contextSize: 700)

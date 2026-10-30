@@ -13,14 +13,20 @@ public struct GenerationBackend {
 
     public var availability: Availability
     public var label: String
-    public var generator: any CampingResponseGenerating
+    public var model: any CampingChatModel
     public var counter: any PromptTokenCounting
     public var counterLabel: String
 
+    public init(availability: Availability, label: String, model: any CampingChatModel,
+                counter: any PromptTokenCounting = ConservativeTokenEstimator(), counterLabel: String = "conservative estimator") {
+        self.availability = availability; self.label = label; self.model = model
+        self.counter = counter; self.counterLabel = counterLabel
+    }
+
+    /// A model that answers each turn on its own, with no conversation.
     public init(availability: Availability, label: String, generator: any CampingResponseGenerating,
                 counter: any PromptTokenCounting = ConservativeTokenEstimator(), counterLabel: String = "conservative estimator") {
-        self.availability = availability; self.label = label; self.generator = generator
-        self.counter = counter; self.counterLabel = counterLabel
+        self.init(availability: availability, label: label, model: SingleTurnChatModel(generator), counter: counter, counterLabel: counterLabel)
     }
 }
 
@@ -192,7 +198,7 @@ public enum GenerationEvalRunner {
         return GenerationReview(status: GenerationReview.ready, notRunReason: nil, metadata: metadata, generation: config, scenarios: sheets)
     }
 
-    static let sessionPolicy = "A fresh model session per call with the instructions and prompt; history is the last 3 turns; one compact retry on context overflow; sampling options left at the framework default."
+    static let sessionPolicy = "One model session per conversation (CampingChat); per-turn instructions and prompt; the session sends up to the last 3 turns that fit the budget; on context overflow, a new session keeping the newest turn and one compact retry; sampling options left at the framework default."
 
     static func fingerprint(_ text: String) -> String {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined().prefix(16).description
@@ -219,26 +225,27 @@ public enum GenerationEvalRunner {
 
         // Samples run as separate conversations, so a later turn's history is that sample's own earlier answer.
         for sample in 1...max(1, options.samples) {
-            var history: [CampingChatTurn] = []
+            let recorder = RecordingModel(backend.model)
+            let chat = CampingChat(model: recorder, counter: backend.counter)
             for (index, turn) in scenario.turns.enumerated() {
                 let item = prepared[index]
                 guard !item.notice else { continue }
                 let request = CampingHelpRequest(question: turn.question, steps: [], rigType: nil, step: nil,
-                                                 scope: turn.scope.trip == nil ? .general : .checklist, history: history,
+                                                 scope: turn.scope.trip == nil ? .general : .checklist,
+                                                 previousQuestion: chat.previousQuestion(),
                                                  documents: item.evidence, tripFacts: item.savedFacts)
                 instructions.insert(request.instructions)
-                let recorder = RecordingGenerator(backend.generator)
+                recorder.startTurn()
                 let started = ContinuousClock.now
                 var answer: GenerationReview.Answer
                 do {
-                    let reply = try await CampingGeneration.answer(to: request, using: recorder, counter: backend.counter)
+                    let reply = try await chat.answer(request)
                     let seconds = Self.seconds(started.duration(to: .now))
                     answer = .init(sample: sample, status: "answered", failure: nil, rawText: recorder.lastResponse ?? reply.text,
                                    shownText: reply.text,
                                    validatedCitations: reply.sources.map { .init(id: $0.id, document: Self.documentName($0.documentID, corpus: item.corpus), title: $0.title, page: $0.page) },
                                    rejectedCitationIDs: reply.droppedCitationCount, coverage: Self.name(reply.coverage),
                                    usedSavedTrip: reply.usedSavedTrip, usedCompactRetry: recorder.calls > 1, seconds: seconds, prompt: recorder.lastPrompt ?? request.prompt)
-                    history.append(CampingChatTurn(question: turn.question, answer: reply.text))
                 } catch {
                     let seconds = Self.seconds(started.duration(to: .now))
                     answer = .init(sample: sample, status: "failed", failure: String(describing: error), rawText: recorder.lastResponse ?? "",
@@ -363,21 +370,35 @@ public enum GenerationEvalRunner {
     }
 }
 
-/// Wraps the real generator to keep exactly what was sent and returned, and whether the compact retry ran.
+/// Wraps the real model to keep exactly what each turn sent and got back, and whether the compact retry ran.
 @MainActor
-private final class RecordingGenerator: CampingResponseGenerating {
-    let inner: any CampingResponseGenerating
+private final class RecordingModel: CampingChatModel {
+    let inner: any CampingChatModel
     var lastPrompt: String?
     var lastResponse: String?
     var calls = 0
 
-    init(_ inner: any CampingResponseGenerating) { self.inner = inner }
+    init(_ inner: any CampingChatModel) { self.inner = inner }
 
-    func respond(to prompt: String, instructions: String) async throws -> String {
-        calls += 1
-        lastPrompt = prompt
-        let response = try await inner.respond(to: prompt, instructions: instructions)
-        lastResponse = response
-        return response
+    func startTurn() { lastPrompt = nil; lastResponse = nil; calls = 0 }
+
+    func makeSession(history: [CampingChatTurn]) -> any CampingChatSession {
+        Session(inner: inner.makeSession(history: history), recorder: self)
+    }
+
+    private final class Session: CampingChatSession {
+        let inner: any CampingChatSession
+        unowned let recorder: RecordingModel
+        init(inner: any CampingChatSession, recorder: RecordingModel) { self.inner = inner; self.recorder = recorder }
+
+        func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String {
+            recorder.calls += 1
+            recorder.lastPrompt = prompt
+            let response = try await inner.respond(to: prompt, instructions: instructions, history: history)
+            recorder.lastResponse = response
+            return response
+        }
+        func store(_ turn: CampingChatTurn) { inner.store(turn) }
+        func remove(_ turnID: CampingChatTurn.ID) { inner.remove(turnID) }
     }
 }

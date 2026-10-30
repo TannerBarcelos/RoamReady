@@ -67,11 +67,10 @@ final class CampingHelpRequestTests: XCTestCase {
         let power = ChecklistStepDraft(title: "Shore power", detail: "Use rated equipment")
         let request = CampingHelpRequest(question: "What should I check next?", steps: [water, power],
                                         rigType: .travelTrailer, step: nil, scope: .general,
-                                        history: [CampingChatTurn(question: "The water stopped", answer: "Check the supply")])
+                                        previousQuestion: "The water stopped")
         XCTAssertTrue(request.passages.contains(water.detail))
         XCTAssertFalse(request.passages.contains(power.detail))
-        XCTAssertTrue(request.prompt.contains("The water stopped"))
-        XCTAssertTrue(request.prompt.contains("Check the supply"))
+        XCTAssertFalse(request.prompt.contains("The water stopped"), "the session carries earlier turns, not the prompt")
         let selected = CampingHelpRequest(question: "water", steps: [water, power], rigType: nil,
                                          step: power, scope: .checklist)
         XCTAssertEqual(selected.passages, "Shore power: Use rated equipment")
@@ -90,14 +89,18 @@ final class CampingHelpRequestTests: XCTestCase {
                        "Shore power: Use rated equipment", "Blank notes add nothing")
     }
 
-    func testLongConversationsUseBoundedRecentContext() {
-        let history = [CampingChatTurn(question: "Old topic", answer: "Old answer")]
-            + (1...3).map { CampingChatTurn(question: "Recent \($0) " + String(repeating: "q", count: 5000),
-                                           answer: String(repeating: "a", count: 5000)) }
+    func testLongQuestionsAreBounded() {
         let request = CampingHelpRequest(question: String(repeating: "x", count: 5000), steps: [],
-                                        rigType: nil, step: nil, scope: .general, history: history)
-        XCTAssertFalse(request.prompt.contains("Old topic"))
-        XCTAssertTrue(request.prompt.contains("Recent 3"))
-        XCTAssertLessThan(request.prompt.count, 6500, "Keep context within the on-device model's budget")
+                                        rigType: nil, step: nil, scope: .general)
+        XCTAssertLessThan(request.prompt.count, 2000, "Keep context within the on-device model's budget")
+        XCTAssertTrue(request.questionExceedsLimit)
+    }
+
+    func testStoredTurnsAreClippedAndNeutralized() {
+        let turn = CampingChatTurn(question: String(repeating: "q", count: 5000), answer: String(repeating: "a", count: 5000) + " [S1]")
+        XCTAssertEqual(turn.question.count, CampingChatTurn.questionCharacters)
+        XCTAssertEqual(turn.answer.count, CampingChatTurn.answerCharacters)
+        let marked = CampingChatTurn(question: "What is E4?", answer: "Igniter [S1].")
+        XCTAssertEqual(marked.answer, "Igniter (S1).")
     }
 }

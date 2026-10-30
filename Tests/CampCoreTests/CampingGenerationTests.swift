@@ -18,10 +18,12 @@ private final class StubCampingGenerator: CampingResponseGenerating {
 }
 
 final class CampingGenerationTests: XCTestCase {
+    /// Long enough that the compact retry carries less of it.
+    private let waterStep = ChecklistStepDraft(title: "Drinking water", detail: String(repeating: "Keep the drinking water hose clean and capped. ", count: 20))
+
     private func request() -> CampingHelpRequest {
-        CampingHelpRequest(question: "How can I keep drinking water clean?", steps: [], rigType: nil,
-                           step: nil, scope: .general,
-                           history: [CampingChatTurn(question: "Old question", answer: "Old response")])
+        CampingHelpRequest(question: "How can I keep drinking water clean?", steps: [waterStep], rigType: nil,
+                           step: nil, scope: .general, previousQuestion: "Old question")
     }
 
     @MainActor func testSendReachesGeneratorWithoutTripOrSavedGuidance() async throws {
@@ -46,7 +48,7 @@ final class CampingGenerationTests: XCTestCase {
         let rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries", year: 2024,
                            floorplan: "19.8", lengthFeet: 23)
         let request = CampingHelpRequest(question: "How do I clean the black water tank after flushing on my RV?",
-                                        steps: [], rigType: rig.type, step: nil, scope: .general,
+                                        steps: [waterStep], rigType: rig.type, step: nil, scope: .general,
                                         rigContext: CampingRigContext(rig))
         let generator = StubCampingGenerator([.failure(.contextTooLong), .success("Generated maintenance guidance.")])
         _ = try await CampingGeneration.reply(to: request, using: generator)

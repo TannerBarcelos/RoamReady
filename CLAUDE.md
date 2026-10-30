@@ -69,6 +69,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `Sources/CampPersistence/` | The SwiftData `@Model`s (`Models.swift`), the library rules as model extensions (`Trip+Library.swift` and so on), the store and CloudKit setup, and export |
 | `Sources/Campgrounds/` | Camp Finder's place model, links, and how search results are merged |
 | `Sources/DocumentSearch/`, `Sources/CSQLiteVec/` | The document search index: its own disposable SQLite file with FTS5 and `sqlite-vec`, behind `DocumentSearchIndex`. `CSQLiteVec` is the vendored sqlite-vec source plus its license and provenance note; don't edit the vendored files |
+| `Sources/AssistantModel/` | Apple's on-device model behind the Assistant chat: one `LanguageModelSession` per conversation, and the token counter. The chat rules themselves (`CampingChat`) are in `CampCore` |
 | `Sources/DocumentVault/` | Document types, import rules, SHA-256, and reading older encrypted files |
 | `Tests/` | One test target per package, plus `RoamReadyUITests` |
 | `docs/` | Product and engineering docs. Start at [docs/README.md](docs/README.md); [architecture.md](docs/architecture.md), [features.md](docs/features.md), and [design.md](docs/design.md) matter most |
