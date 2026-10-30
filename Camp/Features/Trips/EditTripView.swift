@@ -14,10 +14,13 @@ struct EditTripView: View {
     @State private var rig: Rig?
     @State private var choosing = false
     @State private var failure: String?
+    @State private var coverPhotoData: Data?
+    @State private var importingCover = false
     init(trip: Trip) {
         self.trip = trip
         _draft = State(initialValue: TripDraft(trip))
         _rig = State(initialValue: trip.rig)
+        _coverPhotoData = State(initialValue: trip.coverPhotoData)
     }
     var body: some View {
         NavigationStack {
@@ -32,6 +35,7 @@ struct EditTripView: View {
                 }
                 RigPickerSection(rig: $rig, rigs: rigs.filter { !$0.isArchived || $0 == trip.rig })
                 TripDatesSection(draft: $draft)
+                TripCoverPhotoSection(data: $coverPhotoData, importing: $importingCover)
                 BookingFormSections(trip: $draft, rig: rig)
                 Section {
                     Text("Editing never resets checklists, progress, notes, photos, or memories. Changing the rig doesn’t replace this trip’s checklists.")
@@ -51,11 +55,12 @@ struct EditTripView: View {
                                     among: trips.filter { $0.persistentModelID != trip.persistentModelID }.map { ($0.campgroundID, $0.campgroundName) })
                             }
                             try trip.update(details, rig: rig)
+                            trip.coverPhotoData = coverPhotoData
                             library.save()
                             dismiss()
                         }
                         catch { failure = error.localizedDescription }
-                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || importingCover)
                 }
             }
             .sheet(isPresented: $choosing) {

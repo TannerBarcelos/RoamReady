@@ -55,6 +55,7 @@ struct AttachmentMigrationTests {
             let context = migrated.mainContext
             let rig = try #require(try context.activeRigs().first)
             let trip = try #require(try context.fetch(FetchDescriptor<Trip>()).first)
+            #expect(trip.coverPhotoData == nil)
             // These are the same draft reads AssistantView.ask() makes before generation.
             let generalContext = rig.defaultTemplate.setup + rig.defaultTemplate.teardown
             let tripContext = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)

@@ -17,6 +17,8 @@ struct NewTripView: View {
     @State private var selected: CampgroundListing?
     @State private var choosing = false
     @State private var failure: String?
+    @State private var coverPhotoData: Data?
+    @State private var importingCover = false
     var body: some View {
         NavigationStack {
             Form {
@@ -33,6 +35,7 @@ struct NewTripView: View {
                 }
                 RigPickerSection(rig: $rig, rigs: rigs.active)
                 TripDatesSection(draft: $draft)
+                TripCoverPhotoSection(data: $coverPhotoData, importing: $importingCover)
                 BookingFormSections(trip: $draft, rig: rig, includesSiteNotes: true)
                 Section {
                     Label("Setup & teardown included", systemImage: "checklist")
@@ -54,11 +57,11 @@ struct NewTripView: View {
                                 trip.campgroundID = CampgroundIdentity.local(named: trip.campgroundName,
                                                                              among: trips.map { ($0.campgroundID, $0.campgroundName) })
                             }
-                            try Trip.create(trip, rig: rig, in: context)
+                            try Trip.create(trip, rig: rig, coverPhotoData: coverPhotoData, in: context)
                             library.save()
                             dismiss()
                         } catch { failure = error.localizedDescription }
-                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || rig == nil)
+                    }.disabled(draft.campgroundName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || rig == nil || importingCover)
                 }
             }
             .sheet(isPresented: $choosing) {

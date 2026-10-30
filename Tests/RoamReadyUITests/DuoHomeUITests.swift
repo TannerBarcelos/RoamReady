@@ -106,6 +106,9 @@ final class DuoHomeUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Find a campground"].exists)
         app.buttons["Add a trip"].tap()
         XCTAssertTrue(app.navigationBars["Add trip"].waitForExistence(timeout: 5))
+        let coverPicker = app.buttons["tripCoverPhotoPicker"]
+        for _ in 0..<3 where !coverPicker.isHittable { app.swipeUp() }
+        XCTAssertTrue(coverPicker.isHittable, "An optional cover can be uploaded while creating the trip")
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.buttons["Add a trip"].waitForExistence(timeout: 5))
     }

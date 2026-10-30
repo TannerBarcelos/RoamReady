@@ -7,14 +7,11 @@ struct HomeTripHeader: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let trip: Trip
 
-    private var coverPhoto: TripPhoto? {
-        let photos = trip.sortedPhotos
-        return photos.first { $0.imageData != nil } ?? photos.first
-    }
-
     var body: some View {
         Group {
-            if dynamicTypeSize.isAccessibilitySize {
+            if trip.coverPhotoData == nil {
+                details.frame(maxWidth: .infinity, alignment: .leading)
+            } else if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 12) {
                     photo.frame(height: 120)
                     details
@@ -49,19 +46,10 @@ struct HomeTripHeader: View {
     }
 
     private var photo: some View {
-        // The neutral illustration is a placeholder, never a photo of a different campground.
         Color.clear
             .overlay {
-                if let coverPhoto {
-                    LocalPhoto(data: coverPhoto.imageData)
-                } else {
-                    Rectangle()
-                        .fill(.green.opacity(0.12).gradient)
-                        .overlay {
-                            Image(systemName: "mountain.2.fill")
-                                .font(.system(size: 36, weight: .light))
-                                .foregroundStyle(.green.opacity(0.7))
-                        }
+                if let data = trip.coverPhotoData {
+                    LocalPhoto(data: data)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 16))

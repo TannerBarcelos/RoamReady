@@ -61,9 +61,7 @@ struct HomeView: View {
                             .font(.footnote.weight(.semibold)).foregroundStyle(.tint)
                             .padding(.horizontal, 10).padding(.vertical, 3)
                             .background(.tint.opacity(0.12), in: .capsule)
-                        Text(next.campgroundName).font(.title2.bold())
-                        Text(next.dateSummary).font(.subheadline).foregroundStyle(.secondary)
-                        if !next.siteNumber.isEmpty { Label("Site \(next.siteNumber)", systemImage: "mappin").font(.subheadline) }
+                        HomeTripHeader(trip: next)
                     }.padding(.vertical, 6)
                 }
                 .accessibilityIdentifier("tripRow-\(next.campgroundName)")

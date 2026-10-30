@@ -54,6 +54,9 @@ public final class Rig: RigDetails {
 /// One booking at one campground, with its checklists, notes, and photos.
 @Model
 public final class Trip: TripDetails {
+    /// Optional cover selected for this trip, separate from its memory photos.
+    @Attribute(.externalStorage, .allowsCloudEncryption) public var coverPhotoData: Data?
+
     public var campgroundName: String = ""
     public var campgroundID: String?
     public var latitude: Double?

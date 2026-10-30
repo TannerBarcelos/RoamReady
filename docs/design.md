@@ -21,7 +21,7 @@ The root view resolves optional native location and camera prompts before showin
 
 Home keeps every current and upcoming trip accessible, including overlapping bookings. Completed trips are in Profile › Trip history, newest first.
 
-The current trip uses one grouped card for its campground, dates, site number, setup and teardown progress, and Photos & site notes. Its header shows a saved trip photo when available, with a campsite illustration when there are no photos. Each checklist has one shortcut; remaining current and upcoming bookings appear under Later trips.
+The current trip uses one grouped card for its campground, dates, site number, setup and teardown progress, and Photos & site notes. Its header shows the optional cover uploaded in Add trip or Edit trip. Without a cover, text uses the full width and no image area appears; memory photos are separate. Each checklist has one shortcut; remaining current and upcoming bookings appear under Later trips.
 
 With no current or upcoming trip, Home shows two standard iOS action rows: Add a trip and Find a campground. A small section heading and compact section spacing keep this state quiet and easy to scan. Everyday screens focus on the trip or document; connection and sync details belong in Settings or actionable availability and save errors.
 

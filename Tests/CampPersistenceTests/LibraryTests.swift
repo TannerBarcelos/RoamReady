@@ -387,7 +387,7 @@ struct LibraryTests {
             let context = disk.mainContext
             context.insert(CamperProfile(name: "Sam", experience: .comfortable))
             let rig = try Rig.add(trailer, to: context)
-            let trip = try Trip.create(TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival), rig: rig, in: context)
+            let trip = try Trip.create(TripDraft(campgroundName: "Pines", arrival: arrival, departure: arrival), rig: rig, coverPhotoData: Data([9, 8, 7]), in: context)
             trip.steps(.setup)[0].status = .skipped
             trip.steps(.setup)[0].notes = "Bring the long hose"; trip.steps(.setup)[0].priority = .medium
             try StoredDocument.add(DocumentMetadata(title: "Card", category: .insurance), contents: DocumentPayload(bytes: Self.pdf, filename: "c.pdf"), rig: rig, in: context)
@@ -399,6 +399,9 @@ struct LibraryTests {
         #expect(try reopened.profile()?.name == "Sam")
         let trip = try #require(try reopened.fetch(FetchDescriptor<Trip>()).first)
         #expect(trip.rig?.model == "No Boundaries" && trip.steps(.setup)[0].status == .skipped)
+        #expect(trip.coverPhotoData == Data([9, 8, 7]))
+        trip.coverPhotoData = nil
+        try reopened.save()
         #expect(trip.steps(.setup)[0].notes == "Bring the long hose" && trip.steps(.setup)[0].priority == .medium)
         #expect(try reopened.rigs().first?.attachedDocuments.first?.contents() == Self.pdf)
     }

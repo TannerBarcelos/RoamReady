@@ -36,6 +36,7 @@ enum NavigationUITestLibrary {
         // Resize checks open a photo and a document without changing the real layout traits.
         if LayoutUITest.isRequested, let current = trips.first {
             let jpeg = sampleImage()
+            current.coverPhotoData = jpeg
             current.addPhoto(jpeg)
             current.sortedPhotos.first?.caption = "Site 14 from the road"
             try StoredDocument.add(DocumentMetadata(title: "Campground map", category: .reservation),

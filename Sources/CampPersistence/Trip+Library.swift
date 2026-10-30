@@ -7,7 +7,7 @@ public extension Trip {
     /// Creates the trip with pending copies of the rig's default lists. After this the trip's lists
     /// are independent of the rig's defaults.
     @discardableResult
-    static func create(_ draft: TripDraft, rig: Rig, in context: ModelContext) throws -> Trip {
+    static func create(_ draft: TripDraft, rig: Rig, coverPhotoData: Data? = nil, in context: ModelContext) throws -> Trip {
         let details = draft.cleaned
         try details.validate()
         guard !rig.isArchived else { throw CampError.rigArchived }
@@ -15,6 +15,7 @@ public extension Trip {
         context.insert(trip)
         trip.apply(details)
         trip.notes = details.notes
+        trip.coverPhotoData = coverPhotoData
         trip.rig = rig
         let template = rig.defaultTemplate
         for phase in ChecklistPhase.allCases {
