@@ -30,6 +30,8 @@ final class DuoHomeUITests: XCTestCase {
         // "Current Pines" and "Overlapping Creek" overlap today; Home features the earlier arrival.
         XCTAssertEqual(detailTrip(app), "Current Pines")
         XCTAssertTrue(app.staticTexts["Hello, Riley"].exists, "Home stays in front or beside the trip")
+        XCTAssertFalse(app.staticTexts["Your trip"].exists)
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Continue setup'")).firstMatch.exists)
 
         app.buttons["tripRow-Current Pines"].tap()
         XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5))
@@ -37,6 +39,7 @@ final class DuoHomeUITests: XCTestCase {
         showHome(app)
         let later = app.buttons["tripRow-Upcoming Lake"]
         for _ in 0..<4 where !later.isHittable { app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["Later trips"].exists)
         later.tap()
         XCTAssertTrue(app.navigationBars["Upcoming Lake"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.navigationBars["Current Pines"].exists, "The picked trip replaces the detail")
@@ -52,7 +55,7 @@ final class DuoHomeUITests: XCTestCase {
         XCTAssertEqual(detailTrip(app), "Current Pines")
 
         showHome(app)
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Continue setup'")).firstMatch.tap()
+        app.buttons["homeChecklist-setup"].tap()
         XCTAssertTrue(app.navigationBars["Setup"].waitForExistence(timeout: 5))
         XCTAssertEqual(checklist(app), "Setup")
     }

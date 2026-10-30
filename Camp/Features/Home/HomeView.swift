@@ -41,32 +41,18 @@ struct HomeView: View {
         if let trip = currentTrip {
             Section {
                 tripLink(trip) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(trip.campgroundName).font(.title2.bold())
-                        Text(trip.dateSummary).font(.subheadline).foregroundStyle(.secondary)
-                        if !trip.siteNumber.isEmpty { Label("Site \(trip.siteNumber)", systemImage: "mappin").font(.subheadline) }
-                        SaveStatus()
-                    }.padding(.vertical, 6)
+                    HomeTripHeader(trip: trip)
                 }
                 .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
-                checklistLink(trip, .setup) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Continue setup").font(.headline)
-                        ProgressSummary(steps: trip.steps(.setup))
-                    }.padding(.vertical, 4)
-                }
-            } header: { Text("Current trip") }
-            Section("Your trip") {
                 ForEach(ChecklistPhase.allCases) { phase in
                     checklistLink(trip, phase) {
-                        let steps = trip.steps(phase)
-                        Label("\(phase.title) checklist", systemImage: "checklist")
-                        Spacer(); Text("\(steps.filter(\.isFinished).count) / \(steps.count)").foregroundStyle(.secondary)
+                        HomeChecklistSummary(phase: phase, steps: trip.steps(phase))
                     }
                     .accessibilityIdentifier("homeChecklist-\(phase.rawValue)")
                 }
                 NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
-            }
+                    .accessibilityIdentifier("homeMemories")
+            } header: { Text("Current trip") }
         } else if let next = upcomingTrips.first, let days = next.daysUntilArrival(asOf: now) {
             Section {
                 tripLink(next) {
@@ -97,7 +83,7 @@ struct HomeView: View {
             }
         }
         if !otherTrips.isEmpty {
-            Section(currentTrip == nil ? "Later" : "More trips") {
+            Section("Later trips") {
                 ForEach(otherTrips) { trip in
                     tripLink(trip) { TripRowLabel(trip: trip) }
                         .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
