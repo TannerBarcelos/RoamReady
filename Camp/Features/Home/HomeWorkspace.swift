@@ -76,6 +76,11 @@ struct HomeWorkspace: View {
         }
     }
 
+    private struct DetailIdentity: Hashable {
+        let trip: PersistentIdentifier
+        let showsChecklist: Bool
+    }
+
     /// The pick, while its trip is still in the library.
     private var validSelection: HomeDestination? {
         selection.flatMap { pick in trips.contains { $0.persistentModelID == pick.tripID } ? pick : nil }
@@ -98,15 +103,16 @@ struct HomeWorkspace: View {
 
     @ViewBuilder private var detail: some View {
         if let trip = shownTrip {
-            // A new pick starts a fresh stack rather than keeping the last pick's pushed screens.
+            // A new trip, or switching between its details and checklist, starts a fresh stack;
+            // switching the checklist's phase keeps it, along with anything pushed on top.
             NavigationStack {
                 if let phase = shownChecklist {
-                    ChecklistView(trip: trip, initialPhase: phase)
+                    ChecklistView(trip: trip, initialPhase: phase) { selection = .checklist(trip.persistentModelID, $0) }
                 } else {
                     TripDetailView(trip: trip)
                 }
             }
-            .id(validSelection ?? .trip(trip.persistentModelID))
+            .id(DetailIdentity(trip: trip.persistentModelID, showsChecklist: shownChecklist != nil))
         } else {
             ContentUnavailableView("No trip to show", systemImage: "tent",
                                    description: Text("Your current or next trip appears here."))

@@ -19,8 +19,14 @@ struct ChecklistView: View {
     @State private var helpStep: ChecklistStep?
     @State private var helpAfterDismiss = false
 
-    init(trip: Trip, initialPhase: ChecklistPhase = .setup) {
+    private let initialPhase: ChecklistPhase
+    /// Lets Duo's Home keep the shown phase above the view, so it survives a fold.
+    private let onPhaseChange: ((ChecklistPhase) -> Void)?
+
+    init(trip: Trip, initialPhase: ChecklistPhase = .setup, onPhaseChange: ((ChecklistPhase) -> Void)? = nil) {
         self.trip = trip
+        self.initialPhase = initialPhase
+        self.onPhaseChange = onPhaseChange
         _phase = State(initialValue: initialPhase)
     }
     private var steps: [ChecklistStep] { trip.steps(phase) }
@@ -88,6 +94,8 @@ struct ChecklistView: View {
             }
         }
         .navigationTitle(phase.title)
+        .onChange(of: initialPhase) { _, newPhase in phase = newPhase }
+        .onChange(of: phase) { _, newPhase in onPhaseChange?(newPhase) }
         .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
         .environment(\.editMode, $editing)
         .sensoryFeedback(.success, trigger: steps.filter { $0.status == .completed }.count)
