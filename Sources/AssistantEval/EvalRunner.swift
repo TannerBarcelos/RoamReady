@@ -432,7 +432,7 @@ public enum EvalRunner {
 
     // MARK: Metadata
 
-    private static func metadata(corpus: EvalCorpus, options: EvalOptions, label: String, profile: EmbeddingProfile?) -> EvalReport.Metadata {
+    static func metadata(corpus: EvalCorpus, options: EvalOptions, label: String, profile: EmbeddingProfile?) -> EvalReport.Metadata {
         let data = (try? JSONEncoder().encode(corpus)) ?? Data()
         let checksum = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         return EvalReport.Metadata(
@@ -445,7 +445,7 @@ public enum EvalRunner {
             subsets: options.subsets.map(\.rawValue).sorted(), generatedAt: Date())
     }
 
-    private static func hardware() -> String {
+    static func hardware() -> String {
         func sysctl(_ name: String) -> String? {
             var size = 0
             guard sysctlbyname(name, nil, &size, nil, 0) == 0, size > 0 else { return nil }

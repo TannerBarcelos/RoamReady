@@ -35,6 +35,7 @@ struct RoamReadyApp: App {
             .task { library.open() }
             #if DEBUG
             .task { await DocumentSearchSmokeCheck.runIfRequested() }
+            .task { await AssistantPerformanceBaseline.runIfRequested() }
             #endif
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { library.save() }

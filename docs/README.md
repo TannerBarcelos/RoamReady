@@ -29,6 +29,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 | [App Store listing preparation](app-store-listing.md) | Prepared listing copy, policy/support URLs, required assets and account steps. |
 | [Build and validation](validation.md) | Local setup, dependencies, checks, CI, Apple capabilities, and device acceptance. |
 | [Assistant evals](assistant-evals.md) | Retrieval eval corpus, commands, report reading, metrics, walkthrough, and the human answer rubric. |
+| [Assistant quality and performance baseline](assistant-quality-baseline.md) | Runbook for the generated-answer review sheets and the device performance run (#108), with tables for the measured baseline and chosen gates. |
 | [Production integrations and release plan](integration-plan.md) | Current implementation, provisioning work, release gates, and deferred features. |
 | [Release tracker drafts](release-tracker-drafts.md) | Proposed new bodies for issues #6 and #74, awaiting owner approval. |
 

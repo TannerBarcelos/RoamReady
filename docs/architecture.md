@@ -69,6 +69,8 @@ swift run assistant-eval --mode lexical --subset heldout # also: --mode fake, --
 
 `assistant-eval` exits 0 when every required case passed, 1 when one failed, and 2 when the embedding model is unavailable on the machine. That last case is reported as "not run" with no scores and is never a pass. `EvalReports/` is git-ignored. The same command is available as the manual-only "Assistant eval" workflow; it is not part of the regular CI triggers. The full guide and walkthrough are a later issue.
 
+`assistant-eval --mode generation [--samples N] [--scenarios ids]` runs the generated-answer review scenarios through the real generation path with Apple's on-device model and writes review sheets (`generation-review.{md,json}` and `generation/<scenario>.{md,json}`) with empty rubric fields for a human. It scores nothing and reports "not run" (exit 2) when the model is unavailable. The `-assistant-performance-baseline` Debug launch argument measures import, OCR, embedding, search, answer time, memory, index size, and cancellation on a device. [assistant-quality-baseline.md](assistant-quality-baseline.md) is the runbook for both.
+
 ### Prompt budget
 
 One budget covers everything that shares the on-device model's context: the instructions (safety rules, rig profile, document rules), conversation, checklist context, document excerpts, the question, and the reply. `PromptBudget` takes the window from the model (`SystemLanguageModel.contextSize`, 4,096 tokens when measured, with that value as the fallback), reserves the 512-token output target (`GenerationOptions.maximumResponseTokens`) and 160 tokens for framing, and leaves the rest as the input limit. The whole prompt must fit it; characters are never treated as tokens.
