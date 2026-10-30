@@ -125,4 +125,21 @@ What this shows: no control in the rig section is the cause. When the section is
 
 Working hypothesis, not confirmed: the audit changes the text size while the list is scrolled near its end. The content gets shorter, the scroll position is pulled back, and the audit can no longer match some nodes. If that holds, the fix belongs in how the test reaches the rig section (for example, auditing it where it doesn't need scrolling), and that is the owner's call under the no-waiver rule. The machine was loaded the whole time (load average 130 to 550), runs took 1 to 5 minutes, one audit timed out, and the scroll position varied between runs. So none of this counts as a clean pass or fail.
 
-Next step: on a quiet machine, rerun the baseline and the "Your camping removed" case two or three times each, then test the hypothesis directly. One way is to audit with the list scrolled only partway, so text changes can't pull the scroll position back. Still open; nothing is waived.
+Next step: on a quiet machine, rerun the baseline and the "Your camping removed" case two or three times each, then test the hypothesis directly. One way is to audit with the list scrolled only partway, so text changes can't pull the scroll position back. 
+
+### Resolution, October 30, 2026
+
+After cleaning up the machine, the baseline reproduced the same 3 findings. A large empty margin below the list, with the scroll position unchanged, raised them to 15, all unresolvable. So the scroll-position hypothesis above doesn't hold. The findings depend on the shape of the scroll view, not on any control or text. Other developers report this audit flagging SwiftUI text that uses system text styles, more often on iPad ([Apple forum thread 758261](https://developer.apple.com/forums/thread/758261), [thread 828525](https://developer.apple.com/forums/thread/828525)). Those are user reports, not Apple documentation.
+
+The owner approved one narrow waiver:
+
+- The unscrolled Profile audit stays unfiltered.
+- Only the Dynamic Type findings from the scrolled rig-section audit are waived. That applies in `NavigationUITests.testProfileRigSectionPassesDynamicTypeAuditAtLargestSize` and in the same scrolled audit in `LibraryWorkflowUITests`. "Text clipped" findings still fail there.
+- The waiver is backed by `NavigationUITests.testProfileRigSectionTextGrowsAtLargestSize`. It checks that the rig name, "Used by" count, "Reset default checklists" and "Replace rig" each get more than 1.5 times taller from the default size to `AccessibilityXXXL`.
+
+Verified at `6e2fda8` on the iOS 27.0 simulators:
+
+- **iPad Pro 13-inch (M5):** the focused audit passes, with the 3 known findings waived. The text-growth test passes, and so does the disk workflow test.
+- **iPhone 18 Pro:** all three tests pass.
+
+Closes #93.
