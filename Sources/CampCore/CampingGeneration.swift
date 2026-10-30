@@ -48,6 +48,8 @@ public struct CampingReply: Equatable, Sendable {
     public let usedSavedTrip: Bool
     /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
     public var searched: [DocumentSource] = []
+    /// The passage text the model was shown for each cited or searched source, by source ID.
+    public var passages: [DocumentSource.ID: String] = [:]
     /// The chat turn this answer was stored as, so it can be asked again as of that point.
     public var turnID: CampingChatTurn.ID?
 }

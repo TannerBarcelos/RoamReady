@@ -23,35 +23,6 @@ extension AssistantDocumentStatus {
     }
 }
 
-/// One line under the scope: how many of the scope's documents the Assistant can use now.
-struct AssistantReadinessSummary: View {
-    let readiness: ScopeReadiness
-
-    var body: some View {
-        if let summary = readiness.summary {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(summary, systemImage: readiness.isComplete ? "checkmark.circle" : "clock")
-                    .font(.footnote).foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .accessibilityIdentifier("assistantReadiness")
-                if !readiness.isComplete {
-                    Text("Ask any time. Documents that aren’t ready are left out until they are.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                #if DEBUG
-                if DocumentReadinessFixture.isRequested, !DocumentReadinessFixture.isReleased {
-                    Button("Finish test scan") { DocumentReadinessFixture.release() }
-                        .font(.caption).accessibilityIdentifier("releaseTestScan")
-                }
-                #endif
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20).padding(.vertical, 6)
-            .background(.bar)
-        }
-    }
-}
-
 /// Under an answer given while some documents weren't fully covered: says so, and once a document it was
 /// missing is ready, offers a retry. The earlier answer stays; a retry asks the question again as a new
 /// exchange, and only when the camper taps it.

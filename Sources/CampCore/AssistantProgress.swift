@@ -2,13 +2,27 @@ import Foundation
 
 /// A step the Assistant really went through while answering one question.
 public enum AssistantStage: Equatable, Sendable {
-    case searchingDocuments, preparing, writing
+    case searchingDocuments, writing
 
     public var title: String {
         switch self {
         case .searchingDocuments: "Searching your documents…"
-        case .preparing: "Preparing your question…"
         case .writing: "Writing an answer…"
+        }
+    }
+
+    /// The stage once it's done, shown under the one in progress.
+    public var doneTitle: String {
+        switch self {
+        case .searchingDocuments: "Searched your documents"
+        case .writing: "Wrote an answer"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .searchingDocuments: "doc.text.magnifyingglass"
+        case .writing: "sparkles"
         }
     }
 
@@ -16,7 +30,6 @@ public enum AssistantStage: Equatable, Sendable {
     public var announcement: String {
         switch self {
         case .searchingDocuments: "Searching your documents"
-        case .preparing: "Preparing your question"
         case .writing: "Writing an answer"
         }
     }

@@ -30,12 +30,21 @@ public protocol CampingChatSession: AnyObject {
     func store(_ turn: CampingChatTurn)
     /// Removes a stored turn, for an answer that was never shown or that compaction dropped.
     func remove(_ turnID: CampingChatTurn.ID)
+    /// Loads the model ahead of a request, so the first answer starts sooner (TN3193).
+    func prewarm()
+}
+
+extension CampingChatSession {
+    public func prewarm() {}
 }
 
 @MainActor
 public protocol CampingChatModel {
     /// A new session whose transcript starts with `history`.
     func makeSession(history: [CampingChatTurn]) -> any CampingChatSession
+    /// Folds `turns` into `summary` in a new, short-lived session of its own, so the chat's session is never
+    /// used for it. Returns the model's raw summary; `ConversationSummary.cleaned` bounds it.
+    func summarize(_ turns: [CampingChatTurn], into summary: String?) async throws -> String
 }
 
 /// Sends every turn on its own with no history: single questions, the performance baseline, and fixtures.
@@ -45,6 +54,11 @@ public struct SingleTurnChatModel: CampingChatModel {
     public init(_ generator: any CampingResponseGenerating) { self.generator = generator }
 
     public func makeSession(history: [CampingChatTurn]) -> any CampingChatSession { Session(generator: generator) }
+
+    public func summarize(_ turns: [CampingChatTurn], into summary: String?) async throws -> String {
+        try await generator.respond(to: ConversationSummary.prompt(folding: turns, into: summary),
+                                    instructions: ConversationSummary.instructions)
+    }
 
     private final class Session: CampingChatSession {
         let generator: any CampingResponseGenerating
@@ -126,13 +140,24 @@ public enum CampingChatHistory {
 
 /// One conversation with the on-device model: a model session per chat whose transcript holds the history,
 /// with this turn's context planned against the token budget first and earlier turns given what's left.
-/// New chat, trip and checklist help, and a change of rig or trip each start a new session. When the
-/// context overflows, the chat compacts to a new session that keeps only the newest turn and retries once.
+/// New chat, trip and checklist help, and a change of rig or trip each start a new session.
+///
+/// Context follows Apple's guidance for the 4,096-token window. After an answer, once the chat holds more than
+/// `ConversationSummary.compactAfterTurns`, the turns older than those a request sends are summarized and
+/// dropped from the session (WWDC26: compact at a response boundary; the summary rides in the instructions).
+/// If the context still overflows, everything but the newest turn is folded into the summary and the chat moves
+/// to a new, prewarmed session seeded with the newest turn, then retries once (TN3193).
 @MainActor
 public final class CampingChat {
     public private(set) var turns: [CampingChatTurn] = []
-    /// How many times this chat has compacted, for tests and diagnostics.
+    /// Earlier turns folded out of the session. Always older than every stored turn.
+    public private(set) var summary: String?
+    /// How many times this chat has compacted after an overflow, for tests and diagnostics.
     public private(set) var compactions = 0
+    /// Compaction after the last answer, which the next question waits for.
+    private var maintenance: Task<Void, Never>?
+    /// Bumped by every reset, so compaction that started before it can't touch the new conversation.
+    private var generation = 0
     private var costs: [CampingChatTurn.ID: Int] = [:]
     private var session: (any CampingChatSession)?
     private var scope: AnyHashable?
@@ -152,6 +177,18 @@ public final class CampingChat {
         costs = [:]
         session = nil
         scope = nil
+        summary = nil
+        generation += 1
+    }
+
+    /// Loads the model before the first question, for example when the chat opens (TN3193). Safe to repeat.
+    public func prewarm() {
+        currentSession().prewarm()
+    }
+
+    /// Waits for compaction started after the last answer. For tests.
+    public func settle() async {
+        await maintenance?.value
     }
 
     /// The question before this one in `scope`, which follow-ups are searched together with. Nil in a new scope.
@@ -167,6 +204,7 @@ public final class CampingChat {
                        before turnID: CampingChatTurn.ID? = nil) async throws -> CampingReply {
         try Task.checkCancellation()
         guard !request.questionExceedsLimit else { throw CampingChatFailure.contextTooLong }
+        await maintenance?.value
         // A cancelled request may still be unwinding in the session; never send two at once.
         await acquire()
         defer { release() }
@@ -175,6 +213,8 @@ public final class CampingChat {
             reset()
             self.scope = scope
         }
+        var request = request
+        request.conversationSummary = summary(before: turnID)
         let budget = PromptBudget(contextSize: counter.contextSize)
         var plan = try await request.plan(.full, counter: counter, budget: budget)
         var history = CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total, cost: cost)
@@ -183,16 +223,18 @@ public final class CampingChat {
             response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
         } catch CampingChatFailure.contextTooLong {
             try Task.checkCancellation()
-            let retry = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
             // The counts said the first attempt fit, so the retry must send strictly less: a smaller prompt, or
             // at least one turn fewer. With neither left to give, the same request would overflow again.
-            let promptShrank = retry.prompt != plan.prompt
+            let promptShrank = request.compactPrompt(limitedBy: plan) != plan.prompt
             guard promptShrank || !history.isEmpty else { throw CampingChatFailure.contextTooLong }
             let limit = min(CampingChatHistory.compactedTurns, promptShrank ? history.count : history.count - 1)
             let earlier = Set(CampingChatHistory.earlier(turns, before: turnID).map(\.id))
-            compact(budget: budget.inputLimit - retry.usage.total)
-            plan = retry
-            history = Array(turns.filter { earlier.contains($0.id) }.suffix(limit))
+            await compact()
+            try Task.checkCancellation()
+            request.conversationSummary = summary(before: turnID)
+            plan = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
+            history = CampingChatHistory.window(turns.filter { earlier.contains($0.id) }, budget: budget.inputLimit - plan.usage.total,
+                                                limit: limit, cost: cost)
             response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
         }
         let text = response.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -219,7 +261,9 @@ public final class CampingChat {
             forget(turn.id)
             throw CancellationError()
         }
+        // A backstop for when summaries keep failing; normally compaction keeps the chat far below this.
         while turns.count > CampingChatHistory.storedTurns { forget(turns[0].id) }
+        scheduleCompaction()
         return reply
     }
 
@@ -231,15 +275,58 @@ public final class CampingChat {
         session?.remove(turnID)
     }
 
-    /// Apple's documented recovery from a full context: a new session that starts from the key entries of
-    /// the old one, here the newest turn when it fits. A model-written summary would cost another full
-    /// generation on a 4,096-token model while the camper waits, and could state things nobody said.
-    private func compact(budget: Int) {
-        let kept = CampingChatHistory.window(turns, budget: budget, limit: CampingChatHistory.compactedTurns, cost: cost)
+    /// The summary a request may carry: none when asking again as of a turn no longer stored, since the summary
+    /// could then cover turns after it.
+    private func summary(before turnID: CampingChatTurn.ID?) -> String? {
+        guard let turnID else { return summary }
+        return turns.contains { $0.id == turnID } ? summary : nil
+    }
+
+    /// Apple's recovery from a full context (TN3193): summarize the old session, and start a new one from the
+    /// summary and its key entry, the newest turn. The new session is prewarmed before the retry.
+    private func compact() async {
+        let kept = Array(turns.suffix(CampingChatHistory.compactedTurns))
+        let dropped = turns.filter { turn in !kept.contains { $0.id == turn.id } }
+        if let folded = await folded(dropped, into: summary) { summary = folded }
         turns = kept
         costs = costs.filter { id, _ in kept.contains { $0.id == id } }
-        session = model.makeSession(history: kept)
+        let made = model.makeSession(history: kept)
+        made.prewarm()
+        session = made
         compactions += 1
+    }
+
+    /// At a response boundary (WWDC26), folds every turn older than those a request sends into the summary and
+    /// drops them from the session. It runs after the answer is shown, so the camper never waits on it; the
+    /// next question waits only if it's still running.
+    private func scheduleCompaction() {
+        guard turns.count > ConversationSummary.compactAfterTurns else { return }
+        let expected = generation
+        maintenance = Task { [weak self] in await self?.compactOlderTurns(expected) }
+    }
+
+    private func compactOlderTurns(_ expected: Int) async {
+        await acquire()
+        defer { release() }
+        guard generation == expected, turns.count > ConversationSummary.compactAfterTurns else { return }
+        let older = Array(turns.dropLast(CampingChatHistory.maximumTurns))
+        // A failed summary leaves the turns in place; the next answer tries again.
+        guard let folded = await folded(older, into: summary), generation == expected else { return }
+        summary = folded
+        for turn in older { forget(turn.id) }
+    }
+
+    /// Folds `turns` into `summary` a few at a time, each pass in its own short-lived session that carries the
+    /// summary so far (TN3193). Nil when a pass fails.
+    private func folded(_ turns: [CampingChatTurn], into summary: String?) async -> String? {
+        var result = summary
+        for start in stride(from: 0, to: turns.count, by: ConversationSummary.turnsPerPass) {
+            let pass = Array(turns[start..<min(start + ConversationSummary.turnsPerPass, turns.count)])
+            guard let text = try? await model.summarize(pass, into: result),
+                  let cleaned = ConversationSummary.cleaned(text) else { return nil }
+            result = cleaned
+        }
+        return result
     }
 
     private func currentSession() -> any CampingChatSession {
@@ -270,7 +357,7 @@ public final class CampingChat {
         return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
                             droppedCitationCount: resolved.droppedCount, coverage: coverage,
                             readiness: documents.readiness, usedSavedTrip: request.usesSavedTrip,
-                            searched: manifest.filter { !resolved.sources.contains($0) })
+                            searched: manifest.filter { !resolved.sources.contains($0) }, passages: sent.passages)
     }
 
     private func acquire() async {

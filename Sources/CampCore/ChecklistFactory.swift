@@ -3,7 +3,6 @@ import Foundation
 /// Original, conservative prompts informed by Camping World's setup/teardown guide.
 /// The rig manufacturer's instructions take priority over this general checklist.
 public enum ChecklistFactory {
-    public static let sourceURL = "https://blog.campingworld.com/learn-to-rv/rv-setup-checklist/"
     public static func template(for rig: some RigDetails) -> ChecklistTemplate {
         var setup: [ChecklistStepDraft] = []
         var teardown: [ChecklistStepDraft] = []

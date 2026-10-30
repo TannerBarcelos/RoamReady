@@ -42,8 +42,14 @@ public struct PromptBudget: Equatable, Sendable {
 
     public let contextSize: Int
 
+    /// A size of zero or less counts as unknown: the app reads 0 from `SystemLanguageModel.contextSize`, which
+    /// would leave no room for any prompt and fail every question as too long.
     public init(contextSize: Int? = nil) {
-        self.contextSize = max(contextSize ?? Self.fallbackContextSize, 0)
+        if let contextSize, contextSize > 0 {
+            self.contextSize = contextSize
+        } else {
+            self.contextSize = Self.fallbackContextSize
+        }
     }
 
     /// Tokens that instructions, prompt, and sent history may use together.
@@ -115,6 +121,8 @@ public struct PromptPlan: Equatable, Sendable {
     public let prompt: String
     /// The explicit source list for this attempt. A citation to anything else is rejected.
     public let sources: [DocumentSource]
+    /// The text of each source as this attempt showed it to the model, by source ID.
+    public let passages: [DocumentSource.ID: String]
     public let usage: PromptUsage
     let shape: PromptShape
 }
@@ -166,6 +174,7 @@ extension CampingHelpRequest {
         var checklist = "", savedTrip = "", evidence = "", question = ""
         var prompt = ""
         var sources: [DocumentSource] = []
+        var passages: [DocumentSource.ID: String] = [:]
     }
 
     private func render(_ shape: PromptShape) -> Rendered {
@@ -177,11 +186,17 @@ extension CampingHelpRequest {
             DocumentExcerpt(source: $0.source, text: String($0.text.prefix(shape.excerptCharacters)))
         }
         out.sources = shown.map(\.source)
+        out.passages = Dictionary(shown.map { ($0.source.id, $0.text) }, uniquingKeysWith: { first, _ in first })
         if let documents { out.evidence = documents.promptBlock(excerpts: shown) }
         out.prompt = Self.render(category: (rigContext?.type ?? rigType)?.title ?? "Unknown",
                                  checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip, evidence: documents == nil ? nil : out.evidence,
                                  question: out.question)
         return out
+    }
+
+    /// The prompt a compact retry starts from, before any budget shrinking. Rendering only; nothing is counted.
+    func compactPrompt(limitedBy plan: PromptPlan) -> String {
+        render(initialShape(.compact).limited(by: plan.shape)).prompt
     }
 
     /// The largest prompt for `attempt` that fits the budget, shrunk in compaction order. A compact retry
@@ -204,7 +219,7 @@ extension CampingHelpRequest {
                     question: try await measurer.count(rendered.question),
                     total: instructionTokens + promptTokens, limit: budget.inputLimit)
                 return PromptPlan(attempt: attempt, instructions: instructions, prompt: rendered.prompt,
-                                  sources: rendered.sources, usage: usage, shape: shape)
+                                  sources: rendered.sources, passages: rendered.passages, usage: usage, shape: shape)
             }
             guard let smaller = shape.shrunk() else { throw CampingChatFailure.contextTooLong }
             shape = smaller

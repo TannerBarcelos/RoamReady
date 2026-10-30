@@ -46,7 +46,7 @@ struct AssistantView: View {
     /// Borrowed from whoever owns the conversation's lifetime.
     @Bindable var chat: AssistantConversation
     @State private var progress = AssistantProgress()
-    @State private var openedSource: DocumentSource?
+    @State private var openedSource: OpenedSource?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
     /// What the Assistant can use in the scope on screen. Refreshed as indexing changes.
@@ -93,6 +93,9 @@ struct AssistantView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if showsConversation {
+                    ToolbarItem(placement: .principal) {
+                        AssistantScopePill(summary: currentTarget.summary, readiness: readiness, exchanges: chat.exchanges)
+                    }
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
                             chat.exchanges = []; chat.question = ""; chat.generationFailure = nil; chat.failedQuestion = nil
@@ -111,6 +114,8 @@ struct AssistantView: View {
             .onAppear {
                 refreshAvailability()
                 refreshReadiness()
+                // Load the model while the camper types, so the first answer starts sooner (TN3193).
+                if showsConversation { chat.session.prewarm() }
                 if let step, chat.exchanges.isEmpty, chat.question.isEmpty {
                     chat.question = "What should I know about \(step.title.lowercased())?"
                 }
@@ -133,7 +138,7 @@ struct AssistantView: View {
             // A different rig or trip is a different set of paperwork: drop the running request.
             .onChange(of: currentTarget) { _, _ in cancelRequest(); refreshReadiness() }
             .onChange(of: library.documentAssistant.statuses) { _, _ in refreshReadiness() }
-            .sheet(item: $openedSource) { DocumentSourceView(source: $0) }
+            .sheet(item: $openedSource) { AssistantSourceSheet(item: $0) }
         }
     }
 
@@ -146,7 +151,7 @@ struct AssistantView: View {
                 Text("Sources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     .accessibilityAddTraits(.isHeader)
                 if answer.usedSavedTrip { savedTripRow }
-                ForEach(sections.cited) { sourceRow($0, searchedOnly: false) }
+                ForEach(sections.cited) { sourceRow($0, in: answer) }
                 if sections.cited.contains(where: \.isLowConfidenceScan) {
                     Label("Part of this comes from a scan that may be misread. Check the original page before relying on any number or part code.",
                           systemImage: "exclamationmark.triangle")
@@ -160,25 +165,21 @@ struct AssistantView: View {
                 .accessibilityIdentifier(note == .notCovered ? "assistantNotCovered" : "assistantUncitedNote")
         }
         if !sections.searched.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("References searched").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    .accessibilityAddTraits(.isHeader)
-                Text("Looked at, but not cited in this answer.").font(.caption2).foregroundStyle(.secondary)
-                ForEach(sections.searched) { sourceRow($0, searchedOnly: true) }
-            }
+            SearchedReferencesLink(searched: sections.searched, passages: answer.passages)
         }
     }
 
-    /// Cited sources are solid cards with a document icon; searched references are dashed and lighter, with a
-    /// search icon. VoiceOver hears which kind each is.
-    private func sourceRow(_ source: DocumentSource, searchedOnly: Bool) -> some View {
-        let detail = [source.category, source.pageDescription, source.isScanned ? "Scanned" : nil].compactMap { $0 }.joined(separator: " · ")
-        return Button { openedSource = source } label: {
+    /// A cited source: a solid card that opens the source dialog. Searched references sit behind
+    /// `SearchedReferencesLink` instead, so they don't take the space of sources.
+    private func sourceRow(_ source: DocumentSource, in answer: CampingAnswer) -> some View {
+        let detail = source.listDetail
+        return Button {
+            openedSource = OpenedSource(source: source, passage: answer.passages[source.id], cited: true)
+        } label: {
             HStack(spacing: 10) {
-                Image(systemName: searchedOnly ? "magnifyingglass" : "doc.text")
-                    .foregroundStyle(searchedOnly ? Color.secondary : Color.accentColor)
+                Image(systemName: "doc.text").foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(source.title).font(.subheadline).foregroundStyle(searchedOnly ? .secondary : .primary)
+                    Text(source.title).font(.subheadline)
                     Text(detail).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 8)
@@ -186,21 +187,15 @@ struct AssistantView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if searchedOnly {
-                    RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                } else {
-                    RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemGroupedBackground))
-                }
-            }
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             .contentShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(searchedOnly ? "Searched, not cited: \(source.title), \(detail)" : "Source: \(source.title), \(detail)")
-        .accessibilityHint(searchedOnly ? "Opens the document at the page that was searched" : "Opens the document at the cited page")
+        .accessibilityLabel("Source: \(source.title), \(detail)")
+        .accessibilityHint("Shows the passage this answer cited")
         .accessibilityAddTraits(.isButton)
-        .accessibilityIdentifier(searchedOnly ? "assistantSearchedRow" : "assistantSourceRow")
+        .accessibilityIdentifier("assistantSourceRow")
     }
 
     /// The trip's own saved details, named as a source so they are told apart from documents. Not tappable:
@@ -219,19 +214,6 @@ struct AssistantView: View {
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("assistantSavedTripSource")
-    }
-
-    private var scopeBanner: some View {
-        let summary = currentTarget.summary
-        return Label(summary.text, systemImage: "doc.text.magnifyingglass")
-            .font(.footnote).foregroundStyle(.secondary)
-            .lineLimit(2)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20).padding(.vertical, 8)
-            .background(.bar)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(summary.accessibilityText)
-            .accessibilityIdentifier("assistantScope")
     }
 
     private var conversation: some View {
@@ -253,17 +235,12 @@ struct AssistantView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(exchange.answer.text).textSelection(.enabled)
                                 .accessibilityIdentifier("assistantGeneratedReply")
-                            if !exchange.answer.isNotice { Text(exchange.answer.mode).font(.caption).foregroundStyle(.secondary) }
                             if exchange.scope != currentTarget {
                                 Text("Asked in \(exchange.scope.summary.text)").font(.caption).foregroundStyle(.secondary)
                             }
                             documentNotes(for: exchange.answer)
                             AnswerReadinessNote(answer: exchange.answer, current: exchange.scope == currentTarget ? readiness : nil,
                                                 canRetry: showsConversation && !answering) { askAgain(exchange) }
-                            if let source = exchange.answer.sourceURL, let url = URL(string: source) {
-                                Link("Checklist background: Camping World", destination: url).font(.caption)
-                                    .accessibilityIdentifier("assistantChecklistAttribution")
-                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .contain)
@@ -271,7 +248,7 @@ struct AssistantView: View {
                     }
                     if let pendingQuestion {
                         userMessage(pendingQuestion)
-                        stageList
+                        AssistantStageView(stages: progress.stages)
                     }
                     if let generationFailure = chat.generationFailure {
                         VStack(alignment: .leading, spacing: 10) {
@@ -289,9 +266,6 @@ struct AssistantView: View {
                 .padding(.bottom, 12)
             }
             .scrollDismissesKeyboard(.interactively)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(spacing: 0) { scopeBanner; AssistantReadinessSummary(readiness: readiness) }
-            }
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             .onChange(of: chat.exchanges.count) { _, _ in
                 withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
@@ -300,21 +274,6 @@ struct AssistantView: View {
                 withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
             }
         }
-    }
-
-    /// Only the stages this request reached: finished ones are checked, the current one spins.
-    private var stageList: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(progress.stages.enumerated()), id: \.offset) { index, stage in
-                if index == progress.stages.count - 1 {
-                    ProgressView(stage.title)
-                } else {
-                    Label(stage.title, systemImage: "checkmark.circle").foregroundStyle(.secondary)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("assistantProgress")
     }
 
     private func userMessage(_ text: String) -> some View {
@@ -413,6 +372,7 @@ struct AssistantView: View {
             steps = []
         }
         let session = chat.session
+        let hasDocuments = !readiness.isEmpty
         // An exchange that was never a model turn has no turns before it in the session.
         let before = retried.map { $0.answer.turnID ?? "" }
         let retrievalQuestion = AssistantConversationRules.retrievalQuestion(
@@ -436,7 +396,8 @@ struct AssistantView: View {
                         task = nil
                         return
                     }
-                    announce(progress.advance(to: .searchingDocuments, for: request))
+                    // A scope with no documents has nothing to search, so the stage isn't shown.
+                    if hasDocuments { announce(progress.advance(to: .searchingDocuments, for: request)) }
                     evidence = await index.evidence(for: retrievalQuestion, target: target, in: context)
                     try Task.checkCancellation()
                 }

@@ -77,10 +77,7 @@ struct AppSettingsView: View {
                 Section {
                     Text("Camp Finder searches campgrounds and RV parks in Apple Maps, online only. Apple Maps doesn’t list every campground, and RoamReady doesn’t book or show availability.")
                         .font(.footnote).foregroundStyle(.secondary)
-                    if let url = URL(string: ChecklistFactory.sourceURL) {
-                        Link("Checklist reference: Camping World", destination: url)
-                    }
-                } header: { Text("Sources & coverage") } footer: {
+                } header: { Text("Coverage") } footer: {
                     Text("RoamReady · Development build 0.1")
                 }
             }

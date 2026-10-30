@@ -133,13 +133,13 @@ public enum BookingFactQuestion {
 public enum BookingConflictRules {
     static func instructions(hasSavedFacts: Bool) -> String {
         let saved = hasSavedFacts
-            ? " The saved trip facts block holds values the owner entered; they are not from a document. Label them \"saved trip\"."
+            ? " The saved trip facts block holds values the owner entered, not a document; label them \"saved trip\"."
             : ""
         return """
 
 
-        Booking facts can disagree.\(saved) When a document excerpt states a different value for the same fact (for example a check-in time) on the same date and in the same time zone as a saved trip fact, or two excerpts state different values, give every value with its source: \"saved trip\", or the document title and page with its [S#] ID. Do not choose between them. Never call one newer, older, official, or more reliable, and never rank them by file name, import date, order, or how they were found; say only that they differ and the owner should confirm with the campground. You cannot change saved trip details; do not offer to. A time on another date or in another time zone, or a different kind of fact, is not a conflict: do not report one.
-        You were given only the excerpts shown, not every document. Never say you checked all or every document; say what these excerpts show and that other documents may say more.
+        Booking facts can disagree.\(saved) If sources give different values for the same fact on the same date and time zone, list every value with its source ("saved trip", or the document title and page with its [S#] ID). Do not choose between them, call one newer or more reliable, or rank them by file name, import date, or order; say they differ and the owner should confirm with the campground. Different dates, time zones, or kinds of fact are not conflicts. You can't change saved trip details.
+        You saw only these excerpts, not every document; never claim to have checked them all.
         """
     }
 }

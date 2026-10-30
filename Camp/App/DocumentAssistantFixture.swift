@@ -30,20 +30,24 @@ enum DocumentAssistantFixture {
             DocumentSource(id: id, documentID: documentID, checksum: checksum, title: title, category: "Manual", page: page)
         }
         func exchange(_ question: String, _ text: String, coverage: DocumentCoverage, cited: [DocumentSource] = [],
-                      searched: [DocumentSource] = []) -> CampingExchange {
-            CampingExchange(question: question, answer: CampingAnswer(text: text, sourceURL: nil, sources: cited, searched: searched, coverage: coverage),
+                      searched: [DocumentSource] = [], passages: [DocumentSource.ID: String] = [:]) -> CampingExchange {
+            CampingExchange(question: question, answer: CampingAnswer(text: text, sources: cited, searched: searched,
+                                                                      passages: passages, coverage: coverage),
                             scope: scope)
         }
         return [
             exchange("What does E4 mean?", "Error code E4 means the igniter failed to light.", coverage: .cited,
                      cited: [source("S1", manualID, checksum: manualChecksum, "Water Heater Manual", page: 2)],
-                     searched: [source("S2", manualID, checksum: manualChecksum, "Water Heater Manual", page: 3)]),
+                     searched: [source("S2", manualID, checksum: manualChecksum, "Water Heater Manual", page: 3)],
+                     passages: ["S1": "Error code E4 means the water heater igniter failed to light. Turn the unit off and wait five minutes before retrying.",
+                                "S2": "Drain the fresh water tank and open all low point drains before winter storage to prevent freeze damage."]),
             exchange("How do I light the furnace?", "Press the ignition button for ten seconds.", coverage: .cited,
                      cited: [source("S1", furnaceID, checksum: "replaced-after-this-answer", "Furnace Manual", page: 5)]),
             exchange("How do I retract the awning?", "Turn the crank clockwise until it stops.", coverage: .cited,
                      cited: [source("S1", awningID, checksum: "deleted", "Awning Manual", page: 7)]),
             exchange("Any tips for a rainy trip?", "Keep a tarp handy and pitch it before the rain starts.", coverage: .uncited,
-                     searched: [source("S1", manualID, checksum: manualChecksum, "Water Heater Manual", page: 3)])
+                     searched: [source("S1", manualID, checksum: manualChecksum, "Water Heater Manual", page: 3)],
+                     passages: ["S1": "Drain the fresh water tank and open all low point drains before winter storage to prevent freeze damage."])
         ]
     }
 
