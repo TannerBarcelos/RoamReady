@@ -147,6 +147,27 @@ final class TripBookingFactsTests: XCTestCase {
         XCTAssertEqual(merged.merging(followUp: competing), merged, "the same passage is not added twice")
     }
 
+    func testACompetingPassageFromTheFirstPassSurvivesAFollowUpThatFillsTheCap() {
+        let confirmation = UUID(), amended = UUID()
+        func excerpt(_ id: UUID, _ n: Int, _ text: String) -> DocumentExcerpt {
+            DocumentExcerpt(source: DocumentSource(id: "S\(n)", documentID: id, checksum: "c", title: "Doc", category: "Reservation", page: n), text: text)
+        }
+        // The amended confirmation ranked last in the first pass, behind unrelated passages.
+        let first = DocumentEvidence(excerpts: [
+            excerpt(confirmation, 1, "Check-in time is 3 pm."), excerpt(UUID(), 1, "Check the sensor cable."),
+            excerpt(UUID(), 2, "Check the tire pressure."), excerpt(amended, 1, "Check-in time moved to 4 pm.")])
+        let followUp = DocumentEvidence(excerpts: [
+            excerpt(confirmation, 1, "Check-in time is 3 pm."), excerpt(amended, 1, "Check-in time moved to 4 pm."),
+            excerpt(confirmation, 2, "Check-in is 3 pm Mountain time.")])
+        let merged = first.merging(followUp: followUp)
+        XCTAssertEqual(merged.excerpts.count, DocumentEvidence.maximumExcerpts)
+        XCTAssertEqual(merged.excerpts.map(\.source.id), ["S1", "S2", "S3", "S4"])
+        XCTAssertTrue(merged.excerpts.contains { $0.text == "Check-in time is 3 pm." })
+        XCTAssertTrue(merged.excerpts.contains { $0.text == "Check-in time moved to 4 pm." })
+        XCTAssertTrue(merged.excerpts.contains { $0.text == "Check-in is 3 pm Mountain time." })
+        XCTAssertFalse(merged.excerpts.contains { $0.text == "Check the tire pressure." }, "the weakest unrelated passage goes first")
+    }
+
     // MARK: Prompt budget
 
     func testFullPlanMatchesThePromptAndCountsTheSavedFacts() async throws {

@@ -111,13 +111,12 @@ Outcome: PASSED
 Reports: EvalReports/retrieval-lexical-all.{json,md}
 ```
 
-Output from `--mode apple` (exit 1):
+Output from `--mode apple` (exit 0):
 
 ```text
-Required cases: 25/27 passed. Hit@5 1.0, Recall@5 1.0, MRR 0.6960784313725491, scope violations 0, stale 0, false positives 0
+Required cases: 27/27 passed. Hit@5 1.0, Recall@5 1.0, MRR 0.6960784313725491, scope violations 0, stale 0, false positives 0
 Challenge cases (reported apart): 0/4 passed
-Failing required cases: conflict-checkin, conflict-deleted-booking
-Outcome: FAILED
+Outcome: PASSED
 ```
 
 Output from `--mode fake` (exit 1):
@@ -135,7 +134,7 @@ Run on 2026-10-29, MacBook Pro (MacBookPro18,1, Apple M1 Pro), macOS 27.0.1 (26A
 What the three runs say right now:
 
 - Lexical passes. It is the baseline the app falls back to.
-- With Apple's embeddings, two required conflict cases fail. In both, the later "moved to 4 pm" confirmation was in the top 5 but did not reach the prompt. The runner reports "removed by the relevance threshold or the excerpt cap". That is a real finding to look at with the owner. It is not a flaw in the guide.
+- With Apple's embeddings, two required conflict cases used to fail (fixed). The later "moved to 4 pm" confirmation was in the top 5 and passed the relevance check, but the booking follow-up search merged one more passage from the original confirmation and evicted the weakest first-pass excerpt by rank. With Apple's vectors that was the amended confirmation, ranked behind unrelated passages. `DocumentEvidence.merging(followUp:)` now evicts by document instead: passages from documents the follow-up found are the booking evidence and go last, so unrelated passages are dropped first however they ranked. Both confirmations reach the prompt with their sources, within the same 4-excerpt and 2,400-character limits.
 - The fake mode also fails two required cases and one prompt-safety check. Fake vectors have no meaning, so do not use them to judge quality.
 
 ### The manual workflow
@@ -301,6 +300,6 @@ Any "no" on 1, 3, or 5 is a defect to fix before release. Record the result per 
 
 - Walk through the two cases with the owner (#109).
 - Add the regression case that comes out of that walkthrough to `corpus-v1.json`, then rerun and record it here.
-- Decide what to do about the two required conflict cases that fail with Apple's embeddings, and the two challenge false positives.
+- Decide what to do about the two challenge false positives.
 - Run the human review (#108) and update the generation status.
 - Run the manual workflow once on the CI runner and note whether it ran or was "not run".
