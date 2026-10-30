@@ -42,6 +42,7 @@ final class AssistantUITests: XCTestCase {
         details.tap()
         let notes = app.descendants(matching: .any)["checklistStepNotes"].firstMatch
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Ask about this step"].isHittable, "Step help is visible before scrolling")
         notes.tap()
         notes.typeText("Fixture note: blue cable bag.")
         let guidance = app.descendants(matching: .any)["checklistStepGuidance"].firstMatch
@@ -49,7 +50,7 @@ final class AssistantUITests: XCTestCase {
         guidance.tap()
         guidance.typeText(" Draft guidance retained.")
         let help = app.buttons["Ask about this step"]
-        for _ in 0..<8 where !help.isHittable { app.swipeUp() }
+        for _ in 0..<8 where !help.isHittable { app.swipeDown() }
         help.tap()
         XCTAssertTrue(app.buttons["assistantSend"].waitForExistence(timeout: 5))
         app.buttons["assistantSend"].tap()

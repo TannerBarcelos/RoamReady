@@ -153,6 +153,7 @@ struct ChecklistStepEditor: View {
                 Section("Step") {
                     TextField("Title", text: $step.title, axis: .vertical)
                         .accessibilityIdentifier("checklistStepTitle")
+                    if let onHelp { Button("Ask about this step", systemImage: "sparkles") { onHelp(step) } }
                     TextField("Notes", text: $step.notes, axis: .vertical).lineLimit(2...8)
                         .accessibilityIdentifier("checklistStepNotes")
                 }
@@ -173,7 +174,6 @@ struct ChecklistStepEditor: View {
                 } header: { Text("Guidance") } footer: {
                     Text("General guidance for this step. Follow your rig’s manuals for equipment-specific procedures.")
                 }
-                if let onHelp { Button("Ask about this step", systemImage: "sparkles") { onHelp(step) } }
             }
             .navigationTitle(step.title.isEmpty ? "New step" : "Step details").navigationBarTitleDisplayMode(.inline)
             .toolbar {
