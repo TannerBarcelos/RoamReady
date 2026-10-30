@@ -19,17 +19,34 @@ enum HomeDestination: Hashable {
 struct HomeWorkspace: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(Connectivity.self) private var connectivity
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var now = Date()
     @State private var selection: HomeDestination?
     @State private var compactColumn = NavigationSplitViewColumn.sidebar
+    @State private var weather = LocalWeather()
+    @State private var showingWeather = false
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
             HomeView(now: now, selection: listSelection)
                 .assistantToolbarItem(isEnabled: horizontalSizeClass == .compact)
+                .toolbar {
+                    if horizontalSizeClass == .compact { weatherToolbar }
+                }
         } detail: {
             detail
+        }
+        .sheet(isPresented: $showingWeather) { CurrentWeatherSheet(weather: weather) }
+        .task(id: connectivity.isOnline) {
+            await weather.load()
+            if connectivity.isOnline { await weather.refresh() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                weather.updateAccess()
+                if connectivity.isOnline { Task { await weather.refresh() } }
+            }
         }
         #if DEBUG
         // The cover display collapses the detail, so UI tests read what it would show.
@@ -67,6 +84,32 @@ struct HomeWorkspace: View {
                 catch { return }
             }
         }
+    }
+
+    @ToolbarContentBuilder private var weatherToolbar: some ToolbarContent {
+        #if !targetEnvironment(macCatalyst)
+        if #available(iOS 27.1, *) {
+            ToolbarItem(placement: .topBarTrailing) {
+                CurrentWeatherBadge(weather: weather, openDetails: openWeather)
+            }
+            .axisBehavior(.verticalPreferred)
+        } else {
+            standardWeatherToolbar
+        }
+        #else
+        standardWeatherToolbar
+        #endif
+    }
+
+    private var standardWeatherToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            CurrentWeatherBadge(weather: weather, openDetails: openWeather)
+        }
+    }
+
+    private func openWeather() {
+        showingWeather = true
+        if weather.conditions == nil { Task { await weather.refresh(force: true) } }
     }
 
     private struct DetailIdentity: Hashable {
@@ -107,6 +150,7 @@ struct HomeWorkspace: View {
                     }
                 }
                 .assistantToolbarItem()
+                .toolbar { weatherToolbar }
             }
             .id(DetailIdentity(trip: trip.persistentModelID, showsChecklist: shownChecklist != nil))
         } else {
@@ -115,6 +159,7 @@ struct HomeWorkspace: View {
                                        description: Text("Your current or next trip appears here."))
                     .accessibilityIdentifier("homeDetailEmpty")
                     .assistantToolbarItem()
+                    .toolbar { weatherToolbar }
             }
         }
     }

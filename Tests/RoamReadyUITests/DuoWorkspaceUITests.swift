@@ -55,6 +55,35 @@ final class DuoWorkspaceUITests: XCTestCase {
         }
     }
 
+    func testExpandedHomeKeepsGlobalActionsOutOfTheSidebar() throws {
+        try assertExpandedHomeToolbar(emptyLibrary: false)
+    }
+
+    func testEmptyExpandedHomeKeepsItsGlobalActions() throws {
+        try assertExpandedHomeToolbar(emptyLibrary: true)
+    }
+
+    private func assertExpandedHomeToolbar(emptyLibrary: Bool) throws {
+        let app = XCUIApplication()
+        app.resetAuthorizationStatus(for: .location)
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test"]
+        if emptyLibrary { app.launchArguments.append("-empty-library") }
+        app.launch()
+        XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
+        guard app.windows.firstMatch.horizontalSizeClass == .regular else {
+            throw XCTSkip("Run in an expanded regular-width window to check sidebar versus detail placement")
+        }
+
+        let weather = app.buttons["openCurrentWeather"].firstMatch
+        XCTAssertTrue(weather.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.barAssistantButton.waitForExistence(timeout: 5))
+        for identifier in ["openCurrentWeather", "openAssistant"] {
+            XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1, "A global action appears once")
+            XCTAssertFalse(app.navigationBars["Home"].buttons[identifier].exists,
+                           "Global actions belong to the detail toolbar, which can participate in a vertical bar")
+        }
+    }
+
     /// The reply is generated while the device rotates; the sheet stays up and the reply arrives.
     func testGeneratingReplySurvivesARotation() {
         let app = launch(generation: "slow-reply")

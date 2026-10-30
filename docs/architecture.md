@@ -146,6 +146,8 @@ The app uses the window's real size classes, safe areas, and native containers o
 
 `HomeWorkspace` owns Home's clock and `NavigationSplitView` selection above both columns. `HomeDestination` stores persistent identifiers rather than models. Native navigation collapses at compact width and expands when space allows. The detail shows the valid pick or featured trip (`displayedTrip(selected:asOf:)` in `CampCore`).
 
+`HomeWorkspace` also owns one `LocalWeather` instance and its sheet/refresh lifecycle. `CurrentWeatherBadge` renders that shared model without creating a session of its own. Expanded layouts attach both weather and the global Assistant to detail content so their items can use the system vertical bar; compact Home retains the actions in its own bar until navigation opens a detail. Weather's custom item opts into `.verticalPreferred` and adapts its label using `toolbarVerticalEdge` on supported iOS SDKs, with a horizontal fallback on Catalyst and iOS 27.0.
+
 Camp Finder separates map and results at regular width. On iOS 27.1 or newer it uses `ArrangementView(.split)`, with navigation outside the arrangement. Catalyst and earlier supported runtimes use flexible side-by-side panes; compact width embeds the map in the list. Query, camera, search service, and open-place sheet state live above the branch. Onboarding uses a native confirmation action and trip details use system overflow, independent of device identity.
 
 `-layout-ui-test` adds media fixtures and accessibility markers in Debug builds; it never changes size classes or selects an alternate UI. The former hinge observer and `HingeCapability` were removed. See [Duo readiness](duo-readiness.md) for the source guidance and acceptance matrix.

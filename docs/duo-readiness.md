@@ -27,6 +27,7 @@ The web reader supplied the preparation guide, HIG text through search, and talk
 | Search actions | Two labeled buttons competed for row width. | `ViewThatFits` stacks them when the horizontal version does not fit. |
 | Onboarding | A custom bottom action panel used scarce cover-display and keyboard space. | Every platform uses a labeled native confirmation toolbar action and step count. Validation and drafts remain in the form; system bars choose the appropriate placement. |
 | Trip toolbar | A separate ellipsis menu duplicated the overflow pattern. | Edit/delete actions join `ToolbarOverflowMenu` on every platform. The list's delete action and confirmation remain. |
+| Home global controls | Current-location weather was attached to the sidebar toolbar. Sidebar items stay horizontal on Duo, even with the detail's vertical bar visible. | Put weather and general Assistant in the expanded detail's toolbar, including empty detail. A shared weather model and sheet live above both columns. The weather item opts into the vertical axis and uses the system bar-edge environment for its compact representation; no device or pose checks are added. |
 | Document rows | Category and expiry shared a single horizontal row; the prior audit identified large-text truncation. | Stack metadata at accessibility sizes and when horizontal content doesn't fit; allow full title and metadata height. |
 | Sheets and viewers | Editors use native sheets/forms; preview uses Quick Look; camera uses `UIImagePickerController`. | Retain system presentation. Verify live fold with a draft, import, camera, image, and PDF open. |
 | Responsiveness | Imports and image downsampling already use detached work; thumbnails and stored photo sizes are bounded. Search state lives above its layout branch. | Retain these paths. No timing, memory, battery, or thermal improvement is claimed without profiling. |
@@ -45,6 +46,7 @@ New/updated UI regressions use real window traits on all devices (`-layout-ui-te
 - Camp Finder checks separate, visible arrangement panes without assuming fixed pane proportions or one split axis.
 - Add-trip draft text and the originating tab survive rotation with the sheet open.
 - A long service-record title, category, and expiry remain reachable at the largest text size, with Dynamic Type and clipping audits and no waiver.
+- At regular width, weather and Assistant each appear once outside the Home sidebar toolbar, with a current trip and an empty library. These checks use actual window traits and skip compact windows; an open Duo pose still needs Device Hub validation.
 - The disk onboarding workflow reaches the native primary action; selected-trip deletion uses the list action.
 
 Native app and package CI is run remotely; no Xcode, iOS SDK, Simulator, or Device Hub is installed in the editing environment. PR CI also compiles the UI test bundle without booting a simulator, so UI regressions are type-checked even though their execution remains manual. Native Debug/Release builds, package tests on macOS, and the UI suite must pass for this revision before merging. Earlier green runs in `validation.md` are not evidence for these changes.

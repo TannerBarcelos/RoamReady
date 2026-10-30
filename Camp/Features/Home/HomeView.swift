@@ -22,7 +22,6 @@ struct HomeView: View {
         List(selection: selection) { sections }
         .listSectionSpacing(.compact)
         .navigationTitle("Home")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
     }
 
     @ViewBuilder private var sections: some View {

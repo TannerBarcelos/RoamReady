@@ -2,46 +2,65 @@ import SwiftUI
 import CoreLocation
 import Observation
 
-/// The temperature where the owner is now, at the top right of Home. It asks for location only when
-/// tapped the first time, and disappears if location access is off.
+/// The workspace owns the model and sheet so moving between native bars never restarts weather.
 struct CurrentWeatherBadge: View {
-    @Environment(Connectivity.self) private var connectivity
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var weather = LocalWeather()
-    @State private var showingDetails = false
+    let weather: LocalWeather
+    let openDetails: () -> Void
 
     var body: some View {
         Group {
             if let conditions = weather.conditions, weather.access != .denied {
-                Button { showingDetails = true } label: {
-                    Label(WeatherFormat.temperature(conditions.temperatureCelsius), systemImage: conditions.symbol)
-                        .labelStyle(.titleAndIcon)
-                        .symbolRenderingMode(.multicolor)
+                Button(action: openDetails) {
+                    conditionsLabel(conditions)
                 }
                 .accessibilityLabel("Weather here: \(WeatherFormat.temperature(conditions.temperatureCelsius)), \(conditions.condition)")
+                .accessibilityIdentifier("openCurrentWeather")
             } else if weather.access != .denied {
-                Button {
-                    showingDetails = true
-                    Task { await weather.refresh(force: true) }
-                } label: {
-                    Image(systemName: "thermometer.medium")
+                Button(action: openDetails) {
+                    Label("Weather here", systemImage: "thermometer.medium").labelStyle(.iconOnly)
                 }
                 .accessibilityLabel("Show the weather where you are")
+                .accessibilityIdentifier("openCurrentWeather")
             }
         }
-        .sheet(isPresented: $showingDetails) { CurrentWeatherSheet(weather: weather) }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                weather.updateAccess()
-                if connectivity.isOnline { Task { await weather.refresh() } }
-            }
+    }
+
+    @ViewBuilder private func conditionsLabel(_ conditions: CurrentConditions) -> some View {
+        #if !targetEnvironment(macCatalyst)
+        if #available(iOS 27.1, *) {
+            AdaptiveWeatherToolbarLabel(conditions: conditions)
+        } else {
+            horizontalLabel(conditions)
         }
-        .task(id: connectivity.isOnline) {
-            await weather.load()
-            if connectivity.isOnline { await weather.refresh() }
+        #else
+        horizontalLabel(conditions)
+        #endif
+    }
+
+    private func horizontalLabel(_ conditions: CurrentConditions) -> some View {
+        Label(WeatherFormat.temperature(conditions.temperatureCelsius), systemImage: conditions.symbol)
+            .labelStyle(.titleAndIcon).symbolRenderingMode(.multicolor)
+    }
+}
+
+#if !targetEnvironment(macCatalyst)
+@available(iOS 27.1, *)
+private struct AdaptiveWeatherToolbarLabel: View {
+    @Environment(\.toolbarVerticalEdge) private var verticalEdge
+    let conditions: CurrentConditions
+
+    var body: some View {
+        let label = Label(WeatherFormat.temperature(conditions.temperatureCelsius), systemImage: conditions.symbol)
+            .symbolRenderingMode(.multicolor)
+        if verticalEdge == nil {
+            label.labelStyle(.titleAndIcon)
+        } else {
+            // The complete reading stays in the button's spoken label and the weather sheet.
+            label.labelStyle(.iconOnly)
         }
     }
 }
+#endif
 
 struct CurrentWeatherSheet: View {
     @Environment(\.dismiss) private var dismiss
