@@ -21,7 +21,7 @@ Its core workflows work offline, with no account required. Camp Finder helps you
 
 ## Getting started
 
-1. Open `RoamReady.xcodeproj` on a Mac with Xcode and the iOS 27 SDK.
+1. Open `RoamReady.xcodeproj` on a Mac with Xcode 27.1 or later and the iOS 27.1 SDK.
 2. Select the **RoamReady** scheme and an iOS 27 simulator, or **My Mac (Mac Catalyst)**.
 3. Build and run.
 
