@@ -53,7 +53,7 @@ Native app and package CI is run remotely; no Xcode, iOS SDK, Simulator, or Devi
 
 ## Required acceptance matrix
 
-Run the manual UI workflow with **iPhone Duo**, **iPhone**, and **iPad**. It selects an available device on the newest compatible installed runtime, excludes Duo from the ordinary iPhone choice, and fails clearly if the selected family is missing. A Duo run needs iOS 27.1 or later. The workflow does not operate Device Hub pose controls.
+Run the manual UI workflow with **iPhone Duo**, **iPhone**, and **iPad**. Each choice selects one exact simulator on its newest compatible installed iOS 27 runtime: iPhone Duo, iPhone 18 Pro, and iPad Pro 13-inch (M5), respectively. It fails clearly if that exact simulator is missing rather than substituting another model. A Duo run needs iOS 27.1 or later. The workflow does not operate Device Hub pose controls.
 
 On a Mac with Xcode 27.1 or newer:
 

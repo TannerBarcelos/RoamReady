@@ -1,28 +1,31 @@
-"""Choose the newest available iOS runtime, keeping ordinary iPhone and Duo runs separate."""
+"""Choose each workflow option's exact simulator on its newest compatible iOS 27 runtime."""
 import json
 import re
 import sys
 
 
 def select_device(devices, family):
-    if family not in ("iPhone", "iPad", "iPhone Duo"):
+    choices = {
+        "iPhone": ("iPhone 18 Pro", (27, 0, 0)),
+        "iPad": ("iPad Pro 13-inch (M5)", (27, 0, 0)),
+        "iPhone Duo": ("iPhone Duo", (27, 1, 0)),
+    }
+    if family not in choices:
         raise ValueError(f"Unknown simulator family: {family}")
+    name, minimum = choices[family]
     candidates = []
     for runtime, items in devices.items():
         match = re.search(r"\.iOS-(\d+)-(\d+)(?:-(\d+))?$", runtime)
         if not match:
             continue
         version = tuple(int(part or 0) for part in match.groups())
-        minimum = (27, 1, 0) if family == "iPhone Duo" else (27, 0, 0)
-        if version < minimum:
+        if version < minimum or version[0] != 27:
             continue
         for index, device in enumerate(items):
-            name = device["name"]
-            matches = name == "iPhone Duo" if family == "iPhone Duo" else name.startswith(family) and "Duo" not in name
-            if matches and device.get("isAvailable", True):
+            if device["name"] == name and device.get("isAvailable", True):
                 candidates.append((version, -index, device["udid"]))
     if not candidates:
-        raise ValueError(f"No available {family} simulator with iOS {'27.1' if family == 'iPhone Duo' else '27'} or newer. Install its runtime in Xcode.")
+        raise ValueError(f"No available {name} simulator on iOS {minimum[0]}.{minimum[1]} or a later iOS 27 runtime. Install its runtime in Xcode.")
     return max(candidates)[2]
 
 
