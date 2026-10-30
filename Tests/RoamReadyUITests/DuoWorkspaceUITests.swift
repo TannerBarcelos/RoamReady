@@ -66,7 +66,7 @@ final class DuoWorkspaceUITests: XCTestCase {
         input.tap()
         input.typeText("How do I keep drinking water clean?")
         app.buttons["assistantSend"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["Assistant is answering"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.descendants(matching: .any)["assistantProgress"].firstMatch.waitForExistence(timeout: 3))
 
         XCUIDevice.shared.orientation = .landscapeLeft
         XCUIDevice.shared.orientation = .portrait
