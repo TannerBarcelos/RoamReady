@@ -20,7 +20,7 @@ struct ChecklistView: View {
     @State private var helpAfterDismiss = false
 
     private let initialPhase: ChecklistPhase
-    /// Lets Duo's Home keep the shown phase above the view, so it survives a fold.
+    /// Lets Home keep the shown phase above the view, so it survives a fold.
     private let onPhaseChange: ((ChecklistPhase) -> Void)?
 
     init(trip: Trip, initialPhase: ChecklistPhase = .setup, onPhaseChange: ((ChecklistPhase) -> Void)? = nil) {

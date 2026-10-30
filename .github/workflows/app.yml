@@ -21,12 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Require Xcode with the iOS 27 SDK
-        run: |
-          xcodebuild -version
-          SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
-          echo "iOS SDK: $SDK_VERSION"
-          test "${SDK_VERSION%%.*}" -ge 27
+      - name: Require the iOS 27.1 SDK for full-display Duo support
+        run: bash scripts/check-apple-sdk.sh
 
       - name: Lint project, privacy, and Apple capabilities
         run: |
@@ -46,3 +42,9 @@ jobs:
               -destination 'generic/platform=iOS' -derivedDataPath "$DERIVED_DATA" \
               CODE_SIGNING_ALLOWED=NO
           done
+
+      - name: Compile UI tests without booting a simulator
+        run: |
+          xcodebuild build-for-testing -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED_DATA" \
+            CODE_SIGNING_ALLOWED=NO

@@ -23,6 +23,18 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Upcoming Lake"].waitForExistence(timeout: 5))
     }
 
+    func testHomeAdaptsWithoutADeviceOrLayoutOverride() {
+        let app = launch()
+        XCTAssertTrue(app.staticTexts["Hello, Riley"].exists)
+        if app.windows.firstMatch.horizontalSizeClass == .regular {
+            XCTAssertTrue(app.navigationBars["Current Pines"].exists,
+                          "An ordinary regular-width window shows Home and its detail without a Duo flag")
+        } else {
+            XCTAssertFalse(app.navigationBars["Current Pines"].exists,
+                           "A compact window starts in Home, with detail reachable by native navigation")
+        }
+    }
+
     func testProfileOwnsTripHistoryAndCampgrounds() {
         let app = launch()
         app.navigationTab("Profile").tap()

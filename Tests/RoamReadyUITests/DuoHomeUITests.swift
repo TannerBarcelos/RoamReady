@@ -1,12 +1,12 @@
 import XCTest
 
-/// Home beside the selected trip on Duo (#84). `-duo-ui-test` forces the workspace, so this runs
-/// on any simulator: side by side on a regular-width display, collapsed on the Duo cover display.
+/// Home uses native adaptive navigation on every device: side by side at regular width,
+/// collapsed at compact width. The layout-test flag only supplies media fixtures.
 @MainActor
 final class DuoHomeUITests: XCTestCase {
     private func launch(_ extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-duo-ui-test"] + extra
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test"] + extra
         app.launch()
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         return app
@@ -79,8 +79,10 @@ final class DuoHomeUITests: XCTestCase {
         showHome(app)
         app.buttons["tripRow-Current Pines"].tap()
         XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5))
-        app.buttons["Trip options"].firstMatch.tap()
-        app.buttons["Cancel & delete trip"].firstMatch.tap()
+        let delete = app.buttons["deleteTrip"]
+        for _ in 0..<12 where !delete.isHittable { app.swipeUp() }
+        XCTAssertTrue(delete.isHittable)
+        delete.tap()
         app.alerts.buttons["Delete Trip"].tap()
 
         XCTAssertTrue(app.staticTexts["Hello, Riley"].waitForExistence(timeout: 5))

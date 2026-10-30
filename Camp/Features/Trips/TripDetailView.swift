@@ -50,19 +50,13 @@ struct TripDetailView: View {
                     Button("Mark trip complete", systemImage: "checkmark.seal") { trip.setCompleted(true); library.save() }
                 }
                 Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
+                    .accessibilityIdentifier("deleteTrip")
             } footer: {
                 Text("Trips complete on their own the day after departure. Completed trips add their campground to Have been.")
             }
         }
         .navigationTitle(trip.campgroundName)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Edit trip", systemImage: "pencil") { showEdit = true }
-                    Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
-                } label: { Label("Trip options", systemImage: "ellipsis.circle") }
-            }
-        }
+        .toolbar { ToolbarOverflowMenu { tripActions } }
         .sheet(isPresented: $showEdit) { EditTripView(trip: trip) }
         .sheet(isPresented: $showAssistant) { TripAssistantSheet(trip: trip, step: nil) }
         .alert("Delete “\(trip.campgroundName)”, \(trip.dateSummary)?", isPresented: $showDelete) {
@@ -74,6 +68,13 @@ struct TripDetailView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text(TripDeletion.message(hasDocuments: !trip.attachedDocuments.isEmpty))
+        }
+    }
+
+    private var tripActions: some View {
+        Group {
+            Button("Edit trip", systemImage: "pencil") { showEdit = true }
+            Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
         }
     }
 }

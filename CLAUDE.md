@@ -4,7 +4,7 @@ A native SwiftUI app for iPhone, iPad, and Mac (Catalyst) for planning camping t
 
 ## Commands
 
-Run everything from the repository root. You need Xcode 27.1 or later with the iOS 27.1 SDK; the hinge detection behind the iPhone Duo workspace uses `UIHingeInteraction`, which first appears in 27.1. The working simulator is **iPhone 18 Pro (iOS 27.0)**. For Duo work, use the **iPhone Duo** simulator on the iOS 27.1 runtime: on 27.0 the hinge is never reported.
+Run everything from the repository root. You need Xcode 27.1 or newer with the iOS 27.1 SDK or newer for full-display iPhone Duo support. The deployment target remains iOS 27.0. The regular-iPhone baseline simulator is **iPhone 18 Pro (iOS 27.0)**; Duo validation needs an **iPhone Duo (iOS 27.1 or newer)** simulator in Device Hub.
 
 ```bash
 # Package tests: CampCore, Campgrounds, DocumentVault, CampPersistence (SwiftData on macOS)
@@ -51,7 +51,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `-assistant-generation-test <reply\|slow-reply\|failure>` | Gives the Assistant a stubbed reply or failure; `slow-reply` waits 4 seconds so a test can resize while it generates |
 | `-assistant-device-smoke` | Skips onboarding for the Assistant smoke test on a real device |
 | `-assistant-performance-baseline [quick\|standard]` | Generates synthetic PDFs, indexes them through the real coordinator, and writes a JSON performance report to `Documents/AssistantPerformance/` (Simulator runs are diagnostic; see [docs/assistant-quality-baseline.md](docs/assistant-quality-baseline.md)) |
-| `-duo-ui-test` | Forces the iPhone Duo workspace without hinge hardware ([DuoWorkspace.swift](Camp/Shared/DuoWorkspace.swift)); combine with `-navigation-ui-test` to skip onboarding |
+| `-layout-ui-test` | Adds media fixtures and layout accessibility markers; never changes the real window traits. Combine with `-navigation-ui-test` to skip onboarding |
 | `-assistant-generation-test document` | With `-assistant-ui-test ready`: a stubbed model that answers from the first supplied document excerpt and cites it as `[S1]` |
 | `-document-source-states-fixture` | With `-navigation-ui-test -document-assistant-fixture -assistant-ui-test ready`: opens the Assistant on a canned chat with a cited source, a replaced document, a deleted document, and an uncited answer |
 | `-assistant-generation-test slow` / `failure-once` | With `-assistant-ui-test ready`: `slow` holds the first question for 3 seconds so a test can see stages or close the sheet mid-request; `failure-once` fails the first question and answers later ones, for Retry |
@@ -64,7 +64,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | --- | --- |
 | `Camp/App/` | The app entry point (`RoamReadyApp`, `RootView`, `MainTabs`), `LibraryController` (opens and saves the SwiftData store), and the debug fixtures |
 | `Camp/Features/<Feature>/` | One folder per capability: `Home`, `Trips` (new trip, trip details, plan), `Checklists`, `CampFinder` (MapKit search and saved campgrounds), `Documents`, `Memories` (photos and site notes), `Weather` (WeatherKit), `Assistant` (Foundation Models plus bundled guidance), `Profile` (rig, defaults, settings, iCloud, export, erasing data), `Onboarding` |
-| `Camp/Shared/` | Shared views, appearance, connectivity, image picking, and iPhone Duo hinge detection |
+| `Camp/Shared/` | Shared views, appearance, connectivity, image picking, and debug layout markers |
 | `Sources/CampCore/` | Foundation-only domain rules: drafts (`TripDraft`, `RigDraft`, `ChecklistStepDraft`), validation, checklist generation, and the Assistant's availability states |
 | `Sources/CampPersistence/` | The SwiftData `@Model`s (`Models.swift`), the library rules as model extensions (`Trip+Library.swift` and so on), the store and CloudKit setup, and export |
 | `Sources/Campgrounds/` | Camp Finder's place model, links, and how search results are merged |
@@ -90,5 +90,5 @@ The tabs are Home, Trip (opens the new-trip sheet; it doesn't change tabs), Camp
 
 - Branch from `main` as `feature/…`, `fix/…`, `chore/…`, `docs/…`, or `ci/…`, and merge through a PR.
 - Commit subjects are short and imperative ("Add a debug-only sample-trip seeder").
-- CI runs on every PR and main push. The [iOS and iPad](.github/workflows/app.yml) workflow builds the universal iOS app in Debug/Release without booting a simulator. The [Mac](.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in Debug/Release. The [UI tests](.github/workflows/ui-tests.yml) workflow is manual-only: choose iPhone (iPhone 18 Pro), iPad (iPad Pro 13-inch (M5)), or iPhone Duo (iOS 27.1 or later) when UI or release validation is needed. It fails if the runner doesn't have that exact simulator. Do not add simulator launches back to regular CI without the owner's request.
+- CI runs on every PR and main push. The [iOS and iPad](.github/workflows/app.yml) workflow builds the universal iOS app in Debug/Release and compiles UI tests without booting a simulator. The [Mac](.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in Debug/Release. The [UI tests](.github/workflows/ui-tests.yml) workflow is manual-only: choose iPhone (iPhone 18 Pro), iPad (iPad Pro 13-inch (M5)), or iPhone Duo (iOS 27.1 or later) when UI or release validation is needed. It fails if the runner doesn't have that exact simulator. Do not add simulator launches back to regular CI without the owner's request.
 - When behavior changes, update the matching file in `docs/` (usually `features.md`, `user-guide.md`, or `architecture.md`).

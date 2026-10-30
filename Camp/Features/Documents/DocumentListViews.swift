@@ -150,18 +150,26 @@ struct UnattachedDocumentsView: View {
 }
 
 struct DocumentRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let document: StoredDocument
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: document.category.systemImage).foregroundStyle(.blue).frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(document.title).foregroundStyle(.primary)
-                HStack(spacing: 6) {
-                    Text(document.category.title)
-                    if let expires = document.expiresOn {
-                        Text("·")
-                        Text(expires < .now ? "Expired" : "Expires \(expires.formatted(date: .abbreviated, time: .omitted))")
-                            .foregroundStyle(expires < .now ? Color.orange : .secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        verticalMetadata
+                    } else {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(spacing: 6) {
+                                Text(document.category.title)
+                                if document.expiresOn != nil { Text("·").accessibilityHidden(true) }
+                                expiry
+                            }
+                            verticalMetadata
+                        }
                     }
                 }.font(.caption).foregroundStyle(.secondary)
             }
@@ -172,6 +180,21 @@ struct DocumentRow: View {
             DocumentAvailabilityIcon(availability: document.availability)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var verticalMetadata: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(document.category.title)
+            expiry
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private var expiry: some View {
+        if let expires = document.expiresOn {
+            Text(expires < .now ? "Expired" : "Expires \(expires.formatted(date: .abbreviated, time: .omitted))")
+                .foregroundStyle(expires < .now ? Color.orange : .secondary)
+        }
     }
 }
 

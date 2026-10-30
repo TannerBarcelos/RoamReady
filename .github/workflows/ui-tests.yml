@@ -25,6 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Require the iOS 27.1 SDK for full-display Duo support
+        run: bash scripts/check-apple-sdk.sh
+
       - name: Build for testing (Debug)
         run: |
           xcodebuild build-for-testing -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
@@ -37,27 +40,11 @@ jobs:
         timeout-minutes: 15
         env:
           DEVICE: ${{ inputs.device }}
-        # Each choice names one exact simulator, so a run is evidence for that device. The Duo
-        # needs iOS 27.1, the first runtime with UIHingeInteraction; on 27.0 the hinge is never seen.
+        # Each choice names one exact simulator, so a run is evidence for that device.
+        # Duo validation requires its iOS 27.1 or newer runtime.
         run: |
-          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c '
-          import json, os, re, sys
-          name, minimum = {
-              "iPhone": ("iPhone 18 Pro", (27, 0)),
-              "iPad": ("iPad Pro 13-inch (M5)", (27, 0)),
-              "iPhone Duo": ("iPhone Duo", (27, 1)),
-          }[os.environ["DEVICE"]]
-          found = []
-          for runtime, items in json.load(sys.stdin)["devices"].items():
-              match = re.search(r"iOS-(\d+)-(\d+)", runtime)
-              if not match:
-                  continue
-              version = (int(match[1]), int(match[2]))
-              found += [(version, d["udid"]) for d in items if d["name"] == name and version >= minimum and version[0] == 27]
-          if not found:
-              sys.exit(f"No available {name} simulator on iOS {minimum[0]}.{minimum[1]} or a later iOS 27 runtime")
-          print(max(found)[1])
-          ')"
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/simulators.json"
+          SIMULATOR_ID="$(python3 scripts/select-ui-simulator.py "$DEVICE" "$RUNNER_TEMP/simulators.json")"
           echo "Using $(xcrun simctl list devices | grep "$SIMULATOR_ID")"
           echo "SIMULATOR_ID=$SIMULATOR_ID" >> "$GITHUB_ENV"
           xcrun simctl bootstatus "$SIMULATOR_ID" -b

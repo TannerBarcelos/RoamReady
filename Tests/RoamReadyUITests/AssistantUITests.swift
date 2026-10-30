@@ -48,13 +48,10 @@ final class AssistantUITests: XCTestCase {
         XCTAssertEqual(mentions.count, 0, "\(screen) mentions the Assistant: \(mentions.allElementsBoundByIndex.map(\.label))")
     }
 
-    /// Regular iPhones keep the floating button; only iPad, Mac, Duo, and accessibility sizes use the toolbar.
-    func testIPhoneKeepsTheFloatingAssistantButton() throws {
-        guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("iPad uses the toolbar") }
+    func testAssistantUsesTheNativeToolbarOnEveryDevice() {
         let app = launch("ready")
-        XCTAssertTrue(app.buttons["openAssistant"].waitForExistence(timeout: 10))
-        if app.descendants(matching: .any)["duoWorkspace"].exists { throw XCTSkip("Duo uses the toolbar") }
-        XCTAssertFalse(app.barAssistantButton.exists, "The floating button stays out of the bars")
+        XCTAssertTrue(app.barAssistantButton.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.buttons.matching(identifier: "openAssistant").count, 1)
     }
 
     func testTabBarFitsWithoutMore() {

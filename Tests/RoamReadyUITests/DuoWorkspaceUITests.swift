@@ -1,6 +1,6 @@
 import XCTest
 
-/// `-duo-ui-test` forces the iPhone Duo workspace so this runs on any simulator.
+/// These resize regressions use real layout traits on any simulator. The flag adds fixtures only.
 @MainActor
 final class DuoWorkspaceUITests: XCTestCase {
     override func tearDown() {
@@ -10,17 +10,17 @@ final class DuoWorkspaceUITests: XCTestCase {
 
     private func launch(generation: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-duo-ui-test"]
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test"]
         if let generation { app.launchArguments += ["-assistant-generation-test", generation] }
         app.launch()
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         return app
     }
 
-    func testForcedDuoWorkspaceKeepsTabsSheetsAndSelection() {
+    func testAdaptiveWorkspaceKeepsTabsSheetsAndSelection() {
         let app = launch()
-        XCTAssertTrue(app.descendants(matching: .any)["duoWorkspace"].waitForExistence(timeout: 5),
-                      "The debug argument must turn on the Duo workspace")
+        XCTAssertTrue(app.descendants(matching: .any)["homeDetailTrip"].waitForExistence(timeout: 5),
+                      "Home uses the same adaptive navigation container on every device")
         for title in ["Home", "Trip", "Camp Finder", "Profile"] {
             XCTAssertTrue(app.navigationTab(title).exists, "Missing the \(title) tab")
         }
@@ -47,11 +47,40 @@ final class DuoWorkspaceUITests: XCTestCase {
         for tab in ["Home", "Camp Finder", "Profile"] {
             app.navigationTab(tab).tap()
             let toolbarButton = app.barAssistantButton
-            XCTAssertTrue(toolbarButton.waitForExistence(timeout: 5), "Duo puts Assistant in the \(tab) toolbar")
-            XCTAssertEqual(app.buttons.matching(identifier: "openAssistant").count, 1, "No floating button on Duo")
+            XCTAssertTrue(toolbarButton.waitForExistence(timeout: 5), "Assistant belongs in the \(tab) toolbar")
+            XCTAssertEqual(app.buttons.matching(identifier: "openAssistant").count, 1, "There is one system toolbar action")
             toolbarButton.tap()
             XCTAssertTrue(app.buttons["closeAssistant"].waitForExistence(timeout: 5))
             app.buttons["closeAssistant"].tap()
+        }
+    }
+
+    func testExpandedHomeKeepsGlobalActionsOutOfTheSidebar() throws {
+        try assertExpandedHomeToolbar(emptyLibrary: false)
+    }
+
+    func testEmptyExpandedHomeKeepsItsGlobalActions() throws {
+        try assertExpandedHomeToolbar(emptyLibrary: true)
+    }
+
+    private func assertExpandedHomeToolbar(emptyLibrary: Bool) throws {
+        let app = XCUIApplication()
+        app.resetAuthorizationStatus(for: .location)
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test"]
+        if emptyLibrary { app.launchArguments.append("-empty-library") }
+        app.launch()
+        XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
+        guard app.windows.firstMatch.horizontalSizeClass == .regular else {
+            throw XCTSkip("Run in an expanded regular-width window to check sidebar versus detail placement")
+        }
+
+        let weather = app.buttons["openCurrentWeather"].firstMatch
+        XCTAssertTrue(weather.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.barAssistantButton.waitForExistence(timeout: 5))
+        for identifier in ["openCurrentWeather", "openAssistant"] {
+            XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1, "A global action appears once")
+            XCTAssertFalse(app.navigationBars["Home"].buttons[identifier].exists,
+                           "Global actions belong to the detail toolbar, which can participate in a vertical bar")
         }
     }
 
@@ -75,5 +104,25 @@ final class DuoWorkspaceUITests: XCTestCase {
                       "A reply in progress must finish after a resize")
         XCTAssertTrue(app.buttons["closeAssistant"].exists, "The Assistant stays open through a resize")
         XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
+    }
+
+    func testNewTripDraftSurvivesRotationAndReturnsToItsTab() {
+        let app = launch()
+        app.navigationTab("Profile").tap()
+        app.navigationTab("Trip").tap()
+        let name = app.textFields["tripCampgroundName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Draft beside the lake")
+
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            XCTAssertTrue(app.navigationBars["Add trip"].waitForExistence(timeout: 5))
+            XCTAssertEqual(name.value as? String, "Draft beside the lake", "Resizing must keep the unsaved draft")
+        }
+
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationTab("Profile").isSelected)
     }
 }

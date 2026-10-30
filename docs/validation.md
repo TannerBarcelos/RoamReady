@@ -4,13 +4,13 @@
 
 ## Requirements
 
-Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27.1 or later with the iOS 27.1 SDK, which has `UIHingeInteraction` for the iPhone Duo workspace.
+Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27.1 or newer with the iOS 27.1 SDK or newer. The deployment target remains iOS 27.0; the newer build SDK enables full-display Duo bars and layout.
 
 The native app uses the local Swift package and Apple frameworks only. There are no external package dependencies. The one deliberate third-party code is the vendored C source of sqlite-vec v0.1.9 (`Sources/CSQLiteVec`, MIT/Apache-2.0, with a provenance note); see [architecture](architecture.md).
 
 ## Open the native project
 
-Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external package dependencies.
+Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27.1 SDK or newer**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external package dependencies.
 
 The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
@@ -26,7 +26,7 @@ Run the package tests from the repository root with Swift 6 or newer:
 swift test
 ```
 
-On a Mac with the iOS 27 SDK, lint the project configuration and build for Simulator:
+On a Mac with the iOS 27.1 SDK or newer, lint the project configuration and build for Simulator:
 
 ```sh
 plutil -lint RoamReady.xcodeproj/project.pbxproj Camp/Info.plist Camp/Camp.entitlements Camp/PrivacyInfo.xcprivacy Config/Cloud.entitlements
@@ -49,9 +49,9 @@ The Mac workflow runs every package suite with `swift test` on macOS, including 
 | `DocumentSearchTests` | File-backed FTS5 and sqlite-vec lifecycle (publish, lexical and KNN search, reopen, delete), lexical fallback when embeddings are unavailable, revision and dimension changes making old vectors ineligible, scope allow-list applied before ranking, atomic republish and stale-row exclusion, hostile FTS input and document IDs, and schema-version refusal. |
 | `CampPersistenceTests` | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) workflow builds the single universal app in Debug and Release, and the [Mac](../.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in both configurations. These jobs use GitHub's `xcode-27` image and never boot a simulator. Package tests retain real-store migration, cascade, export, and persistence coverage.
+On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) workflow builds the single universal app in Debug and Release and compiles UI tests for a generic simulator without launching one, and the [Mac](../.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in both configurations. These jobs use GitHub's `xcode-27` image and never boot a simulator. Package tests retain real-store migration, cascade, export, and persistence coverage.
 
-Simulator tests are deferred to the manual [UI tests](../.github/workflows/ui-tests.yml) workflow. In GitHub Actions, select **UI tests (manual)**, choose the branch and a device, and click **Run workflow**. Each choice runs on one exact simulator so the result is evidence for that device: **iPhone** is the iPhone 18 Pro, **iPad** is the iPad Pro 13-inch (M5), and **iPhone Duo** is the iPhone Duo on iOS 27.1 or later (the first runtime that reports a hinge). The run fails if the runner lacks that simulator rather than picking another one. The Duo simulator shows only the cover display, so the open display and folding still need hardware (#142 B14). The full native suite and its accessibility audits remain available (the only waiver is the scrolled Dynamic Type false positive from #93); no UI tests run automatically on PRs or main pushes. They cover navigation, onboarding/disk persistence, appearance, and simulated Assistant states, but do not establish real Foundation Models generation or physical-device behavior. Green build/package CI does not certify those audits; run the manual workflow for release validation.
+Simulator tests are deferred to the manual [UI tests](../.github/workflows/ui-tests.yml) workflow. In GitHub Actions, select **UI tests (manual)**, choose the branch and a device, and click **Run workflow**. Each choice runs on one exact simulator so the result is evidence for that device: **iPhone** is the iPhone 18 Pro, **iPad** is the iPad Pro 13-inch (M5), and **iPhone Duo** is the iPhone Duo on iOS 27.1 or later (the first runtime that reports a hinge). The run fails if the runner lacks that simulator rather than picking another one. The Duo simulator can unfold using its posture controls; open-display and fold-transition checks are manual, and physical hardware is still required for final sign-off (#142 B14). The full native suite and its accessibility audits remain available (the only waiver is the scrolled Dynamic Type false positive from #93); no UI tests run automatically on PRs or main pushes. They cover navigation, onboarding/disk persistence, appearance, and simulated Assistant states, but do not establish real Foundation Models generation or physical-device behavior. Green build/package CI does not certify those audits; run the manual workflow for release validation.
 
 ## Airplane-mode acceptance pass
 
@@ -84,7 +84,7 @@ These visual checks are not covered by the package tests.
 
 ## Regular-iPhone layout baselines (Duo)
 
-The iPhone Duo work (#82–#91) changes layouts only on Duo. Regular iPhones must keep their current layouts, navigation, tab behavior, and Assistant placement. The screenshots in [validation/duo-baselines](validation/duo-baselines/) record the regular-iPhone layouts from `main` at 7c99419, before any Duo change. Compare each Duo slice against them.
+The original iPhone Duo work (#82–#91) preserved other devices' layouts. The October 30 follow-up intentionally replaces the device-gated workspace with system adaptation everywhere: regular-width Home and Camp Finder expand on iPad/Catalyst, and Assistant/onboarding/overflow use native bars on all devices. Recapture baselines for those approved changes; the earlier images remain historical evidence. The screenshots in [validation/duo-baselines](validation/duo-baselines/) record the regular-iPhone layouts from `main` at 7c99419, before any Duo change. Compare each Duo slice against them.
 
 | | Small iPhone | Large iPhone |
 | --- | --- | --- |
@@ -150,7 +150,7 @@ xcrun simctl delete "$SMALL" "$LARGE"
 
 Each run takes several minutes per device and text size. The simulator must stay booted for the whole run: if `simctl ui` reports the device is shut down, the text size was not applied and that run must be repeated. XCTest stores landscape screenshots in portrait pixels with an orientation tag. Before committing, scale them with ImageIO using `kCGImageSourceCreateThumbnailWithTransform` (and `kCGImageSourceThumbnailMaxPixelSize` 900), which stores them upright; plain `sips -Z` keeps the tag.
 
-To check a Duo slice, run the same capture on its branch and compare the images file by file. Regular iPhones should differ only in dates, the clock, and map tiles.
+To check a Duo slice, run the same capture on its branch and compare the images file by file. For the October 30 adaptive follow-up, native toolbar placement and regular-width navigation are intentional differences; inspect and record them when refreshing baselines.
 
 ## Apple capability configuration
 
@@ -222,6 +222,10 @@ Nothing below has been executed on a signed build or physical hardware. Passing 
 
 Code-level evidence already recorded elsewhere (for example the v1 audit's CI runs and the Duo resize audit) is simulator or CI evidence only and is not copied into these rows.
 
+## Duo readiness follow-up
+
+See [iPhone Duo readiness](duo-readiness.md) for the October 30 Apple guidance audit, new fixes and regression tests, and remaining Device Hub/hardware gates. The manual UI workflow now offers iPhone Duo explicitly and requires a 27.1 SDK; it does not drive Device Hub poses or establish an open-display pass. The audit below records earlier evidence and is not a test result for the follow-up changes.
+
 ## Duo resize audit
 
 Issue #90 checked onboarding, Profile, Documents, Photos, and the Assistant after the iPhone Duo foundation (#83) began passing the real horizontal size class through `MainTabs`. In Debug, `-duo-ui-test` with `-navigation-ui-test` also adds one trip photo and one image document to Current Pines, so Photos and Documents have something to open; other fixture runs are unchanged.
@@ -257,7 +261,7 @@ Checked October 30, 2026 on macOS 27.0.1 with Xcode 27.1 (27A9275):
 
 - **Runtime:** the iOS 27.1 simulator runtime (24A94425) supports only the iPhone Duo. Every other iPhone and iPad simulator is on iOS 27.0, so `simctl create` refuses them on 27.1 with "Incompatible device".
 - **It unfolds.** The Simulator window's posture buttons fold and open the device, and `UIHingeInteraction` reports each change to the app: about 5° folded, then partly open, then 180° open. The audit above was limited to the cover display; the open display and fold transitions can now be checked on this simulator. Hardware is still needed for real hinge angles, partial folds held in the hand, and B14's final sign-off.
-- **Checking detection:** stream `xcrun simctl spawn booted log stream --level debug --predicate 'subsystem == "com.tannerdev.roamready" AND category == "DuoWorkspace"'`, then launch with `-navigation-ui-test` but without `-duo-ui-test`. `Hinge reported; using the Duo workspace` appears only when the hinge turns the workspace on; with `-duo-ui-test` it is already on, so the line never appears.
+- **Checking adaptation:** launch with `-navigation-ui-test` and use the posture controls to open, close, and partially fold the simulator. Home and Camp Finder follow the actual window traits and system containers; global actions belong to the detail toolbar when expanded. The former `DuoWorkspace` hinge logger and `-duo-ui-test` layout override were removed by the adaptive follow-up. Use `-layout-ui-test` only to add media fixtures; it does not select a device layout.
 - **If SpringBoard crash-loops** (every app launch fails with "host down", and `SpringBoard-*.ips` reports stop in `-[FBSDisplayMonitor _initWithDisplays:mainDisplay:bookendObserver:transformer:]`), run `sudo xcodebuild -runFirstLaunch`, restart CoreSimulatorService, and delete and recreate the iPhone Duo. That fixed it here.
 
 ## Assistant quality and performance baseline

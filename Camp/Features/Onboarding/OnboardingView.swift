@@ -123,34 +123,20 @@ struct OnboardingView: View {
                     Text("\(step + 1) of 3").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                         .accessibilityLabel("Step \(step + 1) of 3")
                 }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                VStack(spacing: 12) {
-                    ProgressView(value: Double(step + 1), total: 3)
-                        .accessibilityLabel("Setup progress")
-                    Button(action: advance) {
-                        HStack {
-                            Spacer()
-                            Text(step == 0 ? "Set up my \(draft.type.title.lowercased())" : step == 1 ? "Looks like home" : "Let’s go camping")
-                            Image(systemName: step == 2 ? "checkmark" : "arrow.right")
-                            Spacer()
-                        }.padding(.vertical, 6)
-                    }
-                    .disabled(step == 1 && !draft.hasRequiredDetails)
-                    .buttonStyle(.borderedProminent).controlSize(.large)
-                    if step == 1 && !draft.hasRequiredDetails {
-                        // Only a VIN or plate problem replaces the usual hint; it's the one left to fix.
-                        Text(draft.detailsProblem == draft.registrationProblem ? draft.registrationProblem ?? ""
-                             : "Add year, make, model, and length to continue.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(actionTitle, systemImage: step == 2 ? "checkmark" : "arrow.right", action: advance)
+                        .disabled(step == 1 && !draft.hasRequiredDetails)
+                        .accessibilityIdentifier("onboardingContinue")
                 }
-                .padding().frame(maxWidth: 640).frame(maxWidth: .infinity).background(.bar)
             }
             .onAppear {
                 if rig == nil, let unfinished = rigs.active.first { rig = unfinished; draft = unfinished.draft }
             }
         }
+    }
+
+    private var actionTitle: String {
+        step == 0 ? "Set up my \(draft.type.title.lowercased())" : step == 1 ? "Looks like home" : "Let’s go camping"
     }
 
     private var welcomeArtwork: some View {

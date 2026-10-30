@@ -33,14 +33,20 @@ enum NavigationUITestLibrary {
             draft.campgroundTimeZoneIdentifier = calendar.timeZone.identifier
             trips.append(try Trip.create(draft, rig: rig, in: context))
         }
-        // The Duo resize checks open a photo and a document; other runs keep the plain fixtures.
-        if DuoWorkspace.isForcedForUITests, let current = trips.first {
+        // Resize checks open a photo and a document without changing the real layout traits.
+        if LayoutUITest.isRequested, let current = trips.first {
             let jpeg = sampleImage()
             current.addPhoto(jpeg)
             current.sortedPhotos.first?.caption = "Site 14 from the road"
             try StoredDocument.add(DocumentMetadata(title: "Campground map", category: .reservation),
                                    contents: DocumentPayload(bytes: jpeg, filename: "campground-map.jpg"),
                                    trip: current, in: context)
+            if ProcessInfo.processInfo.arguments.contains("-document-layout-fixture") {
+                try StoredDocument.add(DocumentMetadata(title: "Annual water heater inspection and service record", category: .maintenance,
+                                                        expiresOn: calendar.date(byAdding: .year, value: 1, to: today)),
+                                       contents: DocumentPayload(bytes: jpeg, filename: "service-record.jpg"),
+                                       trip: current, in: context)
+            }
         }
         try context.save()
         return container
