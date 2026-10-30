@@ -214,10 +214,10 @@ public final class CampingChat {
             self.scope = scope
         }
         var request = request
-        request.conversationSummary = summary(before: turnID)
+        request.conversationSummary = request.isTripOverview ? nil : summary(before: turnID)
         let budget = PromptBudget(contextSize: counter.contextSize)
         var plan = try await request.plan(.full, counter: counter, budget: budget)
-        var history = CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total, cost: cost)
+        var history = request.isTripOverview ? [] : CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total, cost: cost)
         let response: String
         do {
             response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
@@ -231,9 +231,9 @@ public final class CampingChat {
             let earlier = Set(CampingChatHistory.earlier(turns, before: turnID).map(\.id))
             await compact()
             try Task.checkCancellation()
-            request.conversationSummary = summary(before: turnID)
+            request.conversationSummary = request.isTripOverview ? nil : summary(before: turnID)
             plan = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
-            history = CampingChatHistory.window(turns.filter { earlier.contains($0.id) }, budget: budget.inputLimit - plan.usage.total,
+            history = request.isTripOverview ? [] : CampingChatHistory.window(turns.filter { earlier.contains($0.id) }, budget: budget.inputLimit - plan.usage.total,
                                                 limit: limit, cost: cost)
             response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
         }

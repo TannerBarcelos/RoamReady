@@ -47,7 +47,7 @@ final class TripBookingFactsTests: XCTestCase {
         let empty = CampingHelpRequest(question: question, steps: [], rigType: nil, step: nil,
                                        scope: .general, documents: DocumentEvidence(excerpts: []), tripFacts: facts)
         XCTAssertTrue(empty.usesSavedTrip)
-        XCTAssertTrue(empty.instructions.contains("independently of attachments"))
+        XCTAssertTrue(empty.instructions.contains("Use only the saved trip facts"))
         for attempt in [PromptAttempt.full, .compact] {
             let plan = try await empty.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
             let expected = try await baseline.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
@@ -60,6 +60,65 @@ final class TripBookingFactsTests: XCTestCase {
         let reply = try await CampingGeneration.answer(to: empty, using: RecordingGenerator(reply: "You’re planning Pinecrest Lake."))
         XCTAssertTrue(reply.usedSavedTrip)
         XCTAssertTrue(reply.sources.isEmpty)
+    }
+
+    func testTripOverviewRoutingDoesNotCaptureTaskOrDocumentQuestions() {
+        for question in ["What trip is this?", "What trip am I currently planning?", "Which trip are we on?",
+                         "Tell me about my trip", "What can you tell me about this trip?", "Show me my upcoming trip details",
+                         "Give me a summary of this trip", "What are my trip dates?", "Where are we staying?",
+                         "Could you tell me about my trip, please?"] {
+            XCTAssertTrue(TripOverviewQuestion.matches(question), question)
+        }
+        for question in ["How should I prepare for my trip?", "What maintenance should I do before my trip?",
+                         "What trip is this document for?", "What trip is this and how do I flush the tank?",
+                         "Tell me about my trip and check the water heater manual", "Compare my saved trip with the confirmation",
+                         "What time is check-in?", "What should I check next?", "E4?"] {
+            XCTAssertFalse(TripOverviewQuestion.matches(question), question)
+        }
+    }
+
+    func testTripOverviewHasOnlySavedFactsEvenFromAChecklistWithDocuments() async throws {
+        let checklist = ChecklistStepDraft(title: "Trip maintenance", detail: "For this trip, connect the hoses and replace towels.")
+        let rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries")
+        for scope in [CampingHelpRequest.Scope.general, .checklist] {
+            for question in ["What trip is this?", "Tell me about my trip", "Where are we staying?"] {
+                var request = CampingHelpRequest(question: question, steps: [checklist], rigType: rig.type, step: checklist,
+                                                scope: scope, previousQuestion: "How do I maintain the hoses?",
+                                                rigContext: CampingRigContext(rig),
+                                                documents: evidence("Water heater manual", page: 1, text: "For this trip, inspect the water heater."),
+                                                tripFacts: TripBookingFacts(draft()))
+                request.conversationSummary = "Earlier advice: replace towels and check the hoses."
+                XCTAssertTrue(request.isTripOverview)
+                XCTAssertTrue(request.passages.isEmpty)
+                XCTAssertNil(request.documents)
+                XCTAssertTrue(request.usesSavedTrip)
+                for attempt in [PromptAttempt.full, .compact] {
+                    let plan = try await request.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+                    XCTAssertTrue(plan.prompt.contains("Pinecrest Lake"))
+                    XCTAssertTrue(plan.prompt.contains("A-203"))
+                    XCTAssertTrue(plan.prompt.contains("Friday, June 12, 2026"))
+                    XCTAssertTrue(plan.sources.isEmpty)
+                    XCTAssertEqual(plan.usage.checklist, 0)
+                    XCTAssertEqual(plan.usage.evidence, 0)
+                    let inputs = plan.prompt + plan.instructions
+                    for unrelated in ["hoses", "towels", "water heater", "Forest River", "BEGIN SAVED REFERENCE",
+                                      "BEGIN SAVED RIG PROFILE", "DOCUMENT EXCERPTS", "CONVERSATION SUMMARY", "routine maintenance"] {
+                        XCTAssertFalse(inputs.contains(unrelated), unrelated)
+                    }
+                    XCTAssertEqual(plan.prompt, attempt == .full ? request.prompt : request.compactPrompt)
+                }
+            }
+        }
+    }
+
+    func testTripOverviewWithoutSavedTripDoesNotFallBackToDocumentsOrInventPlans() {
+        let request = CampingHelpRequest(question: "What trip is this?", steps: [], rigType: nil, step: nil, scope: .general,
+                                         documents: evidence("Old reservation", page: 1, text: "An old trip to Somewhere Else"))
+        XCTAssertNil(request.documents)
+        XCTAssertFalse(request.usesSavedTrip)
+        XCTAssertFalse(request.prompt.contains("Somewhere Else"))
+        XCTAssertTrue(request.instructions.contains("never guess"))
+        XCTAssertTrue(request.instructions.contains("isn't saved"))
     }
 
     // MARK: The facts block

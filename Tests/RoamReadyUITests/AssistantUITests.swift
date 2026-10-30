@@ -12,11 +12,11 @@ final class AssistantUITests: XCTestCase {
 
     func testGlobalChatReceivesSavedCurrentTripWithoutAttachmentStatus() {
         let app = XCUIApplication()
-        app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready",
-                               "-assistant-generation-test", "saved-trip"]
+        app.launchArguments = ["-navigation-ui-test", "-document-assistant-fixture", "-document-readiness-fixture",
+                               "-assistant-ui-test", "ready", "-assistant-generation-test", "saved-trip"]
         app.launch()
         openAssistant(app)
-        ask(app, "What trip am I currently planning?")
+        ask(app, "What trip is this?")
         let reply = app.staticTexts["assistantGeneratedReply"].firstMatch
         XCTAssertTrue(reply.waitForExistence(timeout: 15))
         XCTAssertTrue(reply.label.contains("Current Pines"))
@@ -350,6 +350,30 @@ final class AssistantUITests: XCTestCase {
         input.tap()
         input.typeText(text)
         app.buttons["assistantSend"].tap()
+    }
+
+    /// Regression for a factual trip question drifting into attachment disclaimers and maintenance advice.
+    /// Uses the real model with synthetic saved trips and an unfinished attachment.
+    func testLiveOnDeviceTripOverviewStaysOnTopic() throws {
+        guard ProcessInfo.processInfo.environment["ROAMREADY_RUN_ON_DEVICE_AI_SMOKE"] == "1" else {
+            throw XCTSkip("Requires an eligible physical iPhone; enable ROAMREADY_RUN_ON_DEVICE_AI_SMOKE in the Test scheme.")
+        }
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-document-assistant-fixture", "-document-readiness-fixture",
+                               "-assistant-device-smoke"]
+        app.launch()
+        openAssistant(app)
+        ask(app, "What trip is this?")
+        let reply = app.staticTexts["assistantGeneratedReply"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 90))
+        let answer = reply.label.lowercased()
+        XCTAssertTrue(answer.contains("current pines"), "The answer should identify the saved trip")
+        for unrelated in ["maintenance", "document", "attachment", "towel", "hose", "first-aid", "flashlight"] {
+            XCTAssertFalse(answer.contains(unrelated), "A trip overview must not add \(unrelated): \(reply.label)")
+        }
+        XCTAssertTrue(app.descendants(matching: .any)["assistantSavedTripSource"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["assistantIncompleteNote"].exists)
+        XCTAssertFalse(app.buttons["assistantSourceRow"].exists)
     }
 
     /// Opt in via the scheme's Test environment on an actual eligible iPhone, with its model ready.

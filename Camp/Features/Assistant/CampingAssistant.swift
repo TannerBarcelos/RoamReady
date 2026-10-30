@@ -165,7 +165,9 @@ enum CampingAssistant {
             if delay > .zero { try await Task.sleep(for: delay) }
             if fails || (failsFirstCall && isFirst) { throw CampingChatFailure.failed }
             if answersSavedTrip {
-                guard prompt.contains(TripBookingFacts.beginMarker),
+                guard !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
+                      !instructions.contains("BEGIN SAVED RIG PROFILE"), !instructions.contains("routine maintenance"),
+                      prompt.contains(TripBookingFacts.beginMarker),
                       let campground = prompt.components(separatedBy: "\n").first(where: { $0.hasPrefix("Campground: ") }) else {
                     return "Missing saved trip context."
                 }

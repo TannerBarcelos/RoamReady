@@ -371,7 +371,7 @@ struct AssistantView: View {
         task = Task {
             do {
                 var evidence: DocumentEvidence?
-                if target.rigID != nil || target.isTrip {
+                if !TripOverviewQuestion.matches(submitted), target.rigID != nil || target.isTrip {
                     // Document questions are English only: explain instead of searching or translating.
                     if index.needsEnglish(submitted, target: target, in: context) {
                         guard !Task.isCancelled, progress.isCurrent(request), currentTarget == target else { return }

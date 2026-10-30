@@ -73,6 +73,30 @@ final class CampingChatTests: XCTestCase {
         CampingChatTurn(question: question, answer: String(repeating: "a", count: size))
     }
 
+    @MainActor func testTripOverviewIgnoresEarlierAdviceAndSummaryWithoutClearingChat() async throws {
+        let model = FakeModel(Array(repeating: .success("Check the hoses and change the towels."), count: 7) + [
+            .success("Your trip is Pinecrest Lake."), .success("It has a lakeside campground.")])
+        let chat = CampingChat(model: model)
+        for index in 1...7 {
+            _ = try await chat.answer(ask("How do I prepare the hoses, step \(index)?"))
+            await chat.settle()
+        }
+        XCTAssertNotNil(chat.summary)
+        let trip = TripDraft(campgroundName: "Pinecrest Lake", arrival: Date(), departure: Date().addingTimeInterval(86400))
+        let overview = CampingHelpRequest(question: "What trip is this?", steps: [], rigType: nil, step: nil,
+                                         scope: .checklist, tripFacts: TripBookingFacts(trip))
+        let reply = try await chat.answer(overview)
+        let call = try XCTUnwrap(model.sessions.last?.calls.last)
+        XCTAssertTrue(call.history.isEmpty)
+        XCTAssertFalse(call.instructions.contains("CONVERSATION SUMMARY"))
+        XCTAssertTrue(call.prompt.contains("Pinecrest Lake"))
+        XCTAssertTrue(reply.usedSavedTrip)
+        XCTAssertEqual(reply.coverage, .notSearched)
+        XCTAssertTrue(chat.turns.contains { $0.question == "What trip is this?" })
+        _ = try await chat.answer(ask("What should I know about that campground?"))
+        XCTAssertTrue(try XCTUnwrap(model.sessions.last?.calls.last).history.contains("What trip is this?"))
+    }
+
     // MARK: Trimming rules
 
     func testWindowSendsTheNewestTurnsThatFitOldestFirst() {
