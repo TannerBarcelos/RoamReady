@@ -50,6 +50,7 @@ These exist only in Debug builds (`#if DEBUG`).
 | `-assistant-ui-test <state>` | Sets the Assistant's availability to `ready`, `disabled`, `preparing`, `unsupported`, `unavailable`, or `unsupported-language`, and skips onboarding |
 | `-assistant-generation-test <reply\|slow-reply\|failure>` | Gives the Assistant a stubbed reply or failure; `slow-reply` waits 4 seconds so a test can resize while it generates |
 | `-assistant-device-smoke` | Skips onboarding for the Assistant smoke test on a real device |
+| `-assistant-performance-baseline [quick\|standard]` | Generates synthetic PDFs, indexes them through the real coordinator, and writes a JSON performance report to `Documents/AssistantPerformance/` (Simulator runs are diagnostic; see [docs/assistant-quality-baseline.md](docs/assistant-quality-baseline.md)) |
 | `-duo-ui-test` | Forces the iPhone Duo workspace without hinge hardware ([DuoWorkspace.swift](Camp/Shared/DuoWorkspace.swift)); combine with `-navigation-ui-test` to skip onboarding |
 | `-assistant-generation-test document` | With `-assistant-ui-test ready`: a stubbed model that answers from the first supplied document excerpt and cites it as `[S1]` |
 | `-assistant-generation-test slow` / `failure-once` | With `-assistant-ui-test ready`: `slow` holds the first question for 3 seconds so a test can see stages or close the sheet mid-request; `failure-once` fails the first question and answers later ones, for Retry |
