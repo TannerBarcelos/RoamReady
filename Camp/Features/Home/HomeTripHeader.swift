@@ -63,11 +63,10 @@ struct HomeChecklistSummary: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: phase == .setup ? "tent" : "checkmark.seal")
-                .font(.body.weight(.medium))
+            Image(systemName: "checklist")
+                .font(.body)
                 .foregroundStyle(.tint)
-                .frame(width: 32, height: 32)
-                .background(.tint.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                .frame(width: 28, height: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 8) {
                 Text("\(phase.title) checklist").font(.headline)
