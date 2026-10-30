@@ -158,7 +158,7 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(searched.exists)
         XCTAssertTrue(searched.label.hasPrefix("Searched, not cited:"), "VoiceOver hears that it was only searched")
         XCTAssertTrue(app.staticTexts["References searched"].exists)
-        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'used'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Looked at, but not cited in this answer."].exists, "Never described as used")
     }
 
     func testCitedSourceOpensAtItsPage() {
