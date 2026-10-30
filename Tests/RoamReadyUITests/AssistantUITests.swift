@@ -126,6 +126,67 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Page 2"].exists)
     }
 
+    /// Canned chat from `-document-source-states-fixture`: one answer each for a cited source, a replaced
+    /// document, a deleted one, and an uncited answer. Needs no model or index.
+    private func launchSourceStates() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-document-assistant-fixture", "-document-source-states-fixture",
+                               "-assistant-ui-test", "ready"]
+        app.launch()
+        openAssistant(app)
+        XCTAssertTrue(app.staticTexts["Press the ignition button for ten seconds."].waitForExistence(timeout: 10))
+        return app
+    }
+
+    /// The transcript opens scrolled to its end, so earlier rows can sit under the scope banner; scroll until
+    /// the row is clear of the banner.
+    private func sourceRow(_ app: XCUIApplication, containing title: String) -> XCUIElement {
+        let row = app.buttons.matching(identifier: "assistantSourceRow").matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        for _ in 0..<8 where !row.isHittable || row.frame.minY < 260 { app.scrollViews.firstMatch.swipeDown() }
+        return row
+    }
+
+    func testCitedSourcesAndSearchedReferencesAreLabeledApart() {
+        let app = launchSourceStates()
+        // The newest answer is on screen first: uncited, so it explains why instead of listing sources.
+        XCTAssertTrue(app.staticTexts["General advice. No document was cited."].exists, "An uncited answer says why")
+        let cited = sourceRow(app, containing: "Water Heater Manual")
+        XCTAssertTrue(cited.exists)
+        XCTAssertTrue(cited.label.hasPrefix("Source:"))
+        XCTAssertTrue(app.staticTexts["Sources"].exists)
+        let searched = app.buttons.matching(identifier: "assistantSearchedRow").firstMatch
+        XCTAssertTrue(searched.exists)
+        XCTAssertTrue(searched.label.hasPrefix("Searched, not cited:"), "VoiceOver hears that it was only searched")
+        XCTAssertTrue(app.staticTexts["References searched"].exists)
+        XCTAssertTrue(app.staticTexts["Looked at, but not cited in this answer."].exists, "Never described as used")
+    }
+
+    func testCitedSourceOpensAtItsPage() {
+        let app = launchSourceStates()
+        let cited = sourceRow(app, containing: "Water Heater Manual")
+        cited.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Page 2"].exists)
+    }
+
+    func testReplacedSourceShowsChangedAndOpensTheCurrentFileOnlyOnRequest() {
+        let app = launchSourceStates()
+        let furnace = sourceRow(app, containing: "Furnace Manual")
+        furnace.tap()
+        XCTAssertTrue(app.staticTexts["Changed since this answer"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists, "The new file is not opened silently")
+        app.buttons["openCurrentVersion"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
+    }
+
+    func testDeletedSourceShowsNoLongerInYourLibrary() {
+        let app = launchSourceStates()
+        sourceRow(app, containing: "Awning Manual").tap()
+        XCTAssertTrue(app.staticTexts["No longer in your library"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists)
+        XCTAssertFalse(app.buttons["openCurrentVersion"].exists)
+    }
+
     /// A ready manual and a scan that is still being read (held by the fixture until "Finish test scan"). Chat
     /// answers from the manual and says coverage was incomplete; a question that needs the scan says it can't
     /// yet support an answer. When the scan finishes, Retry appears under the earlier answers, nothing is

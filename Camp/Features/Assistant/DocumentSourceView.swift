@@ -9,13 +9,15 @@ import ImageIO
 /// Opens a cited document at the cited page. If the file has since been replaced or deleted it says so
 /// instead of showing a different file at an old citation.
 struct DocumentSourceView: View {
-    enum Phase { case loading, ready(URL), readyImage(URL), changed, gone, failed }
+    enum Phase { case loading, ready(URL), readyImage(URL), changed, gone, notDownloaded, failed }
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     let source: DocumentSource
     @State private var phase = Phase.loading
+    /// Set only by the camper choosing "Open current version"; the cited page doesn't carry over.
+    @State private var showsCurrentVersion = false
 
     var body: some View {
         NavigationStack {
@@ -24,18 +26,27 @@ struct DocumentSourceView: View {
                 case .loading:
                     ProgressView("Opening…")
                 case .ready(let url):
-                    PDFPageView(url: url, page: source.page)
+                    PDFPageView(url: url, page: showsCurrentVersion ? nil : source.page)
                         .ignoresSafeArea(edges: .bottom)
                         .accessibilityIdentifier("citedPageViewer")
-                        .accessibilityLabel(source.pageDescription.map { "\(source.title), \($0)" } ?? source.title)
+                        .accessibilityLabel(viewerLabel)
                 case .readyImage(let url):
                     ScannedImageView(url: url)
                         .accessibilityIdentifier("citedPageViewer")
                         .accessibilityLabel(source.title)
                 case .changed:
-                    unavailable("This document has changed", "It was replaced after this answer, so the cited page may not match. Ask again to get an answer from the current file.")
+                    VStack(spacing: 8) {
+                        unavailable("Changed since this answer", "This document was replaced, so the cited page may not match the file now. Ask again for an answer from the current file, or open the current version to look yourself.")
+                        Button("Open current version") { showsCurrentVersion = true; Task { await open() } }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("openCurrentVersion")
+                            .padding(.bottom, 32)
+                    }
                 case .gone:
-                    unavailable("This document is gone", "It was deleted after this answer.")
+                    unavailable("No longer in your library", "This document was deleted after this answer.")
+                        .accessibilityIdentifier("sourceUnavailable")
+                case .notDownloaded:
+                    unavailable("Waiting for download", "This document is in your library but hasn’t finished downloading to this device. Try again once it has.")
                 case .failed:
                     unavailable("Couldn’t open this document", "Try again in a moment.")
                 }
@@ -44,7 +55,7 @@ struct DocumentSourceView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                if case .ready = phase, let description = source.pageDescription {
+                if case .ready = phase, !showsCurrentVersion, let description = source.pageDescription {
                     ToolbarItem(placement: .principal) {
                         VStack(spacing: 0) {
                             Text(source.title).font(.headline).lineLimit(1)
@@ -62,9 +73,23 @@ struct DocumentSourceView: View {
         ContentUnavailableView(title, systemImage: "doc.questionmark", description: Text(message))
     }
 
+    private var viewerLabel: String {
+        if showsCurrentVersion { return "\(source.title), current version" }
+        return source.pageDescription.map { "\(source.title), \($0)" } ?? source.title
+    }
+
     private func load() async {
+        // Checked now, not when the answer was written: a replaced or deleted file is never opened as the citation.
+        switch context.availability(of: source) {
+        case .deleted: phase = .gone
+        case .changed: phase = .changed
+        case .notDownloaded: phase = .notDownloaded
+        case .current: await open()
+        }
+    }
+
+    private func open() async {
         guard let document = context.document(withID: source.documentID) else { phase = .gone; return }
-        guard document.checksum == source.checksum else { phase = .changed; return }
         let isImage = document.file?.contentType.isImage == true
         do {
             let url = try await library.documentFiles.url(for: document)
@@ -75,32 +100,42 @@ struct DocumentSourceView: View {
     }
 }
 
-/// PDFKit's viewer, scrolled to a one-based page ordinal.
+/// PDFKit's viewer, scrolled to a one-based page ordinal. The jump waits for the first real layout, so it lands
+/// on the cited page at any width (iPhone, a regular-width iPad sheet, or a resizable Mac window), and it happens
+/// once: later SwiftUI updates never pull a camper back from where they scrolled.
 struct PDFPageView: UIViewRepresentable {
     let url: URL
     let page: Int?
 
-    func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
+    final class Viewer: PDFView {
+        var pendingPage: PDFPage?
+
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            guard let target = pendingPage, bounds.width > 0, bounds.height > 0 else { return }
+            pendingPage = nil
+            // Fit-to-width settles during this layout pass; go to the page's top edge after it.
+            DispatchQueue.main.async { [weak self] in
+                self?.go(to: PDFDestination(page: target, at: CGPoint(x: 0, y: target.bounds(for: .mediaBox).height)))
+            }
+        }
+    }
+
+    func makeUIView(context: Context) -> Viewer {
+        let view = Viewer()
         view.autoScales = true
         view.displayMode = .singlePageContinuous
         view.displayDirection = .vertical
+        view.displaysPageBreaks = true
+        view.backgroundColor = .secondarySystemBackground
         view.document = PDFDocument(url: url)
-        goToPage(in: view)
+        if let page, let document = view.document, (1...max(document.pageCount, 1)).contains(page) {
+            view.pendingPage = document.page(at: page - 1)
+        }
         return view
     }
 
-    func updateUIView(_ view: PDFView, context: Context) {
-        goToPage(in: view)
-    }
-
-    private func goToPage(in view: PDFView) {
-        guard let page, let document = view.document, (1...max(document.pageCount, 1)).contains(page),
-              let target = document.page(at: page - 1) else { return }
-        // The view has no size yet on first layout; go again once it has.
-        view.go(to: target)
-        DispatchQueue.main.async { view.go(to: PDFDestination(page: target, at: CGPoint(x: 0, y: target.bounds(for: .mediaBox).height))) }
-    }
+    func updateUIView(_ view: Viewer, context: Context) {}
 }
 
 /// An image document at a size the screen can hold: decoded with ImageIO to a bounded thumbnail rather than

@@ -14,6 +14,8 @@ The remaining v1 work (decisions, App Store publishing, and simulator/device acc
 
 CI runs the package tests, including SwiftData tests against real stores, and builds the native app with Xcode 27/iOS 27. Check the [workflow results](https://github.com/TannerBarcelos/RoamReady/actions) for a particular commit; compilation does not establish device acceptance.
 
+Every unexecuted hardware, service, and account gate is listed with its evidence columns in [Remaining release gates](validation.md#remaining-release-gates). Proposed rewrites of #6 and #74 are drafted in [release-tracker-drafts.md](release-tracker-drafts.md) for the owner to apply.
+
 ## Identity and offline operation
 
 There is no sign-up, Sign in with Apple, or server account/session service in v1. First launch and onboarding work offline. Local SwiftData saves do not wait for cloud delivery; manual trips, checklists, notes, photos, ratings, profile/rig edits, and reusable defaults remain available locally.
