@@ -154,19 +154,27 @@ public struct DocumentEvidence: Equatable, Sendable {
     }
 
     /// Adds passages from a targeted follow-up search, such as a second confirmation that disagrees with the
-    /// first. They are kept ahead of the weakest first-pass excerpts rather than dropped when the cap is full, so
-    /// a competing passage that was found is never lost to ranking. IDs stay "S1"... in order.
+    /// first. When the cap is full, passages from documents the follow-up found are the booking evidence, so
+    /// they are evicted last: the weakest excerpt from any other document goes first, however it ranked. A
+    /// lower search score alone never drops a competing passage, whether it came from the first pass or the
+    /// follow-up. IDs are reassigned "S1"... in order.
     public func merging(followUp: DocumentEvidence) -> DocumentEvidence {
         let added = followUp.excerpts.filter { extra in
             !excerpts.contains { $0.source.documentID == extra.source.documentID && $0.source.page == extra.source.page && $0.text == extra.text }
         }.prefix(Self.maximumFollowUpExcerpts)
         guard !added.isEmpty else { return self }
-        var merged = Array(excerpts.prefix(Self.maximumExcerpts - added.count))
-        for extra in added {
-            let source = extra.source
-            merged.append(DocumentExcerpt(source: DocumentSource(
-                id: "S\(merged.count + 1)", documentID: source.documentID, checksum: source.checksum, title: source.title,
-                category: source.category, page: source.page, pageLabel: source.pageLabel, section: source.section), text: extra.text))
+        let bookingDocuments = Set(followUp.excerpts.map(\.source.documentID))
+        var combined = excerpts + added
+        while combined.count > Self.maximumExcerpts {
+            let victim = combined.lastIndex { !bookingDocuments.contains($0.source.documentID) } ?? combined.index(before: combined.endIndex)
+            combined.remove(at: victim)
+        }
+        let merged = combined.enumerated().map { index, excerpt in
+            let source = excerpt.source
+            return DocumentExcerpt(source: DocumentSource(
+                id: "S\(index + 1)", documentID: source.documentID, checksum: source.checksum, title: source.title,
+                category: source.category, page: source.page, pageLabel: source.pageLabel, section: source.section,
+                ocrConfidence: source.ocrConfidence), text: excerpt.text)
         }
         return DocumentEvidence(excerpts: merged, searched: searched || followUp.searched, readiness: readiness)
     }
