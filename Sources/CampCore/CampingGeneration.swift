@@ -45,6 +45,8 @@ public struct CampingReply: Equatable, Sendable {
     public let readiness: ScopeReadiness
     /// The question was about the booking and the saved trip's facts were supplied, so they are a source too.
     public let usedSavedTrip: Bool
+    /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
+    public var searched: [DocumentSource] = []
 }
 
 /// A testable send path. The app supplies Apple's on-device adapter; there is no remote adapter.
@@ -70,7 +72,8 @@ public enum CampingGeneration {
         let coverage: DocumentCoverage = manifest.isEmpty ? (unfinished ? .unfinished : .notCovered) : (resolved.sources.isEmpty ? .uncited : .cited)
         return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
                             droppedCitationCount: resolved.droppedCount, coverage: coverage,
-                            readiness: request.documents?.readiness ?? .empty, usedSavedTrip: request.usesSavedTrip)
+                            readiness: request.documents?.readiness ?? .empty, usedSavedTrip: request.usesSavedTrip,
+                            searched: manifest.filter { !resolved.sources.contains($0) })
     }
 
     private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating,
