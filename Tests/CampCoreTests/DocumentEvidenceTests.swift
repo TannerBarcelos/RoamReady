@@ -162,11 +162,28 @@ final class DocumentEvidenceTests: XCTestCase {
         XCTAssertFalse(request.prompt.contains("scanned"))
     }
 
-    func testNoEvidenceInstructsTheModelToSayDocumentsDontCover() {
+    func testNoEvidenceIsInvisibleToTheModel() {
         let request = CampingHelpRequest(question: "What is the tire pressure?", steps: [], rigType: nil, step: nil, scope: .general,
                                          documents: DocumentEvidence(excerpts: []))
-        XCTAssertTrue(request.instructions.contains("none covered this question"))
-        XCTAssertTrue(request.prompt.contains("No relevant excerpts were found."))
+        let baseline = CampingHelpRequest(question: "What is the tire pressure?", steps: [], rigType: nil, step: nil, scope: .general)
+        XCTAssertEqual(request.instructions, baseline.instructions)
+        XCTAssertEqual(request.prompt, baseline.prompt)
+        XCTAssertEqual(request.compactPrompt, baseline.compactPrompt)
+    }
+
+    @MainActor func testEmptyRetrievalPlansMatchUnsearchedPlans() async throws {
+        for scope in [CampingHelpRequest.Scope.general, .checklist] {
+            let baseline = CampingHelpRequest(question: "How do I keep water clean?", steps: [], rigType: nil, step: nil, scope: scope)
+            let empty = CampingHelpRequest(question: "How do I keep water clean?", steps: [], rigType: nil, step: nil, scope: scope,
+                                           documents: DocumentEvidence(excerpts: []))
+            for attempt in [PromptAttempt.full, .compact] {
+                let expected = try await baseline.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+                let actual = try await empty.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+                XCTAssertEqual(actual.prompt, expected.prompt)
+                XCTAssertEqual(actual.instructions, expected.instructions)
+                XCTAssertTrue(actual.sources.isEmpty)
+            }
+        }
     }
 
     func testRequestsWithoutDocumentsAreUnchanged() {

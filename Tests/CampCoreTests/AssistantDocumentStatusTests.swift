@@ -123,7 +123,7 @@ final class AssistantDocumentStatusTests: XCTestCase {
 
     // MARK: Requests
 
-    @MainActor func testUnfinishedDocumentIsToldToTheModelWithoutInventingItsContents() async throws {
+    @MainActor func testUnfinishedDocumentStaysInternal() async throws {
         let readiness = scope([manual: .ready, scan: .extracting, warranty: .ready])
         let evidence = DocumentEvidence(excerpts: [], readiness: readiness)
         let generator = RecordingGenerator("The scanned record isn’t ready, so I can’t support an answer from it yet.")
@@ -132,8 +132,8 @@ final class AssistantDocumentStatusTests: XCTestCase {
         let reply = try await CampingGeneration.answer(to: request, using: generator)
         XCTAssertEqual(reply.coverage, .unfinished)
         XCTAssertEqual(reply.readiness, readiness)
-        XCTAssertTrue(generator.instructions[0].contains("Scanned Service Record (being read)"))
-        XCTAssertTrue(generator.instructions[0].contains("state no fact"))
+        XCTAssertFalse(generator.instructions[0].contains("Scanned Service Record"))
+        XCTAssertEqual(evidence.instructions, "")
     }
 
     @MainActor func testReadyDocumentsStillAnswerAndTheReplyRecordsIncompleteCoverage() async throws {

@@ -189,7 +189,7 @@ extension CampingHelpRequest {
         out.passages = Dictionary(shown.map { ($0.source.id, $0.text) }, uniquingKeysWith: { first, _ in first })
         if let documents { out.evidence = documents.promptBlock(excerpts: shown) }
         out.prompt = Self.render(category: (rigContext?.type ?? rigType)?.title ?? "Unknown",
-                                 checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip, evidence: documents == nil ? nil : out.evidence,
+                                 checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip, evidence: out.evidence.isEmpty ? nil : out.evidence,
                                  question: out.question)
         return out
     }

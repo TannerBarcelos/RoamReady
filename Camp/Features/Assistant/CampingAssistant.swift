@@ -166,9 +166,7 @@ enum CampingAssistant {
             if citesDocuments {
                 return prompt.contains("\n[S1] ")
                     ? "Per your manual, error code E4 means the water heater igniter failed to light. Turn the unit off and wait five minutes before retrying. [S1]"
-                    : (instructions.contains("could not be searched")
-                        ? "A document isn't ready yet, so I can't support an answer about that from it yet."
-                        : "Your documents don't cover that.")
+                    : "I don’t have a verified replacement date. Check the service record for that detail."
             }
             return "Test response: keep drinking water in a clean, covered container."
         }

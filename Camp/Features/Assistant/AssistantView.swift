@@ -49,8 +49,6 @@ struct AssistantView: View {
     @State private var openedSource: OpenedSource?
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
-    /// What the Assistant can use in the scope on screen. Refreshed as indexing changes.
-    @State private var readiness = ScopeReadiness.empty
 
     init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true, chat: AssistantConversation) {
         _chat = Bindable(wrappedValue: chat)
@@ -94,7 +92,9 @@ struct AssistantView: View {
             .toolbar {
                 if showsConversation {
                     ToolbarItem(placement: .principal) {
-                        AssistantScopePill(summary: currentTarget.summary, readiness: readiness, exchanges: chat.exchanges)
+                        Text(currentTarget.summary.text)
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("assistantScope")
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
@@ -113,7 +113,6 @@ struct AssistantView: View {
             }
             .onAppear {
                 refreshAvailability()
-                refreshReadiness()
                 // Load the model while the camper types, so the first answer starts sooner (TN3193).
                 if showsConversation { chat.session.prewarm() }
                 if let step, chat.exchanges.isEmpty, chat.question.isEmpty {
@@ -136,23 +135,21 @@ struct AssistantView: View {
             }
             .onDisappear { cancelRequest() }
             // A different rig or trip is a different set of paperwork: drop the running request.
-            .onChange(of: currentTarget) { _, _ in cancelRequest(); refreshReadiness() }
-            .onChange(of: library.documentAssistant.statuses) { _, _ in refreshReadiness() }
+            .onChange(of: currentTarget) { _, _ in cancelRequest() }
             .sheet(item: $openedSource) { AssistantSourceSheet(item: $0) }
         }
     }
 
-    /// What the answer rested on: validated sources, references that were only searched, or a plain note when it
-    /// rested on no document. Checklist attribution is shown separately, below.
+    /// Only sources used by this answer.
     @ViewBuilder private func documentNotes(for answer: CampingAnswer) -> some View {
-        let sections = AnswerSources(coverage: answer.coverage, cited: answer.sources, searched: answer.searched)
-        if !sections.cited.isEmpty || answer.usedSavedTrip {
+        let cited = answer.sources
+        if !cited.isEmpty || answer.usedSavedTrip {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Sources").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     .accessibilityAddTraits(.isHeader)
                 if answer.usedSavedTrip { savedTripRow }
-                ForEach(sections.cited) { sourceRow($0, in: answer) }
-                if sections.cited.contains(where: \.isLowConfidenceScan) {
+                ForEach(cited) { sourceRow($0, in: answer) }
+                if cited.contains(where: \.isLowConfidenceScan) {
                     Label("Part of this comes from a scan that may be misread. Check the original page before relying on any number or part code.",
                           systemImage: "exclamationmark.triangle")
                         .font(.caption).foregroundStyle(.secondary)
@@ -160,17 +157,9 @@ struct AssistantView: View {
                 }
             }
         }
-        if sections.cited.isEmpty, let note = sections.note {
-            Text(AnswerSources.text(for: note)).font(.caption).foregroundStyle(.secondary)
-                .accessibilityIdentifier(note == .notCovered ? "assistantNotCovered" : "assistantUncitedNote")
-        }
-        if !sections.searched.isEmpty {
-            SearchedReferencesLink(searched: sections.searched, passages: answer.passages)
-        }
     }
 
-    /// A cited source: a solid card that opens the source dialog. Searched references sit behind
-    /// `SearchedReferencesLink` instead, so they don't take the space of sources.
+    /// A cited source opens the source dialog.
     private func sourceRow(_ source: DocumentSource, in answer: CampingAnswer) -> some View {
         let detail = source.listDetail
         return Button {
@@ -239,8 +228,6 @@ struct AssistantView: View {
                                 Text("Asked in \(exchange.scope.summary.text)").font(.caption).foregroundStyle(.secondary)
                             }
                             documentNotes(for: exchange.answer)
-                            AnswerReadinessNote(answer: exchange.answer, current: exchange.scope == currentTarget ? readiness : nil,
-                                                canRetry: showsConversation && !answering) { askAgain(exchange) }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .contain)
@@ -248,7 +235,7 @@ struct AssistantView: View {
                     }
                     if let pendingQuestion {
                         userMessage(pendingQuestion)
-                        AssistantStageView(stages: progress.stages)
+                        responseProgress
                     }
                     if let generationFailure = chat.generationFailure {
                         VStack(alignment: .leading, spacing: 10) {
@@ -274,6 +261,12 @@ struct AssistantView: View {
                 withAnimation(reduceMotion ? nil : .default) { scroll.scrollTo("bottom", anchor: .bottom) }
             }
         }
+    }
+
+    private var responseProgress: some View {
+        ProgressView()
+            .accessibilityLabel("Response in progress")
+            .accessibilityIdentifier("assistantProgress")
     }
 
     private func userMessage(_ text: String) -> some View {
@@ -314,10 +307,6 @@ struct AssistantView: View {
         .background(.bar)
     }
 
-    private func refreshReadiness() {
-        readiness = library.documentAssistant.readiness(for: currentTarget, in: modelContext)
-    }
-
     private func refreshAvailability() {
         availability = CampingAssistant.globalAvailability
         if !availability.showsConversation { cancelRequest() }
@@ -348,15 +337,6 @@ struct AssistantView: View {
         submit(question)
     }
 
-    /// Asks an earlier question again, after documents it was missing became ready. The earlier answer stays,
-    /// the message field keeps whatever is typed in it, and only the turns before that exchange are sent, as
-    /// they were the first time, so the "not ready" answer can't color the new one.
-    private func askAgain(_ exchange: CampingExchange) {
-        refreshAvailability()
-        guard showsConversation, !answering else { return }
-        submit(exchange.question, retrying: exchange)
-    }
-
     private func submit(_ submitted: String, retrying retried: CampingExchange? = nil) {
         // Everything this request reads is captured now. A scope change cancels it (see onChange above).
         let target = currentTarget
@@ -372,7 +352,6 @@ struct AssistantView: View {
             steps = []
         }
         let session = chat.session
-        let hasDocuments = !readiness.isEmpty
         // An exchange that was never a model turn has no turns before it in the session.
         let before = retried.map { $0.answer.turnID ?? "" }
         let retrievalQuestion = AssistantConversationRules.retrievalQuestion(
@@ -396,8 +375,7 @@ struct AssistantView: View {
                         task = nil
                         return
                     }
-                    // A scope with no documents has nothing to search, so the stage isn't shown.
-                    if hasDocuments { announce(progress.advance(to: .searchingDocuments, for: request)) }
+                    _ = progress.advance(to: .searchingDocuments, for: request)
                     evidence = await index.evidence(for: retrievalQuestion, target: target, in: context)
                     try Task.checkCancellation()
                 }
@@ -408,7 +386,7 @@ struct AssistantView: View {
                                                        tripFacts: tripFacts,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
-                    announce(progress.advance(to: stage, for: request))
+                    _ = progress.advance(to: stage, for: request)
                 })
                 refreshAvailability()
                 // Canceled or superseded work ends here without touching the conversation, and an answer
