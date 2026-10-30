@@ -129,12 +129,18 @@ final class AssistantUITests: XCTestCase {
         return app
     }
 
+    /// The transcript opens scrolled to its end, so earlier rows can sit under the scope banner; scroll until
+    /// the row is clear of the banner.
     private func sourceRow(_ app: XCUIApplication, containing title: String) -> XCUIElement {
-        app.buttons.matching(identifier: "assistantSourceRow").matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        let row = app.buttons.matching(identifier: "assistantSourceRow").matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        for _ in 0..<8 where !row.isHittable || row.frame.minY < 260 { app.scrollViews.firstMatch.swipeDown() }
+        return row
     }
 
     func testCitedSourcesAndSearchedReferencesAreLabeledApart() {
         let app = launchSourceStates()
+        // The newest answer is on screen first: uncited, so it explains why instead of listing sources.
+        XCTAssertTrue(app.staticTexts["General advice. No document was cited."].exists, "An uncited answer says why")
         let cited = sourceRow(app, containing: "Water Heater Manual")
         XCTAssertTrue(cited.exists)
         XCTAssertTrue(cited.label.hasPrefix("Source:"))
@@ -144,7 +150,6 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(searched.label.hasPrefix("Searched, not cited:"), "VoiceOver hears that it was only searched")
         XCTAssertTrue(app.staticTexts["References searched"].exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'used'")).firstMatch.exists)
-        XCTAssertTrue(app.staticTexts["General advice. No document was cited."].exists, "An uncited answer says why")
     }
 
     func testCitedSourceOpensAtItsPage() {
@@ -157,7 +162,8 @@ final class AssistantUITests: XCTestCase {
 
     func testReplacedSourceShowsChangedAndOpensTheCurrentFileOnlyOnRequest() {
         let app = launchSourceStates()
-        sourceRow(app, containing: "Furnace Manual").tap()
+        let furnace = sourceRow(app, containing: "Furnace Manual")
+        furnace.tap()
         XCTAssertTrue(app.staticTexts["Changed since this answer"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists, "The new file is not opened silently")
         app.buttons["openCurrentVersion"].tap()
