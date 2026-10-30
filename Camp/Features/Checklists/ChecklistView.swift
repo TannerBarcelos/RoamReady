@@ -10,6 +10,7 @@ struct ChecklistView: View {
     let trip: Trip
     @State private var phase: ChecklistPhase
     @State private var editing = EditMode.inactive
+    @State private var sectionFilter: String?
     @State private var editedStep: ChecklistStep?
     @State private var adding = false
     @State private var confirmingDefaults = false
@@ -30,11 +31,48 @@ struct ChecklistView: View {
         _phase = State(initialValue: initialPhase)
     }
     private var steps: [ChecklistStep] { trip.steps(phase) }
+    private var sectionNames: [String] {
+        var seen = Set<String>()
+        return steps.map { sectionName($0.section) }.filter { seen.insert($0).inserted }
+    }
+    private var visibleSteps: [ChecklistStep] {
+        guard let sectionFilter else { return steps }
+        return steps.filter { sectionName($0.section) == sectionFilter }
+    }
+    private func sectionName(_ value: String) -> String { value.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private func sectionLabel(_ value: String) -> String { value.isEmpty ? "No section" : value }
+
+    private var flowHeader: some View {
+        HStack {
+            Text("Your flow")
+            Spacer()
+            Menu {
+                Picker("Section", selection: $sectionFilter) {
+                    Text("All sections").tag(String?.none)
+                    ForEach(sectionNames, id: \.self) { name in
+                        Text(sectionLabel(name)).tag(Optional(name))
+                    }
+                }
+                .pickerStyle(.inline)
+            } label: {
+                Image(systemName: sectionFilter == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                    .font(.body)
+                    .foregroundStyle(.tint)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Filter by section")
+            .accessibilityValue(sectionFilter.map(sectionLabel) ?? "All sections")
+            .accessibilityIdentifier("checklistSectionFilter")
+        }
+        .textCase(nil)
+    }
     private var rigName: String { trip.rig?.displayName ?? "this rig" }
     /// AI help only appears on hardware that can run Apple Intelligence.
     private var offersHelp: Bool { CampingAssistant.showsChat }
 
     var body: some View {
+        let shownSteps = visibleSteps
         List {
             Section {
                 Picker("Checklist", selection: $phase) {
@@ -44,7 +82,7 @@ struct ChecklistView: View {
                 SaveStatus()
             }
             Section {
-                ForEach(steps) { step in
+                ForEach(shownSteps) { step in
                     HStack(alignment: .top, spacing: 14) {
                         Button {
                             step.status = step.status == .completed ? .pending : .completed
@@ -70,15 +108,19 @@ struct ChecklistView: View {
                             library.save()
                         }
                     }
+                    .moveDisabled(sectionFilter != nil)
                 }
                 .onMove { offsets, destination in
-                    var ordered = steps; ordered.move(fromOffsets: offsets, toOffset: destination)
+                    guard sectionFilter == nil else { return }
+                    var ordered = shownSteps; ordered.move(fromOffsets: offsets, toOffset: destination)
                     trip.reorder(ordered); library.save()
                 }
-                .onDelete { offsets in trip.removeSteps(offsets.map { steps[$0] }); library.save() }
+                .onDelete { offsets in trip.removeSteps(offsets.map { shownSteps[$0] }); library.save() }
                 Button("Add a step", systemImage: "plus") { adding = true }
-            } header: { Text("Your flow") } footer: {
-                Text("Tap a circle to finish a step. Use Edit to reorder or remove steps. Follow your rig’s manuals for equipment-specific procedures.")
+            } header: { flowHeader } footer: {
+                Text(sectionFilter == nil
+                     ? "Tap a circle to finish a step. Use Edit to reorder or remove steps. Follow your rig’s manuals for equipment-specific procedures."
+                     : "Tap a circle to finish a step. Use Edit to remove steps; choose All sections to reorder. Follow your rig’s manuals for equipment-specific procedures.")
             }
             Section {
                 if offersHelp {
@@ -92,7 +134,10 @@ struct ChecklistView: View {
         }
         .navigationTitle(phase.title)
         .onChange(of: initialPhase) { _, newPhase in phase = newPhase }
-        .onChange(of: phase) { _, newPhase in onPhaseChange?(newPhase) }
+        .onChange(of: phase) { _, newPhase in sectionFilter = nil; onPhaseChange?(newPhase) }
+        .onChange(of: sectionNames) { _, names in
+            if let sectionFilter, !names.contains(sectionFilter) { self.sectionFilter = nil }
+        }
         .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
         .environment(\.editMode, $editing)
         .sensoryFeedback(.success, trigger: steps.filter { $0.status == .completed }.count)
@@ -106,7 +151,9 @@ struct ChecklistView: View {
                                 } : nil)
         }
         .sheet(isPresented: $adding) {
-            ChecklistStepEditor(step: ChecklistStepDraft(title: "")) { step in trip.addStep(step, to: phase); library.save() }
+            ChecklistStepEditor(step: ChecklistStepDraft(title: "", section: sectionFilter ?? "My checklist")) { step in
+                trip.addStep(step, to: phase); library.save()
+            }
         }
         .sheet(isPresented: $showAssistant) { TripAssistantSheet(trip: trip, step: helpStep) }
         .confirmationDialog("Save as defaults for \(rigName)?", isPresented: $confirmingDefaults, titleVisibility: .visible) {

@@ -10,6 +10,61 @@ final class NavigationUITests: XCTestCase {
         return app
     }
 
+    private func openTeardownChecklist(_ app: XCUIApplication) {
+        app.buttons["tripRow-Current Pines"].tap()
+        let checklist = app.descendants(matching: .any)["tripChecklist-teardown"].firstMatch
+        for _ in 0..<8 where !checklist.isHittable { app.swipeUp() }
+        XCTAssertTrue(checklist.isHittable)
+        checklist.tap()
+        XCTAssertTrue(app.buttons["checklistSectionFilter"].waitForExistence(timeout: 5))
+    }
+
+    func testChecklistSectionMenuFiltersClearsAndResetsWhenSwitchingPhase() {
+        let app = launch()
+        openTeardownChecklist(app)
+        let filter = app.buttons["checklistSectionFilter"]
+        XCTAssertEqual(filter.value as? String, "All sections")
+        filter.tap()
+        XCTAssertTrue(app.buttons["Pack up"].waitForExistence(timeout: 5))
+        app.buttons["Disconnect"].tap()
+        XCTAssertEqual(filter.value as? String, "Disconnect")
+        XCTAssertTrue(app.descendants(matching: .any)["checklistStep-Empty tanks at an approved location"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["checklistStep-Review departure conditions"].exists)
+        filter.tap()
+        app.buttons["All sections"].tap()
+        XCTAssertEqual(filter.value as? String, "All sections")
+        let review = app.descendants(matching: .any)["checklistStep-Review departure conditions"].firstMatch
+        for _ in 0..<8 where !review.isHittable { app.swipeDown() }
+        XCTAssertTrue(review.exists)
+        filter.tap()
+        app.buttons["Disconnect"].tap()
+        app.segmentedControls.buttons["Setup"].tap()
+        XCTAssertEqual(filter.value as? String, "All sections", "A phase switch must not leave an empty filtered checklist")
+        filter.tap()
+        XCTAssertTrue(app.buttons["Connections"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Disconnect"].exists, "Only this phase's sections appear in the menu")
+    }
+
+    func testDeletingAFilteredStepDoesNotDeleteAHiddenStep() {
+        let app = launch()
+        openTeardownChecklist(app)
+        let filter = app.buttons["checklistSectionFilter"]
+        filter.tap()
+        app.buttons["Disconnect"].tap()
+        let removed = app.descendants(matching: .any)["checklistStep-Empty tanks at an approved location"].firstMatch
+        XCTAssertTrue(removed.waitForExistence(timeout: 5))
+        removed.swipeLeft()
+        XCTAssertTrue(app.buttons["Delete"].waitForExistence(timeout: 5))
+        app.buttons["Delete"].tap()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: removed)
+        waitForExpectations(timeout: 5)
+        filter.tap()
+        app.buttons["All sections"].tap()
+        let hidden = app.descendants(matching: .any)["checklistStep-Review departure conditions"].firstMatch
+        for _ in 0..<8 where !hidden.isHittable { app.swipeDown() }
+        XCTAssertTrue(hidden.exists, "The full list's first step is untouched by deleting the filtered list's first step")
+    }
+
     func testHomeKeepsOverlappingAndUpcomingTripsWithoutPlanTab() {
         let app = launch()
         if app.tabBars.firstMatch.exists { XCTAssertEqual(app.tabBars.buttons.count, 4) }
