@@ -44,7 +44,7 @@ struct AppSettingsView: View {
                 if CampingAssistant.showsChat {
                     Section("Camping help") {
                         Label(CampingAssistant.availability, systemImage: "sparkles").font(.subheadline)
-                        Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkle button above the tab bar or Ask Assistant in the toolbar. Questions stay on this device.")
+                        Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open Ask Assistant in the toolbar. Questions stay on this device.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }

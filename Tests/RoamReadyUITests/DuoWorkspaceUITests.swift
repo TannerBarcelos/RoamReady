@@ -1,6 +1,6 @@
 import XCTest
 
-/// `-duo-ui-test` forces the iPhone Duo workspace so this runs on any simulator.
+/// These resize regressions use real layout traits on any simulator. The flag adds fixtures only.
 @MainActor
 final class DuoWorkspaceUITests: XCTestCase {
     override func tearDown() {
@@ -10,17 +10,17 @@ final class DuoWorkspaceUITests: XCTestCase {
 
     private func launch(generation: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-duo-ui-test"]
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test"]
         if let generation { app.launchArguments += ["-assistant-generation-test", generation] }
         app.launch()
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         return app
     }
 
-    func testForcedDuoWorkspaceKeepsTabsSheetsAndSelection() {
+    func testAdaptiveWorkspaceKeepsTabsSheetsAndSelection() {
         let app = launch()
-        XCTAssertTrue(app.descendants(matching: .any)["duoWorkspace"].waitForExistence(timeout: 5),
-                      "The debug argument must turn on the Duo workspace")
+        XCTAssertTrue(app.descendants(matching: .any)["homeDetailTrip"].waitForExistence(timeout: 5),
+                      "Home uses the same adaptive navigation container on every device")
         for title in ["Home", "Trip", "Camp Finder", "Profile"] {
             XCTAssertTrue(app.navigationTab(title).exists, "Missing the \(title) tab")
         }
@@ -47,8 +47,8 @@ final class DuoWorkspaceUITests: XCTestCase {
         for tab in ["Home", "Camp Finder", "Profile"] {
             app.navigationTab(tab).tap()
             let toolbarButton = app.barAssistantButton
-            XCTAssertTrue(toolbarButton.waitForExistence(timeout: 5), "Duo puts Assistant in the \(tab) toolbar")
-            XCTAssertEqual(app.buttons.matching(identifier: "openAssistant").count, 1, "No floating button on Duo")
+            XCTAssertTrue(toolbarButton.waitForExistence(timeout: 5), "Assistant belongs in the \(tab) toolbar")
+            XCTAssertEqual(app.buttons.matching(identifier: "openAssistant").count, 1, "There is one system toolbar action")
             toolbarButton.tap()
             XCTAssertTrue(app.buttons["closeAssistant"].waitForExistence(timeout: 5))
             app.buttons["closeAssistant"].tap()

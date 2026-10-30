@@ -4,7 +4,7 @@ import XCTest
 final class DuoDocumentLayoutUITests: XCTestCase {
     func testDocumentMetadataRemainsReadableAtLargestTextSize() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-duo-ui-test",
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test",
                                "-document-layout-fixture", "-UIPreferredContentSizeCategoryName",
                                "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()

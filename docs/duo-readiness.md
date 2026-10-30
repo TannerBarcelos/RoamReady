@@ -2,7 +2,7 @@
 
 [Documentation index](README.md) · [Design](design.md) · [Build and validation](validation.md)
 
-Audited October 30, 2026, starting from `main` at `be023b44f242425257e1b35fb140934a3f43f7b1`. This is an implementation audit and acceptance runbook. Full Duo optimization is **not yet verified**: the open display, live folding, physical accessibility, and performance measurements still need evidence on the final build.
+Audited October 30, 2026, starting from `main` at `be023b44f242425257e1b35fb140934a3f43f7b1`. This is an implementation audit and acceptance runbook for iPhone (including Duo), iPad, and Mac Catalyst. The implementation uses Apple’s native containers and APIs; Apple does not provide one complete app to copy verbatim. Layout does not depend on model identity or AI capability. Full Duo optimization is **not yet verified**: the open display, live folding, physical accessibility, and performance measurements still need evidence on the final build.
 
 ## Apple guidance consulted
 
@@ -20,16 +20,16 @@ The web reader supplied the preparation guide, HIG text through search, and talk
 | Area | Existing evidence or gap at the starting commit | Follow-up |
 | --- | --- | --- |
 | Build SDK | Project selects the current SDK, but CI accepted 27.0. Deployment floor is 27.0. | All native workflows require an iOS SDK of at least 27.1 through `scripts/check-apple-sdk.sh`; deployment floor stays 27.0. Archive metadata must still confirm the shipping SDK. |
-| Geometry | No `UIScreen.main`, interface-orientation layout decisions, phone-idiom layout branches, or full-screen requirement in app source/configuration. Hinge detection is scene-local and latched. | Retain the existing capability detection and size-class-driven layouts. Test real scene resizing, including Split View on either side. |
-| Home | Native `NavigationSplitView`; trip and checklist phase selection live above its columns. | Retain it. Verify selection and nested destinations during an actual fold; rotation tests alone don't establish this. |
-| Camp Finder | A custom `HStack` used a results pane constrained to 280–400 points, independent of reserved regions. | Use native `ArrangementView(.split)` at regular width on Duo, with no fixed pane widths. Both axes are allowed so a tall window can stack both panes. Navigation stays outside; query/camera/search/sheet state stays above the branch. Compact width keeps the existing list/map. |
+| Geometry | The app forced compact width everywhere except a hinge-gated Duo workspace. | Remove the override, hinge observer, capability state, and device layout branches. Use real traits on iPhone, iPad, and Catalyst. Test resizing, including Split View on either side. |
+| Home | Native split navigation was available only in the Duo workspace. | Use `NavigationSplitView` on every device with selection above its columns. Native navigation owns expansion/collapse. Verify folds and nested destinations; rotation alone is insufficient. |
+| Camp Finder | A custom `HStack` used a results pane constrained to 280–400 points, independent of reserved regions. | Use native `ArrangementView(.split)` at regular width on iOS/Catalyst 27.1 or newer, with no fixed pane widths. Earlier supported runtimes use flexible panes. Navigation and state stay above the container. Compact width keeps the list/map; place sheets are stable across all widths. |
 | Search actions | Two labeled buttons competed for row width. | `ViewThatFits` stacks them when the horizontal version does not fit. |
-| Onboarding | A custom bottom action panel used scarce cover-display and keyboard space. | Duo uses a labeled native confirmation toolbar action; the existing step count remains. Validation, draft ownership, and non-Duo bottom presentation remain. |
-| Trip toolbar | A separate ellipsis menu duplicated the overflow pattern. | Duo edit/delete actions join `ToolbarOverflowMenu`. The list's delete action and confirmation remain. |
+| Onboarding | A custom bottom action panel used scarce cover-display and keyboard space. | Every platform uses a labeled native confirmation toolbar action and step count. Validation and drafts remain in the form; system bars choose the appropriate placement. |
+| Trip toolbar | A separate ellipsis menu duplicated the overflow pattern. | Edit/delete actions join `ToolbarOverflowMenu` on every platform. The list's delete action and confirmation remain. |
 | Document rows | Category and expiry shared a single horizontal row; the prior audit identified large-text truncation. | Stack metadata at accessibility sizes and when horizontal content doesn't fit; allow full title and metadata height. |
 | Sheets and viewers | Editors use native sheets/forms; preview uses Quick Look; camera uses `UIImagePickerController`. | Retain system presentation. Verify live fold with a draft, import, camera, image, and PDF open. |
 | Responsiveness | Imports and image downsampling already use detached work; thumbnails and stored photo sizes are bounded. Search state lives above its layout branch. | Retain these paths. No timing, memory, battery, or thermal improvement is claimed without profiling. |
-| Accessibility | Native controls, semantic colors, Reduce Motion support, labeled images. Earlier evidence is incomplete, including #91/#93 follow-up. | Add document-row audit and draft-preservation regressions; run the complete accessibility and physical-device pass below. |
+| AI and accessibility | AI eligibility already comes from Apple’s runtime; native controls, semantic colors, Reduce Motion support, and labeled images are present. Earlier evidence is incomplete, including #91/#93 follow-up. | Keep AI eligibility independent of layout. Older/noneligible hardware retains core workflows without Assistant mentions. Use native Assistant toolbar placement everywhere and run the unsupported-model regressions as well as accessibility/device checks. |
 
 ## Verification for this follow-up
 
@@ -39,14 +39,14 @@ Checks available in the editing environment:
 - Workflow YAML/plist parsing, shell syntax, SDK-version boundary cases, simulator-selection scenarios, and `git diff --check`.
 - Full `swift test` was attempted with the installed Linux Swift 6.2.1 toolchain. After supplying SQLite development headers outside the repository, compilation stopped at the existing `import CryptoKit` in DocumentVault. It did not complete the package suites. Native package tests remain a macOS CI requirement.
 
-New/updated UI regressions are authored, not executed here:
+New/updated UI regressions use real window traits on all devices (`-layout-ui-test` supplies media only), and are not executed in the editing environment:
 
 - Camp Finder checks separate, visible arrangement panes without assuming fixed pane proportions or one split axis.
 - Add-trip draft text and the originating tab survive rotation with the sheet open.
 - A long service-record title, category, and expiry remain reachable at the largest text size, with Dynamic Type and clipping audits and no waiver.
-- The disk onboarding workflow accepts the action in either a bottom panel or the native bar; selected-trip deletion uses the list action.
+- The disk onboarding workflow reaches the native primary action; selected-trip deletion uses the list action.
 
-No Xcode, iOS SDK, Simulator, or Device Hub is available here. Native Debug/Release builds, package tests on macOS, and the UI suite must pass for this revision before merging. Earlier green runs in `validation.md` are not evidence for these changes.
+Native app and package CI is run remotely; no Xcode, iOS SDK, Simulator, or Device Hub is installed in the editing environment. PR CI also compiles the UI test bundle without booting a simulator, so UI regressions are type-checked even though their execution remains manual. Native Debug/Release builds, package tests on macOS, and the UI suite must pass for this revision before merging. Earlier green runs in `validation.md` are not evidence for these changes.
 
 ## Required acceptance matrix
 
@@ -72,8 +72,9 @@ Use Device Hub to repeat these scenarios without relaunching the app:
 | Continuous open/close/fold | Select another trip, change checklist phase, push a document, edit a trip, import a file/photo, capture a photo, generate a reply, and pan/search the map. Preserve work; no duplicate import/search or lost sheet. | Not run |
 | Split View, app on left and right | Verify both outer control edges and asymmetric safe areas, keyboard, search, overflow, and every sheet. Include PiP-driven vertical resizing. | Not run |
 | Accessibility and localization | Default through largest text, Display Zoom, VoiceOver focus/order/actions, long names, RTL, light/dark, Increase Contrast, Reduce Motion/Transparency. Audit every screen and sheet. Review known #93 waiver separately. | Not run |
-| Regular devices | Compare the existing regular-iPhone baselines; check iPad multitasking and Catalyst builds. Large-text metadata/action wrapping is intentional. | Not run |
+| iPhone 15–18 and older eligible OS hardware | Run compact portrait, landscape, keyboard, all forms/sheets, and supported/unsupported AI states. Test real hardware eligibility, not model-name rules. Core workflows must remain available without AI. Older devices must support the existing iOS 27.0 deployment floor. | Not run |
+| iPad and Catalyst | Test regular/narrow windows, split navigation, Camp Finder panes, keyboard/pointer, and window resizing. Recapture baselines: native bars and regular-width content expansion are intentional changes. | Not run |
 | Physical Duo | Repeat the pose workflows one-handed and on a table, including camera, offline checklists and documents, permission prompts, and VoiceOver. Verify outdoor readability and reachability. | Not run |
 | Release performance | Profile cold/warm launch, scrolling, folds during image/PDF import and AI generation, peak memory, main-thread stalls, energy, and thermal behavior on a signed Release build using Instruments. Record OS, build, corpus, timings, traces, and chosen limits. | Not run |
 
-Attach screenshots, `.xcresult` bundles, and Instruments traces to the reviewed revision. Record actual results and failures in the table; a forced `-duo-ui-test` workspace on an iPad, a closed-display run, or a rotation is not proof of hinge behavior. App Store Duo screenshots and preview assets are a separate release task described in Apple's preparation guide.
+Attach screenshots, `.xcresult` bundles, and Instruments traces to the reviewed revision. Record actual results and failures in the table; a fixture run on an iPad, a closed-display run, or a rotation is not proof of hinge behavior. App Store Duo screenshots and preview assets are a separate release task described in Apple's preparation guide.

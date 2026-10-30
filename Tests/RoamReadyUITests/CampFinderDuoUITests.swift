@@ -1,13 +1,13 @@
 import XCTest
 
-/// Camp Finder under the forced Duo workspace. A regular-width window (Duo's open display, or an
+/// Camp Finder follows real width traits. A regular-width window (Duo's open display, or an
 /// iPad simulator) arranges the results and map in separate panes; a compact one keeps the
 /// stacked list. No search runs, so the test doesn't depend on Apple Maps results.
 @MainActor
 final class CampFinderDuoUITests: XCTestCase {
     func testDuoCampFinderPlacesResultsForTheAvailableWidth() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-duo-ui-test"]
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test"]
         app.launch()
         XCTAssertTrue(app.navigationTab("Camp Finder").waitForExistence(timeout: 10))
         app.navigationTab("Camp Finder").tap()
@@ -28,7 +28,7 @@ final class CampFinderDuoUITests: XCTestCase {
         screenshot.name = "Camp Finder (\(window.horizontalSizeClass == .regular ? "regular" : "compact") width)"
         screenshot.lifetime = .keepAlways
         add(screenshot)
-        if #available(iOS 27.1, *), window.horizontalSizeClass == .regular {
+        if window.horizontalSizeClass == .regular {
             // A split arrangement can divide horizontally or vertically, and balances the panes
             // around the fold. Neither a fixed column width nor a larger map pane is guaranteed.
             let beside = map.frame.minX >= results.frame.maxX - 1 || results.frame.minX >= map.frame.maxX - 1

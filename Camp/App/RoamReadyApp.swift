@@ -28,7 +28,6 @@ struct RoamReadyApp: App {
             .environment(library)
             .environment(connectivity)
             .environment(campFinder)
-            .observesDuoWorkspace()
             .tint(.blue)
             .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
@@ -70,10 +69,7 @@ struct RootView: View {
 struct MainTabs: View {
     enum Destination: Hashable { case home, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
-    // Selection, sheets, and the conversation live here, above the content that resizes on Duo.
+    // Selection, sheets, and the conversation outlive every size-class and window change.
     @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
     @State private var addingTrip = false
@@ -81,16 +77,13 @@ struct MainTabs: View {
     @State private var assistantConversation = AssistantConversation()
     var body: some View {
         TabView(selection: tabSelection) {
-            // On Duo, Home brings its own split view instead of the tab's stack.
-            Tab("Home", systemImage: "house", value: .home) { tabRoot(stacked: !usesDuoWorkspace) { HomeWorkspace() } }
+            // Home owns its adaptive navigation container on every platform.
+            Tab("Home", systemImage: "house", value: .home) { tabRoot(stacked: false) { HomeWorkspace() } }
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
             Tab("Camp Finder", systemImage: "map", value: .campFinder) { tabRoot { CampFinderView() } }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { tabRoot { ProfileView() } }
         }
-        // Keep native tab controls stable as text size changes; iPad's floating labels don't scale.
-        // On Duo the scene's own width passes through so screens can use the open display.
-        .environment(\.horizontalSizeClass, usesDuoWorkspace ? horizontalSizeClass : .compact)
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
@@ -99,41 +92,10 @@ struct MainTabs: View {
         }
     }
 
-    /// Mac, iPad, Duo, and accessibility text sizes put the Assistant in the navigation bar; other
-    /// iPhones keep the floating button. Duo always uses the toolbar so folding or unfolding never
-    /// moves the button between the bar and the corner.
-    private var usesAssistantToolbar: Bool {
-        #if targetEnvironment(macCatalyst)
-        true
-        #else
-        usesDuoWorkspace || horizontalSizeClass == .regular || dynamicTypeSize.isAccessibilitySize
-        #endif
-    }
-
     private func tabRoot<Content: View>(stacked: Bool = true, @ViewBuilder content: () -> Content) -> some View {
         stack(stacked) {
-            // Unstacked roots bring their own navigation container and place the item inside it.
             if stacked { content().assistantToolbarItem() } else { content() }
         }
-            // The tab content's safe area ends above the native tab bar. Keeping the accessory
-            // here lets its glass stay circular instead of the tab accessory's full-width capsule.
-            .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
-                if showsAssistant && !usesAssistantToolbar {
-                    Button { askingAssistant = true } label: {
-                        Image(systemName: "sparkles")
-                            .font(.title2.weight(.medium))
-                            .foregroundStyle(.tint)
-                            .frame(width: 52, height: 52)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .glassEffect(.regular.interactive(), in: Circle())
-                    .accessibilityLabel("Ask Assistant")
-                    .accessibilityIdentifier("openAssistant")
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                }
-            }
     }
 
     @ViewBuilder private func stack<Content: View>(_ stacked: Bool, @ViewBuilder content: () -> Content) -> some View {
@@ -142,7 +104,7 @@ struct MainTabs: View {
 
     private var tabActions: MainTabActions {
         var actions = MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
-        if showsAssistant && usesAssistantToolbar { actions.askAssistant = { askingAssistant = true } }
+        if showsAssistant { actions.askAssistant = { askingAssistant = true } }
         return actions
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
@@ -157,20 +119,21 @@ struct MainTabs: View {
 struct MainTabActions {
     var addTrip: @MainActor () -> Void = {}
     var showCampFinder: @MainActor () -> Void = {}
-    /// Set when the Assistant belongs in the navigation bar rather than the floating button.
+    /// Present only when Apple's runtime supports the Assistant.
     var askAssistant: (@MainActor () -> Void)?
 }
 
 extension View {
     /// The Assistant's navigation bar button, when `MainTabs` puts it there.
-    func assistantToolbarItem() -> some View { modifier(AssistantToolbarItem()) }
+    func assistantToolbarItem(isEnabled: Bool = true) -> some View { modifier(AssistantToolbarItem(isEnabled: isEnabled)) }
 }
 
 private struct AssistantToolbarItem: ViewModifier {
     @Environment(\.mainTabActions) private var actions
+    let isEnabled: Bool
     func body(content: Content) -> some View {
         content.toolbar {
-            if let askAssistant = actions.askAssistant {
+            if isEnabled, let askAssistant = actions.askAssistant {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Ask Assistant", systemImage: "sparkles") { askAssistant() }
                         .accessibilityIdentifier("openAssistant")

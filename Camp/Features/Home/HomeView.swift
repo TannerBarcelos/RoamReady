@@ -9,8 +9,7 @@ struct HomeView: View {
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     let now: Date
-    /// Set on Duo, where trip rows select the trip shown beside Home instead of pushing it.
-    var selection: Binding<HomeDestination?>?
+    let selection: Binding<HomeDestination?>
     private var currentTrip: Trip? { trips.first { $0.isActive(asOf: now) } }
     /// Trips whose arrival day is still ahead, soonest first.
     private var upcomingTrips: [Trip] { trips.filter { $0.daysUntilArrival(asOf: now) != nil } }
@@ -20,9 +19,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        Group {
-            if let selection { List(selection: selection) { sections } } else { List { sections } }
-        }
+        List(selection: selection) { sections }
         .listSectionSpacing(.compact)
         .navigationTitle("Home")
         .toolbar { ToolbarItem(placement: .topBarTrailing) { CurrentWeatherBadge() } }
@@ -108,22 +105,12 @@ struct HomeView: View {
         }
     }
 
-    /// Pushes the trip on iPhone; on Duo, selects it for the column beside Home.
-    @ViewBuilder private func tripLink<Label: View>(_ trip: Trip, @ViewBuilder label: () -> Label) -> some View {
-        if selection != nil {
-            NavigationLink(value: HomeDestination.trip(trip.persistentModelID), label: label)
-        } else {
-            NavigationLink(destination: { TripDetailView(trip: trip) }, label: label)
-        }
+    private func tripLink<Label: View>(_ trip: Trip, @ViewBuilder label: () -> Label) -> some View {
+        NavigationLink(value: HomeDestination.trip(trip.persistentModelID), label: label)
     }
 
-    /// Pushes the checklist on iPhone; on Duo, shows it in the column beside Home.
-    @ViewBuilder private func checklistLink<Label: View>(_ trip: Trip, _ phase: ChecklistPhase,
-                                                         @ViewBuilder label: () -> Label) -> some View {
-        if selection != nil {
-            NavigationLink(value: HomeDestination.checklist(trip.persistentModelID, phase), label: label)
-        } else {
-            NavigationLink(destination: { ChecklistView(trip: trip, initialPhase: phase) }, label: label)
-        }
+    private func checklistLink<Label: View>(_ trip: Trip, _ phase: ChecklistPhase,
+                                           @ViewBuilder label: () -> Label) -> some View {
+        NavigationLink(value: HomeDestination.checklist(trip.persistentModelID, phase), label: label)
     }
 }

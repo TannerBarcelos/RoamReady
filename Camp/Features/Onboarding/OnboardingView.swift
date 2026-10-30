@@ -17,7 +17,6 @@ struct OnboardingView: View {
     @State private var rig: Rig?
     @State private var failure: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
 
     private var stageTitle: String {
         ["Your kind of camping", "Meet your rig", "Ready for what’s next"][step]
@@ -124,16 +123,11 @@ struct OnboardingView: View {
                     Text("\(step + 1) of 3").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                         .accessibilityLabel("Step \(step + 1) of 3")
                 }
-                if usesDuoWorkspace {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button(actionTitle, systemImage: step == 2 ? "checkmark" : "arrow.right", action: advance)
-                            .disabled(step == 1 && !draft.hasRequiredDetails)
-                            .accessibilityIdentifier("onboardingContinue")
-                    }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(actionTitle, systemImage: step == 2 ? "checkmark" : "arrow.right", action: advance)
+                        .disabled(step == 1 && !draft.hasRequiredDetails)
+                        .accessibilityIdentifier("onboardingContinue")
                 }
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                if !usesDuoWorkspace { bottomAction }
             }
             .onAppear {
                 if rig == nil, let unfinished = rigs.active.first { rig = unfinished; draft = unfinished.draft }
@@ -143,31 +137,6 @@ struct OnboardingView: View {
 
     private var actionTitle: String {
         step == 0 ? "Set up my \(draft.type.title.lowercased())" : step == 1 ? "Looks like home" : "Let’s go camping"
-    }
-
-    private var bottomAction: some View {
-        VStack(spacing: 12) {
-            ProgressView(value: Double(step + 1), total: 3)
-                .accessibilityLabel("Setup progress")
-            Button(action: advance) {
-                HStack {
-                    Spacer()
-                    Text(actionTitle)
-                    Image(systemName: step == 2 ? "checkmark" : "arrow.right")
-                    Spacer()
-                }.padding(.vertical, 6)
-            }
-            .disabled(step == 1 && !draft.hasRequiredDetails)
-            .buttonStyle(.borderedProminent).controlSize(.large)
-            .accessibilityIdentifier("onboardingContinue")
-            if step == 1 && !draft.hasRequiredDetails {
-                // Only a VIN or plate problem replaces the usual hint; it's the one left to fix.
-                Text(draft.detailsProblem == draft.registrationProblem ? draft.registrationProblem ?? ""
-                     : "Add year, make, model, and length to continue.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .padding().frame(maxWidth: 640).frame(maxWidth: .infinity).background(.bar)
     }
 
     private var welcomeArtwork: some View {

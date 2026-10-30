@@ -9,12 +9,11 @@ import CampPersistence
 /// and RV park places, so they appear as you pan; tap one, or search, to see its details.
 /// Online only in v1. Nothing here is user data; saving and trips go through SwiftData.
 ///
-/// On Duo's open display a system arrangement lays out the results and map around the fold;
-/// everywhere else the map stays at the top of the list. The search, camera, and selection live
+/// At regular width a system arrangement lays out the results and map, including around a fold.
+/// At compact width the map stays at the top of the list. Search, camera, and selection live
 /// here, above that switch, so moving between the layouts keeps them and doesn't search again.
 struct CampFinderView: View {
     @Environment(CampFinder.self) private var finder
-    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var search = CampFinderSearch()
     @State private var location = LocationProvider()
@@ -24,7 +23,7 @@ struct CampFinderView: View {
     /// Where the map was last left, so a rebuilt map opens in the same place.
     @State private var lastCamera: MapCamera?
     @State private var tapped: MapFeature?
-    /// The campground whose details are open after a tap on the map, or after a result on Duo.
+    /// The campground whose details are open after a tap on the map or a search result.
     @State private var opened: CampgroundListing?
     @State private var tapFailure: CampFinderError?
     @State private var locating = false
@@ -39,13 +38,7 @@ struct CampFinderView: View {
             }
     }
 
-    /// Only Duo's open display separates the map from the results. Other iPhones, iPad, and Mac
-    /// receive a compact size class from `MainTabs`, so they keep the stacked layout.
-    private var showsMapBesideResults: Bool { usesDuoWorkspace && horizontalSizeClass == .regular }
-
-    /// On Duo, details open in a sheet so the map and results stay put beneath them. This follows
-    /// the device rather than the width, so folding with a sheet open never turns it into a push.
-    private var opensDetailsInSheet: Bool { usesDuoWorkspace }
+    private var separatesMapAndResults: Bool { horizontalSizeClass == .regular }
 
     private var content: some View {
         // The stack stays put while its contents switch, so the modifiers below (the search field,
@@ -53,9 +46,8 @@ struct CampFinderView: View {
         ZStack {
             adaptiveResults
         }
-        .navigationDestination(for: CampgroundListing.self) { CampgroundDetailView(listing: $0) }
-        .navigationDestination(item: opensDetailsInSheet ? .constant(nil) : $opened) { CampgroundDetailView(listing: $0) }
-        .sheet(item: opensDetailsInSheet ? $opened : .constant(nil)) { CampgroundDetailSheet(listing: $0) }
+        // One presentation across all widths keeps an open place stable during resizing.
+        .sheet(item: $opened) { CampgroundDetailSheet(listing: $0) }
         // Always shown: the default placement hides the field under the large title until the list is pulled down.
         .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
         .onSubmit(of: .search) {
@@ -71,7 +63,7 @@ struct CampFinderView: View {
             }
         }
         .onChange(of: search.results.map(\.id)) { _, _ in fitResults() }
-        .onChange(of: showsMapBesideResults) { _, _ in
+        .onChange(of: separatesMapAndResults) { _, _ in
             // The map is rebuilt in its new place; open it where the person left it.
             if let lastCamera, !camera.followsUserLocation { camera = .camera(lastCamera) }
         }
@@ -85,22 +77,27 @@ struct CampFinderView: View {
     }
 
     @ViewBuilder private var adaptiveResults: some View {
-        #if !targetEnvironment(macCatalyst)
-        if #available(iOS 27.1, *), showsMapBesideResults {
-            // Unlike an HStack with fixed pane widths, the system arrangement accounts for
-            // division regions and can stack both panes in a tall window. Keep it outside List.
-            ArrangementView {
-                results(includesMap: false)
-            } secondary: {
-                map
+        if separatesMapAndResults {
+            if #available(iOS 27.1, macCatalyst 27.1, *) {
+                // The system owns the split axis and division-region handling. Navigation and
+                // state stay above this container; the scrolling list stays inside its pane.
+                ArrangementView {
+                    results(includesMap: false)
+                } secondary: {
+                    map
+                }
+                .arrangementViewStyle(.split)
+            } else {
+                // Earlier supported runtimes still receive flexible panes at regular width.
+                HStack(spacing: 0) {
+                    results(includesMap: false).frame(maxWidth: .infinity)
+                    Divider()
+                    map.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            .arrangementViewStyle(.split)
         } else {
             results(includesMap: true)
         }
-        #else
-        results(includesMap: true)
-        #endif
     }
 
     private func results(includesMap: Bool) -> some View {
@@ -130,13 +127,9 @@ struct CampFinderView: View {
             if !search.results.isEmpty {
                 Section {
                     ForEach(search.results) { listing in
-                        if opensDetailsInSheet {
-                            Button { opened = listing } label: { CampgroundRow(listing: listing) }
-                                .foregroundStyle(.primary)
-                                .accessibilityIdentifier("campgroundResult")
-                        } else {
-                            NavigationLink(value: listing) { CampgroundRow(listing: listing) }
-                        }
+                        Button { opened = listing } label: { CampgroundRow(listing: listing) }
+                            .foregroundStyle(.primary)
+                            .accessibilityIdentifier("campgroundResult")
                     }
                 } header: {
                     Text(search.results.count == 1 ? "1 campground" : "\(search.results.count) campgrounds")
@@ -235,7 +228,7 @@ struct CampFinderView: View {
     }
 }
 
-/// Campground details on Duo, presented over Camp Finder with their own stack for Add trip.
+/// Campground details keep their own stack and presentation while the underlying window resizes.
 private struct CampgroundDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     let listing: CampgroundListing

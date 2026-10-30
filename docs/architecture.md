@@ -119,7 +119,7 @@ The index file is disposable: if it can't be opened or reports a newer schema, d
 | --- | --- |
 | [Camp/App/](../Camp/App/) | Entry point, root view, tabs, and `LibraryController`, which opens the container, surfaces save failures, and handles explicit erase. |
 | [Camp/Features/](../Camp/Features/) | Feature views and services for Home, Trips, Checklists, CampFinder, Documents, Memories, Profile (including iCloud settings), Onboarding, Weather, and Assistant. |
-| [Camp/Shared/](../Camp/Shared/) | Connectivity gate, iPhone Duo hinge detection, and small shared views. |
+| [Camp/Shared/](../Camp/Shared/) | Connectivity gate, debug layout markers, and small shared views. |
 | [Sources/](../Sources/) | Swift package modules. |
 | [Tests/](../Tests/) | One test target per package module, plus the app's `RoamReadyUITests` (run by the Xcode scheme, not `swift test`). |
 | [RoamReady.xcodeproj/](../RoamReady.xcodeproj/) | Native app project and shared RoamReady scheme. |
@@ -140,15 +140,15 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 
 There is no raw SQL, custom CloudKit record transport, hosted user-data service, or app account/session backend. See [storage and synchronization](offline-storage.md) for model relationships, schema constraints, conflict behavior, and identity transitions.
 
-### iPhone Duo workspace
+### Adaptive workspace
 
-Each window's root applies `observesDuoWorkspace()` ([DuoWorkspace.swift](../Camp/Shared/DuoWorkspace.swift)). It hosts a `UIHingeInteraction` (iOS 27.1, guarded by availability and excluded from Mac Catalyst) and feeds every update, including the initial one, into `HingeCapability` in `CampCore`. The first non-nil hinge turns the scene's Duo workspace on; it stays on, because a nil report only means the observing view left a hierarchy that provides hinge updates. Screens read the `\.usesDuoWorkspace` environment value. There are no model-name checks or device dimensions; Duo screens adapt with size classes and available space.
+The app uses the window's real size classes, safe areas, and native containers on iPhone, iPad, and Catalyst. There is no hinge capability gate, model-name check, or forced compact size class. Native `TabView`, `NavigationSplitView`, toolbars, forms, and sheets own their platform adaptation. `MainTabs` owns selection and presented sheets; the Assistant conversation also lives there. The Assistant action is a native toolbar button everywhere, gated only by Apple's runtime model eligibility.
 
-`MainTabs` forces a compact horizontal size class everywhere except the Duo workspace, where the scene's own size class passes through. Tab selection, the Add trip and Assistant sheets, and the Assistant conversation stay in `MainTabs`, above the content that resizes. Debug builds force the workspace with `-duo-ui-test`.
+`HomeWorkspace` owns Home's clock and `NavigationSplitView` selection above both columns. `HomeDestination` stores persistent identifiers rather than models. Native navigation collapses at compact width and expands when space allows. The detail shows the valid pick or featured trip (`displayedTrip(selected:asOf:)` in `CampCore`).
 
-Home's root is `HomeWorkspace` ([HomeWorkspace.swift](../Camp/Features/Home/HomeWorkspace.swift)). It owns Home's clock and, on Duo, a `NavigationSplitView` with its selection, a `HomeDestination?` value holding a trip's `PersistentIdentifier` rather than the model. Because this state lives above both columns, it survives the display changing size. `MainTabs` doesn't wrap Home in its stack on Duo. Other iPhones keep Home in that stack with push links. The detail shows the picked trip while it still exists, or else the featured one (`displayedTrip(selected:asOf:)` in `CampCore`). With `-navigation-ui-test`, `-empty-library` keeps the fixture profile and rig but adds no trips.
+Camp Finder separates map and results at regular width. On iOS and Catalyst 27.1 or newer it uses `ArrangementView(.split)`, with navigation outside the arrangement. Earlier supported runtimes use flexible side-by-side panes; compact width embeds the map in the list. Query, camera, search service, and open-place sheet state live above the branch. Onboarding uses a native confirmation action and trip details use system overflow, independent of device identity.
 
-Camp Finder uses `ArrangementView` with the system split style at regular width on Duo, behind an iOS 27.1 availability guard and excluded from Catalyst. It contains the results list and map, with navigation outside the arrangement. At compact width or on iOS 27.0 the map stays inside the results list. Query, search service, camera, and presented place state live above that layout branch. Duo onboarding uses a native confirmation toolbar action rather than its custom bottom panel; trip details use the system toolbar overflow. See [Duo readiness](duo-readiness.md) for source guidance and validation limits.
+`-layout-ui-test` adds media fixtures and accessibility markers in Debug builds; it never changes size classes or selects an alternate UI. The former hinge observer and `HingeCapability` were removed. See [Duo readiness](duo-readiness.md) for the source guidance and acceptance matrix.
 
 The device-local appearance preference is stored through `AppAppearance`/`@AppStorage` and applied at the window root. System follows the OS; Light/Dark overrides also apply to navigation and sheets.
 

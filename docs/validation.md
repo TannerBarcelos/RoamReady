@@ -49,7 +49,7 @@ The Mac workflow runs every package suite with `swift test` on macOS, including 
 | `DocumentSearchTests` | File-backed FTS5 and sqlite-vec lifecycle (publish, lexical and KNN search, reopen, delete), lexical fallback when embeddings are unavailable, revision and dimension changes making old vectors ineligible, scope allow-list applied before ranking, atomic republish and stale-row exclusion, hostile FTS input and document IDs, and schema-version refusal. |
 | `CampPersistenceTests` | Real SwiftData stores: rigs/defaults, encrypted registration, step priority/notes through defaults and new trips, trip checklists, deletes/cascades, note revisions, completion/saved campgrounds, document persistence, reopening from disk, and export. |
 
-On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) workflow builds the single universal app in Debug and Release, and the [Mac](../.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in both configurations. These jobs use GitHub's `xcode-27` image and never boot a simulator. Package tests retain real-store migration, cascade, export, and persistence coverage.
+On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) workflow builds the single universal app in Debug and Release and compiles UI tests for a generic simulator without launching one, and the [Mac](../.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in both configurations. These jobs use GitHub's `xcode-27` image and never boot a simulator. Package tests retain real-store migration, cascade, export, and persistence coverage.
 
 Simulator tests are deferred to the manual [UI tests](../.github/workflows/ui-tests.yml) workflow. In GitHub Actions, select **UI tests (manual)**, choose the branch and a device, and click **Run workflow**. Each choice runs on one exact simulator so the result is evidence for that device: **iPhone** is the iPhone 18 Pro, **iPad** is the iPad Pro 13-inch (M5), and **iPhone Duo** is the iPhone Duo on iOS 27.1 or later (the first runtime that reports a hinge). The run fails if the runner lacks that simulator rather than picking another one. The Duo simulator shows only the cover display, so the open display and folding still need hardware (#142 B14). The full native suite and its accessibility audits remain available (the only waiver is the scrolled Dynamic Type false positive from #93); no UI tests run automatically on PRs or main pushes. They cover navigation, onboarding/disk persistence, appearance, and simulated Assistant states, but do not establish real Foundation Models generation or physical-device behavior. Green build/package CI does not certify those audits; run the manual workflow for release validation.
 
@@ -84,7 +84,7 @@ These visual checks are not covered by the package tests.
 
 ## Regular-iPhone layout baselines (Duo)
 
-The iPhone Duo work (#82–#91) changes layouts only on Duo. Regular iPhones must keep their current layouts, navigation, tab behavior, and Assistant placement. The screenshots in [validation/duo-baselines](validation/duo-baselines/) record the regular-iPhone layouts from `main` at 7c99419, before any Duo change. Compare each Duo slice against them.
+The original iPhone Duo work (#82–#91) preserved other devices' layouts. The October 30 follow-up intentionally replaces the device-gated workspace with system adaptation everywhere: regular-width Home and Camp Finder expand on iPad/Catalyst, and Assistant/onboarding/overflow use native bars on all devices. Recapture baselines for those approved changes; the earlier images remain historical evidence. The screenshots in [validation/duo-baselines](validation/duo-baselines/) record the regular-iPhone layouts from `main` at 7c99419, before any Duo change. Compare each Duo slice against them.
 
 | | Small iPhone | Large iPhone |
 | --- | --- | --- |
@@ -150,7 +150,7 @@ xcrun simctl delete "$SMALL" "$LARGE"
 
 Each run takes several minutes per device and text size. The simulator must stay booted for the whole run: if `simctl ui` reports the device is shut down, the text size was not applied and that run must be repeated. XCTest stores landscape screenshots in portrait pixels with an orientation tag. Before committing, scale them with ImageIO using `kCGImageSourceCreateThumbnailWithTransform` (and `kCGImageSourceThumbnailMaxPixelSize` 900), which stores them upright; plain `sips -Z` keeps the tag.
 
-To check a Duo slice, run the same capture on its branch and compare the images file by file. Regular iPhones should differ only in dates, the clock, and map tiles.
+To check a Duo slice, run the same capture on its branch and compare the images file by file. For the October 30 adaptive follow-up, native toolbar placement and regular-width navigation are intentional differences; inspect and record them when refreshing baselines.
 
 ## Apple capability configuration
 

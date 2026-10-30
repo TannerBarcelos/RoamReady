@@ -8,7 +8,6 @@ struct TripDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
     let trip: Trip
     @State private var showDelete = false
     @State private var showEdit = false
@@ -57,15 +56,7 @@ struct TripDetailView: View {
             }
         }
         .navigationTitle(trip.campgroundName)
-        .toolbar {
-            if usesDuoWorkspace {
-                ToolbarOverflowMenu { tripActions }
-            } else {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu { tripActions } label: { Label("Trip options", systemImage: "ellipsis.circle") }
-                }
-            }
-        }
+        .toolbar { ToolbarOverflowMenu { tripActions } }
         .sheet(isPresented: $showEdit) { EditTripView(trip: trip) }
         .sheet(isPresented: $showAssistant) { TripAssistantSheet(trip: trip, step: nil) }
         .alert("Delete “\(trip.campgroundName)”, \(trip.dateSummary)?", isPresented: $showDelete) {
