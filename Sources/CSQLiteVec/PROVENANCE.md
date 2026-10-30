@@ -14,3 +14,7 @@
 
 To upgrade, replace both source files from a newer release tarball, update this note, and rerun `swift test`.
 Do not edit the vendored files; the build wrapper is `csqlitevec.c`.
+The wrapper includes `sqlite-vec.c`, which is excluded from standalone compilation in `Package.swift`.
+Clang's `-Wshorten-64-to-32` diagnostic is suppressed only around that include to accommodate
+upstream's integer conversions under Xcode's stricter warning settings. Other diagnostics and
+conversion warnings in the wrapper remain enabled. This does not change upstream's conversion behavior.

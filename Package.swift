@@ -25,7 +25,8 @@ let package = Package(
         /// The vendored sqlite-vec amalgamation (see PROVENANCE.md), built against the system SQLite.
         .target(
             name: "CSQLiteVec",
-            exclude: ["PROVENANCE.md", "LICENSE-MIT", "LICENSE-APACHE", "sqlite-vec.h"],
+            // The wrapper includes the amalgamation so vendor diagnostics can be scoped to it.
+            exclude: ["PROVENANCE.md", "LICENSE-MIT", "LICENSE-APACHE", "sqlite-vec.h", "sqlite-vec.c"],
             cSettings: [.define("SQLITE_CORE"), .define("SQLITE_VEC_STATIC")],
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
