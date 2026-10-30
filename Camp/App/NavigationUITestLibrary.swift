@@ -41,6 +41,12 @@ enum NavigationUITestLibrary {
             try StoredDocument.add(DocumentMetadata(title: "Campground map", category: .reservation),
                                    contents: DocumentPayload(bytes: jpeg, filename: "campground-map.jpg"),
                                    trip: current, in: context)
+            if ProcessInfo.processInfo.arguments.contains("-document-layout-fixture") {
+                try StoredDocument.add(DocumentMetadata(title: "Annual water heater inspection and service record", category: .maintenance,
+                                                        expiresOn: calendar.date(byAdding: .year, value: 1, to: today)),
+                                       contents: DocumentPayload(bytes: jpeg, filename: "service-record.jpg"),
+                                       trip: current, in: context)
+            }
         }
         try context.save()
         return container

@@ -79,8 +79,10 @@ final class DuoHomeUITests: XCTestCase {
         showHome(app)
         app.buttons["tripRow-Current Pines"].tap()
         XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5))
-        app.buttons["Trip options"].firstMatch.tap()
-        app.buttons["Cancel & delete trip"].firstMatch.tap()
+        let delete = app.buttons["deleteTrip"]
+        for _ in 0..<12 where !delete.isHittable { app.swipeUp() }
+        XCTAssertTrue(delete.isHittable)
+        delete.tap()
         app.alerts.buttons["Delete Trip"].tap()
 
         XCTAssertTrue(app.staticTexts["Hello, Riley"].waitForExistence(timeout: 5))

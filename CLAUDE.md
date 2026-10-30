@@ -4,7 +4,7 @@ A native SwiftUI app for iPhone, iPad, and Mac (Catalyst) for planning camping t
 
 ## Commands
 
-Run everything from the repository root. You need Xcode 27.1 or later with the iOS 27.1 SDK; the hinge detection behind the iPhone Duo workspace uses `UIHingeInteraction`, which first appears in 27.1. The working simulator is **iPhone 18 Pro (iOS 27.0)**. For Duo work, use the **iPhone Duo** simulator on the iOS 27.1 runtime: on 27.0 the hinge is never reported.
+Run everything from the repository root. You need Xcode 27.1 or newer with the iOS 27.1 SDK or newer for full-display iPhone Duo support. The deployment target remains iOS 27.0. The regular-iPhone baseline simulator is **iPhone 18 Pro (iOS 27.0)**; Duo validation needs an **iPhone Duo (iOS 27.1 or newer)** simulator in Device Hub.
 
 ```bash
 # Package tests: CampCore, Campgrounds, DocumentVault, CampPersistence (SwiftData on macOS)

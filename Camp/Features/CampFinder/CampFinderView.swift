@@ -9,7 +9,7 @@ import CampPersistence
 /// and RV park places, so they appear as you pan; tap one, or search, to see its details.
 /// Online only in v1. Nothing here is user data; saving and trips go through SwiftData.
 ///
-/// On Duo's open display the results sit beside a map that fills the rest of the content area;
+/// On Duo's open display a system arrangement lays out the results and map around the fold;
 /// everywhere else the map stays at the top of the list. The search, camera, and selection live
 /// here, above that switch, so moving between the layouts keeps them and doesn't search again.
 struct CampFinderView: View {
@@ -39,7 +39,7 @@ struct CampFinderView: View {
             }
     }
 
-    /// Only Duo's open display puts the map beside the results. Other iPhones, iPad, and Mac
+    /// Only Duo's open display separates the map from the results. Other iPhones, iPad, and Mac
     /// receive a compact size class from `MainTabs`, so they keep the stacked layout.
     private var showsMapBesideResults: Bool { usesDuoWorkspace && horizontalSizeClass == .regular }
 
@@ -51,16 +51,7 @@ struct CampFinderView: View {
         // The stack stays put while its contents switch, so the modifiers below (the search field,
         // the first search, and cancel on leaving) don't run again when the layout changes.
         ZStack {
-            if showsMapBesideResults {
-                HStack(spacing: 0) {
-                    results(includesMap: false)
-                        .frame(minWidth: 280, idealWidth: 360, maxWidth: 400)
-                    Divider().ignoresSafeArea(edges: .bottom)
-                    map.frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            } else {
-                results(includesMap: true)
-            }
+            adaptiveResults
         }
         .navigationDestination(for: CampgroundListing.self) { CampgroundDetailView(listing: $0) }
         .navigationDestination(item: opensDetailsInSheet ? .constant(nil) : $opened) { CampgroundDetailView(listing: $0) }
@@ -93,16 +84,39 @@ struct CampFinderView: View {
         .onDisappear { search.cancel() }
     }
 
+    @ViewBuilder private var adaptiveResults: some View {
+        #if !targetEnvironment(macCatalyst)
+        if #available(iOS 27.1, *), showsMapBesideResults {
+            // Unlike an HStack with fixed pane widths, the system arrangement accounts for
+            // division regions and can stack both panes in a tall window. Keep it outside List.
+            ArrangementView {
+                results(includesMap: false)
+            } secondary: {
+                map
+            }
+            .arrangementViewStyle(.split)
+        } else {
+            results(includesMap: true)
+        }
+        #else
+        results(includesMap: true)
+        #endif
+    }
+
     private func results(includesMap: Bool) -> some View {
         List {
             Section {
                 if includesMap { listMap }
-                HStack {
-                    Button { searchNearMe() } label: { Label("Near me", systemImage: "location.fill") }
-                        .buttonStyle(.bordered).disabled(locating)
-                    Spacer()
-                    Button { searchVisibleArea() } label: { Label("Search this area", systemImage: "arrow.clockwise") }
-                        .buttonStyle(.bordered).disabled(visibleRegion == nil)
+                ViewThatFits(in: .horizontal) {
+                    HStack {
+                        nearMeButton
+                        Spacer()
+                        searchAreaButton
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        nearMeButton
+                        searchAreaButton
+                    }
                 }
                 if location.isDenied {
                     Text("Location access is off. Search by city, park, or ZIP code, or allow location in Settings.")
@@ -132,6 +146,16 @@ struct CampFinderView: View {
             }
         }
         .accessibilityIdentifier("campFinderResults")
+    }
+
+    private var nearMeButton: some View {
+        Button { searchNearMe() } label: { Label("Near me", systemImage: "location.fill") }
+            .buttonStyle(.bordered).disabled(locating)
+    }
+
+    private var searchAreaButton: some View {
+        Button { searchVisibleArea() } label: { Label("Search this area", systemImage: "arrow.clockwise") }
+            .buttonStyle(.bordered).disabled(visibleRegion == nil)
     }
 
     private var map: some View {

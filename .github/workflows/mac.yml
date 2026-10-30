@@ -27,7 +27,7 @@ jobs:
 
       - name: Show toolchain
         run: |
-          xcodebuild -version
+          bash scripts/check-apple-sdk.sh
           swift --version
 
       - name: Build packages and tests

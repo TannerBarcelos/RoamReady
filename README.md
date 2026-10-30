@@ -21,11 +21,11 @@ Its core workflows work offline, with no account required. Camp Finder helps you
 
 ## Getting started
 
-1. Open `RoamReady.xcodeproj` on a Mac with Xcode 27.1 or later and the iOS 27.1 SDK.
+1. Open `RoamReady.xcodeproj` on a Mac with Xcode 27.1 or newer and the iOS 27.1 SDK or newer.
 2. Select the **RoamReady** scheme and an iOS 27 simulator, or **My Mac (Mac Catalyst)**.
 3. Build and run.
 
-RoamReady is a development build targeting iOS 27.0 on iPhone and iPad, and macOS 27 through Mac Catalyst. Live weather and iCloud sync require Apple capability configuration; physical-device acceptance remains outstanding. See [build and validation](docs/validation.md) for setup and checks.
+RoamReady is a development build targeting iOS 27.0 on iPhone and iPad, and macOS 27 through Mac Catalyst. Live weather and iCloud sync require Apple capability configuration; physical-device acceptance remains outstanding. See [build and validation](docs/validation.md) for setup and checks, and [iPhone Duo readiness](docs/duo-readiness.md) for the Apple guidance audit and remaining device checks.
 
 ## Documentation
 

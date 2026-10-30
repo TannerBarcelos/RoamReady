@@ -4,13 +4,13 @@
 
 ## Requirements
 
-Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27.1 or later with the iOS 27.1 SDK, which has `UIHingeInteraction` for the iPhone Duo workspace.
+Run commands from the repository root (the folder containing `Package.swift` and `RoamReady.xcodeproj`). Package tests require Swift 6 or newer. Native builds require macOS and Xcode 27.1 or newer with the iOS 27.1 SDK or newer. The deployment target remains iOS 27.0; the newer build SDK enables full-display Duo bars and layout.
 
 The native app uses the local Swift package and Apple frameworks only. There are no external package dependencies. The one deliberate third-party code is the vendored C source of sqlite-vec v0.1.9 (`Sources/CSQLiteVec`, MIT/Apache-2.0, with a provenance note); see [architecture](architecture.md).
 
 ## Open the native project
 
-Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27 SDK**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external package dependencies.
+Open `RoamReady.xcodeproj` in an Xcode release containing the **iOS 27.1 SDK or newer**. Select the shared **RoamReady** scheme and an iOS 27 simulator, then Run. The app targets iPhone, iPad, and Mac (Mac Catalyst; choose **My Mac (Mac Catalyst)** to run it), portrait and landscape, with System/Light/Dark appearance settings. The local `CampCore` Swift package resolves from this repository with no external package dependencies.
 
 The checked-in project is an actual Xcode project, using filesystem-synchronized source groups supported by Xcode 16 and later. New Swift files beneath `Camp/` join the target automatically. `Info.plist` and `Camp.entitlements` are explicitly excluded from resource copying.
 
@@ -26,7 +26,7 @@ Run the package tests from the repository root with Swift 6 or newer:
 swift test
 ```
 
-On a Mac with the iOS 27 SDK, lint the project configuration and build for Simulator:
+On a Mac with the iOS 27.1 SDK or newer, lint the project configuration and build for Simulator:
 
 ```sh
 plutil -lint RoamReady.xcodeproj/project.pbxproj Camp/Info.plist Camp/Camp.entitlements Camp/PrivacyInfo.xcprivacy Config/Cloud.entitlements
@@ -221,6 +221,10 @@ Nothing below has been executed on a signed build or physical hardware. Passing 
 | Source states and eval guide | Cited-versus-searched source presentation, changed/unavailable states and the PDF page viewer on iPhone, iPad, and Catalyst (#105); `docs/assistant-evals.md` and the owner walkthrough (#109). Both issues are still open. Tracker: #105, #109. | not run | not run | not run | not run | none yet |
 
 Code-level evidence already recorded elsewhere (for example the v1 audit's CI runs and the Duo resize audit) is simulator or CI evidence only and is not copied into these rows.
+
+## Duo readiness follow-up
+
+See [iPhone Duo readiness](duo-readiness.md) for the October 30 Apple guidance audit, new fixes and regression tests, and remaining Device Hub/hardware gates. The manual UI workflow now offers iPhone Duo explicitly and requires a 27.1 SDK; it does not drive Device Hub poses or establish an open-display pass. The audit below records earlier evidence and is not a test result for the follow-up changes.
 
 ## Duo resize audit
 

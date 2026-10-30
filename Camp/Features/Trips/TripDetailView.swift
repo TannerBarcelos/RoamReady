@@ -8,6 +8,7 @@ struct TripDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.usesDuoWorkspace) private var usesDuoWorkspace
     let trip: Trip
     @State private var showDelete = false
     @State private var showEdit = false
@@ -50,17 +51,19 @@ struct TripDetailView: View {
                     Button("Mark trip complete", systemImage: "checkmark.seal") { trip.setCompleted(true); library.save() }
                 }
                 Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
+                    .accessibilityIdentifier("deleteTrip")
             } footer: {
                 Text("Trips complete on their own the day after departure. Completed trips add their campground to Have been.")
             }
         }
         .navigationTitle(trip.campgroundName)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Edit trip", systemImage: "pencil") { showEdit = true }
-                    Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
-                } label: { Label("Trip options", systemImage: "ellipsis.circle") }
+            if usesDuoWorkspace {
+                ToolbarOverflowMenu { tripActions }
+            } else {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu { tripActions } label: { Label("Trip options", systemImage: "ellipsis.circle") }
+                }
             }
         }
         .sheet(isPresented: $showEdit) { EditTripView(trip: trip) }
@@ -74,6 +77,13 @@ struct TripDetailView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text(TripDeletion.message(hasDocuments: !trip.attachedDocuments.isEmpty))
+        }
+    }
+
+    private var tripActions: some View {
+        Group {
+            Button("Edit trip", systemImage: "pencil") { showEdit = true }
+            Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
         }
     }
 }

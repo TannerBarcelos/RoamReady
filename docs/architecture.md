@@ -148,6 +148,8 @@ Each window's root applies `observesDuoWorkspace()` ([DuoWorkspace.swift](../Cam
 
 Home's root is `HomeWorkspace` ([HomeWorkspace.swift](../Camp/Features/Home/HomeWorkspace.swift)). It owns Home's clock and, on Duo, a `NavigationSplitView` with its selection, a `HomeDestination?` value holding a trip's `PersistentIdentifier` rather than the model. Because this state lives above both columns, it survives the display changing size. `MainTabs` doesn't wrap Home in its stack on Duo. Other iPhones keep Home in that stack with push links. The detail shows the picked trip while it still exists, or else the featured one (`displayedTrip(selected:asOf:)` in `CampCore`). With `-navigation-ui-test`, `-empty-library` keeps the fixture profile and rig but adds no trips.
 
+Camp Finder uses `ArrangementView` with the system split style at regular width on Duo, behind an iOS 27.1 availability guard and excluded from Catalyst. It contains the results list and map, with navigation outside the arrangement. At compact width or on iOS 27.0 the map stays inside the results list. Query, search service, camera, and presented place state live above that layout branch. Duo onboarding uses a native confirmation toolbar action rather than its custom bottom panel; trip details use the system toolbar overflow. See [Duo readiness](duo-readiness.md) for source guidance and validation limits.
+
 The device-local appearance preference is stored through `AppAppearance`/`@AppStorage` and applied at the window root. System follows the OS; Light/Dark overrides also apply to navigation and sheets.
 
 ## Domain rules

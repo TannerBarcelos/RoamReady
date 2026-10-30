@@ -76,4 +76,24 @@ final class DuoWorkspaceUITests: XCTestCase {
         XCTAssertTrue(app.buttons["closeAssistant"].exists, "The Assistant stays open through a resize")
         XCTAssertFalse(app.staticTexts["Couldn’t get a response"].exists)
     }
+
+    func testNewTripDraftSurvivesRotationAndReturnsToItsTab() {
+        let app = launch()
+        app.navigationTab("Profile").tap()
+        app.navigationTab("Trip").tap()
+        let name = app.textFields["tripCampgroundName"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Draft beside the lake")
+
+        for orientation in [UIDeviceOrientation.landscapeLeft, .portrait] {
+            XCUIDevice.shared.orientation = orientation
+            XCTAssertTrue(app.navigationBars["Add trip"].waitForExistence(timeout: 5))
+            XCTAssertEqual(name.value as? String, "Draft beside the lake", "Resizing must keep the unsaved draft")
+        }
+
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationTab("Profile").isSelected)
+    }
 }
