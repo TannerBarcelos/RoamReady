@@ -1,6 +1,7 @@
 import Foundation
 import NaturalLanguage
 import AssistantEval
+import CampCore
 import DocumentSearch
 #if canImport(FoundationModels)
 import FoundationModels
@@ -8,6 +9,10 @@ import FoundationModels
 
 // Manual retrieval eval: swift run assistant-eval [--mode apple|lexical|fake] [--subset dev|heldout|all] [--out DIR] [--corpus FILE]
 // Exit status: 0 every required case passed, 1 a required case failed, 2 not run (Apple's embedding is unavailable), 64 bad usage.
+//
+// Generated-answer review: swift run assistant-eval --mode generation [--samples N] [--scenarios id,id] [--out DIR] [--corpus FILE]
+// Needs Apple's on-device language model. Writes review sheets with empty rubrics and scores nothing.
+// Exit status: 0 sheets written, 2 not run (the model is unavailable), 64 bad usage.
 
 /// Apple's English sentence embeddings, as the app reads them. Revision and dimension come from the model.
 struct AppleEmbeddings: EmbeddingProvider {
@@ -45,6 +50,67 @@ func generationNote() -> String {
     return note
 }
 
+#if canImport(FoundationModels)
+/// The app's generator, as `AppleCampingResponseGenerator` builds it: a fresh session per call, no sampling overrides.
+@available(macOS 27.0, *)
+@MainActor
+struct AppleGenerator: CampingResponseGenerating {
+    func respond(to prompt: String, instructions: String) async throws -> String {
+        let model = SystemLanguageModel.default
+        guard case .available = model.availability else { throw CampingChatFailure.notReady }
+        guard model.supportsLocale() else { throw CampingChatFailure.unsupportedLanguage }
+        let session = LanguageModelSession(model: model, instructions: instructions)
+        do {
+            return try await session.respond(to: prompt, options: GenerationOptions(maximumResponseTokens: PromptBudget.outputTokens)).content
+        } catch let error as LanguageModelError {
+            switch error {
+            case .contextSizeExceeded: throw CampingChatFailure.contextTooLong
+            case .unsupportedLanguageOrLocale: throw CampingChatFailure.unsupportedLanguage
+            case .guardrailViolation, .refusal: throw CampingChatFailure.refused
+            case .rateLimited: throw CampingChatFailure.busy
+            default: throw CampingChatFailure.failed
+            }
+        }
+    }
+}
+
+@available(macOS 27.0, *)
+struct AppleTokenCounter: PromptTokenCounting {
+    var contextSize: Int? { SystemLanguageModel.default.contextSize }
+    func tokenCount(of text: String) async throws -> Int { try await SystemLanguageModel.default.tokenCount(for: text) }
+}
+#endif
+
+@MainActor
+func appleBackend() -> GenerationBackend {
+    let unavailable = { (reason: String) in
+        GenerationBackend(availability: .unavailable(reason: reason), label: "Apple on-device language model (SystemLanguageModel.default)",
+                          generator: UnavailableGenerator())
+    }
+    #if canImport(FoundationModels)
+    if #available(macOS 27.0, *) {
+        let model = SystemLanguageModel.default
+        switch model.availability {
+        case .available:
+            guard model.supportsLocale() else { return unavailable("The Apple language model does not support this Mac's locale.") }
+            return GenerationBackend(
+                availability: .available(details: ["contextSize": String(model.contextSize), "locale supported": "yes"]),
+                label: "Apple on-device language model (SystemLanguageModel.default, general-purpose)",
+                generator: AppleGenerator(), counter: AppleTokenCounter(), counterLabel: "SystemLanguageModel.tokenCount")
+        case .unavailable(let reason):
+            return unavailable("The Apple language model is unavailable (\(reason)).")
+        }
+    }
+    return unavailable("This macOS has no Apple language model.")
+    #else
+    return unavailable("The Apple language model framework is not present in this SDK.")
+    #endif
+}
+
+struct UnavailableGenerator: CampingResponseGenerating {
+    func respond(to prompt: String, instructions: String) async throws -> String { throw CampingChatFailure.notReady }
+}
+
 func gitCommit() -> String? {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/git")
@@ -59,11 +125,11 @@ func gitCommit() -> String? {
 }
 
 func usage(_ message: String) -> Never {
-    FileHandle.standardError.write(Data("\(message)\nusage: assistant-eval [--mode apple|lexical|fake] [--subset dev|heldout|all] [--out DIR] [--corpus FILE]\n".utf8))
+    FileHandle.standardError.write(Data("\(message)\nusage: assistant-eval [--mode apple|lexical|fake|generation] [--subset dev|heldout|all] [--out DIR] [--corpus FILE] [--samples N] [--scenarios id,id]\n".utf8))
     exit(64)
 }
 
-var mode = "apple", subset = "all", output = "EvalReports", corpusPath: String?
+var mode = "apple", subset = "all", output = "EvalReports", corpusPath: String?, samples = 3, scenarioList: String?
 var arguments = CommandLine.arguments.dropFirst()
 while let flag = arguments.popFirst() {
     guard let value = arguments.popFirst() else { usage("\(flag) needs a value") }
@@ -72,6 +138,10 @@ while let flag = arguments.popFirst() {
     case "--subset": subset = value
     case "--out": output = value
     case "--corpus": corpusPath = value
+    case "--samples":
+        guard let count = Int(value), (1...50).contains(count) else { usage("--samples needs a number from 1 to 50") }
+        samples = count
+    case "--scenarios": scenarioList = value
     default: usage("unknown option \(flag)")
     }
 }
@@ -90,8 +160,41 @@ let retrieval: EvalRetrieval
 switch mode {
 case "apple": retrieval = .embedding(AppleEmbeddings(), label: "Apple NLEmbedding sentence (English)")
 case "fake": retrieval = .embedding(DeterministicEmbeddingProvider(), label: "deterministic fake embeddings")
-case "lexical": retrieval = .lexicalOnly
+case "lexical", "generation": retrieval = mode == "lexical" ? .lexicalOnly : .embedding(AppleEmbeddings(), label: "Apple NLEmbedding sentence (English)")
 default: usage("unknown mode \(mode)")
+}
+
+if mode == "generation" {
+    do {
+        let corpus = try corpusPath.map { try EvalCorpus.load(from: URL(fileURLWithPath: $0)) } ?? EvalCorpus.bundled()
+        var generation = GenerationEvalOptions()
+        generation.commit = options.commit
+        generation.samples = samples
+        generation.scenarioIDs = scenarioList.map { Set($0.split(separator: ",").map(String.init)) }
+        let review = try await GenerationEvalRunner.run(corpus: corpus, retrieval: retrieval, backend: appleBackend(), options: generation)
+        let directory = URL(fileURLWithPath: output, isDirectory: true)
+        let sheets = directory.appendingPathComponent("generation", isDirectory: true)
+        try FileManager.default.createDirectory(at: sheets, withIntermediateDirectories: true)
+        try review.json().write(to: directory.appendingPathComponent("generation-review.json"))
+        try review.markdown().write(to: directory.appendingPathComponent("generation-review.md"), atomically: true, encoding: .utf8)
+        for scenario in review.scenarios {
+            var single = review; single.scenarios = [scenario]
+            try single.json().write(to: sheets.appendingPathComponent("\(scenario.id).json"))
+            try scenario.markdown(in: review).write(to: sheets.appendingPathComponent("\(scenario.id).md"), atomically: true, encoding: .utf8)
+        }
+        if review.status == GenerationReview.notRun {
+            print("NOT RUN: \(review.notRunReason ?? "unavailable")")
+            print("Reports: \(directory.path)/generation-review.{json,md}")
+            exit(2)
+        }
+        let answers = review.scenarios.flatMap { $0.turns.flatMap(\.answers) }
+        print("Generated \(answers.count) answers (\(answers.filter { $0.status == "failed" }.count) failed) across \(review.scenarios.count) scenarios, \(samples) sample(s) each. Nothing is scored.")
+        print("Sheets: \(sheets.path)/<scenario>.{json,md}; index: \(directory.path)/generation-review.{json,md}")
+        exit(0)
+    } catch {
+        FileHandle.standardError.write(Data("assistant-eval failed: \(error)\n".utf8))
+        exit(1)
+    }
 }
 
 do {
