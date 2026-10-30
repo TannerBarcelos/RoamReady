@@ -30,7 +30,8 @@ final class DocumentAssistantIndex {
     /// Starts a session over this library. The index opens in a protected, backup-excluded folder and is
     /// reconciled with the documents; a file that is damaged is rebuilt from them.
     func open(context: ModelContext) {
-        guard coordinator == nil else { return }
+        // Devices that can't run Apple's on-device model never show the Assistant, so nothing reads documents for it.
+        guard coordinator == nil, CampingAssistant.showsChat else { return }
         let coordinator = DocumentIndexCoordinator(directory: directory, source: LibraryDocumentSource(context: context),
                                                    embedding: provider, extractionVersion: DocumentTextExtractor.version)
         self.coordinator = coordinator

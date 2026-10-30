@@ -65,6 +65,7 @@ struct HomeView: View {
                         Label("\(phase.title) checklist", systemImage: "checklist")
                         Spacer(); Text("\(steps.filter(\.isFinished).count) / \(steps.count)").foregroundStyle(.secondary)
                     }
+                    .accessibilityIdentifier("homeChecklist-\(phase.rawValue)")
                 }
                 NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
             }

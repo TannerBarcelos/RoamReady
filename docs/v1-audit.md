@@ -99,3 +99,30 @@ Main advanced again to `7b76968` (#80) during verification; merge it on the same
 ## iPad rig Dynamic Type finding (#93), investigation
 
 Reproduced on iPad Pro 13-inch (M5), iOS 27.0, with the new `NavigationUITests.testProfileRigSectionPassesDynamicTypeAuditAtLargestSize` (fixture library, `AccessibilityXXXL`; run with `-only-testing`, manual only). The top of Profile passes. Once the list is scrolled, the audit reports three "Dynamic Type font sizes are partially unsupported" findings on SwiftUI accessibility nodes. XCTest resolves one: the `StaticText` labelled "Replace rig" inside the `replaceRig` button (the `WrappingLabel` in `RigsSection`). The other two cannot be resolved. With the rig footer removed, the footer "You can have one active rig at a time." resolved instead. Hiding the tab bar and removing the `replaceRig`, `tripHistoryLink` and `savedCampgroundsLink` identifiers did not change the result. Removing `.accessibilityElement(children: .combine)` from `WrappingLabel` passed one two-position run, but failed in two later runs, so it is not a confirmed fix and was not kept. The machine was heavily loaded (load average above 500), so results were not reliable. Still open; nothing is waived.
+
+### Second round, October 30, 2026
+
+Same test on the iOS 27.0 iPad Pro 13-inch (M5) simulator. Both iPad Pro 13-inch simulators on the machine have that name, and the other runs iOS 26.2, which can't install the app (deployment target 27.0), so pick the simulator by its ID. Runs used `test-without-building -collect-test-diagnostics never`, which takes about 1 to 2 minutes. Collecting diagnostics after each failure added up to 10 minutes. Each change below was a temporary edit, run once, then reverted. Nothing was committed.
+
+| Change | Result |
+| --- | --- |
+| None (baseline, also reproduced by the owner) | 3 findings; only "Replace rig" resolves |
+| `WrappingLabel` replaced by a plain `Label` | Dynamic Type finding stays on "Replace rig", plus 10 "Text clipped" findings (why `WrappingLabel` exists) |
+| "Replace rig" symbol changed to `pencil` | 3 findings |
+| "Replace rig" row removed | Findings stay, none resolvable |
+| Both rig section footers removed | 3 findings |
+| `.textSelection(.enabled)` removed from plate and VIN | 3 findings |
+| `RigImage` thumbnail replaced by a plain color | 3 findings |
+| Rig summary stacked vertically at accessibility sizes | 3 findings |
+| Rig summary combined into one accessibility element | 3 findings |
+| Rig summary keeps only the rig name | 1 finding |
+| Rig summary row removed | 0 findings |
+| "Your camping" section removed (whole rig section fits, no scrolling) | 0 findings, including rig name, captions and "Replace rig" |
+| Scroll with short, slow drags instead of `swipeUp()` | 3 findings |
+| Large bottom content margin added | 10 findings (the scroll stopped somewhere else, so the run isn't comparable) |
+
+What this shows: no control in the rig section is the cause. When the section is on screen without scrolling, every element passes. The number of findings changed with how much content sat above the rig section, not with what was in it. "Replace rig" is only the one finding XCTest can resolve. The rig summary texts and the "Your camping" rows were on screen in full, so being cut off at the screen edge doesn't explain it either.
+
+Working hypothesis, not confirmed: the audit changes the text size while the list is scrolled near its end. The content gets shorter, the scroll position is pulled back, and the audit can no longer match some nodes. If that holds, the fix belongs in how the test reaches the rig section (for example, auditing it where it doesn't need scrolling), and that is the owner's call under the no-waiver rule. The machine was loaded the whole time (load average 130 to 550), runs took 1 to 5 minutes, one audit timed out, and the scroll position varied between runs. So none of this counts as a clean pass or fail.
+
+Next step: on a quiet machine, rerun the baseline and the "Your camping removed" case two or three times each, then test the hypothesis directly. One way is to audit with the list scrolled only partway, so text changes can't pull the scroll position back. Still open; nothing is waived.
