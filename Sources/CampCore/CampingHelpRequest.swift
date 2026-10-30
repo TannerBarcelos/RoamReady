@@ -21,7 +21,12 @@ public struct CampingHelpRequest: Sendable {
     /// Earlier turns the chat folded away, carried in the instructions. Set by `CampingChat`, never by callers.
     var conversationSummary: String?
     /// Whether an answer to this question rests on the saved trip, so the reply can list it as a source.
-    public var usesSavedTrip: Bool { tripFacts != nil && askedAboutBooking }
+    public var usesSavedTrip: Bool { tripFacts != nil && (askedAboutBooking || Self.asksAboutTrip(question)) }
+
+    private static func asksAboutTrip(_ question: String) -> Bool {
+        let words = Set(question.lowercased().split { !$0.isLetter }.map(String.init))
+        return !words.isDisjoint(with: ["trip", "trips", "campground", "planning", "upcoming"])
+    }
 
     /// Every question goes to the model; saved checklist notes are context, never a substitute answer.
     public var instructions: String {
@@ -43,6 +48,9 @@ public struct CampingHelpRequest: Sendable {
             \(rigContext.reference)
             END SAVED RIG PROFILE
             """
+        }
+        if tripFacts != nil {
+            full += "\nSaved trip facts are available from the app database independently of attachments. Use them to answer questions about the selected current or upcoming trip, including its campground and dates. Do not require a document to confirm these saved values."
         }
         if let documents, !documents.isEmpty {
             full += documents.instructions

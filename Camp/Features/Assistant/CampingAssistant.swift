@@ -151,6 +151,7 @@ enum CampingAssistant {
         let fails: Bool
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
+        var answersSavedTrip = false
         /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
         var delaysFirstCall = false
         /// Fails the first question only, so Retry can succeed.
@@ -163,6 +164,13 @@ enum CampingAssistant {
             if delaysFirstCall && isFirst { try await Task.sleep(for: .seconds(3)) }
             if delay > .zero { try await Task.sleep(for: delay) }
             if fails || (failsFirstCall && isFirst) { throw CampingChatFailure.failed }
+            if answersSavedTrip {
+                guard prompt.contains(TripBookingFacts.beginMarker),
+                      let campground = prompt.components(separatedBy: "\n").first(where: { $0.hasPrefix("Campground: ") }) else {
+                    return "Missing saved trip context."
+                }
+                return "Your saved trip is \(campground.dropFirst("Campground: ".count))."
+            }
             if citesDocuments {
                 return prompt.contains("\n[S1] ")
                     ? "Per your manual, error code E4 means the water heater igniter failed to light. Turn the unit off and wait five minutes before retrying. [S1]"
@@ -183,6 +191,7 @@ enum CampingAssistant {
         case "reply": return UITestGenerator(fails: false)
         case "slow-reply": return UITestGenerator(fails: false, delay: .seconds(4))
         case "failure": return UITestGenerator(fails: true)
+        case "saved-trip": return UITestGenerator(fails: false, answersSavedTrip: true)
         case "document": return UITestGenerator(fails: false, citesDocuments: true)
         case "slow": return UITestGenerator(fails: false, delaysFirstCall: true)
         case "failure-once": return UITestGenerator(fails: false, failsFirstCall: true)

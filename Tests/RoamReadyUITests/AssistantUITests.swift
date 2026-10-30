@@ -10,6 +10,23 @@ final class AssistantUITests: XCTestCase {
         return app
     }
 
+    func testGlobalChatReceivesSavedCurrentTripWithoutAttachmentStatus() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready",
+                               "-assistant-generation-test", "saved-trip"]
+        app.launch()
+        openAssistant(app)
+        ask(app, "What trip am I currently planning?")
+        let reply = app.staticTexts["assistantGeneratedReply"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 15))
+        XCTAssertTrue(reply.label.contains("Current Pines"))
+        XCTAssertTrue(app.descendants(matching: .any)["assistantSavedTripSource"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["assistantIncompleteNote"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["assistantReadiness"].exists)
+        XCTAssertFalse(app.buttons["assistantSearchedReferences"].exists)
+        XCTAssertFalse(app.buttons["assistantSourceRow"].exists)
+    }
+
     func testUnsupportedDeviceHasNoAssistantButton() {
         let app = launch("unsupported")
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))

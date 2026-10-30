@@ -40,6 +40,7 @@ struct AssistantView: View {
     @Environment(LibraryController.self) private var library
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
+    @Query(sort: \Trip.arrival) private var trips: [Trip]
     let trip: Trip?
     let step: ChecklistStep?
     let isPresentedAsSheet: Bool
@@ -57,9 +58,12 @@ struct AssistantView: View {
         self.isPresentedAsSheet = isPresentedAsSheet
     }
 
-    /// General chat reads the active rig; trip and checklist help read that trip and its rig.
+    /// Global chat follows Home's current-or-next trip. Explicit trip help keeps its selected trip.
+    private var contextTrip: Trip? { trip ?? trips.featuredTrip() }
+
+    /// Saved facts and document scope always refer to the same trip and rig.
     private var currentTarget: AssistantScopeTarget {
-        if let trip { return .trip(trip) }
+        if let trip = contextTrip { return .trip(trip) }
         return .general(rig: rigs.active.first)
     }
 
@@ -340,11 +344,12 @@ struct AssistantView: View {
     private func submit(_ submitted: String, retrying retried: CampingExchange? = nil) {
         // Everything this request reads is captured now. A scope change cancels it (see onChange above).
         let target = currentTarget
-        let rig = trip == nil ? rigs.active.first : trip?.rig
+        let selectedTrip = contextTrip
+        let rig = selectedTrip == nil ? rigs.active.first : selectedTrip?.rig
         let rigContext = rig.map { CampingRigContext($0) }
-        let tripFacts = trip.map { TripBookingFacts($0) }
+        let tripFacts = selectedTrip.map { TripBookingFacts($0) }
         let steps: [ChecklistStepDraft]
-        if let trip {
+        if let trip = selectedTrip {
             steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
         } else if let rig {
             steps = rig.defaultTemplate.setup + rig.defaultTemplate.teardown

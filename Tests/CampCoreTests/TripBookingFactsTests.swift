@@ -30,6 +30,38 @@ final class TripBookingFactsTests: XCTestCase {
         return DocumentEvidence(excerpts: [DocumentExcerpt(source: source, text: text)])
     }
 
+    @MainActor func testGeneralChatAnswersTripIdentityFromSavedFactsWithoutAttachments() async throws {
+        let now = Date()
+        var next = draft()
+        next.arrival = now.addingTimeInterval(86400 * 5)
+        next.departure = now.addingTimeInterval(86400 * 8)
+        var later = next
+        later.campgroundName = "Later trip"
+        later.arrival = now.addingTimeInterval(86400 * 20)
+        later.departure = now.addingTimeInterval(86400 * 23)
+        let selected = try XCTUnwrap([later, next].featuredTrip(asOf: now))
+        let question = "What trip am I currently planning?"
+        let facts = TripBookingFacts(selected)
+        let baseline = CampingHelpRequest(question: question, steps: [], rigType: nil, step: nil,
+                                          scope: .general, tripFacts: facts)
+        let empty = CampingHelpRequest(question: question, steps: [], rigType: nil, step: nil,
+                                       scope: .general, documents: DocumentEvidence(excerpts: []), tripFacts: facts)
+        XCTAssertTrue(empty.usesSavedTrip)
+        XCTAssertTrue(empty.instructions.contains("independently of attachments"))
+        for attempt in [PromptAttempt.full, .compact] {
+            let plan = try await empty.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+            let expected = try await baseline.plan(attempt, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+            XCTAssertTrue(plan.prompt.contains("Pinecrest Lake"))
+            XCTAssertFalse(plan.prompt.contains("Later trip"))
+            XCTAssertEqual(plan.prompt, expected.prompt)
+            XCTAssertEqual(plan.instructions, expected.instructions)
+            XCTAssertTrue(plan.sources.isEmpty)
+        }
+        let reply = try await CampingGeneration.answer(to: empty, using: RecordingGenerator(reply: "You’re planning Pinecrest Lake."))
+        XCTAssertTrue(reply.usedSavedTrip)
+        XCTAssertTrue(reply.sources.isEmpty)
+    }
+
     // MARK: The facts block
 
     func testBlockCarriesBoundedSavedFactsWithTimeZoneAndOrigin() {
