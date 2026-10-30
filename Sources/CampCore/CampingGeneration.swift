@@ -15,6 +15,7 @@ public enum CampingChatFailure: Error, Equatable, LocalizedError, Sendable {
     }
 }
 
+/// A model that answers one turn on its own. `CampingChatModel` is the conversation form.
 @MainActor
 public protocol CampingResponseGenerating {
     func respond(to prompt: String, instructions: String) async throws -> String
@@ -47,56 +48,21 @@ public struct CampingReply: Equatable, Sendable {
     public let usedSavedTrip: Bool
     /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
     public var searched: [DocumentSource] = []
+    /// The chat turn this answer was stored as, so it can be asked again as of that point.
+    public var turnID: CampingChatTurn.ID?
 }
 
-/// A testable send path. The app supplies Apple's on-device adapter; there is no remote adapter.
+/// A single question with no conversation, through the same planning, overflow retry, and citation checks
+/// as a chat. The app's conversations use `CampingChat`.
 @MainActor
 public enum CampingGeneration {
     public static func reply(to request: CampingHelpRequest, using generator: any CampingResponseGenerating,
                              counter: any PromptTokenCounting = ConservativeTokenEstimator()) async throws -> String {
-        try await generate(request, using: generator, counter: counter).text
+        try await answer(to: request, using: generator, counter: counter).text
     }
 
-    /// Like `reply`, and resolves citations against the manifest of whichever prompt reached the model.
     public static func answer(to request: CampingHelpRequest, using generator: any CampingResponseGenerating,
                               counter: any PromptTokenCounting = ConservativeTokenEstimator()) async throws -> CampingReply {
-        let (text, sent) = try await generate(request, using: generator, counter: counter)
-        guard let documents = request.documents else {
-            return CampingReply(text: text, sources: [], droppedCitationCount: 0, coverage: .notSearched,
-                                readiness: .empty, usedSavedTrip: request.usesSavedTrip)
-        }
-        // With nothing supplied there is nothing citable, whatever the model wrote.
-        let manifest = sent.sources
-        let resolved = DocumentCitations.resolve(text, manifest: manifest)
-        let unfinished = documents.readiness.hasUnusableDocuments
-        let coverage: DocumentCoverage = manifest.isEmpty ? (unfinished ? .unfinished : .notCovered) : (resolved.sources.isEmpty ? .uncited : .cited)
-        return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
-                            droppedCitationCount: resolved.droppedCount, coverage: coverage,
-                            readiness: request.documents?.readiness ?? .empty, usedSavedTrip: request.usesSavedTrip,
-                            searched: manifest.filter { !resolved.sources.contains($0) })
-    }
-
-    private static func generate(_ request: CampingHelpRequest, using generator: any CampingResponseGenerating,
-                                 counter: any PromptTokenCounting) async throws -> (text: String, sent: PromptPlan) {
-        try Task.checkCancellation()
-        guard !request.questionExceedsLimit else { throw CampingChatFailure.contextTooLong }
-        let budget = PromptBudget(contextSize: counter.contextSize)
-        var plan = try await request.plan(.full, counter: counter, budget: budget)
-        let response: String
-        do {
-            response = try await generator.respond(to: plan.prompt, instructions: plan.instructions)
-        } catch CampingChatFailure.contextTooLong {
-            // Each adapter call starts a fresh session. Retry once with its own, smaller source list; it never
-            // carries more than the attempt it replaces.
-            try Task.checkCancellation()
-            let retry = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
-            guard retry.prompt != plan.prompt else { throw CampingChatFailure.contextTooLong }
-            plan = retry
-            response = try await generator.respond(to: plan.prompt, instructions: plan.instructions)
-        }
-        try Task.checkCancellation()
-        let text = response.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { throw CampingChatFailure.failed }
-        return (text, plan)
+        try await CampingChat(model: SingleTurnChatModel(generator), counter: counter).answer(request)
     }
 }

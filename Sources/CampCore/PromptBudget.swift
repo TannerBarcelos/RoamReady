@@ -19,7 +19,9 @@ public struct ConservativeTokenEstimator: PromptTokenCounting {
 
     public init(contextSize: Int? = nil) { self.contextSize = contextSize }
 
-    public func tokenCount(of text: String) async throws -> Int {
+    public func tokenCount(of text: String) async throws -> Int { Self.estimate(text) }
+
+    public static func estimate(_ text: String) -> Int {
         var ascii = 0, other = 0
         for scalar in text.unicodeScalars {
             if scalar.isASCII { ascii += 1 } else { other += 1 }
@@ -29,7 +31,7 @@ public struct ConservativeTokenEstimator: PromptTokenCounting {
 }
 
 /// One total budget for everything that shares the model's context: instructions, rig and trip facts,
-/// conversation, checklist context, document evidence, the question, and the reply.
+/// checklist context, document evidence, the question, the earlier turns the session sends, and the reply.
 public struct PromptBudget: Equatable, Sendable {
     /// Apple documents a 4,096-token window for the on-device model; used when the runtime value is unknown.
     public static let fallbackContextSize = 4096
@@ -44,7 +46,7 @@ public struct PromptBudget: Equatable, Sendable {
         self.contextSize = max(contextSize ?? Self.fallbackContextSize, 0)
     }
 
-    /// Tokens that instructions and prompt may use together.
+    /// Tokens that instructions, prompt, and sent history may use together.
     public var inputLimit: Int { max(contextSize - Self.outputTokens - Self.reservedTokens, 0) }
 }
 
@@ -52,8 +54,6 @@ public enum PromptAttempt: Equatable, Sendable { case full, compact }
 
 /// How much of each shrinkable part a prompt carries.
 struct PromptShape: Equatable, Sendable {
-    var conversation: Bool
-    var historyTurns: Int
     var checklistCharacters: Int
     var excerptCount: Int
     var excerptCharacters: Int
@@ -63,14 +63,13 @@ struct PromptShape: Equatable, Sendable {
     static let excerptSteps = [400, 300, 200]
     static let questionSteps = [800, 400]
 
-    /// The next smaller prompt, or nil at the floor. The order is the compaction priority: old conversation
-    /// first, then saved checklist context, then the weakest evidence, then evidence text, and the
-    /// current question last. Saved trip facts are small and never shrunk. The strongest excerpt and the question outlast everything else.
+    /// The next smaller prompt, or nil at the floor. The order is the compaction priority: saved checklist
+    /// context first, then the weakest evidence, then evidence text, and the current question last. Earlier
+    /// turns give way before any of these (see `CampingChat`). Saved trip facts are small and never shrunk.
+    /// The strongest excerpt and the question outlast everything else.
     func shrunk() -> PromptShape? {
         var next = self
-        if historyTurns > 0 {
-            next.historyTurns -= 1
-        } else if let size = Self.checklistSteps.first(where: { $0 < checklistCharacters }) {
+        if let size = Self.checklistSteps.first(where: { $0 < checklistCharacters }) {
             next.checklistCharacters = size
         } else if excerptCount > 1 {
             next.excerptCount -= 1
@@ -88,7 +87,6 @@ struct PromptShape: Equatable, Sendable {
     func limited(by other: PromptShape?) -> PromptShape {
         guard let other else { return self }
         var result = self
-        result.historyTurns = min(historyTurns, other.historyTurns)
         result.checklistCharacters = min(checklistCharacters, other.checklistCharacters)
         result.excerptCount = min(excerptCount, other.excerptCount)
         result.excerptCharacters = min(excerptCharacters, other.excerptCharacters)
@@ -100,7 +98,6 @@ struct PromptShape: Equatable, Sendable {
 /// Token cost of each part of a planned prompt, counted separately.
 public struct PromptUsage: Equatable, Sendable {
     public let instructions: Int
-    public let conversation: Int
     public let checklist: Int
     /// The trip's saved booking facts. Never shrunk: they and the question outlast everything else.
     public let savedTrip: Int
@@ -124,7 +121,7 @@ public struct PromptPlan: Equatable, Sendable {
 
 /// Counts with the real counter, and with the conservative estimator for the rest of the plan once the
 /// real one fails. Cancellation is never swallowed.
-private struct Measurer {
+struct Measurer {
     let counter: any PromptTokenCounting
     var cache: [String: Int] = [:]
     var estimating = false
@@ -156,25 +153,23 @@ extension CampingHelpRequest {
         let excerpts = documents?.budgeted ?? []
         switch attempt {
         case .full:
-            return PromptShape(conversation: true, historyTurns: min(history.count, Self.maximumHistoryTurns),
-                               checklistCharacters: 4000, excerptCount: excerpts.count, excerptCharacters: DocumentEvidence.maximumExcerptCharacters,
+            return PromptShape(checklistCharacters: 4000, excerptCount: excerpts.count, excerptCharacters: DocumentEvidence.maximumExcerptCharacters,
                                questionCharacters: 1500)
         case .compact:
-            return PromptShape(conversation: false, historyTurns: 0, checklistCharacters: 500,
+            return PromptShape(checklistCharacters: 500,
                                excerptCount: min(excerpts.count, 1), excerptCharacters: DocumentEvidence.maximumCompactCharacters,
                                questionCharacters: 1500)
         }
     }
 
     private struct Rendered {
-        var conversation = "", checklist = "", savedTrip = "", evidence = "", question = ""
+        var checklist = "", savedTrip = "", evidence = "", question = ""
         var prompt = ""
         var sources: [DocumentSource] = []
     }
 
     private func render(_ shape: PromptShape) -> Rendered {
         var out = Rendered()
-        out.conversation = Self.conversationText(history.suffix(shape.historyTurns))
         out.checklist = String(passages.prefix(shape.checklistCharacters))
         out.question = String(question.prefix(shape.questionCharacters))
         out.savedTrip = tripFacts?.promptBlock() ?? ""
@@ -184,7 +179,6 @@ extension CampingHelpRequest {
         out.sources = shown.map(\.source)
         if let documents { out.evidence = documents.promptBlock(excerpts: shown) }
         out.prompt = Self.render(category: (rigContext?.type ?? rigType)?.title ?? "Unknown",
-                                 conversation: shape.conversation ? out.conversation : nil,
                                  checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip, evidence: documents == nil ? nil : out.evidence,
                                  question: out.question)
         return out
@@ -204,7 +198,6 @@ extension CampingHelpRequest {
             if instructionTokens + promptTokens <= budget.inputLimit {
                 let usage = PromptUsage(
                     instructions: instructionTokens,
-                    conversation: shape.conversation ? try await measurer.count(rendered.conversation) : 0,
                     checklist: try await measurer.count(rendered.checklist),
                     savedTrip: tripFacts == nil ? 0 : try await measurer.count(rendered.savedTrip),
                     evidence: documents == nil ? 0 : try await measurer.count(rendered.evidence),

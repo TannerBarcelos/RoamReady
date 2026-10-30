@@ -179,13 +179,12 @@ final class TripBookingFactsTests: XCTestCase {
         XCTAssertGreaterThan(plan.usage.savedTrip, 0)
     }
 
-    func testTightBudgetKeepsSavedFactsAndQuestionWhileDroppingConversation() async throws {
-        let history = (0..<3).map { CampingChatTurn(question: "q\($0) " + String(repeating: "a", count: 300), answer: String(repeating: "b", count: 900)) }
+    func testTightBudgetKeepsSavedFactsAndQuestion() async throws {
         let request = CampingHelpRequest(question: "What time is check-in?", steps: [], rigType: nil, step: nil, scope: .checklist,
-                                         history: history, tripFacts: TripBookingFacts(draft()))
+                                         tripFacts: TripBookingFacts(draft()))
         let plan = try await request.plan(.full, counter: ConservativeTokenEstimator(), budget: PromptBudget(contextSize: 1800))
         XCTAssertTrue(plan.prompt.contains(TripBookingFacts.beginMarker))
         XCTAssertTrue(plan.prompt.contains("What time is check-in?"))
-        XCTAssertLessThan(plan.usage.conversation, 900)
+        XCTAssertLessThanOrEqual(plan.usage.total, PromptBudget(contextSize: 1800).inputLimit)
     }
 }

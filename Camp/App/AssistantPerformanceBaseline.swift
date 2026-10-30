@@ -4,6 +4,9 @@ import Darwin
 import CampCore
 import DocumentSearch
 import DocumentVault
+#if canImport(FoundationModels)
+import AssistantModel
+#endif
 
 /// `-assistant-performance-baseline [quick|standard]` measures the Assistant's document pipeline on the device
 /// that is running it. It generates invented PDFs (see `SyntheticPDFCorpus`), imports them the way the app does,
@@ -305,7 +308,8 @@ enum AssistantPerformanceBaseline {
             let request = CampingHelpRequest(question: text, steps: [], rigType: nil, step: nil, scope: .general, documents: evidence)
             let generationStarted = ContinuousClock.now
             do {
-                let reply = try await CampingGeneration.answer(to: request, using: AppleCampingResponseGenerator(), counter: AppleTokenCounter())
+                // A new chat per question, as the baseline measures single answers.
+                let reply = try await CampingChat(model: AppleCampingChatModel(), counter: AppleTokenCounter()).answer(request)
                 answers.append(.init(retrievalSeconds: retrieved, generationSeconds: generationStarted.duration(to: .now).seconds,
                                      totalSeconds: started.duration(to: .now).seconds, validCitations: reply.sources.count, coverage: "\(reply.coverage)"))
             } catch {

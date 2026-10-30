@@ -3,6 +3,7 @@ import NaturalLanguage
 import AssistantEval
 import CampCore
 import DocumentSearch
+import AssistantModel
 #if canImport(FoundationModels)
 import FoundationModels
 #endif
@@ -50,37 +51,6 @@ func generationNote() -> String {
     return note
 }
 
-#if canImport(FoundationModels)
-/// The app's generator, as `AppleCampingResponseGenerator` builds it: a fresh session per call, no sampling overrides.
-@available(macOS 27.0, *)
-@MainActor
-struct AppleGenerator: CampingResponseGenerating {
-    func respond(to prompt: String, instructions: String) async throws -> String {
-        let model = SystemLanguageModel.default
-        guard case .available = model.availability else { throw CampingChatFailure.notReady }
-        guard model.supportsLocale() else { throw CampingChatFailure.unsupportedLanguage }
-        let session = LanguageModelSession(model: model, instructions: instructions)
-        do {
-            return try await session.respond(to: prompt, options: GenerationOptions(maximumResponseTokens: PromptBudget.outputTokens)).content
-        } catch let error as LanguageModelError {
-            switch error {
-            case .contextSizeExceeded: throw CampingChatFailure.contextTooLong
-            case .unsupportedLanguageOrLocale: throw CampingChatFailure.unsupportedLanguage
-            case .guardrailViolation, .refusal: throw CampingChatFailure.refused
-            case .rateLimited: throw CampingChatFailure.busy
-            default: throw CampingChatFailure.failed
-            }
-        }
-    }
-}
-
-@available(macOS 27.0, *)
-struct AppleTokenCounter: PromptTokenCounting {
-    var contextSize: Int? { SystemLanguageModel.default.contextSize }
-    func tokenCount(of text: String) async throws -> Int { try await SystemLanguageModel.default.tokenCount(for: text) }
-}
-#endif
-
 @MainActor
 func appleBackend() -> GenerationBackend {
     let unavailable = { (reason: String) in
@@ -96,7 +66,7 @@ func appleBackend() -> GenerationBackend {
             return GenerationBackend(
                 availability: .available(details: ["contextSize": String(model.contextSize), "locale supported": "yes"]),
                 label: "Apple on-device language model (SystemLanguageModel.default, general-purpose)",
-                generator: AppleGenerator(), counter: AppleTokenCounter(), counterLabel: "SystemLanguageModel.tokenCount")
+                model: AppleCampingChatModel(), counter: AppleTokenCounter(), counterLabel: "SystemLanguageModel.tokenCount")
         case .unavailable(let reason):
             return unavailable("The Apple language model is unavailable (\(reason)).")
         }

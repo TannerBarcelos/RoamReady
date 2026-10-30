@@ -3,6 +3,7 @@ import CampCore
 import DocumentSearch
 #if canImport(FoundationModels)
 import FoundationModels
+import AssistantModel
 #endif
 
 struct CampingAnswer: Sendable {
@@ -19,6 +20,8 @@ struct CampingAnswer: Sendable {
     var usedSavedTrip = false
     /// A fixed explanation rather than a model answer, so it carries no generation caption.
     var isNotice = false
+    /// The chat turn this answer is, so it can be asked again as of that point. Nil for notices and fixtures.
+    var turnID: CampingChatTurn.ID?
     var mode: String { "Apple Intelligence · Generated on this device · Check against your manual" }
 }
 
@@ -96,48 +99,52 @@ enum CampingAssistant {
         #endif
     }
 
+    /// A new conversation: its own model session, made on the first question.
+    static func makeChat() -> CampingChat {
+        #if DEBUG
+        if let generator = uiTestGenerator { return CampingChat(model: SingleTurnChatModel(generator)) }
+        #endif
+        #if canImport(FoundationModels)
+        return CampingChat(model: AppleCampingChatModel(), counter: AppleTokenCounter())
+        #else
+        return CampingChat(model: SingleTurnChatModel(UnavailableGenerator()))
+        #endif
+    }
+
     /// Trip and checklist help pass their matching saved steps as context; general chat uses the active rig's.
+    /// The question is the next turn of `chat`; `before` asks again as of an earlier turn.
     /// Model failures reach the UI as retryable errors rather than being replaced with saved text.
     static func answer(question: String, steps candidates: [ChecklistStepDraft], rigType: RigType?, step: ChecklistStepDraft?,
-                       scope: CampingHelpRequest.Scope = .checklist, history: [CampingChatTurn] = [],
+                       scope: CampingHelpRequest.Scope = .checklist, chat: CampingChat, chatScope: AnyHashable,
+                       before turnID: CampingChatTurn.ID? = nil,
                        rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
                        tripFacts: TripBookingFacts? = nil,
                        onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         onStage?(.preparing)
-        let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType,
-                                         step: step, scope: scope, history: history, rigContext: rigContext,
-                                         documents: documents, tripFacts: tripFacts)
+        let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType, step: step, scope: scope,
+                                         previousQuestion: chat.previousQuestion(in: chatScope, before: turnID),
+                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts)
         let reply: CampingReply
         do {
             try Task.checkCancellation()
             onStage?(.writing)
-            #if DEBUG
-            if let generator = uiTestGenerator {
-                reply = try await CampingGeneration.answer(to: request, using: generator)
-            } else {
-                reply = try await generate(request)
-            }
-            #else
-            reply = try await generate(request)
-            #endif
+            reply = try await chat.answer(request, in: chatScope, before: turnID)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
             throw (error as? CampingChatFailure) ?? .failed
         }
         return CampingAnswer(text: reply.text, sourceURL: request.passages.isEmpty ? nil : ChecklistFactory.sourceURL,
-sources: reply.sources, searched: reply.searched, coverage: reply.coverage, readiness: reply.readiness,
-                             usedSavedTrip: reply.usedSavedTrip)
+                             sources: reply.sources, searched: reply.searched, coverage: reply.coverage, readiness: reply.readiness,
+                             usedSavedTrip: reply.usedSavedTrip, turnID: reply.turnID)
     }
 
-    private static func generate(_ request: CampingHelpRequest) async throws -> CampingReply {
-        #if canImport(FoundationModels)
-        return try await CampingGeneration.answer(to: request, using: AppleCampingResponseGenerator(), counter: AppleTokenCounter())
-        #else
-        throw CampingChatFailure.notReady
-        #endif
+    #if !canImport(FoundationModels)
+    private struct UnavailableGenerator: CampingResponseGenerating {
+        func respond(to prompt: String, instructions: String) async throws -> String { throw CampingChatFailure.notReady }
     }
+    #endif
 
     #if DEBUG
     private struct UITestGenerator: CampingResponseGenerating {

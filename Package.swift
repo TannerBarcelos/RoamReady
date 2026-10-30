@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "DocumentVault", targets: ["DocumentVault"]),
         .library(name: "CampPersistence", targets: ["CampPersistence"]),
         .library(name: "DocumentSearch", targets: ["DocumentSearch"]),
+        .library(name: "AssistantModel", targets: ["AssistantModel"]),
         .executable(name: "assistant-eval", targets: ["assistant-eval"])
     ],
     targets: [
@@ -30,10 +31,12 @@ let package = Package(
         ),
         /// The document Assistant's search index: its own disposable SQLite file with FTS5 and sqlite-vec.
         .target(name: "DocumentSearch", dependencies: ["CSQLiteVec", "CampCore"]),
+        /// Apple's on-device model behind the Assistant's chat: one session per conversation, and its token counter.
+        .target(name: "AssistantModel", dependencies: ["CampCore"]),
         /// The Assistant's retrieval eval: a versioned synthetic corpus, the runner, and JSON and Markdown reports.
         .target(name: "AssistantEval", dependencies: ["DocumentSearch", "CampCore"], resources: [.copy("Corpus")]),
         /// The manual command for the same eval with Apple's embeddings. Reports "not run" when they're unavailable.
-        .executableTarget(name: "assistant-eval", dependencies: ["AssistantEval", "DocumentSearch"]),
+        .executableTarget(name: "assistant-eval", dependencies: ["AssistantEval", "AssistantModel", "DocumentSearch"]),
         .testTarget(name: "CampCoreTests", dependencies: ["CampCore"]),
         .testTarget(name: "CampgroundsTests", dependencies: ["Campgrounds", "CampCore"]),
         .testTarget(name: "DocumentVaultTests", dependencies: ["DocumentVault"]),

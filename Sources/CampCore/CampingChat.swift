@@ -1,0 +1,287 @@
+import Foundation
+
+/// One finished exchange as a chat's model session stores it: the question and the answer shown, clipped,
+/// with citation markers neutralized. This turn's excerpts, checklist context, and trip facts are never part
+/// of it, so evidence is always fresh and earlier answers can't pass for sources.
+public struct CampingChatTurn: Equatable, Identifiable, Sendable {
+    public static let questionCharacters = 400
+    public static let answerCharacters = 1000
+
+    public let id: String
+    public let question: String
+    public let answer: String
+
+    public init(id: String = UUID().uuidString, question: String, answer: String) {
+        self.id = id
+        self.question = String(question.prefix(Self.questionCharacters))
+        self.answer = DocumentEvidence.neutralized(String(answer.prefix(Self.answerCharacters)))
+    }
+}
+
+/// A chat's model session. Its transcript carries the conversation, so each call sends only this turn's
+/// instructions and prompt. The app supplies Apple's on-device session; tests supply fakes.
+@MainActor
+public protocol CampingChatSession: AnyObject {
+    /// Answers one turn. `instructions` and `prompt` are this turn's context and are never kept as history.
+    /// `history` is the stored turns this request may send, oldest first; every other stored turn stays out.
+    /// A failed or cancelled request leaves the transcript as it was.
+    func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String
+    /// Replaces the turn just answered with its stored form.
+    func store(_ turn: CampingChatTurn)
+    /// Removes a stored turn, for an answer that was never shown or that compaction dropped.
+    func remove(_ turnID: CampingChatTurn.ID)
+}
+
+@MainActor
+public protocol CampingChatModel {
+    /// A new session whose transcript starts with `history`.
+    func makeSession(history: [CampingChatTurn]) -> any CampingChatSession
+}
+
+/// Sends every turn on its own with no history: single questions, the performance baseline, and fixtures.
+public struct SingleTurnChatModel: CampingChatModel {
+    private let generator: any CampingResponseGenerating
+
+    public init(_ generator: any CampingResponseGenerating) { self.generator = generator }
+
+    public func makeSession(history: [CampingChatTurn]) -> any CampingChatSession { Session(generator: generator) }
+
+    private final class Session: CampingChatSession {
+        let generator: any CampingResponseGenerating
+        init(generator: any CampingResponseGenerating) { self.generator = generator }
+        func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String {
+            try await generator.respond(to: prompt, instructions: instructions)
+        }
+        func store(_ turn: CampingChatTurn) {}
+        func remove(_ turnID: CampingChatTurn.ID) {}
+    }
+}
+
+/// Which earlier turns a request sends, and what a session keeps when the context overflows.
+public enum CampingChatHistory {
+    /// The most earlier turns one request sends.
+    public static let maximumTurns = 3
+    /// The most turns a session keeps, so a long chat's transcript stays bounded. Older ones are only on screen.
+    public static let storedTurns = 12
+    /// Turns a session keeps after compaction: the newest, so a follow-up still has what it follows.
+    public static let compactedTurns = 1
+    /// Chat-template framing for one stored turn, on top of its question and answer.
+    public static let turnOverheadTokens = 16
+
+    /// The newest turns before `turnID` (all of them when nil) that fit `budget`, oldest first. It stops at the
+    /// first turn that doesn't fit, so what's sent is always the most recent stretch of the conversation. A
+    /// `turnID` no longer stored means every stored turn came after it, so nothing is sent.
+    public static func window(_ turns: [CampingChatTurn], before turnID: CampingChatTurn.ID? = nil, budget: Int,
+                              limit: Int = maximumTurns, cost: (CampingChatTurn) -> Int) -> [CampingChatTurn] {
+        let earlier = earlier(turns, before: turnID)
+        var kept: [CampingChatTurn] = []
+        var used = 0
+        for turn in earlier.reversed() {
+            guard kept.count < limit else { break }
+            let tokens = cost(turn)
+            guard used + tokens <= budget else { break }
+            used += tokens
+            kept.insert(turn, at: 0)
+        }
+        return kept
+    }
+
+    static func earlier(_ turns: [CampingChatTurn], before turnID: CampingChatTurn.ID?) -> ArraySlice<CampingChatTurn> {
+        guard let turnID else { return turns[...] }
+        guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return [] }
+        return turns[..<index]
+    }
+
+    /// What a transcript entry is, as far as trimming cares.
+    public enum EntryKind: Equatable, Sendable {
+        case instructions
+        case prompt(id: String)
+        case response
+        case other
+    }
+
+    /// The entries one request sends: the instructions, the turns in `kept`, and the current prompt (the last
+    /// prompt with no response yet). A stored turn's response and anything else between prompts goes with it.
+    /// Used by the session's history transform, so the stored transcript itself is untouched.
+    public static func sent<Entry>(_ entries: [Entry], keeping kept: Set<String>, kind: (Entry) -> EntryKind) -> [Entry] {
+        let kinds = entries.map(kind)
+        let currentPrompt = kinds.lastIndex { if case .prompt = $0 { true } else { false } }
+            .flatMap { index in kinds[(index + 1)...].contains(.response) ? nil : index }
+        var result: [Entry] = []
+        var keepingTurn = true
+        for (index, entry) in entries.enumerated() {
+            switch kinds[index] {
+            case .instructions:
+                result.append(entry)
+            case .prompt(let id):
+                keepingTurn = index == currentPrompt || kept.contains(id)
+                if keepingTurn { result.append(entry) }
+            case .response, .other:
+                if keepingTurn { result.append(entry) }
+            }
+        }
+        return result
+    }
+}
+
+/// One conversation with the on-device model: a model session per chat whose transcript holds the history,
+/// with this turn's context planned against the token budget first and earlier turns given what's left.
+/// New chat, trip and checklist help, and a change of rig or trip each start a new session. When the
+/// context overflows, the chat compacts to a new session that keeps only the newest turn and retries once.
+@MainActor
+public final class CampingChat {
+    public private(set) var turns: [CampingChatTurn] = []
+    /// How many times this chat has compacted, for tests and diagnostics.
+    public private(set) var compactions = 0
+    private var costs: [CampingChatTurn.ID: Int] = [:]
+    private var session: (any CampingChatSession)?
+    private var scope: AnyHashable?
+    private let model: any CampingChatModel
+    private let counter: any PromptTokenCounting
+    private var busy = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    public init(model: any CampingChatModel, counter: any PromptTokenCounting = ConservativeTokenEstimator()) {
+        self.model = model
+        self.counter = counter
+    }
+
+    /// New chat: the next question starts a new session.
+    public func reset() {
+        turns = []
+        costs = [:]
+        session = nil
+        scope = nil
+    }
+
+    /// The question before this one in `scope`, which follow-ups are searched together with. Nil in a new scope.
+    public func previousQuestion(in scope: AnyHashable? = nil, before turnID: CampingChatTurn.ID? = nil) -> String? {
+        guard scope == self.scope else { return nil }
+        return CampingChatHistory.earlier(turns, before: turnID).last?.question
+    }
+
+    /// Answers `request` as the next turn. `before` asks again as of an earlier turn: only the turns before it
+    /// are sent. A different `scope` drops the conversation first, so one rig's or trip's turns never reach
+    /// another's request.
+    public func answer(_ request: CampingHelpRequest, in scope: AnyHashable? = nil,
+                       before turnID: CampingChatTurn.ID? = nil) async throws -> CampingReply {
+        try Task.checkCancellation()
+        guard !request.questionExceedsLimit else { throw CampingChatFailure.contextTooLong }
+        // A cancelled request may still be unwinding in the session; never send two at once.
+        await acquire()
+        defer { release() }
+        try Task.checkCancellation()
+        if scope != self.scope {
+            reset()
+            self.scope = scope
+        }
+        let budget = PromptBudget(contextSize: counter.contextSize)
+        var plan = try await request.plan(.full, counter: counter, budget: budget)
+        var history = CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total, cost: cost)
+        let response: String
+        do {
+            response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
+        } catch CampingChatFailure.contextTooLong {
+            try Task.checkCancellation()
+            let retry = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
+            // The counts said the first attempt fit, so the retry must send strictly less: a smaller prompt, or
+            // at least one turn fewer. With neither left to give, the same request would overflow again.
+            let promptShrank = retry.prompt != plan.prompt
+            guard promptShrank || !history.isEmpty else { throw CampingChatFailure.contextTooLong }
+            let limit = min(CampingChatHistory.compactedTurns, promptShrank ? history.count : history.count - 1)
+            let earlier = Set(CampingChatHistory.earlier(turns, before: turnID).map(\.id))
+            compact(budget: budget.inputLimit - retry.usage.total)
+            plan = retry
+            history = Array(turns.filter { earlier.contains($0.id) }.suffix(limit))
+            response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
+        }
+        let text = response.trimmingCharacters(in: .whitespacesAndNewlines)
+        var reply = Self.reply(text, to: request, sent: plan)
+        // The session holds the raw turn now. Store its clean form at once, so the transcript and `turns` agree.
+        let turn = CampingChatTurn(question: request.question, answer: reply.text)
+        currentSession().store(turn)
+        turns.append(turn)
+        costs[turn.id] = Self.estimate(turn)
+        reply.turnID = turn.id
+        guard !text.isEmpty else {
+            forget(turn.id)
+            throw CampingChatFailure.failed
+        }
+        if Task.isCancelled {
+            forget(turn.id)
+            throw CancellationError()
+        }
+        var measurer = Measurer(counter: counter)
+        if let question = try? await measurer.count(turn.question), let answer = try? await measurer.count(turn.answer) {
+            costs[turn.id] = question + answer + CampingChatHistory.turnOverheadTokens
+        }
+        if Task.isCancelled {
+            forget(turn.id)
+            throw CancellationError()
+        }
+        while turns.count > CampingChatHistory.storedTurns { forget(turns[0].id) }
+        return reply
+    }
+
+    /// Drops a turn whose answer was never shown, so it can't color later answers.
+    public func forget(_ turnID: CampingChatTurn.ID) {
+        guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
+        turns.remove(at: index)
+        costs[turnID] = nil
+        session?.remove(turnID)
+    }
+
+    /// Apple's documented recovery from a full context: a new session that starts from the key entries of
+    /// the old one, here the newest turn when it fits. A model-written summary would cost another full
+    /// generation on a 4,096-token model while the camper waits, and could state things nobody said.
+    private func compact(budget: Int) {
+        let kept = CampingChatHistory.window(turns, budget: budget, limit: CampingChatHistory.compactedTurns, cost: cost)
+        turns = kept
+        costs = costs.filter { id, _ in kept.contains { $0.id == id } }
+        session = model.makeSession(history: kept)
+        compactions += 1
+    }
+
+    private func currentSession() -> any CampingChatSession {
+        if let session { return session }
+        let made = model.makeSession(history: turns)
+        session = made
+        return made
+    }
+
+    private func cost(_ turn: CampingChatTurn) -> Int { costs[turn.id] ?? Self.estimate(turn) }
+
+    private static func estimate(_ turn: CampingChatTurn) -> Int {
+        ConservativeTokenEstimator.estimate(turn.question) + ConservativeTokenEstimator.estimate(turn.answer)
+            + CampingChatHistory.turnOverheadTokens
+    }
+
+    /// Resolves citations against the manifest of whichever prompt reached the model.
+    static func reply(_ text: String, to request: CampingHelpRequest, sent: PromptPlan) -> CampingReply {
+        guard let documents = request.documents else {
+            return CampingReply(text: text, sources: [], droppedCitationCount: 0, coverage: .notSearched,
+                                readiness: .empty, usedSavedTrip: request.usesSavedTrip)
+        }
+        // With nothing supplied there is nothing citable, whatever the model wrote.
+        let manifest = sent.sources
+        let resolved = DocumentCitations.resolve(text, manifest: manifest)
+        let unfinished = documents.readiness.hasUnusableDocuments
+        let coverage: DocumentCoverage = manifest.isEmpty ? (unfinished ? .unfinished : .notCovered) : (resolved.sources.isEmpty ? .uncited : .cited)
+        return CampingReply(text: resolved.text.isEmpty ? text : resolved.text, sources: resolved.sources,
+                            droppedCitationCount: resolved.droppedCount, coverage: coverage,
+                            readiness: documents.readiness, usedSavedTrip: request.usesSavedTrip,
+                            searched: manifest.filter { !resolved.sources.contains($0) })
+    }
+
+    private func acquire() async {
+        if busy {
+            await withCheckedContinuation { waiters.append($0) }
+        } else {
+            busy = true
+        }
+    }
+
+    private func release() {
+        if waiters.isEmpty { busy = false } else { waiters.removeFirst().resume() }
+    }
+}
