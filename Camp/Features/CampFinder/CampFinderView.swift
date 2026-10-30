@@ -16,6 +16,7 @@ struct CampFinderView: View {
     @Environment(CampFinder.self) private var finder
     @Environment(AppPermissions.self) private var permissions
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var resultsPath = NavigationPath()
     @State private var search = CampFinderSearch()
     @State private var location = LocationProvider()
     @State private var text = ""
@@ -30,31 +31,39 @@ struct CampFinderView: View {
     @State private var locating = false
 
     var body: some View {
-        OnlineFeatureGate(feature: "Camp Finder", retry: { search.retry(using: finder) }) { content }
+        content
+    }
+
+    /// Bars belong to the results column so search never extends across the map.
+    private func resultsPane(includesMap: Bool) -> some View {
+        NavigationStack(path: $resultsPath) {
+            OnlineFeatureGate(feature: "Camp Finder", retry: { search.retry(using: finder) }) {
+                results(includesMap: includesMap)
+            }
             .navigationTitle("Camp Finder")
+            .assistantToolbarItem()
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { SavedCampgroundsView() } label: { Label("Your campgrounds", systemImage: "bookmark") }
                 }
             }
+            .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
+            .onSubmit(of: .search) {
+                guard cleanedSearchText(text) != nil else { return }
+                search.run(.text(text, near: visibleRegion), using: finder)
+            }
+        }
     }
 
     private var separatesMapAndResults: Bool { horizontalSizeClass == .regular }
 
     private var content: some View {
-        // The stack stays put while its contents switch, so the modifiers below (the search field,
-        // the first search, and cancel on leaving) don't run again when the layout changes.
+        // Presentation and search lifecycle stay above the adaptive panes so resizing preserves state.
         ZStack {
             adaptiveResults
         }
         // One presentation across all widths keeps an open place stable during resizing.
         .sheet(item: $opened) { CampgroundDetailSheet(listing: $0) }
-        // Always shown: the default placement hides the field under the large title until the list is pulled down.
-        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
-        .onSubmit(of: .search) {
-            guard cleanedSearchText(text) != nil else { return }
-            search.run(.text(text, near: visibleRegion), using: finder)
-        }
         .onChange(of: tapped) { _, feature in
             guard let feature else { return }
             tapped = nil
@@ -84,10 +93,10 @@ struct CampFinderView: View {
             regularPanes
             #else
             if #available(iOS 27.1, *) {
-                // The system owns the split axis and division-region handling. Navigation and
-                // state stay above this container; the scrolling list stays inside its pane.
+                // The system handles division regions. The results own their navigation
+                // and search bars inside the primary pane; the map gets its full column.
                 ArrangementView {
-                    results(includesMap: false)
+                    resultsPane(includesMap: false)
                 } secondary: {
                     map
                 }
@@ -97,14 +106,14 @@ struct CampFinderView: View {
             }
             #endif
         } else {
-            results(includesMap: true)
+            resultsPane(includesMap: true)
         }
     }
 
     /// Flexible native panes for platforms and runtimes without the arrangement API.
     private var regularPanes: some View {
         HStack(spacing: 0) {
-            results(includesMap: false).frame(maxWidth: .infinity)
+            resultsPane(includesMap: false).frame(maxWidth: .infinity)
             Divider()
             map.frame(maxWidth: .infinity, maxHeight: .infinity)
         }

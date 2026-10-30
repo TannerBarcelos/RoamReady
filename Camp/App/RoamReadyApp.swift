@@ -88,7 +88,7 @@ struct MainTabs: View {
             Tab("Home", systemImage: "house", value: .home) { tabRoot(stacked: false) { HomeWorkspace() } }
             // The one place to add a trip, from anywhere in the app. It opens a sheet rather than a screen.
             Tab("Trip", systemImage: "plus", value: .newTrip) { Color.clear }
-            Tab("Camp Finder", systemImage: "map", value: .campFinder) { tabRoot { CampFinderView() } }
+            Tab("Camp Finder", systemImage: "map", value: .campFinder) { tabRoot(stacked: false) { CampFinderView() } }
             Tab("Profile", systemImage: "person.crop.circle", value: .profile) { tabRoot { ProfileView() } }
         }
         .environment(\.mainTabActions, tabActions)

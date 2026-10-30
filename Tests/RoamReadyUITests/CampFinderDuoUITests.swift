@@ -34,6 +34,14 @@ final class CampFinderDuoUITests: XCTestCase {
             let beside = map.frame.minX >= results.frame.maxX - 1 || results.frame.minX >= map.frame.maxX - 1
             let stacked = map.frame.minY >= results.frame.maxY - 1 || results.frame.minY >= map.frame.maxY - 1
             XCTAssertTrue(beside || stacked, "The map and results occupy separate arrangement panes")
+            if window.frame.width > window.frame.height {
+                XCTAssertTrue(beside, "The open landscape display places results beside the map")
+            }
+            let searchField = app.searchFields.firstMatch
+            XCTAssertGreaterThanOrEqual(searchField.frame.minX, results.frame.minX - 1)
+            XCTAssertLessThanOrEqual(searchField.frame.maxX, results.frame.maxX + 1,
+                                     "Search stays inside the results column instead of crossing the map")
+            XCTAssertFalse(searchField.frame.intersects(map.frame), "Search must not overlay the map")
             XCTAssertGreaterThan(map.frame.width, 0)
             XCTAssertGreaterThan(map.frame.height, 0)
             XCTAssertTrue(map.isHittable, "The map stays interactive in its pane")
