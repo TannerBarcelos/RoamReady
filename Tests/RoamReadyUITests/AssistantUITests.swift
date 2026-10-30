@@ -16,6 +16,38 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.buttons["openAssistant"].exists)
     }
 
+    /// Devices that can't run Apple's on-device model have no Assistant anywhere, not even a mention.
+    func testUnsupportedDeviceNeverMentionsTheAssistant() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-assistant-ui-test", "unsupported", "-navigation-ui-test"]
+        app.launch()
+        XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
+        assertNoAssistant(in: app, "Home")
+
+        app.buttons["tripRow-Current Pines"].tap()
+        XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5))
+        for _ in 0..<4 { app.swipeUp() }
+        assertNoAssistant(in: app, "Trip details")
+        let checklist = app.buttons["tripChecklist-setup"]
+        for _ in 0..<4 where !checklist.isHittable { app.swipeDown() }
+        checklist.tap()
+        XCTAssertTrue(app.navigationBars["Setup"].waitForExistence(timeout: 5))
+        for _ in 0..<4 { app.swipeUp() }
+        assertNoAssistant(in: app, "Checklist")
+
+        app.navigationTab("Profile").tap()
+        app.buttons["openAppSettings"].tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        for _ in 0..<4 { app.swipeUp() }
+        assertNoAssistant(in: app, "Settings")
+    }
+
+    private func assertNoAssistant(in app: XCUIApplication, _ screen: String) {
+        let mentions = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] 'Assistant' OR label CONTAINS[c] 'camping help' OR label BEGINSWITH 'Ask about'"))
+        XCTAssertEqual(mentions.count, 0, "\(screen) mentions the Assistant: \(mentions.allElementsBoundByIndex.map(\.label))")
+    }
+
     /// Regular iPhones keep the floating button; only iPad, Mac, Duo, and accessibility sizes use the toolbar.
     func testIPhoneKeepsTheFloatingAssistantButton() throws {
         guard UIDevice.current.userInterfaceIdiom == .phone else { throw XCTSkip("iPad uses the toolbar") }
@@ -214,8 +246,10 @@ final class AssistantUITests: XCTestCase {
             app.buttons["assistantSend"].tap()
         }
         // Swipes the transcript itself, not the sheet, which a swipe from the top edge would dismiss.
+        // The chat's own scroll view; on Duo's cover display, Home's list behind the sheet is a scroll view too.
+        let transcript = app.scrollViews.containing(.any, identifier: "assistantGeneratedReply").firstMatch
         func scrollTranscript(until target: XCUIElement) {
-            for _ in 0..<12 where !target.exists { app.scrollViews.firstMatch.swipeDown() }
+            for _ in 0..<12 where !(target.exists && target.isHittable) { transcript.swipeDown() }
         }
 
         // Needs the scan: nothing relevant is ready, so the answer can't yet support it and cites nothing.
@@ -244,10 +278,18 @@ final class AssistantUITests: XCTestCase {
         // Retry the first question: a new answer from the scan, and the earlier answer stays.
         let firstAnswer = element("assistantGeneratedReply", containing: "isn't ready yet")
         scrollTranscript(until: firstAnswer)
-        let retry = app.buttons["assistantRetryWithDocuments"].firstMatch
-        XCTAssertTrue(retry.waitForExistence(timeout: 5))
-        retry.tap()
-        XCTAssertTrue(element("assistantSourceRow", containing: "Scanned Service Record").waitForExistence(timeout: 15))
+        // Both earlier answers can offer Retry; use the one under the first answer, not whichever is listed first.
+        let retries = app.buttons.matching(identifier: "assistantRetryWithDocuments")
+        XCTAssertTrue(retries.firstMatch.waitForExistence(timeout: 5))
+        let retry = retries.allElementsBoundByIndex
+            .filter { $0.frame.minY > firstAnswer.frame.minY }
+            .min { $0.frame.minY < $1.frame.minY }
+        XCTAssertNotNil(retry, "Retry is offered under the first answer")
+        retry?.tap()
+        // The new answer is appended at the end; short displays such as Duo's cover display must scroll to it.
+        let scannedSource = element("assistantSourceRow", containing: "Scanned Service Record")
+        for _ in 0..<12 where !scannedSource.waitForExistence(timeout: 2) { transcript.swipeUp() }
+        XCTAssertTrue(scannedSource.exists)
         // The retry only appends; the earlier answer is never replaced.
         XCTAssertGreaterThanOrEqual(app.staticTexts.matching(identifier: "assistantGeneratedReply").count, 1)
     }

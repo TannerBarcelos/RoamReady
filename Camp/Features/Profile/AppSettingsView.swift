@@ -40,10 +40,13 @@ struct AppSettingsView: View {
                 } footer: {
                     Text("RoamReady has no accounts. Your library lives on this device and, if sync is on, in your own iCloud.")
                 }
-                Section("Camping help") {
-                    Label(CampingAssistant.availability, systemImage: "sparkles").font(.subheadline)
-                    Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkle button above the tab bar or Ask Assistant in the toolbar. Questions stay on this device.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                // Devices that can't run Apple's on-device model have no Assistant, so nothing mentions it.
+                if CampingAssistant.showsChat {
+                    Section("Camping help") {
+                        Label(CampingAssistant.availability, systemImage: "sparkles").font(.subheadline)
+                        Text("Assistant answers with Apple’s on-device model on any iPhone, iPad, or Mac that supports Apple Intelligence, when it’s turned on and its model is ready. Open it with the sparkle button above the tab bar or Ask Assistant in the toolbar. Questions stay on this device.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                 }
                 Section("Privacy & support") {
                     Link(destination: URL(string: "https://github.com/TannerBarcelos/RoamReady/blob/main/docs/privacy-policy.md")!) {

@@ -21,6 +21,8 @@ struct DocumentDetailView: View {
     @State private var downloading = false
     @State private var editing = false
     @State private var confirmingDelete = false
+    /// Where Apple's on-device model can't run, the Assistant and everything about it stay hidden.
+    private var showsAssistant: Bool { CampingAssistant.showsChat }
 
     var body: some View {
         List {
@@ -33,7 +35,7 @@ struct DocumentDetailView: View {
                     Label("Encrypted in iCloud", systemImage: "lock.icloud")
                 }
             }
-            if let status = library.documentAssistant.status(of: document) {
+            if showsAssistant, let status = library.documentAssistant.status(of: document) {
                 DocumentStatusSection(status: status) { library.documentAssistant.retryFailures() }
             }
             Section {
@@ -52,9 +54,9 @@ struct DocumentDetailView: View {
                     }
                 }
             } footer: {
-                if document.isUnattached { Text("Unattached documents stay here to open or share, but the Assistant doesn’t read them.") }
+                if showsAssistant && document.isUnattached { Text("Unattached documents stay here to open or share, but the Assistant doesn’t read them.") }
             }
-            if document.category == .other {
+            if showsAssistant && document.category == .other {
                 Section {
                     Toggle("Include in Assistant", isOn: includeInAssistant)
                 } footer: {
