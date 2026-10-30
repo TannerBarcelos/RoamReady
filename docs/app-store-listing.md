@@ -38,7 +38,7 @@ EXPLORE WHEN CONNECTED
 Find campgrounds and RV parks through Apple Maps, save places to your lists, open their websites, or get directions. Check local weather and trip forecasts, with saved readings available offline.
 
 ASK FOR CAMPING HELP
-On devices that support Apple Intelligence, ask Apple's on-device model general camping and checklist questions. Apple Intelligence must be enabled and its model ready. Your conversation stays in memory across closing the Assistant and clears when you start a new chat or quit the app. Check generated advice against your rig's manuals; it is not a substitute for qualified assistance.
+On devices that support Apple Intelligence, ask Apple's on-device model general camping and checklist questions, and get answers from your own manuals and reservation paperwork (English documents) with the pages it used. Documents are read on your device and never leave it. Apple Intelligence must be enabled and its model ready. Your conversation stays in memory across closing the Assistant and clears when you start a new chat or quit the app. Check generated advice against your rig's manuals; it is not a substitute for qualified assistance.
 
 BUILT FOR YOUR DEVICES
 Choose System, Light, or Dark appearance. Optional private iCloud sync keeps your library across your Apple devices. Core planning, checklists, saved documents, and locally available photos work offline. Camp Finder, fresh weather, web links, cloud transfers, and downloading cloud-only files or photos need a connection.
@@ -46,6 +46,8 @@ Choose System, Light, or Dark appearance. Optional private iCloud sync keeps you
 $4.99 one-time purchase. No subscription.
 
 ## Assets and account steps still needed
+
+- Privacy label and notices: the Assistant's document indexing is on-device only (no data collected). Settings has no acknowledgements screen, so the sqlite-vec MIT/Apache-2.0 notice lives in the README, the provenance note, and the privacy policy; decide whether the owner wants an in-app screen before submission.
 
 - Choose the final bundle ID and development team, provision the dedicated CloudKit container and WeatherKit, deploy the production schema, and validate the signed archive and checked-in icon.
 - Capture actual Release-build screenshots on the required iPhone, iPad and Mac sizes. Useful screens: Home with a current trip, booking/site details, a personalized checklist, memories, and Camp Finder. Use demonstration data and photos you can publish. Do not present simulator AI test replies as real generated responses.

@@ -29,6 +29,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 | [App Store listing preparation](app-store-listing.md) | Prepared listing copy, policy/support URLs, required assets and account steps. |
 | [Build and validation](validation.md) | Local setup, dependencies, checks, CI, Apple capabilities, and device acceptance. |
 | [Production integrations and release plan](integration-plan.md) | Current implementation, provisioning work, release gates, and deferred features. |
+| [Release tracker drafts](release-tracker-drafts.md) | Proposed new bodies for issues #6 and #74, awaiting owner approval. |
 
 ## Data and product planning
 

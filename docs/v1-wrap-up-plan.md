@@ -1,6 +1,6 @@
 # V1 completion and document assistant build plan
 
-Status: product scope settled and ready for implementation, October 27, 2026. Repository baseline: `7c99419fe9d6fb904b4c779faf2df6bdaf53613b`. Engineering choices remain subject to the explicit validation gates below. This document describes future work, not shipped behavior, and supersedes the earlier document-RAG handoff where details differ.
+Status: product scope settled and ready for implementation, October 27, 2026. Repository baseline: `7c99419fe9d6fb904b4c779faf2df6bdaf53613b`. Engineering choices remain subject to the explicit validation gates below. This document was the October 27 plan. Most slices have since shipped; [features](features.md), [architecture](architecture.md), and [validation](validation.md#remaining-release-gates) describe current behavior and remaining gates, and where they differ this plan is out of date. It also supersedes the earlier document-RAG handoff where details differ.
 
 ## What is actually on main
 

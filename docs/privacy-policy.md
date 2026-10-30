@@ -1,6 +1,6 @@
 # RoamReady privacy policy
 
-Effective October 26, 2026.
+Effective October 29, 2026.
 
 RoamReady helps you plan camping trips and keep your rig details, checklists, documents and memories together. It requires no RoamReady account. It has no advertising, analytics SDK, tracking, or app-operated backend. We do not sell your data.
 
@@ -26,9 +26,19 @@ Trip and rig photos are resized for storage. Imported documents retain their ori
 
 Assistant uses Apple's on-device Foundation Models on eligible devices. RoamReady does not send your questions or checklist context to a remote AI provider. The conversation stays in memory across closing the Assistant and clears when you start a new chat or quit the app. Conversations are not saved in the library or synchronized through iCloud. Apple's initial model download may require a connection.
 
+### Answers from your documents
+
+The Assistant can answer from your own paperwork. To do that, RoamReady reads the eligible documents saved on your device (manuals, service records, warranties and reservations, plus any Other document you turn on, and never registration or insurance) and builds a search index of their text. Scanned pages and photos are read with Apple's on-device text recognition, and meaning-based search uses Apple's on-device language embeddings. All of this happens on your device and works offline.
+
+- Document text, the search index, and your questions are never sent off the device, never sent to a remote AI provider, and never written to logs or analytics. The Assistant does not open links found inside documents.
+- The index is a separate file stored in the app's private storage on each device. It is excluded from device backups and is not synchronized through iCloud. Each device builds its own index from your original files; only the originals and your **Include in Assistant** choice for Other documents sync with your library.
+- The index can be deleted and rebuilt at any time without touching your documents. Deleting a document, moving it out of the Assistant's scope, or turning off its inclusion removes it from answers right away. **Erase all data** deletes the index and its temporary files before the library, and they are not recreated.
+- The search uses the open-source sqlite-vec extension (MIT/Apache-2.0), compiled into the app. It runs locally and makes no network connections. See the repository's [license notice](../Sources/CSQLiteVec/PROVENANCE.md).
+- Document questions work in English in this version. Documents in other languages stay viewable and shareable but are not used for answers.
+
 ## Control and deletion
 
-You can edit or delete library content in the app. Deleting a trip removes its photos, checklists, notes and rating; its documents become unattached so you can keep or delete them separately. Original items in your system photo library are not deleted.
+You can edit or delete library content in the app. Deleting a trip removes its photos, checklists, notes and rating; its documents become unattached so you can keep or delete them separately. Unattached documents are not used by the Assistant until you assign them to a rig or trip. Original items in your system photo library are not deleted.
 
 Profile › Settings offers an export and **Erase all data**. In a configured iCloud build, erasing deletes the app's private cloud zone before removing the device library, caches and settings; it needs a connection and an available iCloud account. Other devices can retain local copies and should be erased separately if desired. Copies you exported or shared must be removed at their destinations.
 
