@@ -224,3 +224,7 @@ Remaining:
 - In iPhone landscape with the keyboard up, the onboarding action bar (progress, button, and hint) leaves little room for the rig form. This isn't specific to Duo.
 - At accessibility text sizes, `DocumentRow`'s category and expiry line is a single `HStack` and can truncate. This isn't specific to Duo.
 - Still to verify on hardware or a newer simulator: the open (unfolded) display, the live fold/unfold resize with a document preview and a photo open, the hinge region on the open display, and the iPhone landscape and accessibility-size passes with `-duo-ui-test`.
+
+## Assistant quality and performance baseline
+
+The answer-quality rubric review and the iPhone, iPad, and Mac performance baseline (issue #108) follow [assistant-quality-baseline.md](assistant-quality-baseline.md). Record the results and the chosen numeric gates here, with build commit, hardware and OS, date, result, and linked defects. Until then they are not measured. Fixed requirements: zero cross-scope, excluded, or stale sources and zero invalid citation IDs.
