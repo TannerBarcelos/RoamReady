@@ -78,7 +78,11 @@ struct CampFinderView: View {
 
     @ViewBuilder private var adaptiveResults: some View {
         if separatesMapAndResults {
-            if #available(iOS 27.1, macCatalyst 27.1, *) {
+            #if targetEnvironment(macCatalyst)
+            // Catalyst's SwiftUI SDK does not expose ArrangementView.
+            regularPanes
+            #else
+            if #available(iOS 27.1, *) {
                 // The system owns the split axis and division-region handling. Navigation and
                 // state stay above this container; the scrolling list stays inside its pane.
                 ArrangementView {
@@ -88,15 +92,20 @@ struct CampFinderView: View {
                 }
                 .arrangementViewStyle(.split)
             } else {
-                // Earlier supported runtimes still receive flexible panes at regular width.
-                HStack(spacing: 0) {
-                    results(includesMap: false).frame(maxWidth: .infinity)
-                    Divider()
-                    map.frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
+                regularPanes
             }
+            #endif
         } else {
             results(includesMap: true)
+        }
+    }
+
+    /// Flexible native panes for platforms and runtimes without the arrangement API.
+    private var regularPanes: some View {
+        HStack(spacing: 0) {
+            results(includesMap: false).frame(maxWidth: .infinity)
+            Divider()
+            map.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
