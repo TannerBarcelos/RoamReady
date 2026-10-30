@@ -7,7 +7,7 @@ import CampPersistence
 
 struct MemoriesView: View {
     @Environment(LibraryController.self) private var library
-    @Environment(\.openURL) private var openURL
+    @Environment(AppPermissions.self) private var permissions
     @Bindable var trip: Trip
     @State private var selections: [PhotosPickerItem] = []
     @State private var importing = false
@@ -41,18 +41,20 @@ struct MemoriesView: View {
                                 failure = CameraCaptureError.permissionDenied.localizedDescription
                             } catch { failure = error.localizedDescription }
                         }
-                    } label: { Label("Take a photo", systemImage: "camera") }
-                    .disabled(importing || requestingCamera)
+                    } label: {
+                        Label("Take a photo", systemImage: permissions.cameraDenied ? "camera.slash" : "camera")
+                    }
+                    .disabled(importing || requestingCamera || permissions.cameraDenied)
                 }
                 PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images, preferredItemEncoding: .current) {
                     Label("Add trip photos", systemImage: "photo.badge.plus")
                 }.disabled(importing || requestingCamera)
                 if importing { ProgressView("Saving on this device") }
                 if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
-                if needsCameraPermission {
-                    Button("Open Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
-                    }
+                if CameraAccess.isAvailable && (needsCameraPermission || permissions.cameraDenied) {
+                    Text("Camera access is off. You can still add photos from your library.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    OpenPermissionSettingsButton()
                 }
                 let photos = trip.sortedPhotos
                 if photos.isEmpty {

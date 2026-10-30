@@ -6,7 +6,7 @@ These features are implemented in source. RoamReady remains a development build;
 
 ## Onboarding and rigs
 
-First launch goes directly to rig/profile onboarding without an account or connection. Choose a rig category and confirm equipment, then add a photo or emoji, an optional name, and experience level.
+First launch checks optional location and camera access with native system prompts, then opens rig/profile onboarding without an account or connection. Granting access is not required. Choose a rig category and confirm equipment, then add a photo or emoji, an optional name, and experience level.
 
 RVs require year, make, model, and length. Optional details include slide-out count (Not specified, None, or 1–8), axles for towables, bunkhouse, and floorplan. Details are owner-entered; there is no rig catalog. Older profiles without a length can still open, and their next edit requests the required fields.
 
@@ -91,7 +91,7 @@ Saved lists persist only Apple place identifiers; details are looked up online o
 
 ## Weather
 
-Tap the reading at the top right of Home to request location access. Location is approximate by default, rounded to about 1 km, and sent only to WeatherKit. The last reading remains visible offline.
+Home shows a read-only temperature with an explicit °F or °C unit, using the device locale. Launch checks request optional location and camera access through native system prompts before rig onboarding; already answered permissions are not requested again. With location denied, Home keeps a muted, crossed-out location icon that explains how to enable access in Settings. Near me and camera capture use crossed-out, disabled controls with a Settings action; text search and selected-photo import remain available. Permission status refreshes when returning from Settings. Location is approximate by default, rounded to about 1 km, and sent only to WeatherKit. The last reading remains visible offline while location access is allowed, with its retrieval time and Apple Weather attribution below Home’s content. Missing readings show a loading or unavailable state, with retry when connected.
 
 Trips with campground coordinates also show per-day forecasts, cached with their download time for offline use. Home weather and trip forecasts display Apple Weather attribution. Fresh readings require connectivity and a provisioned WeatherKit capability.
 

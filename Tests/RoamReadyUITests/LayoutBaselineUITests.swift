@@ -28,8 +28,8 @@ final class LayoutBaselineUITests: XCTestCase {
     func testCaptureLandscape() throws { try captureAll(.landscapeLeft, name: "landscape") }
 
     private func captureAll(_ orientation: UIDeviceOrientation, name: String) throws {
-        // A fresh install with no launch flags opens the real (empty) library, so onboarding shows.
-        var app = launch(orientation, arguments: [])
+        // Skip native prompts while capturing the real empty library's onboarding layout.
+        var app = launch(orientation, arguments: ["-permissions-ui-test", "denied"])
         _ = app.wait(for: .runningForeground, timeout: 10)
         save("onboarding", name)
 

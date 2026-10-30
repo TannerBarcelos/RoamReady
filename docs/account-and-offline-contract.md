@@ -4,7 +4,7 @@
 
 ## Product behavior
 
-RoamReady has **no accounts** in v1: no sign-up, no Sign in with Apple, and no server holding user data. The library belongs to the device and, when sync is on, to the person's own iCloud. First launch goes straight to rig/profile onboarding, which works offline.
+RoamReady has **no accounts** in v1: no sign-up, no Sign in with Apple, and no server holding user data. The library belongs to the device and, when sync is on, to the person's own iCloud. First launch checks optional location and camera permissions through native prompts before rig/profile onboarding, which works offline. Denying either permission never blocks onboarding.
 
 Trips (each one a booking: create from manual campground entry, edit any field, attach confirmation files, delete), setup/teardown checklists, progress, edits, notes, ratings, imported photos, camera capture, profile edits, rig edits/replacement/archiving (including VIN and plate), step priorities and notes, and per-rig default checklists all save through SwiftData offline and sync later. Photo capture/import remains available even if no iCloud connection is possible. Cached forecasts retain their retrieval time; fresh weather needs connectivity. Creating a trip offline means entering the campground by name; choosing it from Camp Finder requires online access. Saved-campground marks are local and work offline; an Apple Maps campground's name and details come from Apple Maps or a trip there, so a saved identifier alone does not promise its details offline. Offline, Camp Finder shows "Camp Finder needs an internet connection" with Try again.
 

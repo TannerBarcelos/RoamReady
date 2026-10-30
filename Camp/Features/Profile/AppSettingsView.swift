@@ -7,6 +7,7 @@ import CampPersistence
 struct AppSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(LibraryController.self) private var library
+    @Environment(AppPermissions.self) private var permissions
     @Query private var trips: [Trip]
     @Query private var photos: [TripPhoto]
     @Query private var documents: [StoredDocument]
@@ -18,6 +19,23 @@ struct AppSettingsView: View {
             Form {
                 AppearanceSection()
                 ICloudSection()
+                Section {
+                    LabeledContent {
+                        Text(permissions.locationAllowed ? "Allowed" : "Off").foregroundStyle(.secondary)
+                    } label: {
+                        Label("Location", systemImage: permissions.locationAllowed ? "location" : "location.slash")
+                    }
+                    if CameraAccess.isAvailable {
+                        LabeledContent {
+                            Text(permissions.camera == .authorized ? "Allowed" : "Off").foregroundStyle(.secondary)
+                        } label: {
+                            Label("Camera", systemImage: permissions.cameraDenied ? "camera.slash" : "camera")
+                        }
+                    }
+                    OpenPermissionSettingsButton()
+                } header: { Text("Permissions") } footer: {
+                    Text("Location enables local weather and nearby campgrounds. Camera access lets you take trip photos. Both are optional; selected photos need no library-wide access.")
+                }
                 Section {
                     SaveStatus()
                     LabeledContent("Trips", value: String(trips.count))

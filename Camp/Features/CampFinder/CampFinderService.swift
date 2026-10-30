@@ -185,8 +185,11 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
 
     var isDenied: Bool { authorization == .denied || authorization == .restricted }
 
+    func refreshAuthorization() { authorization = manager.authorizationStatus }
+
     /// One location fix, asking permission first if needed. Nil when denied or unavailable.
     func currentLocation() async -> CLLocation? {
+        refreshAuthorization()
         if isDenied { return nil }
         return await withCheckedContinuation { continuation in
             waiting.append(continuation)

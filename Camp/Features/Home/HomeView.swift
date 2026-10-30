@@ -5,6 +5,8 @@ import CampPersistence
 
 struct HomeView: View {
     @Environment(\.mainTabActions) private var tabActions
+    @Environment(AppPermissions.self) private var permissions
+    let weather: LocalWeather
     @Query private var profiles: [CamperProfile]
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
@@ -100,6 +102,15 @@ struct HomeView: View {
                     tripLink(trip) { TripRowLabel(trip: trip) }
                         .accessibilityIdentifier("tripRow-\(trip.campgroundName)")
                 }
+            }
+        }
+        if permissions.locationAllowed, let conditions = weather.conditions {
+            Section {
+                WeatherAttribution(legalURL: conditions.attributionURL, lightMarkURL: conditions.lightMarkURL,
+                                   darkMarkURL: conditions.darkMarkURL)
+            } footer: {
+                Text("Weather near you · Updated \(conditions.fetchedAt.formatted(date: .abbreviated, time: .shortened))")
+                if let failure = weather.failure { Text(failure) }
             }
         }
     }

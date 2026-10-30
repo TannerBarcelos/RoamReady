@@ -8,6 +8,7 @@ struct RoamReadyApp: App {
     @State private var library = LibraryController()
     @State private var connectivity = Connectivity()
     @State private var campFinder = CampFinder()
+    @State private var permissions = AppPermissions()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -28,6 +29,7 @@ struct RoamReadyApp: App {
             .environment(library)
             .environment(connectivity)
             .environment(campFinder)
+            .environment(permissions)
             .tint(.blue)
             .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
@@ -37,6 +39,7 @@ struct RoamReadyApp: App {
             .task { await AssistantPerformanceBaseline.runIfRequested() }
             #endif
             .onChange(of: scenePhase) { _, phase in
+                if phase == .active { permissions.checkOnLaunch() }
                 if phase != .active { library.save() }
                 library.documentAssistant.setActive(phase == .active)
             }
@@ -46,6 +49,7 @@ struct RoamReadyApp: App {
 
 struct RootView: View {
     @Environment(LibraryController.self) private var library
+    @Environment(AppPermissions.self) private var permissions
     @Query private var profiles: [CamperProfile]
     var body: some View {
         Group {
@@ -56,13 +60,16 @@ struct RootView: View {
             profileContent
             #endif
         }
+        .task { permissions.checkOnLaunch() }
         .alert("Couldn’t save changes", isPresented: Binding(get: { library.saveFailure != nil }, set: { _ in })) {
             Button("Retry") { library.save() }
         } message: { Text(library.saveFailure ?? "") }
     }
 
     @ViewBuilder private var profileContent: some View {
-        if profiles.isEmpty { OnboardingView() } else { MainTabs() }
+        if !permissions.hasCheckedOnLaunch {
+            ProgressView("Checking permissions…")
+        } else if profiles.isEmpty { OnboardingView() } else { MainTabs() }
     }
 }
 

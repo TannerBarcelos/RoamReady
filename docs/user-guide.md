@@ -6,7 +6,7 @@ RoamReady organizes camping trips and their checklists, paperwork, and memories.
 
 ## Set up your rig
 
-1. On first launch, choose your rig category and confirm its equipment.
+1. On first launch, answer the optional system location and camera prompts, then choose your rig category and confirm its equipment. Denying access still lets you finish setup.
 2. For an RV, enter year, make, model, and length. Add optional details such as slide-outs or floorplan if useful.
 3. Optionally, fill in **Registration**: VIN, license plate, and state or province. A VIN from 1981 on is 17 characters. Type it however it's printed; spaces, dashes, and lowercase are cleaned up. Tents skip this section.
 4. Choose a rig photo or emoji and optionally add your name and experience level.
@@ -74,7 +74,7 @@ Memories linked to a Camp Finder campground also appear in that campground's det
 
 ## Discover campgrounds
 
-Use **Camp Finder** while connected. Pan the map to see campgrounds and RV parks, then tap a place; choose **Near me** or **Search this area** for regional results, or submit a campground name, city, park, or ZIP. Near me asks for location permission; text search works without it.
+Use **Camp Finder** while connected. Pan the map to see campgrounds and RV parks, then tap a place; choose **Near me** or **Search this area** for regional results, or submit a campground name, city, park, or ZIP. Near me uses the location permission checked at launch; if access is off, its crossed-out control is disabled and Open Settings lets you change access. Text search works without it.
 
 Open **Website** or **Call** to arrange a reservation with the operator, then return and choose **Add trip**. Check the prefilled campground time zone and enter the booking/site details yourself. **Directions** opens Apple Maps, and **Photos, ratings & hours** opens Apple's place card. Save places to **Want to go**, **Have been**, or **Favorites**.
 
@@ -82,7 +82,7 @@ Apple Maps does not list every campground or provide site availability, hookups,
 
 ## Check weather and camping guidance
 
-Tap Home's weather reading to request location access and fetch local temperature. Trips with campground coordinates show forecasts. Offline readings are saved data; check their retrieval time. Live weather requires a build configured for WeatherKit.
+Home automatically shows local temperature with °F or °C when location access is allowed. A crossed-out location icon means access is off; tap it for a Settings action, or use Profile › Settings › Permissions. The temperature itself is read-only. Apple Weather attribution and the last update time appear below Home’s content. Trips with campground coordinates show forecasts. Offline readings are saved data; check their retrieval time. Live weather requires a build configured for WeatherKit.
 
 Tap **Ask Assistant** in the native toolbar on iPhone, iPad, or Mac for general camping or troubleshooting questions, including when you have no active trip. Follow up in the same conversation or choose **New chat** to start over. Closing the Assistant keeps the conversation for when you reopen it; it isn't saved once the app quits. On devices that can’t run Apple Intelligence, the Assistant doesn’t exist: there’s no button, no **Ask for camping help** or **Ask about this step**, no **Include in Assistant** or Assistant status in document details, and no Camping help section in Settings. Supported iPhones, iPads, and Macs still show it when Apple Intelligence needs enabling or its model is preparing. In those states, a native recovery screen replaces the conversation and composer; enable AI in Settings or wait for the model, then choose Try again. Availability also refreshes on foregrounding and while the screen is open.
 

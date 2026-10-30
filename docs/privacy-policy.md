@@ -12,13 +12,13 @@ In a build configured for iCloud, optional private iCloud synchronization uses y
 
 ## Location and online services
 
-Location access is optional and requested when you choose Home weather or Camp Finder's Near me. The app requests approximate location by default. For local weather, coordinates are rounded to about one kilometer before they are sent to Apple Weather. Camp Finder sends the search area and search terms to Apple Maps. RoamReady does not save your current location in your library. A campground's location is saved when you choose it for a trip; cached weather is kept for offline use.
+Location access is optional. Before rig onboarding, launch checks request it through Apple’s system prompt if it has not been answered. Denying access leaves local weather and nearby search unavailable; place search and manual entry still work. Permission status and a link to system Settings are available in Profile › Settings. The app requests approximate location by default. For local weather, coordinates are rounded to about one kilometer before they are sent to Apple Weather. Camp Finder sends the search area and search terms to Apple Maps. RoamReady does not save your current location in your library. A campground's location is saved when you choose it for a trip; cached weather is kept for offline use.
 
 Apple Maps discovery and fresh weather need a connection. Opening a campground's website, booking link, directions, or a document link uses the corresponding external service, whose privacy practices apply. Saving a linked document offline downloads it from its host.
 
 ## Photos, camera and files
 
-Camera access is requested only when you choose to take a photo. The system Photos picker grants access to the items you select, without unrestricted access to your photo library. File imports use the files you choose in the system picker. Cloud-only photos or files may first need downloading through their provider.
+Optional camera access is requested through Apple’s system prompt before rig onboarding on devices with a camera, if it has not been answered. Denying access disables capture while keeping selected-photo import available. The system Photos picker grants access to the items you select, without unrestricted access to your photo library. File imports use the files you choose in the system picker. Cloud-only photos or files may first need downloading through their provider.
 
 Trip and rig photos are resized for storage. Imported documents retain their original bytes. Exporting or sharing creates readable copies outside the app; their storage and sharing destinations are your choice.
 

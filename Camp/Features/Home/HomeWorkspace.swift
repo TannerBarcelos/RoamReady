@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import SwiftData
 import CampCore
 import CampPersistence
@@ -20,16 +21,18 @@ struct HomeWorkspace: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(Connectivity.self) private var connectivity
+    @Environment(AppPermissions.self) private var permissions
+    @Environment(\.openURL) private var openURL
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var now = Date()
     @State private var selection: HomeDestination?
     @State private var compactColumn = NavigationSplitViewColumn.sidebar
     @State private var weather = LocalWeather()
-    @State private var showingWeather = false
+    @State private var showingWeatherPermissionHelp = false
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
-            HomeView(now: now, selection: listSelection)
+            HomeView(weather: weather, now: now, selection: listSelection)
                 .assistantToolbarItem(isEnabled: horizontalSizeClass == .compact)
                 .toolbar {
                     if horizontalSizeClass == .compact { weatherToolbar }
@@ -37,16 +40,23 @@ struct HomeWorkspace: View {
         } detail: {
             detail
         }
-        .sheet(isPresented: $showingWeather) { CurrentWeatherSheet(weather: weather) }
+        .alert("Location access is off", isPresented: $showingWeatherPermissionHelp) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Allow location access in Settings to show local weather. Approximate location is enough.")
+        }
         .task(id: connectivity.isOnline) {
             await weather.load()
-            if connectivity.isOnline { await weather.refresh() }
+            await refreshWeather()
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                weather.updateAccess()
-                if connectivity.isOnline { Task { await weather.refresh() } }
-            }
+            if phase == .active { Task { await refreshWeather() } }
+        }
+        .onChange(of: permissions.locationAllowed) { _, _ in
+            Task { await refreshWeather() }
         }
         #if DEBUG
         // The cover display collapses the detail, so UI tests read what it would show.
@@ -90,9 +100,10 @@ struct HomeWorkspace: View {
         #if !targetEnvironment(macCatalyst)
         if #available(iOS 27.1, *) {
             ToolbarItem(placement: .topBarTrailing) {
-                CurrentWeatherBadge(weather: weather, openDetails: openWeather)
+                CurrentWeatherBadge(weather: weather, openPermissionHelp: openWeatherPermissionHelp)
             }
             .axisBehavior(.verticalPreferred)
+            .sharedBackgroundVisibility(.hidden)
         } else {
             standardWeatherToolbar
         }
@@ -103,13 +114,15 @@ struct HomeWorkspace: View {
 
     private var standardWeatherToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            CurrentWeatherBadge(weather: weather, openDetails: openWeather)
+            CurrentWeatherBadge(weather: weather, openPermissionHelp: openWeatherPermissionHelp)
         }
+        .sharedBackgroundVisibility(.hidden)
     }
 
-    private func openWeather() {
-        showingWeather = true
-        if weather.conditions == nil { Task { await weather.refresh(force: true) } }
+    private func openWeatherPermissionHelp() { showingWeatherPermissionHelp = true }
+
+    private func refreshWeather() async {
+        if permissions.locationAllowed && connectivity.isOnline { await weather.refresh() }
     }
 
     private struct DetailIdentity: Hashable {

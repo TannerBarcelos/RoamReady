@@ -14,11 +14,12 @@ import CampPersistence
 /// here, above that switch, so moving between the layouts keeps them and doesn't search again.
 struct CampFinderView: View {
     @Environment(CampFinder.self) private var finder
+    @Environment(AppPermissions.self) private var permissions
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var search = CampFinderSearch()
     @State private var location = LocationProvider()
     @State private var text = ""
-    @State private var camera = MapCameraPosition.userLocation(fallback: .automatic)
+    @State private var camera = MapCameraPosition.automatic
     @State private var visibleRegion: MKCoordinateRegion?
     /// Where the map was last left, so a rebuilt map opens in the same place.
     @State private var lastCamera: MapCamera?
@@ -69,7 +70,7 @@ struct CampFinderView: View {
         }
         .task {
             // Searches nearby on its own only when permission was already given; never prompts on open.
-            if search.phase == .idle, location.authorization == .authorizedWhenInUse || location.authorization == .authorizedAlways {
+            if search.phase == .idle, permissions.locationAllowed {
                 searchNearMe()
             }
         }
@@ -124,9 +125,10 @@ struct CampFinderView: View {
                         searchAreaButton
                     }
                 }
-                if location.isDenied {
+                if permissions.locationDenied {
                     Text("Location access is off. Search by city, park, or ZIP code, or allow location in Settings.")
                         .font(.footnote).foregroundStyle(.secondary)
+                    OpenPermissionSettingsButton()
                 }
                 if let tapFailure { Text(tapFailure.message).font(.footnote).foregroundStyle(.secondary) }
             } footer: {
@@ -151,8 +153,10 @@ struct CampFinderView: View {
     }
 
     private var nearMeButton: some View {
-        Button { searchNearMe() } label: { Label("Near me", systemImage: "location.fill") }
-            .buttonStyle(.bordered).disabled(locating)
+        Button { searchNearMe() } label: {
+            Label("Near me", systemImage: permissions.locationDenied ? "location.slash" : "location.fill")
+        }
+        .buttonStyle(.bordered).disabled(locating || permissions.locationDenied)
     }
 
     private var searchAreaButton: some View {
@@ -162,10 +166,14 @@ struct CampFinderView: View {
 
     private var map: some View {
         Map(position: $camera, selection: $tapped) {
-            UserAnnotation()
+            if permissions.locationAllowed { UserAnnotation() }
         }
         .mapStyle(.standard(pointsOfInterest: .including(CampFinder.categories)))
-        .mapControls { MapUserLocationButton(); MapCompass(); MapScaleView() }
+        .mapControls {
+            if permissions.locationAllowed { MapUserLocationButton() }
+            MapCompass()
+            MapScaleView()
+        }
         .onMapCameraChange(frequency: .onEnd) { visibleRegion = $0.region; lastCamera = $0.camera }
         .accessibilityLabel("Map of campgrounds and RV parks")
         .accessibilityIdentifier("campFinderMap")

@@ -74,10 +74,10 @@ final class DuoWorkspaceUITests: XCTestCase {
             throw XCTSkip("Run in an expanded regular-width window to check sidebar versus detail placement")
         }
 
-        let weather = app.buttons["openCurrentWeather"].firstMatch
+        let weather = app.buttons["weatherPermissionRequired"].firstMatch
         XCTAssertTrue(weather.waitForExistence(timeout: 5))
         XCTAssertTrue(app.barAssistantButton.waitForExistence(timeout: 5))
-        for identifier in ["openCurrentWeather", "openAssistant"] {
+        for identifier in ["weatherPermissionRequired", "openAssistant"] {
             XCTAssertEqual(app.buttons.matching(identifier: identifier).count, 1, "A global action appears once")
             XCTAssertFalse(app.navigationBars["Home"].buttons[identifier].exists,
                            "Global actions belong to the detail toolbar, which can participate in a vertical bar")
