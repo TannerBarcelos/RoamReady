@@ -24,7 +24,7 @@ struct CampFinderView: View {
     /// Where the map was last left, so a rebuilt map opens in the same place.
     @State private var lastCamera: MapCamera?
     @State private var tapped: MapFeature?
-    /// The campground whose details are open after a tap on the map.
+    /// The campground whose details are open after a tap on the map, or after a result on Duo.
     @State private var opened: CampgroundListing?
     @State private var tapFailure: CampFinderError?
     @State private var locating = false
@@ -43,6 +43,10 @@ struct CampFinderView: View {
     /// receive a compact size class from `MainTabs`, so they keep the stacked layout.
     private var showsMapBesideResults: Bool { usesDuoWorkspace && horizontalSizeClass == .regular }
 
+    /// On Duo, details open in a sheet so the map and results stay put beneath them. This follows
+    /// the device rather than the width, so folding with a sheet open never turns it into a push.
+    private var opensDetailsInSheet: Bool { usesDuoWorkspace }
+
     private var content: some View {
         // The stack stays put while its contents switch, so the modifiers below (the search field,
         // the first search, and cancel on leaving) don't run again when the layout changes.
@@ -59,7 +63,8 @@ struct CampFinderView: View {
             }
         }
         .navigationDestination(for: CampgroundListing.self) { CampgroundDetailView(listing: $0) }
-        .navigationDestination(item: $opened) { CampgroundDetailView(listing: $0) }
+        .navigationDestination(item: opensDetailsInSheet ? .constant(nil) : $opened) { CampgroundDetailView(listing: $0) }
+        .sheet(item: opensDetailsInSheet ? $opened : .constant(nil)) { CampgroundDetailSheet(listing: $0) }
         // Always shown: the default placement hides the field under the large title until the list is pulled down.
         .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
         .onSubmit(of: .search) {
@@ -111,7 +116,13 @@ struct CampFinderView: View {
             if !search.results.isEmpty {
                 Section {
                     ForEach(search.results) { listing in
-                        NavigationLink(value: listing) { CampgroundRow(listing: listing) }
+                        if opensDetailsInSheet {
+                            Button { opened = listing } label: { CampgroundRow(listing: listing) }
+                                .foregroundStyle(.primary)
+                                .accessibilityIdentifier("campgroundResult")
+                        } else {
+                            NavigationLink(value: listing) { CampgroundRow(listing: listing) }
+                        }
                     }
                 } header: {
                     Text(search.results.count == 1 ? "1 campground" : "\(search.results.count) campgrounds")
@@ -197,6 +208,23 @@ struct CampFinderView: View {
         let span = MKCoordinateSpan(latitudeDelta: max(0.05, (maxLatitude - minLatitude) * 1.4),
                                     longitudeDelta: max(0.05, (maxLongitude - minLongitude) * 1.4))
         camera = .region(MKCoordinateRegion(center: center, span: span))
+    }
+}
+
+/// Campground details on Duo, presented over Camp Finder with their own stack for Add trip.
+private struct CampgroundDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let listing: CampgroundListing
+    var body: some View {
+        NavigationStack {
+            CampgroundDetailView(listing: listing)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }.accessibilityIdentifier("closeCampground")
+                    }
+                }
+        }
     }
 }
 

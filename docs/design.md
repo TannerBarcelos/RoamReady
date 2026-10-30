@@ -10,7 +10,7 @@ The [approved visual reference](design-A.png) records the design direction. Curr
 
 ## Navigation and information hierarchy
 
-The root view shows onboarding when there is no profile, then four tabs (Trip opens the new-trip sheet). On supported AI devices Assistant opens as a sheet from a circular sparkle button at the bottom right above the tab bar on compact layouts (a shared bottom safe-area accessory), or **Ask Assistant** in the toolbar on regular iPad layouts, Mac, and accessibility text sizes, visible on every tab:
+The root view shows onboarding when there is no profile, then four tabs (Trip opens the new-trip sheet). On supported AI devices Assistant opens as a sheet from a circular sparkle button at the bottom right above the tab bar on compact layouts (a shared bottom safe-area accessory), or **Ask Assistant** in the toolbar on regular iPad layouts, Mac, iPhone Duo, and accessibility text sizes, visible on every tab:
 
 | Tab | Primary responsibility |
 | --- | --- |
@@ -51,9 +51,9 @@ Sync is configured through the onboarding/Settings toggle, which works offline a
 
 The app targets iPhone and iPad in portrait and landscape, and Mac through Mac Catalyst, and defaults to system appearance, with explicit Light/Dark choices applied at the window root. Native controls provide the starting point for Dynamic Type, VoiceOver, and platform interaction conventions.
 
-On iPhone Duo the app detects the hinge and lets screens use the open display's width instead of the compact width used on other iPhones, iPad, and Mac. It keeps the same four tabs, and Trip still opens Add trip without changing tabs. Home is a native two-column split view there: Home on the leading side and the selected trip's details on the trailing side, starting with the current or next trip. With neither, the trailing side shows a quiet empty state while Home keeps its create actions. When the split view collapses on the cover display, Home is in front and a trip opens on top of it, as on other iPhones.
+On iPhone Duo the app detects the hinge and lets screens use the open display's width instead of the compact width used on other iPhones, iPad, and Mac. It keeps the same four tabs, and Trip still opens Add trip without changing tabs. Home is a native two-column split view there: Home on the leading side and the selected trip's details on the trailing side, starting with the current or next trip. With neither, the trailing side shows a quiet empty state while Home keeps its create actions. When the split view collapses on the cover display, Home is in front and a trip opens on top of it, as on other iPhones. Assistant always sits in the toolbar on Duo, folded or open, so it never jumps between the bar and the corner. Work in progress (an Assistant reply being generated, open editors and their drafts, document imports, the camera, and Camp Finder's search) is owned by sheets or by views above anything that changes layout, so a resize or fold doesn't restart, duplicate, or dismiss it. Screens that add Duo-only layouts must keep that state above the branch that switches layouts.
 
-Camp Finder uses the open display's regular width to put its results list beside a map that fills the remaining content area; the map sits outside the scrolling list. At compact width it falls back to the stacked map and results. The search, camera, and selection are held above that switch so changing layouts doesn't reset them.
+Camp Finder uses the open display's regular width to put its results list beside a map that fills the remaining content area; the map sits outside the scrolling list. At compact width it falls back to the stacked map and results. The search, camera, and selection are held above that switch so changing layouts doesn't reset them. On Duo, folded or open, a campground's details open in a sheet with a Done button, so the map, query, and results stay beneath it; other iPhones push the details as before.
 
 Rig thumbnails expose a single labeled image to VoiceOver for both photos and emoji. Their decorative contents stay within the thumbnail; surrounding rig details and actions scale with Dynamic Type.
 

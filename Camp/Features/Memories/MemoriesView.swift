@@ -68,7 +68,7 @@ struct MemoriesView: View {
                         ForEach(photos) { photo in
                             Button { selectedPhoto = photo } label: {
                                 VStack(alignment: .leading) {
-                                    LocalPhoto(data: photo.imageData).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
+                                    LocalPhoto(data: photo.imageData).frame(maxWidth: .infinity).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
                                     if !photo.caption.isEmpty { Text(photo.caption).font(.caption).lineLimit(2).foregroundStyle(.primary) }
                                 }
                             }.buttonStyle(.plain).accessibilityLabel(photo.caption.isEmpty ? "Trip photo" : photo.caption)
@@ -126,7 +126,7 @@ struct PhotoDetailView: View {
     var body: some View {
         NavigationStack {
             Form {
-                LocalPhoto(data: photo.imageData, maximumDimension: 2048).frame(height: 300).clipped()
+                LocalPhoto(data: photo.imageData, maximumDimension: 2048).frame(maxWidth: .infinity).frame(height: 300).clipped()
                 TextField("Caption", text: $caption, axis: .vertical)
                 if let shareURL { ShareLink("Share photo", item: shareURL) }
                 Button("Remove from trip", role: .destructive) { deleting = true }

@@ -33,4 +33,4 @@ Start with the [documentation index](docs/README.md) for the user guide, feature
 
 ## License
 
-[MIT](LICENSE). The vendored [sqlite-vec](Sources/CSQLiteVec/PROVENANCE.md) C source (MIT/Apache-2.0) is the one third-party code in the app. See [data sources and coverage](docs/campground-data.md) for third-party data attribution and reuse limits.
+[MIT](LICENSE). The vendored [sqlite-vec](Sources/CSQLiteVec/PROVENANCE.md) C source (MIT/Apache-2.0) is the one third-party code in the app. sqlite-vec is Copyright (c) 2024 Alex Garcia, dual-licensed MIT and Apache-2.0 (texts in `Sources/CSQLiteVec/LICENSE-MIT` and `LICENSE-APACHE`); RoamReady uses it under MIT. The app has no acknowledgements screen yet, so this notice and the privacy policy are where it is disclosed. See [data sources and coverage](docs/campground-data.md) for third-party data attribution and reuse limits.

@@ -26,7 +26,7 @@ There is one active rig per owner, controlled by `RigPolicy.maxActiveRigs`. Edit
 
 Home shows the earliest-arriving active trip, checklist progress, memories, local save status, and quick trip creation. Active means today falls within the inclusive arrival/departure dates in the campground’s time zone and the trip has not been marked complete. The card disappears after departure day; other current and upcoming trips remain accessible on Home, including overlapping bookings. Completed trips live in **Profile › Trip history**, newest first, alongside **Your campgrounds**. Home refreshes at campground midnight and on foregrounding, without storing an active flag. The tab bar has Home, Trip (add), Camp Finder, and Profile. Profile’s gear opens Settings for appearance, iCloud, export, library maintenance, and app information.
 
-On iPhone Duo, Home shows the selected trip beside it. The current trip is selected at first, or else the next upcoming one; overlapping trips follow Home's rule and choose the earliest arrival (`featuredTrip(asOf:)` in `CampCore`). Picking another trip replaces the details. If that trip is deleted, the details go back to the featured trip. With no current or upcoming trip, the details side is empty.
+On iPhone Duo, Home shows the selected trip beside it. The current trip is selected at first, or else the next upcoming one; overlapping trips follow Home's rule and choose the earliest arrival (`featuredTrip(asOf:)` in `CampCore`). Picking another trip replaces the details, and the setup and teardown checklist shortcuts open that checklist there. If the picked trip is deleted, the pick is cleared and the details go back to the featured trip. With no current or upcoming trip, the details side is empty.
 
 A trip represents one booking at one campground. Campground name, rig, and dates are required. Create a trip from a Camp Finder listing online or enter its campground by name offline. RoamReady records a booking; it does not make reservations.
 
@@ -81,7 +81,7 @@ Capture photos with the native camera or import locally available photos while o
 
 Camp Finder is online-only discovery through Apple Maps (MapKit), with no server or API key. The map shows campground and RV park points of interest as you pan; tap one to open its detail. Use **Near me**, **Search this area**, or search by campground name, city, park, or ZIP. Location permission is optional; text search works without it.
 
-On iPhone Duo's open display, the results sit beside a map that fills the rest of the screen. On the cover display, and on every other device, the map stays at the top of the results list. Moving between the two keeps the search text, results, map position, and open place, and doesn't search again.
+On iPhone Duo's open display, the results sit beside a map that fills the rest of the screen. On the cover display, and on every other device, the map stays at the top of the results list. Moving between the two keeps the search text, results, map position, and open place, and doesn't search again. On iPhone Duo, a campground's details open in a sheet over Camp Finder; tap **Done** to return to the same search.
 
 Details include an address, **Website** for booking, **Call**, **Directions**, and Apple's **Photos, ratings & hours** place card where available. Save places to **Want to go**, **Have been**, or **Favorites**. **Add trip** prefills the campground identity, name, coordinates, and time zone; the time zone can be checked or set manually.
 

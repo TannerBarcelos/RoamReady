@@ -8,12 +8,16 @@ final class LibraryWorkflowUITests: XCTestCase {
         app.launchArguments = ["-workflow-ui-test", UUID().uuidString]
         app.launch()
         let tent = app.buttons["Tent"]
+        let advance = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Set up my'")).firstMatch
         XCTAssertTrue(app.navigationBars["RoamReady"].waitForExistence(timeout: 15))
+        // Short displays such as Duo's cover display scroll cards under the bottom bar, where a tap
+        // would land on its button instead; scroll until the card is clear of the bar.
         for _ in 0..<8 {
-            if tent.isHittable { break }
+            if tent.isHittable && tent.frame.maxY <= advance.frame.minY { break }
             app.swipeUp()
         }
         XCTAssertTrue(tent.isHittable)
+        XCTAssertLessThanOrEqual(tent.frame.maxY, advance.frame.minY)
         tent.tap()
         app.buttons["Set up my tent"].tap()
         app.buttons["Looks like home"].tap()

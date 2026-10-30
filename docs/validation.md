@@ -82,6 +82,76 @@ On an iOS simulator or device:
 
 These visual checks are not covered by the package tests.
 
+## Regular-iPhone layout baselines (Duo)
+
+The iPhone Duo work (#82–#91) changes layouts only on Duo. Regular iPhones must keep their current layouts, navigation, tab behavior, and Assistant placement. The screenshots in [validation/duo-baselines](validation/duo-baselines/) record the regular-iPhone layouts from `main` at 7c99419, before any Duo change. Compare each Duo slice against them.
+
+| | Small iPhone | Large iPhone |
+| --- | --- | --- |
+| Simulator | iPhone 17e | iPhone Air (the largest iPhone simulator installed; there is no Pro Max) |
+| OS | iOS 27.0 (24A434) | iOS 27.0 (24A434) |
+| File prefix | `small-` | `large-` |
+
+- **Text sizes:** `default` is the system default (`content_size large`); `ax3` is Accessibility Extra Large (`content_size accessibility-extra-large`).
+- **Orientations:** `portrait` and `landscape` (landscape left).
+- **Appearance:** Light. Captured on Oct 27–28, 2026, so dates in the fixture trips show those days.
+- **Files:** `<device>-<text size>-<orientation>-<screen>.png`, scaled so the longest side is 900 px. There are 48: the small iPhone at the default text size is missing. Its captures came out at the accessibility size because the text-size change didn't take effect, so they were left out. Recapture that set with the steps below.
+
+| Screen | How it's reached | Launch arguments |
+| --- | --- | --- |
+| `onboarding` | A fresh install, no flags (opens the real, empty library) | none |
+| `home` | Launch | `-assistant-ui-test ready -navigation-ui-test` |
+| `trip-detail` | Home › Current Pines | same |
+| `checklist` | Trip details › Setup | same |
+| `camp-finder` | The Camp Finder tab, after 4 seconds for map tiles | same |
+| `profile` | The Profile tab | same |
+| `assistant-entry` | Home, showing the sparkle button or the toolbar's Ask Assistant | same |
+| `assistant-sheet` | The Assistant sheet, opened from Home | same |
+
+`-navigation-ui-test` uses the in-memory fixture library ([NavigationUITestLibrary.swift](../Camp/App/NavigationUITestLibrary.swift)), so the trips are Current Pines, Overlapping Creek, Upcoming Lake, and Past Meadows. Their dates are relative to today, so later captures match except for the dates, the clock, and Camp Finder's map tiles.
+
+What the baselines show today:
+
+- On the large iPhone at the default size in portrait, the Assistant is the round sparkle button above the tab bar.
+- On the large iPhone in landscape, the width class is regular, so the Assistant is **Ask Assistant** in the toolbar even at the default size.
+- At the accessibility size, the Assistant is in the toolbar on both iPhones and in both orientations.
+- The tab bar always shows Home, Trip, Camp Finder, and Profile.
+
+### Recapture the baselines
+
+`LayoutBaselineUITests` ([LayoutBaselineUITests.swift](../Tests/RoamReadyUITests/LayoutBaselineUITests.swift)) takes the screenshots. It skips itself unless `ROAMREADY_BASELINE_DIR` is set, so the regular UI test run is unaffected. Use your own simulator clones so other simulator work isn't disturbed:
+
+```sh
+SMALL=$(xcrun simctl clone "iPhone 17e" baseline-small)   # pick the iOS 27.0 device if there are several
+LARGE=$(xcrun simctl clone "iPhone Air" baseline-large)
+xcrun simctl boot "$SMALL"; xcrun simctl boot "$LARGE"
+
+xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+  -destination "id=$SMALL" -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO build-for-testing
+
+OUT=/tmp/duo-baselines
+for device in small large; do
+  udid=$SMALL; [[ $device == large ]] && udid=$LARGE
+  for size in large accessibility-extra-large; do
+    label=default; [[ $size != large ]] && label=ax3
+    xcrun simctl uninstall "$udid" com.tannerdev.roamready   # fresh install, so onboarding shows
+    xcrun simctl ui "$udid" content_size "$size"
+    xcrun simctl ui "$udid" content_size                      # confirm it took effect
+    TEST_RUNNER_ROAMREADY_BASELINE_DIR=$OUT TEST_RUNNER_ROAMREADY_BASELINE_PREFIX=$device-$label \
+      xcodebuild -project RoamReady.xcodeproj -scheme RoamReady -destination "id=$udid" \
+      -derivedDataPath .derivedData CODE_SIGNING_ALLOWED=NO test-without-building \
+      -only-testing:RoamReadyUITests/LayoutBaselineUITests
+  done
+  xcrun simctl ui "$udid" content_size large
+done
+
+xcrun simctl delete "$SMALL" "$LARGE"
+```
+
+Each run takes several minutes per device and text size. The simulator must stay booted for the whole run: if `simctl ui` reports the device is shut down, the text size was not applied and that run must be repeated. XCTest stores landscape screenshots in portrait pixels with an orientation tag. Before committing, scale them with ImageIO using `kCGImageSourceCreateThumbnailWithTransform` (and `kCGImageSourceThumbnailMaxPixelSize` 900), which stores them upright; plain `sips -Z` keeps the tag.
+
+To check a Duo slice, run the same capture on its branch and compare the images file by file. Regular iPhones should differ only in dates, the clock, and map tiles.
+
 ## Apple capability configuration
 
 The default `Camp.entitlements` includes Mac sandbox permissions but no CloudKit or WeatherKit capabilities; the app has no accounts. System PhotosPicker grants selected-item access without unrestricted Photo Library permission. NSCameraUsageDescription supports on-device trip photo capture. Location (when in use, approximate by default) is requested when the owner taps Home weather or Camp Finder’s Near me. Weather requests round it to about 1 km; Camp Finder uses it to search Apple Maps. Manual trip entry and text search work without location permission.
@@ -125,3 +195,58 @@ Before release, use a physical iPhone, iPad, or Mac that supports Apple Intellig
 Simulator CI deliberately skips this opt-in hardware test. Its deterministic send/error UI tests use separate DEBUG-only simulated generators, which are excluded from Release builds. Package tests verify that Send reaches the generator without a trip/reference match, errors and cancellations propagate, empty answers fail, overlong questions are preserved for shortening, and context overflow retries only once. Native UI tests check successful Send and failure/retry presentation. Real generation must still be verified on the physical device; simulator or fake replies do not establish it.
 
 The production adapter follows Apple’s [Foundation Models generation guide](https://developer.apple.com/documentation/foundationmodels/generating-content-and-performing-tasks-with-foundation-models), [language support guidance](https://developer.apple.com/documentation/foundationmodels/supporting-languages-and-locales-with-foundation-models), and [iOS 27 model error API](https://developer.apple.com/documentation/foundationmodels/languagemodelerror).
+
+## Remaining release gates
+
+Nothing below has been executed on a signed build or physical hardware. Passing package tests and unsigned CI builds do not close any of these gates. Every row starts empty and stays that way until someone records a real run: fill in the build commit, the hardware and OS, the date, the result, and a linked defect issue for anything that fails. Do not enter a result that was not observed.
+
+| Gate | What must be shown | Build commit | Hardware / OS | Date | Result | Linked defect |
+| --- | --- | --- | --- | --- | --- | --- |
+| Signing and provisioning | App ID, final bundle ID, team, iCloud/Push/WeatherKit capabilities; signed Debug build on an iPhone (#6 A1). Tracker: #6 A1. | not run | not run | not run | not run | none yet |
+| CloudKit Production schema | Create one of every model in a signed Development build, confirm `StoredDocument.includeInAssistant` and the `CD_` types in CloudKit Console, then deploy to Production before TestFlight. Not yet deployed (owner-confirmed Oct 29, 2026). Tracker: #6 A2. | not run | not run | not run | not run | none yet |
+| Two-device sync, account change, conflict, erase | Everything appears on both devices; offline edits on both; delete-versus-edit conflict outcome recorded; sync toggled during a large upload; account switch never mixes data; Erase all data clears iCloud; the Assistant index is rebuilt per device and never synced; the Other opt-in syncs (#6 B6). Tracker: #6 B6. | not run | not run | not run | not run | none yet |
+| Live WeatherKit | Home reading, location denied/revoked, offline cache and refresh, per-trip forecast, Apple Weather attribution in light and dark (#6 A3, B7). Tracker: #6 A3, B7. | not run | not run | not run | not run | none yet |
+| Physical-device model readiness | Apple Intelligence off, downloading, and ready states; hidden entry on unsupported devices; real generated answer and follow-up via `AssistantUITests/testLiveOnDeviceFoundationModelsResponseAndFollowUp`; airplane mode after model download; no network requests (#6 B8). Tracker: #6 B8. | not run | not run | not run | not run | none yet |
+| Physical-device document Q&A | Index, ask, cited page, conflicts, readiness/retry, English-only behavior, scope switch, and Erase on a real iPhone, iPad, and Mac with the real model and real manuals. Tracker: #92, #108. | not run | not run | not run | not run | none yet |
+| Real camera and media | Camera and photo permissions (allowed, denied, limited); HEIC, Live Photos, very large images; Files providers and cloud-only imports; 45 MiB PDF and the 50 MiB refusal (#6 B5, B15). Tracker: #6 B5, B15. | not run | not run | not run | not run | none yet |
+| Low storage and interruption | Save failures, low-disk imports, interrupted file transfers and indexing (force-quit mid-pass), asset upload interruption. Tracker: #6 B15. | not run | not run | not run | not run | none yet |
+| Full VoiceOver and accessibility | VoiceOver navigation of every screen including the Assistant stage and readiness announcements, largest Dynamic Type, contrast, Reduce Motion/Transparency, in light and dark (#6 B11, B15). The Duo open-display passes belong here too (#91). Tracker: #6 B11, B15, #91. | not run | not run | not run | not run | none yet |
+| Large-library performance | About 300 trips and 2,000 real photos launch and scroll smoothly on hardware; the package scale fixture measures storage operations only (#6 B15). Tracker: #6 B15. | not run | not run | not run | not run | none yet |
+| Signed Mac | Mac signing with the same bundle ID and entitlements; launch, onboarding, trips, documents, Camp Finder, weather, Assistant, and PDF source viewer; iCloud sync with an iPhone; camera-less "Take a photo" hidden (#6 A4, B13). Tracker: #6 A4, B13. | not run | not run | not run | not run | none yet |
+| Archive, listing, privacy, pricing | Signed Release archive includes the icon; screenshots on required sizes; age rating and export compliance; privacy label matches `PrivacyInfo.xcprivacy` and the policy; Paid Apps Agreement; $4.99 price schedule and live-listing check (#6 A5-A7). Tracker: #6 A5-A7. | not run | not run | not run | not run | none yet |
+| TestFlight | Distribution signing, validated upload after the Production schema deploy, and Part B rerun on the TestFlight build (#6 A8). Tracker: #6 A8. | not run | not run | not run | not run | none yet |
+| iPad Dynamic Type finding | Scrolled rig section of Profile on iPad: three audit findings remain; one node resolves to the `Replace rig` label, the others do not. Root cause not found and nothing waived. Needs a fix and a clean focused audit on iPad plus an iPhone pass; see the [investigation](v1-audit.md#ipad-rig-dynamic-type-finding-93-investigation). Tracker: #93. | not run | not run | not run | not run | none yet |
+| Assistant answer-quality baseline | Human rubric review of generated answers per case (conflict, readiness, language, scope switch, exclusion, injection, OCR noise, unanswerable), repeated samples, zero cross-scope/excluded/stale sources and zero invalid citations. The deterministic retrieval eval (`swift test --filter DocumentAssistantEvalTests`) is not a substitute, and retrieval quality on real manuals is not yet measured. Tracker: #108. | not run | not run | not run | not run | none yet |
+| Assistant device performance baseline | Import, OCR and embedding throughput; cold and warm retrieval; time to answer; peak memory; index size; cancellation responsiveness on physical iPhone, iPad, and Mac. Simulator numbers are diagnostic only. Numeric gates are chosen from this baseline and written here. Tracker: #108. | not run | not run | not run | not run | none yet |
+| Source states and eval guide | Cited-versus-searched source presentation, changed/unavailable states and the PDF page viewer on iPhone, iPad, and Catalyst (#105); `docs/assistant-evals.md` and the owner walkthrough (#109). Both issues are still open. Tracker: #105, #109. | not run | not run | not run | not run | none yet |
+
+Code-level evidence already recorded elsewhere (for example the v1 audit's CI runs and the Duo resize audit) is simulator or CI evidence only and is not copied into these rows.
+
+## Duo resize audit
+
+Issue #90 checked onboarding, Profile, Documents, Photos, and the Assistant after the iPhone Duo foundation (#83) began passing the real horizontal size class through `MainTabs`. In Debug, `-duo-ui-test` with `-navigation-ui-test` also adds one trip photo and one image document to Current Pines, so Photos and Documents have something to open; other fixture runs are unchanged.
+
+What was run (iOS 27.1 iPhone Duo simulator, closed cover display only, about 466×678 pt, with a vertical tab bar and status column on the trailing edge):
+
+- Home, Photos & site notes, and the Trip photo sheet were inspected on the cover display. Rotation has no effect there; the simulator can't unfold, so the open display and the fold/unfold transition weren't exercised.
+- `NavigationUITests`, `LibraryWorkflowUITests`, `DuoWorkspaceUITests`, and `DuoHomeUITests` pass on the iPhone Duo and iPhone 18 Pro simulators. The landscape and accessibility-text-size tours with `-duo-ui-test` weren't run, so the findings below for those come from reading the code.
+
+Fixed:
+
+- **Photo tiles overflowed their grid column.** `LocalPhoto` is aspect-fill, and with only a fixed height its frame took the image's natural width (about 200 pt for a 3:2 photo). Each tile overflowed its column and spilled past the card's leading edge, clipping the caption ([before](validation/duo-cover-photos-overflow-before.png)). The same was true of the 300 pt photo in Trip photo. Both now take their column or row width before the height is applied. This also happens on regular iPhones whenever a column is narrower than the photo's natural width, so the fix applies everywhere; the navigation fixtures have no photos, so the regular-iPhone baselines don't change.
+
+- **Onboarding's workflow test tapped through the bottom bar.** On the short cover display, the Tent card can scroll under the onboarding action bar while XCUITest still reports it as hittable. The tap then landed on **Set up my travel trailer** instead. The app was behaving correctly, so only `LibraryWorkflowUITests` changed: it now scrolls until the card is clear of the bar. The test passes on the iPhone Duo and iPhone 18 Pro simulators.
+- The floating Assistant button overlapped the trailing end of list rows on the cover display. #89 moves the Assistant into the toolbar on Duo, which removes the overlap.
+
+Checked with no change needed:
+
+- Size class: none of these screens read `horizontalSizeClass`. Onboarding is outside `MainTabs`, so it already got the real size class, on Duo and everywhere else. Sheets (Add trip, the Assistant, Settings, editors, Trip photo) take their presentation style from the window, not from the SwiftUI size-class override, so Duo doesn't change how they're presented.
+- Keeping a view through a resize: the photo sheet (`sheet(item:)` in `MemoriesView`) and the document preview (`quickLookPreview` in `DocumentDetailView`, prepared by a `.task` keyed on checksum and availability) only depend on the view's identity. None of the audited screens switch their view tree on size class, so a resize keeps both open.
+- Fold avoidance: every audited screen uses native `List`, `Form`, or `ScrollView` inside the safe area, with nothing pinned with `ignoresSafeArea` except the full-screen camera. Content on the cover display stops before the trailing status column and tab bar.
+- Keyboard: the onboarding action bar and the Assistant composer are `safeAreaInset`s, so they stay above the keyboard. Forms scroll the focused field into view.
+
+Remaining:
+
+- In iPhone landscape with the keyboard up, the onboarding action bar (progress, button, and hint) leaves little room for the rig form. This isn't specific to Duo.
+- At accessibility text sizes, `DocumentRow`'s category and expiry line is a single `HStack` and can truncate. This isn't specific to Duo.
+- Still to verify on hardware or a newer simulator: the open (unfolded) display, the live fold/unfold resize with a document preview and a photo open, the hinge region on the open display, and the iPhone landscape and accessibility-size passes with `-duo-ui-test`.

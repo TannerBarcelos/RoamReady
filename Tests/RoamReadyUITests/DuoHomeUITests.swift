@@ -43,6 +43,43 @@ final class DuoHomeUITests: XCTestCase {
         XCTAssertEqual(detailTrip(app), "Upcoming Lake")
     }
 
+    func testChecklistShortcutsOpenTheRightPhaseBesideHome() {
+        let app = launch()
+        XCTAssertEqual(checklist(app), "None")
+        app.buttons["Teardown checklist"].tap()
+        XCTAssertTrue(app.navigationBars["Teardown"].waitForExistence(timeout: 5))
+        XCTAssertEqual(checklist(app), "Teardown")
+        XCTAssertEqual(detailTrip(app), "Current Pines")
+
+        showHome(app)
+        app.buttons["Continue setup"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Setup"].waitForExistence(timeout: 5))
+        XCTAssertEqual(checklist(app), "Setup")
+    }
+
+    func testDeletingTheSelectedTripFallsBackToTheFeaturedTrip() {
+        let app = launch()
+        app.buttons["Teardown checklist"].tap()
+        XCTAssertEqual(checklist(app), "Teardown")
+        showHome(app)
+        app.buttons["tripRow-Current Pines"].tap()
+        XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5))
+        app.buttons["Trip options"].firstMatch.tap()
+        app.buttons["Cancel & delete trip"].firstMatch.tap()
+        app.alerts.buttons["Delete Trip"].tap()
+
+        XCTAssertTrue(app.staticTexts["Hello, Riley"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["tripRow-Current Pines"].exists)
+        XCTAssertEqual(detailTrip(app), "Overlapping Creek", "The detail falls back to the next featured trip")
+        XCTAssertEqual(checklist(app), "None", "The deleted trip's checklist pick is cleared")
+    }
+
+    private func checklist(_ app: XCUIApplication) -> String {
+        let marker = app.descendants(matching: .any)["homeDetailChecklist"]
+        XCTAssertTrue(marker.waitForExistence(timeout: 5))
+        return marker.label
+    }
+
     func testEmptyLibraryKeepsCreateActionsAndAQuietDetail() {
         let app = launch(["-empty-library"])
         XCTAssertEqual(detailTrip(app), "None")
