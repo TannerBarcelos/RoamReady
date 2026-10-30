@@ -46,13 +46,13 @@ final class DuoHomeUITests: XCTestCase {
     func testChecklistShortcutsOpenTheRightPhaseBesideHome() {
         let app = launch()
         XCTAssertEqual(checklist(app), "None")
-        app.buttons["Teardown checklist"].tap()
+        app.buttons["homeChecklist-teardown"].tap()
         XCTAssertTrue(app.navigationBars["Teardown"].waitForExistence(timeout: 5))
         XCTAssertEqual(checklist(app), "Teardown")
         XCTAssertEqual(detailTrip(app), "Current Pines")
 
         showHome(app)
-        app.buttons["Continue setup"].firstMatch.tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Continue setup'")).firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Setup"].waitForExistence(timeout: 5))
         XCTAssertEqual(checklist(app), "Setup")
     }
@@ -60,21 +60,21 @@ final class DuoHomeUITests: XCTestCase {
     /// Home keeps the shown phase above the checklist, so a fold that rebuilds the columns keeps it.
     func testSwitchingThePhaseInsideTheChecklistUpdatesHomesPick() {
         let app = launch()
-        app.buttons["Teardown checklist"].tap()
+        app.buttons["homeChecklist-teardown"].tap()
         XCTAssertTrue(app.navigationBars["Teardown"].waitForExistence(timeout: 5))
         app.segmentedControls.buttons["Setup"].tap()
         XCTAssertTrue(app.navigationBars["Setup"].waitForExistence(timeout: 5))
         XCTAssertEqual(checklist(app), "Setup", "Home's pick follows the checklist's phase")
 
         showHome(app)
-        app.buttons["Teardown checklist"].tap()
+        app.buttons["homeChecklist-teardown"].tap()
         XCTAssertTrue(app.navigationBars["Teardown"].waitForExistence(timeout: 5), "A shortcut switches an open checklist")
         XCTAssertEqual(checklist(app), "Teardown")
     }
 
     func testDeletingTheSelectedTripFallsBackToTheFeaturedTrip() {
         let app = launch()
-        app.buttons["Teardown checklist"].tap()
+        app.buttons["homeChecklist-teardown"].tap()
         XCTAssertEqual(checklist(app), "Teardown")
         showHome(app)
         app.buttons["tripRow-Current Pines"].tap()
