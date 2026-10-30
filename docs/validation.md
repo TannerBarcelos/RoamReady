@@ -251,6 +251,15 @@ Remaining:
 - At accessibility text sizes, `DocumentRow`'s category and expiry line is a single `HStack` and can truncate. This isn't specific to Duo.
 - Still to verify on hardware or a newer simulator: the open (unfolded) display, the live fold/unfold resize with a document preview and a photo open, the hinge region on the open display, and the iPhone landscape and accessibility-size passes with `-duo-ui-test`.
 
+## iPhone Duo simulator
+
+Checked October 30, 2026 on macOS 27.0.1 with Xcode 27.1 (27A9275):
+
+- **Runtime:** the iOS 27.1 simulator runtime (24A94425) supports only the iPhone Duo. Every other iPhone and iPad simulator is on iOS 27.0, so `simctl create` refuses them on 27.1 with "Incompatible device".
+- **It unfolds.** The Simulator window's posture buttons fold and open the device, and `UIHingeInteraction` reports each change to the app: about 5° folded, then partly open, then 180° open. The audit above was limited to the cover display; the open display and fold transitions can now be checked on this simulator. Hardware is still needed for real hinge angles, partial folds held in the hand, and B14's final sign-off.
+- **Checking detection:** stream `xcrun simctl spawn booted log stream --level debug --predicate 'subsystem == "com.tannerdev.roamready" AND category == "DuoWorkspace"'`, then launch with `-navigation-ui-test` but without `-duo-ui-test`. `Hinge reported; using the Duo workspace` appears only when the hinge turns the workspace on; with `-duo-ui-test` it is already on, so the line never appears.
+- **If SpringBoard crash-loops** (every app launch fails with "host down", and `SpringBoard-*.ips` reports stop in `-[FBSDisplayMonitor _initWithDisplays:mainDisplay:bookendObserver:transformer:]`), run `sudo xcodebuild -runFirstLaunch`, restart CoreSimulatorService, and delete and recreate the iPhone Duo. That fixed it here.
+
 ## Assistant quality and performance baseline
 
 The answer-quality rubric review and the iPhone, iPad, and Mac performance baseline (issue #108) follow [assistant-quality-baseline.md](assistant-quality-baseline.md). Record the results and the chosen numeric gates here, with build commit, hardware and OS, date, result, and linked defects. Until then they are not measured. Fixed requirements: zero cross-scope, excluded, or stale sources and zero invalid citation IDs.
