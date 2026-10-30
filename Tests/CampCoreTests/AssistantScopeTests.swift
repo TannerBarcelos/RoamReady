@@ -18,6 +18,12 @@ final class AssistantScopeTests: XCTestCase {
         XCTAssertEqual(AssistantConversationRules.retrievalQuestion("E4?", after: nil), "E4?")
     }
 
+    func testStepFollowUpRetrievalKeepsTheSelectedStepTopic() {
+        XCTAssertEqual(AssistantConversationRules.retrievalQuestion("And then?", after: "What do I do first?",
+                                                                   stepTitle: "Disconnect shore power"),
+                       "Disconnect shore power What do I do first? And then?")
+    }
+
     func testAPromptCarriesNoEarlierTurns() {
         let request = CampingHelpRequest(question: "Where is the fuse box?", steps: [], rigType: nil, step: nil,
                                          scope: .general, previousQuestion: "What is the tire pressure?")

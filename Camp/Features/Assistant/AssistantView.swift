@@ -28,7 +28,7 @@ final class AssistantConversation {
 /// whenever its parent redraws, so the conversation is held here in @State rather than created there.
 struct TripAssistantSheet: View {
     let trip: Trip
-    let step: ChecklistStep?
+    let step: CampingStepContext?
     @State private var chat = AssistantConversation()
     var body: some View { AssistantView(trip: trip, step: step, chat: chat) }
 }
@@ -42,7 +42,7 @@ struct AssistantView: View {
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     let trip: Trip?
-    let step: ChecklistStep?
+    let step: CampingStepContext?
     let isPresentedAsSheet: Bool
     /// Borrowed from whoever owns the conversation's lifetime.
     @Bindable var chat: AssistantConversation
@@ -51,7 +51,7 @@ struct AssistantView: View {
     @State private var task: Task<Void, Never>?
     @State private var availability = CampingAssistant.globalAvailability
 
-    init(trip: Trip? = nil, step: ChecklistStep? = nil, isPresentedAsSheet: Bool = true, chat: AssistantConversation) {
+    init(trip: Trip? = nil, step: CampingStepContext? = nil, isPresentedAsSheet: Bool = true, chat: AssistantConversation) {
         _chat = Bindable(wrappedValue: chat)
         self.trip = trip
         self.step = step
@@ -120,7 +120,7 @@ struct AssistantView: View {
                 // Load the model while the camper types, so the first answer starts sooner (TN3193).
                 if showsConversation { chat.session.prewarm() }
                 if let step, chat.exchanges.isEmpty, chat.question.isEmpty {
-                    chat.question = "What should I know about \(step.title.lowercased())?"
+                    chat.question = "What should I know about \(step.draft.title.lowercased())?"
                 }
                 #if DEBUG
                 if DocumentAssistantFixture.showsSourceStates, chat.exchanges.isEmpty {
@@ -220,7 +220,7 @@ struct AssistantView: View {
                             Text(trip == nil ? AssistantAvailability.ready.message : "Ask about your trip or checklist, then follow up for more detail.")
                                 .foregroundStyle(.secondary)
                             if let trip { Text(trip.campgroundName).font(.subheadline).foregroundStyle(.secondary) }
-                            if let step { Text(step.title).font(.subheadline).foregroundStyle(.secondary) }
+                            if let step { Text(step.draft.title).font(.subheadline).foregroundStyle(.secondary) }
                         }.padding(.vertical, 32)
                     }
                     ForEach(chat.exchanges) { exchange in
@@ -360,7 +360,7 @@ struct AssistantView: View {
         // An exchange that was never a model turn has no turns before it in the session.
         let before = retried.map { $0.answer.turnID ?? "" }
         let retrievalQuestion = AssistantConversationRules.retrievalQuestion(
-            submitted, after: session.previousQuestion(in: target, before: before))
+            submitted, after: session.previousQuestion(in: target, before: before), stepTitle: step?.draft.title)
         let request = progress.begin(question: submitted)
         chat.generationFailure = nil
         chat.failedQuestion = nil
@@ -371,7 +371,7 @@ struct AssistantView: View {
         task = Task {
             do {
                 var evidence: DocumentEvidence?
-                if !TripOverviewQuestion.matches(submitted), target.rigID != nil || target.isTrip {
+                if step != nil || !TripOverviewQuestion.matches(submitted), target.rigID != nil || target.isTrip {
                     // Document questions are English only: explain instead of searching or translating.
                     if index.needsEnglish(submitted, target: target, in: context) {
                         guard !Task.isCancelled, progress.isCurrent(request), currentTarget == target else { return }
@@ -388,7 +388,7 @@ struct AssistantView: View {
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        chat: session, chatScope: target, before: before,
                                                        rigContext: rigContext, documents: evidence,
-                                                       tripFacts: tripFacts,
+                                                       tripFacts: tripFacts, stepContext: step,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
                     _ = progress.advance(to: stage, for: request)

@@ -1,13 +1,14 @@
 import Foundation
 
 public enum CampingChatFailure: Error, Equatable, LocalizedError, Sendable {
-    case notReady, unsupportedLanguage, contextTooLong, refused, busy, failed
+    case notReady, unsupportedLanguage, contextTooLong, stepContextTooLong, refused, busy, failed
 
     public var errorDescription: String? {
         switch self {
         case .notReady: "Apple Intelligence isn’t ready. Check its settings and try again."
         case .unsupportedLanguage: "Apple’s on-device model doesn’t support this language. Try a supported language."
         case .contextTooLong: "This request is too long for the on-device model. Shorten your question or start a new chat."
+        case .stepContextTooLong: "The full step details and question are too long for the on-device model. Shorten the step’s guidance or notes, or your question, and try again."
         case .refused: "Apple’s on-device model couldn’t answer this request. Try rephrasing your question."
         case .busy: "Apple’s on-device model is busy. Wait a moment, then try again."
         case .failed: "The on-device model couldn’t finish this response. Your question is ready to try again."

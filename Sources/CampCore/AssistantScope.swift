@@ -31,8 +31,8 @@ public struct AssistantScopeSummary: Equatable, Hashable, Sendable {
 public enum AssistantConversationRules {
     /// The text document retrieval runs on. A follow-up such as "how long do I wait?" is searched together
     /// with the previous user question in the same scope. Generated answers are never part of it, so earlier
-    /// model text can't become evidence.
-    public static func retrievalQuestion(_ question: String, after previousQuestion: String?) -> String {
-        ([previousQuestion].compactMap { $0 } + [question]).joined(separator: " ")
+    /// model text can't become evidence. The selected step title keeps short follow-ups anchored to that task.
+    public static func retrievalQuestion(_ question: String, after previousQuestion: String?, stepTitle: String? = nil) -> String {
+        ([stepTitle, previousQuestion].compactMap { $0 } + [question]).joined(separator: " ")
     }
 }

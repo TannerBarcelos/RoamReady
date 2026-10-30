@@ -118,12 +118,12 @@ enum CampingAssistant {
                        scope: CampingHelpRequest.Scope = .checklist, chat: CampingChat, chatScope: AnyHashable,
                        before turnID: CampingChatTurn.ID? = nil,
                        rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
-                       tripFacts: TripBookingFacts? = nil,
+                       tripFacts: TripBookingFacts? = nil, stepContext: CampingStepContext? = nil,
                        onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType, step: step, scope: scope,
                                          previousQuestion: chat.previousQuestion(in: chatScope, before: turnID),
-                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts)
+                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, stepContext: stepContext)
         let reply: CampingReply
         do {
             try Task.checkCancellation()
@@ -134,7 +134,7 @@ enum CampingAssistant {
         } catch {
             throw (error as? CampingChatFailure) ?? .failed
         }
-        return CampingAnswer(text: reply.text, usedChecklist: !request.passages.isEmpty,
+        return CampingAnswer(text: reply.text, usedChecklist: request.usesChecklist,
                              sources: reply.sources, searched: reply.searched, passages: reply.passages,
                              coverage: reply.coverage, readiness: reply.readiness,
                              usedSavedTrip: reply.usedSavedTrip, turnID: reply.turnID)
@@ -152,6 +152,7 @@ enum CampingAssistant {
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
         var answersSavedTrip = false
+        var answersSelectedStep = false
         /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
         var delaysFirstCall = false
         /// Fails the first question only, so Retry can succeed.
@@ -164,6 +165,16 @@ enum CampingAssistant {
             if delaysFirstCall && isFirst { try await Task.sleep(for: .seconds(3)) }
             if delay > .zero { try await Task.sleep(for: delay) }
             if fails || (failsFirstCall && isFirst) { throw CampingChatFailure.failed }
+            if answersSelectedStep {
+                guard let block = instructions.components(separatedBy: CampingStepContext.beginMarker).dropFirst().first?
+                    .components(separatedBy: CampingStepContext.endMarker).first,
+                      let json = block.split(separator: "\n").first(where: { $0.hasPrefix("{") }),
+                      let fields = (try? JSONSerialization.jsonObject(with: Data(json.utf8))) as? [String: Any] else {
+                    return "Missing selected step context."
+                }
+                return ["title", "guidance", "notes", "section", "status", "priority", "phase"]
+                    .compactMap { fields[$0] as? String }.joined(separator: " · ")
+            }
             if answersSavedTrip {
                 guard !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
                       !instructions.contains("BEGIN SAVED RIG PROFILE"), !instructions.contains("routine maintenance"),
@@ -193,6 +204,7 @@ enum CampingAssistant {
         case "reply": return UITestGenerator(fails: false)
         case "slow-reply": return UITestGenerator(fails: false, delay: .seconds(4))
         case "failure": return UITestGenerator(fails: true)
+        case "step-context": return UITestGenerator(fails: false, answersSelectedStep: true)
         case "saved-trip": return UITestGenerator(fails: false, answersSavedTrip: true)
         case "document": return UITestGenerator(fails: false, citesDocuments: true)
         case "slow": return UITestGenerator(fails: false, delaysFirstCall: true)

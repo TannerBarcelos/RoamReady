@@ -16,7 +16,7 @@ struct ChecklistView: View {
     @State private var defaultsSaved = false
     @State private var failure: String?
     @State private var showAssistant = false
-    @State private var helpStep: ChecklistStep?
+    @State private var helpStep: CampingStepContext?
     @State private var helpAfterDismiss = false
 
     private let initialPhase: ChecklistPhase
@@ -63,7 +63,7 @@ struct ChecklistView: View {
                     }
                     .contextMenu {
                         if offersHelp {
-                            Button("Ask about this step", systemImage: "sparkles") { helpStep = step; showAssistant = true }
+                            Button("Ask about this step", systemImage: "sparkles") { helpStep = CampingStepContext(step.draft, phase: step.phase, position: step.position); showAssistant = true }
                         }
                         Button(step.status == .skipped ? "Mark pending" : "Skip this step", systemImage: "arrow.uturn.right") {
                             step.status = step.status == .skipped ? .pending : .skipped
@@ -100,7 +100,10 @@ struct ChecklistView: View {
             if helpAfterDismiss { helpAfterDismiss = false; showAssistant = true }
         }) { step in
             ChecklistStepEditor(step: step.draft, onSave: { edited in step.apply(edited); library.save() },
-                                onHelp: offersHelp ? { helpStep = step; helpAfterDismiss = true; editedStep = nil } : nil)
+                                onHelp: offersHelp ? { draft in
+                                    helpStep = CampingStepContext(draft, phase: step.phase, position: step.position)
+                                    helpAfterDismiss = true; editedStep = nil
+                                } : nil)
         }
         .sheet(isPresented: $adding) {
             ChecklistStepEditor(step: ChecklistStepDraft(title: "")) { step in trip.addStep(step, to: phase); library.save() }
@@ -143,7 +146,7 @@ struct ChecklistStepEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State var step: ChecklistStepDraft
     let onSave: (ChecklistStepDraft) -> Void
-    var onHelp: (() -> Void)? = nil
+    var onHelp: ((ChecklistStepDraft) -> Void)? = nil
     var body: some View {
         NavigationStack {
             Form {
@@ -151,6 +154,7 @@ struct ChecklistStepEditor: View {
                     TextField("Title", text: $step.title, axis: .vertical)
                         .accessibilityIdentifier("checklistStepTitle")
                     TextField("Notes", text: $step.notes, axis: .vertical).lineLimit(2...8)
+                        .accessibilityIdentifier("checklistStepNotes")
                 }
                 Section {
                     Picker("Priority", selection: $step.priority) {
@@ -165,10 +169,11 @@ struct ChecklistStepEditor: View {
                 }
                 Section {
                     TextField("Guidance", text: $step.detail, axis: .vertical).lineLimit(4...12)
+                        .accessibilityIdentifier("checklistStepGuidance")
                 } header: { Text("Guidance") } footer: {
                     Text("General guidance for this step. Follow your rig’s manuals for equipment-specific procedures.")
                 }
-                if let onHelp { Button("Ask about this step", systemImage: "sparkles") { onHelp() } }
+                if let onHelp { Button("Ask about this step", systemImage: "sparkles") { onHelp(step) } }
             }
             .navigationTitle(step.title.isEmpty ? "New step" : "Step details").navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -73,7 +73,10 @@ final class CampingHelpRequestTests: XCTestCase {
         XCTAssertFalse(request.prompt.contains("The water stopped"), "the session carries earlier turns, not the prompt")
         let selected = CampingHelpRequest(question: "water", steps: [water, power], rigType: nil,
                                          step: power, scope: .checklist)
-        XCTAssertEqual(selected.passages, "Shore power: Use rated equipment")
+        XCTAssertTrue(selected.passages.isEmpty, "The selected step belongs in persistent system instructions")
+        XCTAssertTrue(selected.instructions.contains("Shore power"))
+        XCTAssertTrue(selected.instructions.contains("Use rated equipment"))
+        XCTAssertFalse(selected.instructions.contains(water.detail))
     }
 
     func testOwnerNotesAreMatchedAndSentAsReference() {
@@ -85,8 +88,9 @@ final class CampingHelpRequestTests: XCTestCase {
         XCTAssertEqual(request.passages, "Connect drinking water: Use a potable-water hose\nMy notes: Regulator lives in the curbside bay",
                        "Notes alone can match the question")
         let blank = ChecklistStepDraft(title: "Shore power", detail: "Use rated equipment", notes: "  \n ")
-        XCTAssertEqual(CampingHelpRequest(question: "power", steps: [], rigType: nil, step: blank, scope: .checklist).passages,
-                       "Shore power: Use rated equipment", "Blank notes add nothing")
+        let selected = CampingHelpRequest(question: "power", steps: [], rigType: nil, step: blank, scope: .checklist)
+        XCTAssertEqual(selected.stepContext?.draft.notes, "  \n ", "Step help preserves the full field values")
+        XCTAssertTrue(selected.instructions.contains("Use rated equipment"))
     }
 
     func testLongQuestionsAreBounded() {

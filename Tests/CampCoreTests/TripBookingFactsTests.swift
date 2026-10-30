@@ -77,12 +77,12 @@ final class TripBookingFactsTests: XCTestCase {
         }
     }
 
-    func testTripOverviewHasOnlySavedFactsEvenFromAChecklistWithDocuments() async throws {
+    func testTripOverviewHasOnlySavedFactsWithNoSelectedChecklistStep() async throws {
         let checklist = ChecklistStepDraft(title: "Trip maintenance", detail: "For this trip, connect the hoses and replace towels.")
         let rig = RigDraft(type: .travelTrailer, make: "Forest River", model: "No Boundaries")
         for scope in [CampingHelpRequest.Scope.general, .checklist] {
             for question in ["What trip is this?", "Tell me about my trip", "Where are we staying?"] {
-                var request = CampingHelpRequest(question: question, steps: [checklist], rigType: rig.type, step: checklist,
+                var request = CampingHelpRequest(question: question, steps: [checklist], rigType: rig.type, step: nil,
                                                 scope: scope, previousQuestion: "How do I maintain the hoses?",
                                                 rigContext: CampingRigContext(rig),
                                                 documents: evidence("Water heater manual", page: 1, text: "For this trip, inspect the water heater."),

@@ -27,6 +27,49 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.buttons["assistantSourceRow"].exists)
     }
 
+    func testStepHelpUsesCurrentEditorDraftAndKeepsItForFollowUps() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready", "-assistant-generation-test", "step-context"]
+        app.launch()
+        XCTAssertTrue(app.buttons["tripRow-Current Pines"].waitForExistence(timeout: 10))
+        app.buttons["tripRow-Current Pines"].tap()
+        let checklist = app.descendants(matching: .any)["tripChecklist-teardown"].firstMatch
+        for _ in 0..<8 where !checklist.isHittable { app.swipeUp() }
+        checklist.tap()
+        let details = app.buttons["Details and edit Disconnect and stow shore power"]
+        for _ in 0..<12 where !details.isHittable { app.swipeUp() }
+        XCTAssertTrue(details.isHittable)
+        details.tap()
+        let notes = app.descendants(matching: .any)["checklistStepNotes"].firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 5))
+        notes.tap()
+        notes.typeText("Fixture note: blue cable bag.")
+        let guidance = app.descendants(matching: .any)["checklistStepGuidance"].firstMatch
+        for _ in 0..<8 where !guidance.isHittable { app.swipeUp() }
+        guidance.tap()
+        guidance.typeText(" Draft guidance retained.")
+        let help = app.buttons["Ask about this step"]
+        for _ in 0..<8 where !help.isHittable { app.swipeUp() }
+        help.tap()
+        XCTAssertTrue(app.buttons["assistantSend"].waitForExistence(timeout: 5))
+        app.buttons["assistantSend"].tap()
+        let first = app.staticTexts["assistantGeneratedReply"].firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout: 15))
+        for field in ["Disconnect and stow shore power", "Draft guidance retained.", "Fixture note: blue cable bag.", "Pending", "Teardown"] {
+            XCTAssertTrue(first.label.contains(field), "The system instructions should include \(field)")
+        }
+        ask(app, "And then?")
+        let followUp = app.staticTexts.matching(identifier: "assistantGeneratedReply").element(boundBy: 1)
+        XCTAssertTrue(followUp.waitForExistence(timeout: 15))
+        XCTAssertTrue(followUp.label.contains("Fixture note: blue cable bag."))
+        XCTAssertTrue(followUp.label.contains("Draft guidance retained."))
+        app.buttons["closeAssistant"].tap()
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.tap()
+        XCTAssertTrue(notes.waitForExistence(timeout: 5))
+        XCTAssertFalse((notes.value as? String ?? "").contains("Fixture note:"), "Asking for help does not save the draft")
+    }
+
     func testUnsupportedDeviceHasNoAssistantButton() {
         let app = launch("unsupported")
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))

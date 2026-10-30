@@ -221,7 +221,9 @@ extension CampingHelpRequest {
                 return PromptPlan(attempt: attempt, instructions: instructions, prompt: rendered.prompt,
                                   sources: rendered.sources, passages: rendered.passages, usage: usage, shape: shape)
             }
-            guard let smaller = shape.shrunk() else { throw CampingChatFailure.contextTooLong }
+            guard let smaller = shape.shrunk() else {
+                throw stepContext == nil ? CampingChatFailure.contextTooLong : CampingChatFailure.stepContextTooLong
+            }
             shape = smaller
         }
     }

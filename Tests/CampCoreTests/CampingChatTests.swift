@@ -97,6 +97,32 @@ final class CampingChatTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(model.sessions.last?.calls.last).history.contains("What trip is this?"))
     }
 
+    @MainActor func testSelectedStepRemainsInSystemInstructionsOnFollowUpAndOverflowRetry() async throws {
+        let model = FakeModel([.success("Start with the selected step."), .failure(.contextTooLong), .success("Then stow its cable.")])
+        let chat = CampingChat(model: model)
+        let draft = ChecklistStepDraft(title: "Disconnect and stow shore power",
+                                       detail: String(repeating: "Follow equipment instructions. ", count: 160) + "Guidance ending.",
+                                       section: "Disconnect", notes: "Stow the cable in the blue bag.", priority: .high)
+        let context = CampingStepContext(draft, phase: .teardown, position: 3)
+        let source = DocumentSource(id: "S1", documentID: UUID(), checksum: "c1", title: "Power equipment", category: "Manual", page: 2)
+        let documents = DocumentEvidence(excerpts: [DocumentExcerpt(source: source, text: String(repeating: "Supplementary power guidance. ", count: 25))])
+        for question in ["What do I do first?", "And then?"] {
+            let request = CampingHelpRequest(question: question, steps: [], rigType: nil, step: nil, scope: .checklist,
+                                             documents: documents, stepContext: context)
+            _ = try await chat.answer(request)
+        }
+        let calls = model.sessions.flatMap(\.calls)
+        XCTAssertEqual(calls.count, 3)
+        XCTAssertEqual(chat.compactions, 1)
+        for call in calls {
+            XCTAssertTrue(call.instructions.contains(context.reference))
+            XCTAssertTrue(call.instructions.contains("Guidance ending."))
+            XCTAssertTrue(call.instructions.contains("Stow the cable in the blue bag."))
+        }
+        XCTAssertTrue(calls[1].history.contains("What do I do first?"))
+        XCTAssertTrue(calls[2].history.contains("What do I do first?"))
+    }
+
     // MARK: Trimming rules
 
     func testWindowSendsTheNewestTurnsThatFitOldestFirst() {
