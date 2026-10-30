@@ -87,7 +87,7 @@ final class TripBookingFactsTests: XCTestCase {
                                          tripFacts: TripBookingFacts(draft()))
         let rules = request.instructions
         for phrase in ["\"saved trip\"", "document title and page", "Do not choose between them", "file name, import date",
-                       "You cannot change saved trip details", "another date or in another time zone", "Never say you checked all or every document"] {
+                       "can't change saved trip details", "Different dates, time zones", "never claim to have checked them all"] {
             XCTAssertTrue(rules.contains(phrase), "missing: \(phrase)")
         }
     }

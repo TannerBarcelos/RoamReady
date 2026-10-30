@@ -6,30 +6,28 @@ final class AssistantProgressTests: XCTestCase {
         var progress = AssistantProgress()
         let id = progress.begin(question: "Why is E4 showing?")
         XCTAssertTrue(progress.stages.isEmpty)
-        XCTAssertEqual(progress.advance(to: .preparing, for: id), "Preparing your question")
+        XCTAssertEqual(progress.advance(to: .searchingDocuments, for: id), "Searching your documents")
         XCTAssertEqual(progress.advance(to: .writing, for: id), "Writing an answer")
-        XCTAssertEqual(progress.stages, [.preparing, .writing])
+        XCTAssertEqual(progress.stages, [.searchingDocuments, .writing])
         XCTAssertEqual(progress.currentStage, .writing)
     }
 
     func testSearchStageIsOnlyPresentWhenReported() {
         var progress = AssistantProgress()
         let id = progress.begin(question: "q")
-        progress.advance(to: .searchingDocuments, for: id)
-        progress.advance(to: .preparing, for: id)
-        XCTAssertEqual(progress.stages, [.searchingDocuments, .preparing])
+        progress.advance(to: .writing, for: id)
+        XCTAssertEqual(progress.stages, [.writing], "no search stage when no documents were searched")
     }
 
     func testRepeatedStageIsNotAnnouncedTwice() {
         var progress = AssistantProgress()
         let id = progress.begin(question: "q")
-        XCTAssertNotNil(progress.advance(to: .preparing, for: id))
-        XCTAssertNil(progress.advance(to: .preparing, for: id))
+        XCTAssertNotNil(progress.advance(to: .writing, for: id))
+        XCTAssertNil(progress.advance(to: .writing, for: id))
     }
 
     func testStageTitlesAreShortAndPlain() {
         XCTAssertEqual(AssistantStage.searchingDocuments.title, "Searching your documents…")
-        XCTAssertEqual(AssistantStage.preparing.title, "Preparing your question…")
         XCTAssertEqual(AssistantStage.writing.title, "Writing an answer…")
     }
 
@@ -52,7 +50,7 @@ final class AssistantProgressTests: XCTestCase {
         let id = progress.begin(question: "q")
         progress.cancel()
         XCTAssertFalse(progress.isCurrent(id))
-        XCTAssertNil(progress.advance(to: .preparing, for: id))
+        XCTAssertNil(progress.advance(to: .writing, for: id))
         XCTAssertFalse(progress.finish(id))
         XCTAssertNil(progress.fail(id, with: .busy))
         XCTAssertNil(progress.failure)

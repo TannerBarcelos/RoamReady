@@ -151,6 +151,8 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(source.label.contains("Water Heater Manual"))
         XCTAssertTrue(source.label.contains("Page 2"))
         source.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["assistantSourcePassage"].waitForExistence(timeout: 5), "The source opens as a dialog in the chat")
+        app.buttons["openSourceDocument"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Page 2"].exists)
     }
@@ -167,8 +169,8 @@ final class AssistantUITests: XCTestCase {
         return app
     }
 
-    /// The transcript opens scrolled to its end, so earlier rows can sit under the scope banner; scroll until
-    /// the row is clear of the banner.
+    /// The transcript opens scrolled to its end, so earlier rows can sit under the toolbar; scroll until the
+    /// row is clear of it.
     private func sourceRow(_ app: XCUIApplication, containing title: String) -> XCUIElement {
         let row = app.buttons.matching(identifier: "assistantSourceRow").matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
         for _ in 0..<8 where !row.isHittable || row.frame.minY < 260 { app.scrollViews.firstMatch.swipeDown() }
@@ -183,25 +185,47 @@ final class AssistantUITests: XCTestCase {
         XCTAssertTrue(cited.exists)
         XCTAssertTrue(cited.label.hasPrefix("Source:"))
         XCTAssertTrue(app.staticTexts["Sources"].exists)
+        // Searched references sit behind one link per answer, apart from the sources.
+        let link = app.buttons.matching(identifier: "assistantSearchedReferences").firstMatch
+        for _ in 0..<8 where !link.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        XCTAssertTrue(link.label.hasPrefix("Looked at, but not cited"), "Never described as used")
+        XCTAssertFalse(app.buttons["assistantSearchedRow"].exists, "References aren't listed inline")
+        link.tap()
         let searched = app.buttons.matching(identifier: "assistantSearchedRow").firstMatch
-        XCTAssertTrue(searched.exists)
+        XCTAssertTrue(searched.waitForExistence(timeout: 5))
         XCTAssertTrue(searched.label.hasPrefix("Searched, not cited:"), "VoiceOver hears that it was only searched")
-        XCTAssertTrue(app.staticTexts["References searched"].exists)
-        XCTAssertTrue(app.staticTexts["Looked at, but not cited in this answer."].exists, "Never described as used")
+        searched.tap()
+        XCTAssertTrue(app.staticTexts["Searched, not cited"].waitForExistence(timeout: 5))
+    }
+
+    /// A source opens as a dialog over the chat with the passage the answer used; the document is one tap more.
+    private func openDocument(from row: XCUIElement, in app: XCUIApplication) {
+        row.tap()
+        let open = app.buttons["openSourceDocument"]
+        XCTAssertTrue(open.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists, "Tapping a source doesn't leave the chat")
+        open.tap()
+    }
+
+    func testCitedSourceOpensAsADialogWithItsPassage() {
+        let app = launchSourceStates()
+        sourceRow(app, containing: "Water Heater Manual").tap()
+        let passage = app.descendants(matching: .any)["assistantSourcePassage"]
+        XCTAssertTrue(passage.waitForExistence(timeout: 5))
+        XCTAssertTrue(passage.label.contains("igniter failed to light"))
+        XCTAssertTrue(app.staticTexts["Cited in this answer"].exists)
     }
 
     func testCitedSourceOpensAtItsPage() {
         let app = launchSourceStates()
-        let cited = sourceRow(app, containing: "Water Heater Manual")
-        cited.tap()
+        openDocument(from: sourceRow(app, containing: "Water Heater Manual"), in: app)
         XCTAssertTrue(app.descendants(matching: .any)["citedPageViewer"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Page 2"].exists)
     }
 
     func testReplacedSourceShowsChangedAndOpensTheCurrentFileOnlyOnRequest() {
         let app = launchSourceStates()
-        let furnace = sourceRow(app, containing: "Furnace Manual")
-        furnace.tap()
+        openDocument(from: sourceRow(app, containing: "Furnace Manual"), in: app)
         XCTAssertTrue(app.staticTexts["Changed since this answer"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists, "The new file is not opened silently")
         app.buttons["openCurrentVersion"].tap()
@@ -210,7 +234,7 @@ final class AssistantUITests: XCTestCase {
 
     func testDeletedSourceShowsNoLongerInYourLibrary() {
         let app = launchSourceStates()
-        sourceRow(app, containing: "Awning Manual").tap()
+        openDocument(from: sourceRow(app, containing: "Awning Manual"), in: app)
         XCTAssertTrue(app.staticTexts["No longer in your library"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.descendants(matching: .any)["citedPageViewer"].exists)
         XCTAssertFalse(app.buttons["openCurrentVersion"].exists)
@@ -226,7 +250,8 @@ final class AssistantUITests: XCTestCase {
                                "-assistant-ui-test", "ready", "-assistant-generation-test", "document"]
         app.launch()
         openAssistant(app)
-        let summary = app.descendants(matching: .any)["assistantReadiness"].firstMatch
+        // The scope pill carries the readiness summary; the per-document detail is in its pane.
+        let summary = app.buttons["assistantScope"].firstMatch
         expectation(for: NSPredicate(format: "label CONTAINS '1 of 2 documents ready'"), evaluatedWith: summary)
         waitForExpectations(timeout: 30)
 
@@ -264,7 +289,10 @@ final class AssistantUITests: XCTestCase {
 
         // The scan finishes. Retry is offered, but nothing is asked on its own.
         let repliesBefore = app.staticTexts.matching(identifier: "assistantGeneratedReply").count
+        summary.tap()
+        XCTAssertTrue(app.buttons["releaseTestScan"].waitForExistence(timeout: 5))
         app.buttons["releaseTestScan"].tap()
+        app.otherElements["PopoverDismissRegion"].firstMatch.tap()
         expectation(for: NSPredicate(format: "label CONTAINS 'All 2 documents ready'"), evaluatedWith: summary)
         waitForExpectations(timeout: 30)
         XCTAssertTrue(app.buttons["assistantRetryWithDocuments"].firstMatch.waitForExistence(timeout: 10))

@@ -88,9 +88,6 @@ struct ChecklistView: View {
                     .disabled(trip.rig == nil)
                 if defaultsSaved { Label("Defaults updated for \(rigName)", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
                 if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
-                if let url = URL(string: ChecklistFactory.sourceURL) {
-                    Link("Reference: Camping World", destination: url).font(.footnote)
-                }
             }
         }
         .navigationTitle(phase.title)

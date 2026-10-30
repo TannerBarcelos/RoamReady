@@ -243,6 +243,6 @@ public struct ScopeReadiness: Equatable, Sendable {
     public func promptNote(sanitizing title: (String) -> String) -> String? {
         let missing = unusable
         guard !missing.isEmpty else { return nil }
-        return "These documents in scope could not be searched: \(named(missing, title: title)). Their contents are unknown. If the question may depend on them, say in your first sentence that they aren’t ready or usable so you can’t support an answer from them yet, and state no fact, number, time, or specification as coming from them. Never claim to have checked every document."
+        return "These documents could not be searched: \(named(missing, title: title)). Their contents are unknown. If the question may depend on them, say first that you can't support an answer from them yet, and state no fact, number, or time as coming from them."
     }
 }

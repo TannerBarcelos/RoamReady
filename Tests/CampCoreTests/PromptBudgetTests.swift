@@ -66,6 +66,11 @@ final class PromptBudgetTests: XCTestCase {
         XCTAssertEqual(PromptBudget(contextSize: 100).inputLimit, 0)
     }
 
+    func testAZeroOrNegativeWindowFallsBackToTheDocumentedSize() {
+        XCTAssertEqual(PromptBudget(contextSize: 0).contextSize, PromptBudget.fallbackContextSize)
+        XCTAssertEqual(PromptBudget(contextSize: -1).contextSize, PromptBudget.fallbackContextSize)
+    }
+
     // MARK: Planning
 
     func testPlansMatchTheUnbudgetedPromptsWhenEverythingFits() async throws {

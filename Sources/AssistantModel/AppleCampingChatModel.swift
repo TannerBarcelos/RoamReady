@@ -15,6 +15,16 @@ public struct AppleCampingChatModel: CampingChatModel {
     public func makeSession(history: [CampingChatTurn]) -> any CampingChatSession {
         AppleCampingChatSession(history: history)
     }
+
+    /// A new session per pass with only the summary instructions, so summarizing never touches the chat's own
+    /// transcript or its context window (TN3193: split a large task across sessions).
+    public func summarize(_ turns: [CampingChatTurn], into summary: String?) async throws -> String {
+        let model = SystemLanguageModel.default
+        guard case .available = model.availability else { throw CampingChatFailure.notReady }
+        let session = LanguageModelSession(model: model, instructions: ConversationSummary.instructions)
+        let options = GenerationOptions(maximumResponseTokens: ConversationSummary.maximumResponseTokens)
+        return try await session.respond(to: ConversationSummary.prompt(folding: turns, into: summary), options: options).content
+    }
 }
 
 /// One `LanguageModelSession` per chat. Its transcript holds the conversation. This turn's instructions are
@@ -55,6 +65,10 @@ final class AppleCampingChatSession: CampingChatSession {
             if Task.isCancelled { throw CancellationError() }
             throw CampingChatFailure.failed
         }
+    }
+
+    func prewarm() {
+        session.prewarm()
     }
 
     /// Swaps the raw prompt (with its excerpts) and response just added for the turn's stored form.

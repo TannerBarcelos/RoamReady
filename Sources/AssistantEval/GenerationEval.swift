@@ -386,6 +386,10 @@ private final class RecordingModel: CampingChatModel {
         Session(inner: inner.makeSession(history: history), recorder: self)
     }
 
+    func summarize(_ turns: [CampingChatTurn], into summary: String?) async throws -> String {
+        try await inner.summarize(turns, into: summary)
+    }
+
     private final class Session: CampingChatSession {
         let inner: any CampingChatSession
         unowned let recorder: RecordingModel
@@ -400,5 +404,6 @@ private final class RecordingModel: CampingChatModel {
         }
         func store(_ turn: CampingChatTurn) { inner.store(turn) }
         func remove(_ turnID: CampingChatTurn.ID) { inner.remove(turnID) }
+        func prewarm() { inner.prewarm() }
     }
 }
