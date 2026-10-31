@@ -10,7 +10,6 @@ final class AppPermissions: NSObject, CLLocationManagerDelegate {
     private(set) var location: CLAuthorizationStatus = .notDetermined
     private(set) var camera: AVAuthorizationStatus = .notDetermined
     private(set) var hasCheckedOnLaunch = false
-    private(set) var locationServicesEnabled = true
     @ObservationIgnored private let manager = CLLocationManager()
     @ObservationIgnored private var requestingLocation = false
     @ObservationIgnored private var requestingCamera = false
@@ -38,10 +37,10 @@ final class AppPermissions: NSObject, CLLocationManagerDelegate {
     }
 
     var locationAllowed: Bool {
-        locationServicesEnabled && (location == .authorizedWhenInUse || location == .authorizedAlways)
+        location == .authorizedWhenInUse || location == .authorizedAlways
     }
 
-    var locationDenied: Bool { !locationServicesEnabled || location == .denied || location == .restricted }
+    var locationDenied: Bool { location == .denied || location == .restricted }
     var cameraDenied: Bool { camera == .denied || camera == .restricted }
 
     func refresh() {
@@ -52,9 +51,9 @@ final class AppPermissions: NSObject, CLLocationManagerDelegate {
             return
         }
         #endif
+        // The cached authorization also reports denial when system-wide location services are off.
         location = manager.authorizationStatus
         camera = AVCaptureDevice.authorizationStatus(for: .video)
-        locationServicesEnabled = CLLocationManager.locationServicesEnabled()
     }
 
     /// Foregrounding resumes the sequence after each native prompt, and picks up Settings changes.
@@ -62,7 +61,7 @@ final class AppPermissions: NSObject, CLLocationManagerDelegate {
         refresh()
         guard !requestingLocation, !requestingCamera,
               UIApplication.shared.applicationState == .active else { return }
-        if locationServicesEnabled, location == .notDetermined {
+        if location == .notDetermined {
             requestingLocation = true
             manager.requestWhenInUseAuthorization()
             return
@@ -82,6 +81,7 @@ final class AppPermissions: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
+            location = status
             if status != .notDetermined { requestingLocation = false }
             checkOnLaunch()
         }
