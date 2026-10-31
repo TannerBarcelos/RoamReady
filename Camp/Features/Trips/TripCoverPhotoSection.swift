@@ -9,6 +9,7 @@ struct TripCoverPhotoSection: View {
     @State private var failure: String?
 
     var body: some View {
+        let hasPhoto = data != nil
         Section {
             if let data {
                 Color.clear
@@ -18,7 +19,7 @@ struct TripCoverPhotoSection: View {
                     .accessibilityLabel("Trip cover photo")
             }
             PhotosPicker(selection: $selection, matching: .images, preferredItemEncoding: .current) {
-                Label(data == nil ? "Add trip photo" : "Change trip photo", systemImage: "photo.badge.plus")
+                Label(hasPhoto ? "Change trip photo" : "Add trip photo", systemImage: "photo.badge.plus")
             }
             .disabled(importing)
             .accessibilityIdentifier("tripCoverPhotoPicker")
