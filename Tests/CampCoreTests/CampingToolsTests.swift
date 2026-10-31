@@ -86,6 +86,7 @@ struct CampingToolsTests {
         let overview = request("What trip is this?", tools: tools)
         #expect(overview.isTripOverview && overview.tools == tools)
         #expect(overview.instructions.contains("supplied for this turn by \(CampingToolKind.trip.name)"))
+        #expect(overview.instructions.contains(tools.instructions), "The overview must retain the lookup and missing-data rules")
         #expect(!overview.instructions.contains("BEGIN SAVED RIG PROFILE"), "An overview needs only the trip")
         let step = request("What's for dinner?", tools: tools, step: ChecklistStepDraft(title: "Level the trailer"))
         #expect(step.tools == tools, "A step question can still need the trip")

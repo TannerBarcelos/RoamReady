@@ -21,6 +21,7 @@ final class DocumentAssistantIndex {
     @ObservationIgnored private let directory: URL
     @ObservationIgnored private var coordinator: DocumentIndexCoordinator?
     @ObservationIgnored private var observing: Task<Void, Never>?
+    @ObservationIgnored private var preparingEmbeddings: Task<Void, Never>?
     @ObservationIgnored private let provider = AppleEmbeddingProvider()
 
     init(directory: URL) { self.directory = directory }
@@ -46,11 +47,14 @@ final class DocumentAssistantIndex {
             await coordinator.open()
             await coordinator.reconcile(.startup)
         }
+        prepareEmbeddings(for: coordinator)
     }
 
     /// Waits for the writer to stop, then deletes the index and everything beside it. Nothing recreates the
     /// index until `open(context:)` starts a new library session.
     func erase() async {
+        preparingEmbeddings?.cancel()
+        preparingEmbeddings = nil
         observing?.cancel()
         observing = nil
         isOpen = false
@@ -74,6 +78,19 @@ final class DocumentAssistantIndex {
     func setActive(_ active: Bool) {
         guard let coordinator else { return }
         Task { await coordinator.setActive(active) }
+        if active { prepareEmbeddings(for: coordinator) }
+    }
+
+    private func prepareEmbeddings(for coordinator: DocumentIndexCoordinator) {
+        guard preparingEmbeddings == nil else { return }
+        preparingEmbeddings = Task { [weak self, provider] in
+            let availability = await provider.prepare()
+            guard !Task.isCancelled, let self, self.coordinator === coordinator else { return }
+            self.preparingEmbeddings = nil
+            if case .available = availability {
+                await coordinator.reconcile(.change)
+            }
+        }
     }
 
     // MARK: Readiness
@@ -129,10 +146,8 @@ final class DocumentAssistantIndex {
               let result = await coordinator.search(question, live: live, limit: 8),
               !Task.isCancelled else { return unsearched }
         #if DEBUG
-        // Counts only, never text, and only for the fixture.
-        if ProcessInfo.processInfo.arguments.contains("-document-assistant-fixture") {
-            NSLog("DOCUMENT-SEARCH: usedVectors=%d hits=%d", result.usedVectors ? 1 : 0, result.hits.count)
-        }
+        // Counts only, never document text or the question.
+        NSLog("DOCUMENT-SEARCH: usedVectors=%d hits=%d", result.usedVectors ? 1 : 0, result.hits.count)
         #endif
         let candidates = result.hits.compactMap { hit -> DocumentEvidenceCandidate? in
             UUID(uuidString: hit.documentID).map {

@@ -48,10 +48,12 @@ private actor FakeSource: DocumentIndexSource {
 private final class SwitchableProvider: EmbeddingProvider, @unchecked Sendable {
     private let lock = NSLock()
     private var revision = "rev-1"
+    private var isAvailable = true
     private var holdsQueries = false
     private var held: [CheckedContinuation<Void, Never>] = []
 
     func setRevision(_ value: String) { lock.withLock { revision = value } }
+    func setAvailable(_ value: Bool) { lock.withLock { isAvailable = value } }
     func holdQueries() { lock.withLock { holdsQueries = true } }
     func releaseQueries() {
         let waiting = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
@@ -62,7 +64,9 @@ private final class SwitchableProvider: EmbeddingProvider, @unchecked Sendable {
         waiting.forEach { $0.resume() }
     }
 
-    private var current: DeterministicEmbeddingProvider { DeterministicEmbeddingProvider(revision: lock.withLock { revision }) }
+    private var current: DeterministicEmbeddingProvider {
+        lock.withLock { DeterministicEmbeddingProvider(revision: revision, isAvailable: isAvailable) }
+    }
     func availability() async -> EmbeddingAvailability { await current.availability() }
     func embed(_ texts: [String]) async throws -> [[Float]] {
         // Only a single text is a question; passages are embedded in batches.
@@ -121,6 +125,44 @@ final class DocumentIndexCoordinatorTests: XCTestCase {
     private var indexFile: URL { directory.appendingPathComponent(DocumentIndexCoordinator.fileName) }
 
     // MARK: Updates
+
+    func testAssetsArrivingAfterStartupBuildVectorsWithoutReadingDocumentsAgain() async throws {
+        let provider = SwitchableProvider()
+        provider.setAvailable(false)
+        await source.set(doc("a"), pages: ["Drain the fresh water tank before winter."])
+        let coordinator = coordinator(provider: provider)
+        await coordinator.reconcile(.startup)
+        await coordinator.waitUntilIdle()
+        let lexical = await coordinator.search("water tank", live: ["a": "c1"])
+        XCTAssertEqual(lexical?.usedVectors, false)
+        XCTAssertEqual(lexical?.hits.count, 1)
+
+        provider.setAvailable(true)
+        await coordinator.reconcile(.change)
+        await coordinator.waitUntilIdle()
+        let semantic = await coordinator.search("water tank", live: ["a": "c1"])
+        XCTAssertEqual(semantic?.usedVectors, true)
+        let reads = await source.reads
+        XCTAssertEqual(reads, ["a"], "Asset completion backfills vectors from indexed text instead of reading files again")
+        await coordinator.shutdown()
+    }
+
+    func testUnavailableAssetsKeepLexicalSearchWorkingAcrossForegroundRetries() async throws {
+        let provider = SwitchableProvider()
+        provider.setAvailable(false)
+        await source.set(doc("a"), pages: ["Drain the fresh water tank before winter."])
+        let coordinator = coordinator(provider: provider) { $0.minimumForegroundInterval = .zero }
+        await coordinator.reconcile(.startup)
+        await coordinator.waitUntilIdle()
+        await coordinator.reconcile(.foreground)
+        await coordinator.waitUntilIdle()
+        let result = await coordinator.search("water tank", live: ["a": "c1"])
+        XCTAssertEqual(result?.usedVectors, false)
+        XCTAssertEqual(result?.hits.count, 1)
+        let reads = await source.reads
+        XCTAssertEqual(reads, ["a"])
+        await coordinator.shutdown()
+    }
 
     func testNewDocumentsAreIndexedAutomaticallyAndReportTheirState() async throws {
         await source.set(doc("a"), pages: ["Error code E4 means the igniter failed to light."])

@@ -1,5 +1,4 @@
 import Foundation
-import NaturalLanguage
 import AssistantEval
 import CampCore
 import DocumentSearch
@@ -15,24 +14,7 @@ import FoundationModels
 // Needs Apple's on-device language model. Writes review sheets with empty rubrics and scores nothing.
 // Exit status: 0 sheets written, 2 not run (the model is unavailable), 64 bad usage.
 
-/// Apple's English sentence embeddings, as the app reads them. Revision and dimension come from the model.
-struct AppleEmbeddings: EmbeddingProvider {
-    private func model() -> NLEmbedding? { NLEmbedding.sentenceEmbedding(for: .english) }
-
-    func availability() async -> EmbeddingAvailability {
-        guard let model = model(), model.dimension > 0 else { return .unavailable }
-        return .available(EmbeddingProfile(revision: "NLEmbedding.sentence.en.\(model.revision)", dimension: model.dimension))
-    }
-
-    func embed(_ texts: [String]) async throws -> [[Float]] {
-        guard let model = model() else { throw CocoaError(.featureUnsupported) }
-        let neutral = [Float](repeating: 1 / Float(model.dimension).squareRoot(), count: model.dimension)
-        return texts.map { text in
-            guard let vector = model.vector(for: String(text.prefix(1_000))), vector.count == model.dimension, vector.allSatisfy(\.isFinite) else { return neutral }
-            return vector.map { Float($0) }
-        }
-    }
-}
+typealias AppleEmbeddings = NaturalLanguageEmbeddingProvider
 
 func generationNote() -> String {
     var note = "The generated-answer suite is a manual human-rubric review and is not automated by this command."
@@ -126,11 +108,13 @@ case "heldout": options.subsets = [.heldout]
 default: usage("unknown subset \(subset)")
 }
 
+let appleEmbeddings = AppleEmbeddings()
+if mode == "apple" || mode == "generation" { await appleEmbeddings.prepare() }
 let retrieval: EvalRetrieval
 switch mode {
-case "apple": retrieval = .embedding(AppleEmbeddings(), label: "Apple NLEmbedding sentence (English)")
+case "apple": retrieval = .embedding(appleEmbeddings, label: "Apple NaturalLanguage (English)")
 case "fake": retrieval = .embedding(DeterministicEmbeddingProvider(), label: "deterministic fake embeddings")
-case "lexical", "generation": retrieval = mode == "lexical" ? .lexicalOnly : .embedding(AppleEmbeddings(), label: "Apple NLEmbedding sentence (English)")
+case "lexical", "generation": retrieval = mode == "lexical" ? .lexicalOnly : .embedding(appleEmbeddings, label: "Apple NaturalLanguage (English)")
 default: usage("unknown mode \(mode)")
 }
 

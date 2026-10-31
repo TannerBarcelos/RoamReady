@@ -43,7 +43,19 @@ Repeat with saved meals on several days, including a day that is not today, and 
 
 Also check an empty menu and a chat without a selected trip: neither should invent a meal. The model retains the choice to call a tool; unnecessary lookups and missed lookups are quality findings, not app-side routing rules. `CampingToolsTests.cookingFollowUpKeepsContextAndAllowsNoLookup` verifies history, tool availability, and source handling with scripted replies; it does not validate Apple's model selection or cooking knowledge. These on-device checks have not been run for this change.
 
-The log `Unable to locate Asset for sentence embedding model for local en` comes from `NLEmbedding.sentenceEmbedding(for: .english)`. `AppleEmbeddingProvider` reports unavailable and document search falls back to lexical matching. It does not affect the direct saved-trip/menu tool. Validate embedding and generation behavior on a supported physical device with Apple Intelligence ready; simulator availability is not proof of the device result. UIKit toolbar constraint and simulator service warnings are separate diagnostics and do not describe the model's tool arguments.
+The log `Unable to locate Asset for sentence embedding model for local en` comes from `NLEmbedding.sentenceEmbedding(for: .english)`. That API has no asset-request method. The app and eval command now share `NaturalLanguageEmbeddingProvider`: it prefers that sentence model, then falls back to `NLContextualEmbedding(language: .english)`. On startup and foreground the app requests missing contextual assets through `requestAssets`; this runs separately from indexing, so keyword search remains usable during the download. The OS can still report assets unavailable or an error. A later foreground retries. On success the app reconciles the index to add vectors from its existing text without rereading documents. Erasing the library cancels that session's preparation observer so a late asset completion cannot recreate its index.
+
+Contextual token vectors are mean-pooled and L2-normalized into one passage/query vector. Their profile includes the model identifier, revision, and pooling version, distinct from sentence vectors; existing profile checks retire incompatible vectors before rebuilding. Invalid vectors fail instead of publishing synthetic neutral vectors. The contextual fallback's retrieval quality and device cost need real-model evaluation; successful downloading alone does not establish answer quality. The `apple` and `generation` eval modes prepare the same provider before running.
+
+For a physical-device acceptance pass:
+
+1. Launch online on a device with the missing sentence asset. In Console, filter for `DOCUMENT-EMBEDDINGS`. Expect a contextual asset request followed by `ready revision=NLContextualEmbedding.…mean-l2-v1 dimension=…`. A request alone is not a pass.
+2. Import a small English manual, let indexing finish, and ask about a passage. In a Debug build, confirm `DOCUMENT-SEARCH: usedVectors=1`. Repeat offline after relaunch to verify the downloaded asset and index remain usable.
+3. Try while offline before the asset is available: keyword search must still work. Return online and foreground the app; confirm vectors become available without reimporting the document. Check the error/result code if the OS rejects the request.
+4. Ask for trip dates, menu items, and checklist progress. Debug logs report `ASSISTANT-TRIP: get_trip focus=…` and `offered=1 used=1`. Compare answers with saved values, then edit a value and ask again. Also ask for general advice and verify a direct answer remains possible.
+5. Erase the library while preparation is pending and verify its index is not recreated on completion.
+
+These device checks have not been run in the Linux workspace. Automated tests cover shared asset requests, retry/cancellation behavior, vector pooling and invalid inputs, index catch-up, and prompt/history rules. The Apple adapter test uses an already available real model and explicitly skips when no asset exists; it never initiates a CI download. This embedding path is independent of the direct saved-trip/menu tool. UIKit toolbar constraint and service warnings do not describe tool arguments.
 
 ## The corpus
 
@@ -109,7 +121,7 @@ swift run assistant-eval --mode lexical|apple|fake --subset all|dev|heldout [--o
 
 | Option | Meaning |
 | --- | --- |
-| `--mode apple` (default) | Lexical search plus Apple's on-device English sentence embeddings. This is the one closest to the app. |
+| `--mode apple` (default) | Lexical search plus Apple's English sentence embeddings, or the downloadable contextual fallback. Uses the same provider as the app. |
 | `--mode lexical` | Keyword (FTS5) search only. Same result on every machine. |
 | `--mode fake` | Lexical search plus deterministic fake vectors. For checking the plumbing, not quality. |
 | `--subset` | `all` (default), `dev`, or `heldout`. |

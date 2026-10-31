@@ -57,6 +57,9 @@ final class AppleCampingChatSession: CampingChatSession {
             // No cancellation check after this: a finished turn is in the transcript, and `CampingChat` stores
             // or drops it.
             let text = try await session.respond(to: prompt).content
+            #if DEBUG
+            NSLog("ASSISTANT-TRIP: offered=%d used=%d", toolTurn == nil ? 0 : 1, context.toolsUsed.isEmpty ? 0 : 1)
+            #endif
             return CampingSessionReply(text: text, toolsUsed: context.toolsUsed)
         } catch is CancellationError {
             throw CancellationError()
@@ -136,6 +139,9 @@ private final class TurnContext: Sendable {
         state.withLock { state in
             let tools = state.toolTurn?.tools
             let output = tools?.output(for: call) ?? "No trip is selected."
+            #if DEBUG
+            NSLog("ASSISTANT-TRIP: get_trip focus=%@ characters=%ld", call.focus.rawValue, output.count)
+            #endif
             state.toolsUsed.insert(call.kind)
             return output
         }

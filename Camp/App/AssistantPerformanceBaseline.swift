@@ -123,6 +123,7 @@ enum AssistantPerformanceBaseline {
 
         let counters = Counters()
         let provider = TimedEmbeddings(inner: AppleEmbeddingProvider(), counters: counters)
+        await provider.inner.prepare()
         let source = SyntheticSource(counters: counters)
         func makeCoordinator() -> DocumentIndexCoordinator {
             DocumentIndexCoordinator(directory: indexFolder, source: source, embedding: provider, extractionVersion: DocumentTextExtractor.version)
