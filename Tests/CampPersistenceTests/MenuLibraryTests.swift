@@ -166,18 +166,17 @@ struct MenuLibraryTests {
         #expect(trip.menuFacts(asOf: trip.arrival.addingTimeInterval(30 * 86_400)).today == nil, "Outside the trip there's no today")
     }
 
-    @Test func theAssistantsToolsCarryTheTripMenuAndRig() throws {
+    @Test func getTripCarriesTheTripItsChecklistsNotesAndMenu() throws {
         try trip.addDish(MenuDishDraft(name: "Chili"), to: .standard(day: 0, kind: .dinner))
         trip.steps(.setup).first?.status = .completed
         trip.notes = "Level pad"
         let tools = trip.assistantTools()
-        #expect(tools.kinds == [.menu, .trip, .rig])
-        #expect(tools.menu?.days.first?.meals.first?.dishes.first?.name == "Chili")
-        #expect(tools.trip?.checklist.setup == trip.steps(.setup).map(\.draft))
-        #expect(tools.trip?.checklist.setup.first?.status == .completed)
-        #expect(tools.trip?.booking == TripBookingFacts(trip))
-        #expect(tools.tripOutput(phase: nil, remainingOnly: false).contains("Site notes: \"Level pad\""))
-        #expect(tools.rig == trip.rig.map { CampingRigContext($0) })
+        #expect(tools.menu.days.first?.meals.first?.dishes.first?.name == "Chili")
+        #expect(tools.trip.checklist.setup == trip.steps(.setup).map(\.draft))
+        #expect(tools.trip.checklist.setup.first?.status == .completed)
+        #expect(tools.trip.booking == TripBookingFacts(trip))
+        #expect(tools.output(for: CampingToolCall(focus: .booking)).contains("Site notes: \"Level pad\""))
+        #expect(tools.output(for: CampingToolCall(focus: .menu)).contains("\"Chili\""))
     }
 
     @Test func deletingATripDeletesItsMenu() throws {

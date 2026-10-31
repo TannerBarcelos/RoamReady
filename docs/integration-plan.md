@@ -63,7 +63,7 @@ See [data coverage](campground-data.md) and the [Camp Finder source guide](campg
 | --- | --- |
 | Rig catalog (#29) | Owner entry in v1; future lookup needs a licensed/permitted source and record provenance. Do not invent year ranges or floorplans. |
 | Offline maps and regional campground lists (#20) | Not implemented; hosting/licensing and download behavior need design and validation. |
-| Assistant tools (#151) | v1 gives the Assistant three on-device tools, `get_trip`, `get_menu`, and `get_rig`, and sends no saved trip or rig details any other way. Before release: measure how reliably the model calls them. Later: document search and checklist guidance as tools. See [Assistant tools](architecture.md#assistant-tools). |
+| Assistant tools (#151) | v1 gives the Assistant one on-device tool, `get_trip`, with a focus for booking, checklist, or menu; the rig profile rides in the instructions. Before release: measure how reliably the model calls them. Later: document search and checklist guidance as tools. See [Assistant tools](architecture.md#assistant-tools). |
 | Remote AI (#34) | Proposed v2 service with its own identity, consent, and cost controls; it must fit the one-time price (no subscription). |
 | Pricing | Settled: $4.99 one-time purchase, with no subscription or in-app purchases now or later. See [pricing](monetization.md). |
 

@@ -28,10 +28,10 @@ public struct AppleCampingChatModel: CampingChatModel {
 }
 
 /// One `LanguageModelSession` per chat. Its transcript holds the conversation. This turn's instructions and
-/// tools are `DynamicInstructions`, evaluated for each request and never stored as history. The framework runs
-/// the tool loop. Only the newest stored turn keeps its tool calls and results, and the profile's history
-/// transform sends them only when `CampingChat` names that turn; it sends only the turns `CampingChat` chose,
-/// and a failed or cancelled request reverts the transcript.
+/// tool are `DynamicInstructions`, evaluated for each request and never stored as history. The framework runs
+/// the tool loop; a turn's tool calls and results stay in the transcript only until `store(_:)` replaces the
+/// turn with its stored form. The profile's history transform sends only the turns `CampingChat` chose, and a
+/// failed or cancelled request reverts the transcript.
 @available(iOS 27.0, macOS 27.0, *)
 @MainActor
 final class AppleCampingChatSession: CampingChatSession {
@@ -57,7 +57,7 @@ final class AppleCampingChatSession: CampingChatSession {
             // No cancellation check after this: a finished turn is in the transcript, and `CampingChat` stores
             // or drops it.
             let text = try await session.respond(to: prompt).content
-            return CampingSessionReply(text: text, toolsUsed: context.toolsUsed, toolOutputs: context.toolOutputs)
+            return CampingSessionReply(text: text, toolsUsed: context.toolsUsed)
         } catch is CancellationError {
             throw CancellationError()
         } catch is LanguageModelSession.ToolCallError {
@@ -83,16 +83,12 @@ final class AppleCampingChatSession: CampingChatSession {
         session.prewarm()
     }
 
-    /// Swaps the raw prompt (with its excerpts) and response just added for the turn's stored form, keeping the
-    /// turn's tool calls and results between them. Older turns lose theirs: only the newest turn keeps results.
+    /// Swaps the raw prompt (with its excerpts), the turn's tool calls and results, and the response just added for
+    /// the turn's stored form, so results never carry into later turns: each answer looks up fresh data.
     func store(_ turn: CampingChatTurn) {
         var history = session.properties.history
         guard let prompt = history.lastIndex(where: \.isPrompt) else { return }
-        let older: [Transcript.Entry] = history[..<prompt].filter { !$0.isToolEntry }
-        let tools: [Transcript.Entry] = history[history.index(after: prompt)...].filter(\.isToolEntry)
-        let stored = turn.transcriptEntries
-        // Same mutation style as `remove(_:)`, so the history keeps its own collection type.
-        history.replaceSubrange(history.startIndex..<history.endIndex, with: older + [stored[0]] + tools + [stored[1]])
+        history.replaceSubrange(prompt..<history.endIndex, with: turn.transcriptEntries)
         session.properties.history = history
     }
 
@@ -105,8 +101,8 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 }
 
-/// What the next request may use, and which tools it called. Set on the main actor before each call and read
-/// by the framework and the tools while the request runs, so it's guarded.
+/// What the next request may use, and whether it called the tool. Set on the main actor before each call and
+/// read by the framework and the tool while the request runs, so it's guarded.
 @available(iOS 27.0, macOS 27.0, *)
 private final class TurnContext: Sendable {
     private struct State {
@@ -115,20 +111,16 @@ private final class TurnContext: Sendable {
         var toolTurn: CampingToolTurn?
         var allowance = CampingToolAllowance(tokens: 0)
         var toolsUsed: Set<CampingToolKind> = []
-        var toolOutputs: [String] = []
     }
     private let state = Mutex(State())
 
     var instructions: String { state.withLock { $0.instructions } }
     var kept: Set<String> { state.withLock { $0.kept } }
-    var resultsOf: String? { state.withLock { $0.toolTurn?.resultsOf } }
     var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
-    var toolOutputs: [String] { state.withLock { $0.toolOutputs } }
+    var offersTrip: Bool { state.withLock { $0.toolTurn != nil } }
 
-    func offers(_ kind: CampingToolKind) -> Bool { state.withLock { $0.toolTurn?.tools.kinds.contains(kind) == true } }
-
-    /// With tools offered, the model must call one before it may answer. Required stops once a call is made
-    /// (Apple: a required mode needs an exit condition, or the model keeps calling).
+    /// With a trip selected, the model must call `get_trip` before it may answer. Required stops once a call is
+    /// made (Apple: a required mode needs an exit condition, or the model keeps calling).
     var callingMode: GenerationOptions.ToolCallingMode {
         state.withLock { $0.toolTurn != nil && $0.toolsUsed.isEmpty ? .required : .allowed }
     }
@@ -144,34 +136,45 @@ private final class TurnContext: Sendable {
     func call(_ call: CampingToolCall) -> String {
         state.withLock { state in
             let tools = state.toolTurn?.tools
-            let output = tools?.output(for: call, allowance: &state.allowance) ?? "This isn't available here."
+            let output = tools?.output(for: call, allowance: &state.allowance) ?? "No trip is selected."
             state.toolsUsed.insert(call.kind)
-            state.toolOutputs.append(output)
             return output
         }
     }
 }
 
-/// Re-evaluated before every model request, so a turn carries only the tool definitions it offers.
+/// Re-evaluated before every model request, so a turn without a trip carries no tool definition.
 @available(iOS 27.0, macOS 27.0, *)
 private struct TurnInstructions: DynamicInstructions {
     let context: TurnContext
     var body: some DynamicInstructions {
         Instructions(context.instructions)
-        if context.offers(.trip) { TripTool(context: context) }
-        if context.offers(.menu) { MenuTool(context: context) }
-        if context.offers(.rig) { RigTool(context: context) }
+        if context.offersTrip { TripTool(context: context) }
     }
 }
 
-// The tools are thin: names, descriptions, output, and its budget come from `CampingTools` in `CampCore`, where
-// they're tested without Foundation Models, over snapshots taken before the request.
-
+/// Thin: the name, description, output, and its budget come from `CampingTools` in `CampCore`, where they're
+/// tested without Foundation Models, over snapshots taken before the request.
 @available(iOS 27.0, macOS 27.0, *)
-private struct MenuTool: Tool {
+private struct TripTool: Tool {
     let context: TurnContext
-    let name = CampingToolKind.menu.name
-    let description = CampingToolKind.menu.description
+    let name = CampingToolKind.trip.name
+    let description = CampingToolKind.trip.description
+
+    @Generable
+    enum Focus {
+        case overview, booking, checklist, menu, everything
+
+        var focus: TripFocus {
+            switch self {
+            case .overview: .overview
+            case .booking: .booking
+            case .checklist: .checklist
+            case .menu: .menu
+            case .everything: .everything
+            }
+        }
+    }
 
     @Generable
     enum Meal {
@@ -189,25 +192,6 @@ private struct MenuTool: Tool {
     }
 
     @Generable
-    struct Arguments {
-        @Guide(description: "Trip day number. Omit for every day.")
-        var day: Int?
-        @Guide(description: "Omit for every meal.")
-        var meal: Meal?
-    }
-
-    func call(arguments: Arguments) async throws -> String {
-        context.call(.menu(day: arguments.day, meal: arguments.meal?.kind))
-    }
-}
-
-@available(iOS 27.0, macOS 27.0, *)
-private struct TripTool: Tool {
-    let context: TurnContext
-    let name = CampingToolKind.trip.name
-    let description = CampingToolKind.trip.description
-
-    @Generable
     enum Phase {
         case setup, teardown
 
@@ -216,28 +200,21 @@ private struct TripTool: Tool {
 
     @Generable
     struct Arguments {
-        @Guide(description: "Limit the checklist to one phase. Omit for both.")
+        @Guide(description: "What to fetch.")
+        var focus: Focus
+        @Guide(description: "Menu: trip day number. Omit for every day.")
+        var day: Int?
+        @Guide(description: "Menu: omit for every meal.")
+        var meal: Meal?
+        @Guide(description: "Checklist: one phase. Omit for both.")
         var checklist: Phase?
-        @Guide(description: "True for only the checklist steps not done yet.")
+        @Guide(description: "Checklist: true for only steps not done yet.")
         var remainingOnly: Bool?
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.call(.trip(phase: arguments.checklist?.phase, remainingOnly: arguments.remainingOnly ?? false))
-    }
-}
-
-@available(iOS 27.0, macOS 27.0, *)
-private struct RigTool: Tool {
-    let context: TurnContext
-    let name = CampingToolKind.rig.name
-    let description = CampingToolKind.rig.description
-
-    @Generable
-    struct Arguments {}
-
-    func call(arguments: Arguments) async throws -> String {
-        context.call(.rig)
+        context.call(CampingToolCall(focus: arguments.focus.focus, day: arguments.day, meal: arguments.meal?.kind,
+                                     phase: arguments.checklist?.phase, remainingOnly: arguments.remainingOnly ?? false))
     }
 }
 
@@ -247,7 +224,7 @@ private struct ChatProfile: LanguageModelSession.DynamicProfile {
     var body: some LanguageModelSession.DynamicProfile {
         Profile { TurnInstructions(context: context) }
             .historyTransform { [context] entries in
-                CampingChatHistory.sent(entries, keeping: context.kept, resultsOf: context.resultsOf, kind: \.chatKind)
+                CampingChatHistory.sent(entries, keeping: context.kept, kind: \.chatKind)
             }
             .toolCallingMode(context.callingMode)
             .transcriptErrorHandlingPolicy(.revertTranscript)
@@ -271,14 +248,11 @@ extension Transcript.Entry {
         case .instructions: .instructions
         case .prompt(let prompt): .prompt(id: prompt.id)
         case .response: .response
-        case .toolCalls, .toolOutput: .tool
         default: .other
         }
     }
 
     var isPrompt: Bool { if case .prompt = self { true } else { false } }
-
-    var isToolEntry: Bool { chatKind == .tool }
 }
 
 /// Token counts and the context window come from the model itself, so the budget never rests on a

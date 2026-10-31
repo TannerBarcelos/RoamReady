@@ -162,25 +162,24 @@ enum CampingAssistant {
         var failsFirstCall = false
         /// Waits before every answer, so a UI test can resize or rotate while it's generating.
         var delay: Duration = .zero
-        /// The saved-trip and menu modes stand in for a model that calls `get_trip` or `get_menu`.
+        /// The saved-trip and menu modes stand in for a model that calls `get_trip` with an overview or menu focus.
         func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
             if answersMenu {
                 CampingAssistant.uiTestCalls += 1
-                let output = tools?.menuOutput(day: nil, meal: .dinner) ?? ""
-                guard instructions.contains(CampingToolKind.menu.name),
+                let output = tools?.output(for: CampingToolCall(focus: .menu, meal: .dinner)) ?? ""
+                guard instructions.contains(CampingToolKind.trip.name),
                       let dish = output.split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
                     return CampingSessionReply(text: "Missing saved menu tool.")
                 }
-                return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1],
-                                           toolsUsed: [.menu], toolOutputs: [output])
+                return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1], toolsUsed: [.trip])
             }
             if answersSavedTrip {
                 CampingAssistant.uiTestCalls += 1
-                // An overview offers only the trip tool and carries no rig, checklist, or documents.
-                guard let tools, tools.kinds == [.trip],
-                      !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
-                      !prompt.contains(TripBookingFacts.beginMarker), !instructions.contains("routine maintenance"),
-                      let campground = tools.tripOutput(phase: nil, remainingOnly: false).components(separatedBy: "\n")
+                // An overview carries no rig, checklist, or documents, and no trip facts outside the tool.
+                guard let tools, !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
+                      !prompt.contains(TripBookingFacts.beginMarker), !instructions.contains("BEGIN SAVED RIG PROFILE"),
+                      !instructions.contains("routine maintenance"),
+                      let campground = tools.output(for: CampingToolCall(focus: .overview)).components(separatedBy: "\n")
                           .first(where: { $0.hasPrefix("Campground: ") }) else {
                     return CampingSessionReply(text: "Missing saved trip tool.")
                 }

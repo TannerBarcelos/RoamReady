@@ -74,18 +74,18 @@ swift run assistant-eval --mode lexical --subset heldout # also: --mode fake, --
 
 ### Prompt budget
 
-One budget covers everything that shares the on-device model's context: the instructions (safety rules, tool definitions, document rules), checklist context, document excerpts, the question, the earlier turns the session sends, and the reply. `PromptBudget` takes the window from the model (`SystemLanguageModel.contextSize`, 4,096 tokens when measured, with that value as the fallback), reserves the 512-token output target (`GenerationOptions.maximumResponseTokens`) and 160 tokens for framing, and leaves the rest as the input limit. The whole prompt must fit it; characters are never treated as tokens.
+One budget covers everything that shares the on-device model's context: the instructions (safety rules, rig profile, tool definition, document rules), checklist context, document excerpts, the question, the earlier turns the session sends, and the reply. `PromptBudget` takes the window from the model (`SystemLanguageModel.contextSize`, 4,096 tokens when measured, with that value as the fallback), reserves the 512-token output target (`GenerationOptions.maximumResponseTokens`) and 160 tokens for framing, and leaves the rest as the input limit. The whole prompt must fit it; characters are never treated as tokens.
 
 Counting goes through the `PromptTokenCounting` protocol in `CampCore`. The app's `AppleTokenCounter` calls `SystemLanguageModel.tokenCount(for:)`, so the real tokenizer decides. Tests use a fake counter. If the real counter throws, the plan falls back for that request to `ConservativeTokenEstimator` (one token per three ASCII characters, 1.5 per other character), never mixing the two.
 
-`CampingHelpRequest.plan` builds this turn's prompt for an attempt and shrinks it until instructions and prompt fit. Earlier turns are never in the prompt: they get only what the turn leaves (see Chat sessions), so they always give way first. The order within the turn is fixed: saved checklist context, then the weakest document excerpts, then the text of the strongest excerpt, and the current question last. Instructions and tool definitions are not shrunk; if the floor still does not fit, the request fails with `contextTooLong` without calling the model. Each plan carries its own source list, and `CampingChat` resolves citations against the plan that was sent, so a citation to a passage that was dropped, before the first attempt or in the compact retry, is rejected. The compact retry is planned only after the model reports `contextTooLong`, never carries more than the attempt it replaces, and is skipped when it would be identical.
+`CampingHelpRequest.plan` builds this turn's prompt for an attempt and shrinks it until instructions and prompt fit. Earlier turns are never in the prompt: they get only what the turn leaves (see Chat sessions), so they always give way first. The order within the turn is fixed: saved checklist context, then the weakest document excerpts, then the text of the strongest excerpt, and the current question last. Instructions, the rig profile, and the tool definition are not shrunk; if the floor still does not fit, the request fails with `contextTooLong` without calling the model. Each plan carries its own source list, and `CampingChat` resolves citations against the plan that was sent, so a citation to a passage that was dropped, before the first attempt or in the compact retry, is rejected. The compact retry is planned only after the model reports `contextTooLong`, never carries more than the attempt it replaces, and is skipped when it would be identical.
 
 ### Chat sessions
 
 A conversation is a `CampingChat` (`CampCore`) that owns one model session, made on its first question. `AssistantConversation` holds it, so the global chat keeps its session while the sheet closes; New chat, each trip or checklist help sheet, and a change of rig or trip start a new one. The session follows Apple's documented pattern ([Managing the context window](https://developer.apple.com/documentation/foundationmodels/managing-the-context-window), [Composing dynamic sessions](https://developer.apple.com/documentation/foundationmodels/composing-dynamic-sessions-with-instructions-and-profiles)):
 
-- **The transcript carries the history.** `AppleCampingChatSession` is a `LanguageModelSession(profile:history:)`. Each request sends this turn's prompt (rig category, checklist context, document excerpts with their source IDs, and the question); the trip, its menu, and the rig profile reach the model only through tools (see Assistant tools), so excerpts keep their place as untrusted prompt data rather than instructions.
-- **Per-turn instructions.** The profile's `DynamicInstructions` are re-evaluated before every request from what `CampingChat` set for that turn (safety rules, tool lines, document and booking-conflict rules, and the conversation summary), plus the tools that turn offers. They are not stored as history. They are kept short and imperative (TN3193), since every token is sent with every request.
+- **The transcript carries the history.** `AppleCampingChatSession` is a `LanguageModelSession(profile:history:)`. Each request sends this turn's prompt (rig category, checklist context, document excerpts with their source IDs, and the question); the trip reaches the model only through `get_trip` (see Assistant tools), so excerpts keep their place as untrusted prompt data rather than instructions.
+- **Per-turn instructions.** The profile's `DynamicInstructions` are re-evaluated before every request from what `CampingChat` set for that turn (safety rules, rig profile, tool lines, document and booking-conflict rules, and the conversation summary), plus the tool when a trip is selected. They are not stored as history. They are kept short and imperative (TN3193), since every token is sent with every request.
 - **Stored turns are clean.** Right after a response, the turn's prompt and response entries in the transcript are replaced by its stored form (`CampingChatTurn`: the question and the shown answer, clipped to 400 and 1,000 characters, citation markers neutralized). Old excerpts never stay in the transcript, and an earlier answer can't pass for a source.
 - **Bounded history.** `CampingChat` plans the turn first, then picks the newest stored turns that fit what's left of the input limit, at most three (`CampingChatHistory.window`). The profile's `historyTransform` sends only those, plus the instructions and the current prompt (`CampingChatHistory.sent`); the stored transcript itself is untouched.
 - **Errors.** The profile uses `TranscriptErrorHandlingPolicy.revertTranscript`, so a failed or cancelled request leaves no half-written entry. An answer that finished after its request was cancelled, or that the screen dropped, is removed from the transcript (`CampingChat.forget`). The question still returns to the composer.
@@ -107,52 +107,66 @@ Measured: `contextSize` 4096; 1,000 characters of English prose, 202 tokens; 200
 
 ### Assistant tools
 
-**Decision (owner, October 31, 2026): all saved data reaches the model through tools it calls: `get_trip`, `get_menu`, and `get_rig`.** The prompt carries only the rig category, matched checklist guidance, document excerpts, and the question. This replaces app-side word matching to decide when to send the menu, sending the whole menu with every question, and sending the trip facts and rig profile on every turn.
+**Decision (owner, October 31, 2026): everything about a trip reaches the model through one tool, `get_trip`, and the rig profile rides in the instructions.** This replaces app-side word matching to decide when to send the menu, sending the whole menu with every question, and separate menu, checklist, and rig tools.
 
-Apple's Foundation Models framework runs the tool loop ([Expanding generation with tool calling](https://developer.apple.com/documentation/foundationmodels/expanding-generation-with-tool-calling)). The model decides whether a tool helps, calls it with arguments filled by guided generation, gets the result, and answers from it, all inside one `respond(to:)`. The app doesn't classify questions; the model's decision to call a tool is the classification.
+Apple's Foundation Models framework runs the tool loop ([Expanding generation with tool calling](https://developer.apple.com/documentation/foundationmodels/expanding-generation-with-tool-calling)). The model calls the tool with arguments filled by guided generation, gets the result, and answers from it, all inside one `respond(to:)`.
 
-| Tool | Arguments (all optional) | Returns |
-| --- | --- | --- |
-| `get_trip` | `checklist` (setup or teardown), `remainingOnly` | Campground, dates, check-in and check-out with time zone, site, confirmation; then status, loop, site details, provider, costs, cancellation deadline, site notes; then each checklist's progress and steps with status, priority, and notes. |
-| `get_menu` | `day` (trip day number, 1 = arrival), `meal` | The asked day and meal, or the whole menu, with dishes, notes, recipe items, and amounts. Names today's trip day when today is within the trip. Says when nothing is planned. |
-| `get_rig` | none | The labeled rig profile: make, model, year, floorplan code, length, slides, axles, bunkhouse, equipment. Registration and photos are excluded. |
+`get_trip(focus, day, meal, checklist, remainingOnly)`:
 
-**Every answer looks at the data (owner decision, October 31, 2026).** Whenever a turn offers tools, the model must call at least one before it may answer: the profile's tool-calling mode is `.required` until a call is made, then `.allowed`, which is Apple's documented exit condition. The model still chooses which tool and how often, and may call again whenever it needs more; the instructions say so and forbid answering saved details from memory. A question that needs no saved data still costs one lookup (about a second, all on device). Which tools a turn offers:
-
-| Scope | Tools |
+| `focus` | Returns, after the core facts |
 | --- | --- |
-| Trip and checklist chat | `get_trip`, `get_menu`, `get_rig` |
-| General chat without a trip | `get_rig`; the instructions say no trip is selected, so the model says so instead of guessing |
-| Help with a selected checklist step | `get_trip`, `get_menu`, `get_rig` (the step itself rides in the instructions) |
-| Trip overview ("What trip is this?") | `get_trip` only |
+| `overview` | Nothing more: which trip, where, and when |
+| `booking` | Loop, site details, provider, costs, cancellation deadline, site notes |
+| `checklist` | Setup and teardown progress and steps with status, priority, and notes; `checklist` picks one phase and `remainingOnly` lists only what's left |
+| `menu` | The menu, or the asked `day` and `meal`, with dishes, notes, recipe items, and amounts, naming today's trip day |
+| `everything` | All of it, split so a long checklist can't crowd out the menu |
+
+The **core facts** come back whatever the focus: campground, dates, check-in and check-out with time zone, site, confirmation, and status ("starts in 3 days"). So every trip answer is grounded in the trip, and a wrong focus still returns the basics; the model can call again with another.
+
+**Every trip answer looks at the data.** Whenever a trip is selected, the model must call `get_trip` at least once before it may answer: the profile's tool-calling mode is `.required` until a call is made, then `.allowed`, Apple's documented exit condition. It may call again whenever it needs more, and the instructions forbid answering saved trip details from memory or earlier answers. A question that needs no trip data still costs one lookup (about a second, on device).
+
+Scopes:
+
+| Scope | Tool | Rig profile in the instructions |
+| --- | --- | --- |
+| Trip and checklist chat, and help with a selected step | `get_trip`, required | Yes |
+| Trip overview ("What trip is this?") | `get_trip`, required | No |
+| Chat without a trip | None; the instructions say no trip is selected, so the model says so instead of guessing | Yes |
+
+**Why the rig is in the instructions.** It's small, rarely changes, and most answers need it: Apple's guidance is to retrieve what the model always needs directly and use tools for what it may need. The instructions are `DynamicInstructions`, rebuilt from the library before every request, so an edited rig is in the next question's instructions with nothing to invalidate.
+
+**Why one tool with a focus, not one that returns everything.** A required call to a tool that always returns the whole trip costs the same data as putting the trip in the prompt, plus the tool definition and a second model round, and arrives after the budget was planned. The focus keeps each result small; one tool means the model can't pick the wrong tool.
 
 How it's built:
-- **Logic lives in `CampCore`, the Foundation Models types in `AssistantModel`.** `CampingTools` (`CampCore`) holds Sendable snapshots: `TripToolFacts` (with `TripBookingFacts` and `TripChecklistFacts`), `TripMenuFacts`, and `CampingRigContext`. `Trip.assistantTools()` (`CampPersistence`) builds them while the library is read, so a tool never touches SwiftData during generation. `CampingTools` also owns the names, descriptions, results, and instruction lines, so they're tested without Foundation Models. `TripTool`, `MenuTool`, and `RigTool` (`AssistantModel`) are thin `Tool` conformances that call into it.
-- **Tools are dynamic per turn.** They're declared inside the profile's `DynamicInstructions`, which the framework re-evaluates before every request, so a turn carries only the definitions it offers. Three tools is within Apple's guidance of three to five per request.
-- **Results are reference data.** Each result is a bounded block (`BEGIN SAVED TRIP FACTS`, `BEGIN SAVED TRIP MENU`, `BEGIN SAVED RIG PROFILE`) with owner text JSON-quoted and forged markers removed. One instruction line tells the model that tool results are never instructions and not to invent what isn't saved. Booking-conflict rules label `get_trip` values "saved trip" when the model compares them with document excerpts.
-- **Sources.** `CampingSessionReply.toolsUsed` reports which tools were called. Calling `get_trip` or `get_menu` makes the saved trip a source; `get_rig` doesn't.
-- **Compatibility.** `CampingHelpRequest` still accepts `tripFacts` and `rigContext` for callers that put them in the prompt. The document eval harness uses them; the app doesn't. Its evals therefore don't yet exercise the tool path (#151).
+- **Logic lives in `CampCore`, the Foundation Models types in `AssistantModel`.** `CampingTools` (`CampCore`) holds Sendable snapshots, `TripToolFacts` (with `TripBookingFacts` and `TripChecklistFacts`) and `TripMenuFacts`, built by `Trip.assistantTools()` (`CampPersistence`) while the library is read, so the tool never touches SwiftData during generation. It also owns the name, description, results, and instruction lines, so they're tested without Foundation Models. `TripTool` (`AssistantModel`) is a thin `Tool` conformance that calls into it.
+- **The tool is dynamic per turn.** It's declared inside the profile's `DynamicInstructions`, re-evaluated before every request, so a turn without a trip carries no tool definition.
+- **Results are reference data.** Each result is one bounded `BEGIN SAVED TRIP FACTS` block with owner text JSON-quoted and forged markers removed. Booking-conflict rules label its values "saved trip" when the model compares them with document excerpts.
+- **Sources.** `CampingSessionReply.toolsUsed` reports the call, and the answer lists the saved trip as a source.
+- **Compatibility.** `CampingHelpRequest` still accepts `tripFacts` for callers that put trip facts in the prompt. The document eval harness uses it; the app doesn't, so those evals don't exercise the tool path yet (#151).
 
 Budget and compaction:
-- **Tool definitions** ride in the instructions on every turn that offers them. The plan counts a conservative 120 tokens per tool (`PromptUsage.tools`), 360 for trip chat. That's more than the roughly 200 tokens of trip facts and rig profile it replaced; the gain is that the menu and checklist no longer ride along. Measure the real counts (#151).
-- **Tool results** arrive after the prompt was planned, and the model may call several tools in one answer. Each request gets a `CampingToolAllowance`: what the instructions, prompt, and sent history leave of the input limit, which is always at least one full result because the history window keeps that free. Each result is rendered to fit what's left (at most 1,200 characters; menus and checklists shorten, dropping detail first), and once less than a useful result remains, a tool returns a short note telling the model to answer from what it has and say what it couldn't check. So several calls can't overflow the window; an overflow from other causes still takes the compact retry.
-- **History (owner decision, October 31, 2026: keep the newest turn's results).** A turn's tool calls and results are transcript entries between its prompt and response. When a turn is stored, `store(_:)` keeps its tool entries between its stored question and answer and removes them from every older turn, so only the newest turn ever has results. The next request sends them with that turn only when all of these hold: it is the newest turn sent, this request offers the same snapshots (`CampingTools` equality: nothing was edited and the day hasn't changed), and the turn still fits the history budget with the results' measured tokens added. Otherwise the turn goes without them. So "What's for dinner on day 2?" → "What goes in it?" can answer from the earlier result without calling `get_menu` again, and an edit made mid-chat is never answered from a stale result. `CampingChatHistory.sent(_:keeping:resultsOf:kind:)` applies the rule; the current turn's own loop always sees its results. A compact retry sends no kept results, and compaction's new session starts from questions and answers only. Summaries never see results. Foundation Models provides the hooks (`historyTransform`, `@SessionProperty(\.history)`, `contextSizeExceeded`); Apple's docs give dropping completed tool calls as an example and leave the policy to the app. The rest of compaction is unchanged; see Chat sessions.
+- **The tool definition** rides in the instructions on every trip turn. The plan counts a conservative 160 tokens (`PromptUsage.tools`).
+- **Tool results** arrive after the prompt was planned, and the model may call several times. Each request gets a `CampingToolAllowance`: what the instructions, prompt, and sent history leave of the input limit, always at least one focused result because the history window keeps that free. A focused result is at most 1,200 characters and `everything` at most 2,400 when there's room. Each is rendered to fit what's left, dropping detail first, and once less than a useful result remains, the tool returns a short note telling the model to answer from what it has and say what it couldn't check. An overflow from other causes still takes the compact retry.
+- **History.** A turn's tool calls and results are transcript entries between its prompt and response, sent with the current turn. `store(_:)` replaces the whole turn with its stored question and answer, so results never carry into later turns or summaries, as in Apple's "drop completed tool calls" example. That's safe because every trip answer looks up fresh data anyway: "What's for dinner on day 2?" → "What goes in it?" calls `get_trip(focus: menu, day: 2)` again, and an edit made mid-chat is always seen. Compaction is unchanged; see Chat sessions.
 
 Remaining risks:
-- **The wrong tool.** A required call guarantees a lookup, not the right one: the model could call `get_rig` for a menu question. Measure which tool each phrasing gets (#151).
-- **Booking conflicts.** Comparing the saved check-in time with a confirmation PDF needs the `get_trip` result; a turn that called only another tool answers from the document alone.
+- **A wrong focus.** The core facts always come back, but a menu question answered from a `booking` focus lacks the menu unless the model calls again. Measure which focus each phrasing gets (#151).
+- **Booking conflicts.** Comparing the saved check-in time with a confirmation PDF works from any focus, since check-in is a core fact.
 
 Alternatives considered:
 
 | Approach | Why not |
 | --- | --- |
-| Saved data in the instructions | Instructions take precedence over the prompt and are never shrunk; owner-entered text there is both an injection risk and a budget risk. |
+| Saved trip data in the instructions | Instructions take precedence over the prompt and are never shrunk; a long trip there is both an injection risk and a budget risk. The rig is the exception: small, stable, and needed by most answers. |
 | App-side word matching | Misses phrasings such as "What am I making tonight?". Built and removed; don't reintroduce it, including as a fallback. |
 | Whole menu in every prompt | Every trip question paid 400–700 tokens, earlier turns lost room, and answers couldn't show the saved trip as a source. |
+| Separate `get_trip`, `get_menu`, `get_rig` tools | The model could pick the wrong tool, three definitions cost tokens every turn, and the rig is needed often enough to send directly. |
+| `get_trip` with no arguments, always everything | With a required call, the same cost as the trip in the prompt plus a model round and the definition. |
+| Keeping the newest turn's results for follow-ups | With a required lookup every turn, kept results would duplicate the fresh ones. |
 | A separate classifier call | A second model call before every answer, and a wrong guess silently hides the data. |
-| Semantic retrieval over dishes | "Dinner on day 2" depends on structure a sentence embedding doesn't capture, whole-trip questions need every item, and Apple's embedding model can be missing. `get_menu`'s `day` and `meal` arguments answer these exactly. |
+| Semantic retrieval over dishes | "Dinner on day 2" depends on structure a sentence embedding doesn't capture, whole-trip questions need every item, and Apple's embedding model can be missing. `get_trip`'s `day` and `meal` answer these exactly. |
 
-Not yet measured: which tool the on-device model picks for each phrasing (including indirect phrasings and booking-conflict questions), and real tool-definition token counts. Measure both with the Foundation Models instrument in Instruments and with eval cases before release (#151). Matched checklist guidance (the saved reference block) still uses word overlap, and document search runs before generation; both are candidates for tools (#151).
+Not yet measured: which focus the on-device model picks for each phrasing, real tool-definition token counts, and the latency of the required lookup. Measure them with the Foundation Models instrument in Instruments and with eval cases before release (#151). Matched checklist guidance (the saved reference block) still uses word overlap, and document search runs before generation; both are candidates for tools (#151).
 
 ### Search package decision
 
@@ -214,7 +228,7 @@ Rig and trip validation is shared through `RigDetails` and `TripDetails` protoco
 
 Deleting a trip cascades to its steps, photos, note revisions, and menu (meals, dishes, and recipe items). Documents are retained as unattached.
 
-A trip's menu is its `TripMeal`s, keyed by a day offset from arrival so date edits keep meals on the same trip day. `TripMenuFacts` (in `CampCore`) is the Assistant's bounded, JSON-quoted snapshot of the menu, built from the library by `Trip.menuFacts(asOf:)` and returned by the `get_menu` tool; see Assistant tools. `CampCore` also defines the meal kinds, the menu's days (`menuDays`, arrival through departure in the planning time zone, capped at 60), and the dish, item, and meal drafts. `Trip+Menu.swift` groups standard meals by day and kind, so duplicates created on two devices read as one, and keeps meals outside the trip's dates until they're moved or removed. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
+A trip's menu is its `TripMeal`s, keyed by a day offset from arrival so date edits keep meals on the same trip day. `TripMenuFacts` (in `CampCore`) is the Assistant's bounded, JSON-quoted snapshot of the menu, built from the library by `Trip.menuFacts(asOf:)` and returned by `get_trip` with a menu focus; see Assistant tools. `CampCore` also defines the meal kinds, the menu's days (`menuDays`, arrival through departure in the planning time zone, capped at 60), and the dish, item, and meal drafts. `Trip+Menu.swift` groups standard meals by day and kind, so duplicates created on two devices read as one, and keeps meals outside the trip's dates until they're moved or removed. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
 
 ## Feature services and network boundaries
 

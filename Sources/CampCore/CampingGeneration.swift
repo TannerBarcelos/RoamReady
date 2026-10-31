@@ -34,11 +34,7 @@ extension CampingResponseGenerating {
 public struct CampingSessionReply: Equatable, Sendable {
     public let text: String
     public let toolsUsed: Set<CampingToolKind>
-    /// What each tool call returned, so the chat can budget the results the newest turn keeps.
-    public let toolOutputs: [String]
-    public init(text: String, toolsUsed: Set<CampingToolKind> = [], toolOutputs: [String] = []) {
-        self.text = text; self.toolsUsed = toolsUsed; self.toolOutputs = toolOutputs
-    }
+    public init(text: String, toolsUsed: Set<CampingToolKind> = []) { self.text = text; self.toolsUsed = toolsUsed }
 }
 
 /// How an answer relates to the owner's documents.
@@ -64,8 +60,8 @@ public struct CampingReply: Equatable, Sendable {
     public let coverage: DocumentCoverage
     /// Readiness of the request's scope when it was asked.
     public let readiness: ScopeReadiness
-    /// The model looked up the trip or its menu (or, for callers that put trip facts in the prompt, the question
-    /// was about the booking), so the saved trip is a source too.
+    /// The model looked up the trip (or, for callers that put trip facts in the prompt, the question was about
+    /// the booking), so the saved trip is a source too.
     public internal(set) var usedSavedTrip: Bool
     /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
     public var searched: [DocumentSource] = []

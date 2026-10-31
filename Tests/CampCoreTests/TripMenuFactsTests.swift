@@ -56,7 +56,6 @@ struct TripMenuFactsTests {
 
     @Test func anEmptyMenuSaysNothingIsPlanned() {
         #expect(TripMenuFacts(days: []).toolOutput(day: nil, meal: nil, limit: limit).contains("No dishes are planned"))
-        #expect(CampingTools().menuOutput(day: nil, meal: nil) == "This trip has no menu.")
     }
 
     @Test func ownerTextIsQuotedAndCantCloseTheBlock() {

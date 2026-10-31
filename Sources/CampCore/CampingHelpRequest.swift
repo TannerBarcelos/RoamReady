@@ -22,8 +22,7 @@ public struct CampingHelpRequest: Sendable {
     public let documents: DocumentEvidence?
     /// The trip's saved booking facts, for trip and checklist help. Shown apart from document excerpts.
     public let tripFacts: TripBookingFacts?
-    /// Saved data the model looks up while answering; it must make at least one call. A trip overview gets only
-    /// `get_trip`.
+    /// The trip the model looks up while answering with `get_trip`; it must call it at least once. Nil without a trip.
     public let tools: CampingTools?
     private let askedAboutBooking: Bool
     /// Earlier turns the chat folded away, carried in the instructions. Set by `CampingChat`, never by callers.
@@ -68,7 +67,11 @@ public struct CampingHelpRequest: Sendable {
         if tripFacts != nil, stepContext == nil {
             full += "\nSaved trip facts are available from the app database independently of attachments. Use them to answer questions about the selected current or upcoming trip, including its campground and dates. Do not require a document to confirm these saved values."
         }
-        if let tools { full += tools.instructions }
+        if let tools {
+            full += tools.instructions
+        } else if tripFacts == nil {
+            full += "\nNo trip is selected, so trip details, menus, and checklists aren't available here. If asked, say so and suggest opening the trip."
+        }
         if let documents, !documents.isEmpty {
             full += documents.instructions
             full += BookingConflictRules.instructions(hasSavedFacts: tripFacts != nil || tools?.trip != nil)
@@ -108,8 +111,7 @@ public struct CampingHelpRequest: Sendable {
         self.scope = scope
         self.tripFacts = tripFacts
         askedAboutBooking = BookingFactQuestion.isAboutBooking(question)
-        let offered = tripOverview ? tools?.limited(to: [.trip]) : tools
-        self.tools = offered?.kinds.isEmpty != false ? nil : offered
+        self.tools = tools
         self.rigContext = tripOverview ? nil : rigContext
         self.documents = tripOverview ? nil : documents
         self.question = question
