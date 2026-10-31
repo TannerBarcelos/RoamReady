@@ -12,7 +12,7 @@ A failure names the step and stops, so a half-erased library never looks finishe
 
 ## Deleted records
 
-Deletions are real deletes: SwiftData removes the model and mirroring deletes its CloudKit record. Deleting a trip cascades to its checklist steps, photos, and note versions in the same save; its documents stay as unattached. Deleting a document deletes its content.
+Deletions are real deletes: SwiftData removes the model and mirroring deletes its CloudKit record. Deleting a trip cascades to its checklist steps, photos, note versions, and menu in the same save; its documents stay as unattached. Deleting a document deletes its content.
 
 Apple's mirroring tracks deletions in persistent history, so a device that was offline applies them when it next syncs. An offline device that edited a record another device deleted can, depending on timing, bring that record back; the delete confirmation copy says the deletion applies to every device, and validating this on two devices is a release gate (see [offline storage](offline-storage.md#validation-and-outstanding-release-gates)).
 

@@ -26,7 +26,7 @@ There is one active rig per owner, controlled by `RigPolicy.maxActiveRigs`. Edit
 
 Home shows the earliest-arriving active trip, checklist progress, memories, local save status, and quick trip creation. Active means today falls within the inclusive arrival/departure dates in the campground’s time zone and the trip has not been marked complete. The card disappears after departure day; other current and upcoming trips remain accessible on Home, including overlapping bookings. Completed trips live in **Profile › Trip history**, newest first, alongside **Your campgrounds**. Home refreshes at campground midnight and on foregrounding, without storing an active flag. The tab bar has Home, Trip (add), Camp Finder, and Profile. Profile’s gear opens Settings for appearance, iCloud, export, library maintenance, and app information.
 
-Home uses native adaptive split navigation on every device. At regular width it shows the selected trip beside it; at compact width it collapses to one column. The current trip is selected at first, or else the next upcoming one; overlapping trips follow Home's rule and choose the earliest arrival (`featuredTrip(asOf:)` in `CampCore`). Picking another trip replaces the details, and the setup and teardown checklist shortcuts open that checklist there. If the picked trip is deleted, the pick is cleared and the details go back to the featured trip. With no current or upcoming trip, the details side is empty.
+Home uses native adaptive split navigation on every device. At regular width it shows the selected trip beside it; at compact width it collapses to one column. The current trip is selected at first, or else the next upcoming one; overlapping trips follow Home's rule and choose the earliest arrival (`featuredTrip(asOf:)` in `CampCore`). Picking another trip replaces the details, and the setup and teardown checklist shortcuts open that checklist there. The menu shortcut on the current or next trip opens that trip's menu there the same way. If the picked trip is deleted, the pick is cleared and the details go back to the featured trip. With no current or upcoming trip, the details side is empty.
 
 A trip represents one booking at one campground. Campground name, rig, and dates are required. Create a trip from a Camp Finder listing online or enter its campground by name offline. RoamReady records a booking; it does not make reservations.
 
@@ -40,6 +40,7 @@ Optional fields can be edited at any time:
 | Cost | Total cost and amount paid. |
 | Paperwork | Confirmation files and other attached documents. |
 | Memories | Initial site notes during creation; more notes, photos, and ratings in **Photos & site notes**. |
+| Meals | The trip's menu: dishes and recipe items for each meal of each day. See [Trip menu](#trip-menu). |
 
 The booking card offers **Open booking link**, **View confirmation & documents**, and **Directions** when the corresponding data exists. Planning dates retain their original time zone; forecasts match dates in the campground's time zone, including daylight-saving transitions.
 
@@ -72,6 +73,18 @@ Uploaded originals are preserved byte-for-byte, limited to 50 MiB, and checked b
 All new files use Apple-managed encrypted SwiftData fields and CloudKit assets; no encryption toggle or app-generated file keys are needed. Existing files remain readable in their original format. A new device must download file content before it can open it offline. See the [document vault](document-vault.md) for storage, encryption, and export details.
 
 **Assign to rig or trip** in document details moves a document to one rig (archived rigs included) or one trip, or leaves it unattached. It is a metadata-only change saved through `StoredDocument.assign(to:)`: a trip clears the direct rig, a rig clears the trip, and bytes and checksum are untouched. A failed save shows an error and keeps the prior assignment. Unattached documents, including paperwork kept after a trip is deleted, stay previewable and shareable but are outside every Assistant scope. Assignment re-evaluates scope and queues indexing only if the document is already eligible; category, the Other opt-in, and the local-content rule still apply.
+
+## Trip menu
+
+Plan what you'll eat on a trip from **Create menu** (or **Menu**, once something is planned) on Trip details and on Home's current or next trip. The row shows how many dishes and meals are planned.
+
+- **Days.** The menu lists every day from arrival through departure, inclusive, in the time zone the dates were planned in (at most 60 days). Each day shows Breakfast, Lunch, Dinner, and Snacks. **Add a meal** adds a named meal to that day, like "Second breakfast"; added meals can be renamed or removed.
+- **Dishes.** A meal holds dishes, each a whole plate such as "Steak with brussels sprouts and sourdough". A dish has a name, optional notes, and an optional photo (resized like trip photos). Dishes can be reordered or removed with Edit.
+- **Recipe items.** Each dish lists its parts with a free-text amount, like "Ribeye, 2 lb". **Save & add another** keeps the item sheet open for quick entry. Items can be edited, reordered, and removed.
+- **Changing dates.** Meals belong to a trip day (day 1 is arrival day), so moving a trip keeps them on the same days. If a trip is shortened, meals on days that no longer exist stay under **Outside trip dates** until they're moved to another day or removed; nothing is deleted.
+- **Sync.** The same standard meal created on two devices before they sync shows as one meal with both devices' dishes.
+
+Deleting a trip deletes its menu. Exports include each trip's menu without dish photos.
 
 ## Memories
 

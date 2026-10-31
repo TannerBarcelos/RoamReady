@@ -50,6 +50,7 @@ struct HomeView: View {
                     }
                     .accessibilityIdentifier("homeChecklist-\(phase.rawValue)")
                 }
+                menuLink(trip)
                 NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
                     .accessibilityIdentifier("homeMemories")
             } header: { Text("Current trip") }
@@ -71,6 +72,7 @@ struct HomeView: View {
                         ProgressSummary(steps: next.steps(.setup))
                     }.padding(.vertical, 4)
                 }
+                menuLink(next)
             } header: { Text("Next trip") } footer: {
                 Text("On arrival day, Home switches to your live trip with checklist progress and photos.")
             }
@@ -101,6 +103,11 @@ struct HomeView: View {
 
     private func tripLink<Label: View>(_ trip: Trip, @ViewBuilder label: () -> Label) -> some View {
         NavigationLink(value: HomeDestination.trip(trip.persistentModelID), label: label)
+    }
+
+    private func menuLink(_ trip: Trip) -> some View {
+        NavigationLink(value: HomeDestination.menu(trip.persistentModelID)) { MenuEntryLabel(summary: trip.menuSummary) }
+            .accessibilityIdentifier("homeMenu")
     }
 
     private func checklistLink<Label: View>(_ trip: Trip, _ phase: ChecklistPhase,

@@ -25,7 +25,7 @@ If your build supports iCloud, onboarding and Profile → Settings offer **Sync 
 | Camp Finder | Explore online campground listings and save places. |
 | Profile | Edit your rig/profile, manage checklist defaults and documents, revisit Trip history and Your campgrounds, or open Settings with the gear. |
 
-Home shows the earliest-arriving active trip from arrival through the end of departure day in the campground’s time zone. It disappears when its dates end or you mark it complete; other current and upcoming trips stay on Home. Completed trips move to **Profile → Trip history**, newest first. Setup, teardown, and Photos & site notes open directly from Home.
+Home shows the earliest-arriving active trip from arrival through the end of departure day in the campground’s time zone. It disappears when its dates end or you mark it complete; other current and upcoming trips stay on Home. Completed trips move to **Profile → Trip history**, newest first. Setup, teardown, the trip's menu, and Photos & site notes open directly from Home.
 
 ## Add and manage a trip
 
@@ -65,6 +65,16 @@ To move a document, open it and use **Assign to rig or trip**. A document belong
 The Assistant reads Manual, Service & maintenance, Warranty, and Reservation documents automatically, and never reads Registration or Insurance. For an **Other** document, open it and turn on **Include in Assistant**; it is off until you do, and turning it off stops the Assistant using it right away. A link is read only after you save a copy on your device. The setting syncs with iCloud.
 
 Documents retained after a trip or rig is deleted appear in **Profile → Unattached documents**. See the [document vault](document-vault.md) for protection and availability details.
+
+## Plan meals
+
+Open a trip and tap **Create menu**. Each day of the trip lists Breakfast, Lunch, Dinner, and Snacks; tap **Add a meal** for anything else.
+
+1. Tap a meal, then **Add a dish**. Name the whole plate, such as "Steak with brussels sprouts and sourdough", and add notes or a photo if you like.
+2. Open the dish and tap **Add item** for each part of the recipe, with an amount such as "2 lb". Use **Save & add another** to enter several in a row.
+3. Use **Edit** to reorder or remove dishes and items. Swipe a meal on the menu to clear or remove it.
+
+If you shorten a trip, meals on the days you removed appear under **Outside trip dates**. Open one to move it to another day.
 
 ## Add memories
 
@@ -114,6 +124,6 @@ Only one rig can be active in v1. Open **Archived rigs** to reactivate one withi
 
 **Profile → Settings → Prepare export** creates a zip containing library metadata and verified original document files. Encrypted documents are readable in the export, so store it privately. Photo bytes are not included; share trip photos individually. Review missing-file statuses before relying on the archive. There is no in-app restore workflow.
 
-**Cancel & delete trip** permanently removes its checklists/progress, notes/history, trip photos/captions, and site rating after confirmation. Its documents are kept as unattached, and its rig/defaults and original library photos remain. Cancel the actual reservation separately with its provider.
+**Cancel & delete trip** permanently removes its checklists/progress, menu, notes/history, trip photos/captions, and site rating after confirmation. Its documents are kept as unattached, and its rig/defaults and original library photos remain. Cancel the actual reservation separately with its provider.
 
 **Profile → Settings → Erase all data** removes the app's library and, in a configured build, its iCloud zone. Read the confirmation carefully; the cloud step requires connectivity and the signed-in iCloud account, even if sync is currently off. Other devices retain their local copies until erased there. See [erasing data](erase-data.md) for the exact process and limits.

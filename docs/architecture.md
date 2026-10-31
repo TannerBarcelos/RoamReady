@@ -147,7 +147,7 @@ There is no raw SQL, custom CloudKit record transport, hosted user-data service,
 
 The app uses the window's real size classes, safe areas, and native containers on iPhone, iPad, and Catalyst. There is no hinge capability gate, model-name check, or forced compact size class. Native `TabView`, `NavigationSplitView`, toolbars, forms, and sheets own their platform adaptation. `MainTabs` owns selection and presented sheets; the Assistant conversation also lives there. The Assistant action is a native toolbar button everywhere, gated only by Apple's runtime model eligibility.
 
-`HomeWorkspace` owns Home's clock and `NavigationSplitView` selection above both columns. `HomeDestination` stores persistent identifiers rather than models. Native navigation collapses at compact width and expands when space allows. The detail shows the valid pick or featured trip (`displayedTrip(selected:asOf:)` in `CampCore`).
+`HomeWorkspace` owns Home's clock and `NavigationSplitView` selection above both columns. `HomeDestination` stores persistent identifiers rather than models: a trip, one of its checklists, or its menu. Native navigation collapses at compact width and expands when space allows. The detail shows the valid pick or featured trip (`displayedTrip(selected:asOf:)` in `CampCore`).
 
 `HomeWorkspace` also owns one `LocalWeather` instance, its refresh lifecycle, and the location-permission alert. `CurrentWeatherBadge` renders that shared model without creating a session of its own. Expanded layouts attach both weather and the global Assistant to detail content so their items can use the system vertical bar; compact Home retains the actions in its own bar until navigation opens a detail. Weather’s custom item opts into `.verticalPreferred` on supported iOS SDKs, with a horizontal fallback on Catalyst and iOS 27.0. Its read-only text always includes °F or °C; denied location shows a crossed-out recovery action instead. The item hides its shared toolbar background, and Home’s list keeps attribution and the retrieval time.
 
@@ -163,7 +163,9 @@ A trip is one campground booking and references its rig. Editing a rig changes t
 
 Rig and trip validation is shared through `RigDetails` and `TripDetails` protocols implemented by both drafts and persisted models. `CampCoreTests` exercise those rules without SwiftUI or SwiftData.
 
-Deleting a trip cascades to its steps, photos, and note revisions. Documents are retained as unattached. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
+Deleting a trip cascades to its steps, photos, note revisions, and menu (meals, dishes, and recipe items). Documents are retained as unattached.
+
+A trip's menu is its `TripMeal`s, keyed by a day offset from arrival so date edits keep meals on the same trip day. `CampCore` defines the meal kinds, the menu's days (`menuDays`, arrival through departure in the planning time zone, capped at 60), and the dish, item, and meal drafts. `Trip+Menu.swift` groups standard meals by day and kind, so duplicates created on two devices read as one, and keeps meals outside the trip's dates until they're moved or removed. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
 
 ## Feature services and network boundaries
 
@@ -184,7 +186,7 @@ Rig/trip photos are downsampled from picker file representations to at most 2560
 
 Documents preserve original bytes up to 50 MiB. Content is separate from list metadata and uses SwiftData external storage plus cloud-encrypted fields. Apple handles large-asset encryption and transfer; there are no new app encryption keys. Legacy encrypted files remain readable, and reads verify size and SHA-256. Import inspection and preview verification run off the UI thread. See [document vault](document-vault.md).
 
-Profile › Settings exports `RoamReady Export.zip`: `library.json`, `documents.json`, and verified original files under `Documents/`. Photo metadata/captions are included, not image bytes; photos are shared individually. Exported encrypted documents are readable originals. The export is an explicit user copy, not an implemented restore/import workflow.
+Profile › Settings exports `RoamReady Export.zip`: `library.json`, `documents.json`, and verified original files under `Documents/`. Photo metadata/captions are included, not image bytes; photos are shared individually. `library.json` schema version 4 adds each trip's menu (day, meal, dishes, and recipe items, without dish photos). Exported encrypted documents are readable originals. The export is an explicit user copy, not an implemented restore/import workflow.
 
 ## Validation boundaries
 

@@ -85,6 +85,8 @@ public final class Trip: TripDetails {
     @Relationship(deleteRule: .cascade, inverse: \ChecklistStep.trip) public var steps: [ChecklistStep]? = []
     @Relationship(deleteRule: .cascade, inverse: \TripPhoto.trip) public var photos: [TripPhoto]? = []
     @Relationship(deleteRule: .cascade, inverse: \NoteRevision.trip) public var noteRevisions: [NoteRevision]? = []
+    /// The trip's menu. Additive relationship: older records read as an empty menu.
+    @Relationship(deleteRule: .cascade, inverse: \TripMeal.trip) public var meals: [TripMeal]? = []
     /// Deleting the trip keeps its documents; they become unattached.
     @Relationship(inverse: \StoredDocument.trip) public var documents: [StoredDocument]? = []
     public init() {}
@@ -139,6 +141,49 @@ public final class NoteRevision {
     public var createdAt: Date = Date.now
     public var trip: Trip?
     public init(body: String) { self.body = body }
+}
+
+/// One meal on one day of a trip's menu. There's no separate menu record: a to-one menu created on
+/// two devices before they sync would merge into two. Standard meals are stored when their first
+/// dish is added, so sync can also produce two of the same meal; the menu shows them as one.
+@Model
+public final class TripMeal {
+    /// Days after arrival, so the meal stays on the same trip day when the dates move.
+    public var dayOffset: Int = 0
+    /// A raw `MealKind`, so a kind written by a newer app version is kept rather than failing to load.
+    public var kindValue: String = "other"
+    /// The owner's name for an added meal. Standard meals use their kind's title.
+    public var title: String = ""
+    /// Orders added meals within their day.
+    public var position: Int = 0
+    public var createdAt: Date = Date.now
+    public var trip: Trip?
+    @Relationship(deleteRule: .cascade, inverse: \MenuDish.meal) public var dishes: [MenuDish]? = []
+    public init(day: Int = 0, kind: MealKind = .other) { dayOffset = day; kindValue = kind.rawValue }
+}
+
+/// A whole plate within a meal, with its notes, photo, and recipe items.
+@Model
+public final class MenuDish {
+    public var name: String = ""
+    public var notes: String = ""
+    /// A resized JPEG.
+    @Attribute(.externalStorage, .allowsCloudEncryption) public var protectedPhoto: Data?
+    public var position: Int = 0
+    public var createdAt: Date = Date.now
+    public var meal: TripMeal?
+    @Relationship(deleteRule: .cascade, inverse: \DishItem.dish) public var items: [DishItem]? = []
+    public init() {}
+}
+
+/// One line of a dish's recipe, like "Ribeye, 2 lb".
+@Model
+public final class DishItem {
+    public var name: String = ""
+    public var quantity: String = ""
+    public var position: Int = 0
+    public var dish: MenuDish?
+    public init() {}
 }
 
 /// A campground on the owner's lists (#30). Name and region are kept for campgrounds entered by name

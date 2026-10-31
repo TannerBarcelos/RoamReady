@@ -5,6 +5,7 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
     case unsupportedSchema(Int), incompleteRig, invalidRigDetails, invalidVIN, invalidPlate
     case invalidBookingLink, invalidCheckTimes, invalidBookingAmount, invalidSiteLength
     case rigLimitReached, rigInUse, rigArchived, rigUnavailable
+    case missingDishName, missingItemName, missingMealName, mealUnavailable
     public var errorDescription: String? {
         switch self {
         case .missingCampground: "Enter a campground or destination name."
@@ -26,6 +27,10 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
         case .rigInUse: "Trips use this rig, so it can't be deleted. Archive it instead; past trips keep showing it."
         case .rigArchived: "Archived rigs can't be used for new trips."
         case .rigUnavailable: "This trip's rig isn't available on this device yet."
+        case .missingDishName: "Enter a name for this dish."
+        case .missingItemName: "Enter a name for this item."
+        case .missingMealName: "Enter a name for this meal."
+        case .mealUnavailable: "This meal isn’t on the trip anymore. It may have been removed on another device."
         }
     }
 }
