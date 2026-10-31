@@ -218,6 +218,8 @@ struct DishPhotoSection: View {
     @State private var failure: String?
 
     var body: some View {
+        // The picker's label is a Sendable closure, so it can't read the main-actor binding.
+        let hasPhoto = data != nil
         Section {
             if let data {
                 Color.clear
@@ -227,11 +229,11 @@ struct DishPhotoSection: View {
                     .accessibilityLabel("Dish photo")
             }
             PhotosPicker(selection: $selection, matching: .images, preferredItemEncoding: .current) {
-                Label(data == nil ? "Add a photo" : "Change photo", systemImage: "photo.badge.plus")
+                Label(hasPhoto ? "Change photo" : "Add a photo", systemImage: "photo.badge.plus")
             }
             .disabled(importing)
             .accessibilityIdentifier("menuDishPhotoPicker")
-            if data != nil {
+            if hasPhoto {
                 Button("Remove photo", role: .destructive) { data = nil; selection = nil }
                     .disabled(importing)
             }
