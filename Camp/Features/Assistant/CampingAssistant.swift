@@ -162,14 +162,29 @@ enum CampingAssistant {
         var failsFirstCall = false
         /// Waits before every answer, so a UI test can resize or rotate while it's generating.
         var delay: Duration = .zero
+        /// The saved-trip and menu modes stand in for a model that calls `get_trip` or `get_menu`.
         func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
-            guard answersMenu else { return CampingSessionReply(text: try await respond(to: prompt, instructions: instructions)) }
-            CampingAssistant.uiTestCalls += 1
-            guard let tools, instructions.contains(CampingToolKind.tripMenu.name),
-                  let dish = tools.menuOutput(day: nil, meal: .dinner).split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
-                return CampingSessionReply(text: "Missing saved menu tool.")
+            if answersMenu {
+                CampingAssistant.uiTestCalls += 1
+                guard let tools, instructions.contains(CampingToolKind.menu.name),
+                      let dish = tools.menuOutput(day: nil, meal: .dinner).split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
+                    return CampingSessionReply(text: "Missing saved menu tool.")
+                }
+                return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1], toolsUsed: [.menu])
             }
-            return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1], toolsUsed: [.tripMenu])
+            if answersSavedTrip {
+                CampingAssistant.uiTestCalls += 1
+                // An overview offers only the trip tool, required, and carries no rig, checklist, or documents.
+                guard let tools, tools.kinds == [.trip], tools.required == .trip,
+                      !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
+                      !prompt.contains(TripBookingFacts.beginMarker), !instructions.contains("routine maintenance"),
+                      let campground = tools.tripOutput(phase: nil, remainingOnly: false).components(separatedBy: "\n")
+                          .first(where: { $0.hasPrefix("Campground: ") }) else {
+                    return CampingSessionReply(text: "Missing saved trip tool.")
+                }
+                return CampingSessionReply(text: "Your saved trip is \(campground.dropFirst("Campground: ".count)).", toolsUsed: [.trip])
+            }
+            return CampingSessionReply(text: try await respond(to: prompt, instructions: instructions))
         }
 
         func respond(to prompt: String, instructions: String) async throws -> String {
@@ -187,15 +202,6 @@ enum CampingAssistant {
                 }
                 return ["title", "guidance", "notes", "section", "status", "priority", "phase"]
                     .compactMap { fields[$0] as? String }.joined(separator: " · ")
-            }
-            if answersSavedTrip {
-                guard !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
-                      !instructions.contains("BEGIN SAVED RIG PROFILE"), !instructions.contains("routine maintenance"),
-                      prompt.contains(TripBookingFacts.beginMarker),
-                      let campground = prompt.components(separatedBy: "\n").first(where: { $0.hasPrefix("Campground: ") }) else {
-                    return "Missing saved trip context."
-                }
-                return "Your saved trip is \(campground.dropFirst("Campground: ".count))."
             }
             if citesDocuments {
                 return prompt.contains("\n[S1] ")

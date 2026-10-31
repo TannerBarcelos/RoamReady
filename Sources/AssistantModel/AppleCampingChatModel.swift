@@ -116,8 +116,17 @@ private final class TurnContext: Sendable {
     var kept: Set<String> { state.withLock { $0.kept } }
     var tools: CampingTools? { state.withLock { $0.tools } }
     var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
-    var offersMenu: Bool { state.withLock { $0.tools?.menu != nil } }
-    var offersChecklist: Bool { state.withLock { $0.tools?.checklist != nil } }
+
+    func offers(_ kind: CampingToolKind) -> Bool { state.withLock { $0.tools?.kinds.contains(kind) == true } }
+
+    /// A required tool is required until it's called; after that the model may answer (Apple: a required mode
+    /// needs an exit condition, or the model keeps calling the tool).
+    var callingMode: GenerationOptions.ToolCallingMode {
+        state.withLock { state in
+            guard let required = state.tools?.required, !state.toolsUsed.contains(required) else { return .allowed }
+            return .required
+        }
+    }
 
     func set(instructions: String, kept: Set<String>, tools: CampingTools?) {
         state.withLock { $0 = State(instructions: instructions, kept: kept, tools: tools) }
@@ -128,24 +137,26 @@ private final class TurnContext: Sendable {
     }
 }
 
-/// Re-evaluated before every model request, so a turn without trip tools carries no tool definitions.
+/// Re-evaluated before every model request, so a turn carries only the tool definitions it offers.
 @available(iOS 27.0, macOS 27.0, *)
 private struct TurnInstructions: DynamicInstructions {
     let context: TurnContext
     var body: some DynamicInstructions {
         Instructions(context.instructions)
-        if context.offersMenu { TripMenuTool(context: context) }
-        if context.offersChecklist { TripChecklistTool(context: context) }
+        if context.offers(.trip) { TripTool(context: context) }
+        if context.offers(.menu) { MenuTool(context: context) }
+        if context.offers(.rig) { RigTool(context: context) }
     }
 }
 
-/// Reads the trip's menu snapshot. Names, descriptions, and output come from `CampingTools` in `CampCore`,
-/// where they're tested without Foundation Models.
+// The tools are thin: names, descriptions, and output come from `CampingTools` in `CampCore`, where they're
+// tested without Foundation Models, over snapshots taken before the request.
+
 @available(iOS 27.0, macOS 27.0, *)
-private struct TripMenuTool: Tool {
+private struct MenuTool: Tool {
     let context: TurnContext
-    let name = CampingToolKind.tripMenu.name
-    let description = CampingToolKind.tripMenu.description
+    let name = CampingToolKind.menu.name
+    let description = CampingToolKind.menu.description
 
     @Generable
     enum Meal {
@@ -171,17 +182,16 @@ private struct TripMenuTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.tripMenu)
+        context.used(.menu)
         return context.tools?.menuOutput(day: arguments.day, meal: arguments.meal?.kind) ?? "This trip has no menu."
     }
 }
 
-/// Reads the trip's checklist snapshot with its progress.
 @available(iOS 27.0, macOS 27.0, *)
-private struct TripChecklistTool: Tool {
+private struct TripTool: Tool {
     let context: TurnContext
-    let name = CampingToolKind.tripChecklist.name
-    let description = CampingToolKind.tripChecklist.description
+    let name = CampingToolKind.trip.name
+    let description = CampingToolKind.trip.description
 
     @Generable
     enum Phase {
@@ -192,16 +202,31 @@ private struct TripChecklistTool: Tool {
 
     @Generable
     struct Arguments {
-        @Guide(description: "Omit for both checklists.")
-        var phase: Phase?
-        @Guide(description: "True for only the steps not done yet.")
+        @Guide(description: "Limit the checklist to one phase. Omit for both.")
+        var checklist: Phase?
+        @Guide(description: "True for only the checklist steps not done yet.")
         var remainingOnly: Bool?
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.tripChecklist)
-        return context.tools?.checklistOutput(phase: arguments.phase?.phase, remainingOnly: arguments.remainingOnly ?? false)
-            ?? "This trip has no checklist."
+        context.used(.trip)
+        return context.tools?.tripOutput(phase: arguments.checklist?.phase, remainingOnly: arguments.remainingOnly ?? false)
+            ?? "No trip is selected."
+    }
+}
+
+@available(iOS 27.0, macOS 27.0, *)
+private struct RigTool: Tool {
+    let context: TurnContext
+    let name = CampingToolKind.rig.name
+    let description = CampingToolKind.rig.description
+
+    @Generable
+    struct Arguments {}
+
+    func call(arguments: Arguments) async throws -> String {
+        context.used(.rig)
+        return context.tools?.rigOutput() ?? "No rig is saved."
     }
 }
 
@@ -213,6 +238,7 @@ private struct ChatProfile: LanguageModelSession.DynamicProfile {
             .historyTransform { [context] entries in
                 CampingChatHistory.sent(entries, keeping: context.kept, kind: \.chatKind)
             }
+            .toolCallingMode(context.callingMode)
             .transcriptErrorHandlingPolicy(.revertTranscript)
             .maximumResponseTokens(PromptBudget.outputTokens)
     }

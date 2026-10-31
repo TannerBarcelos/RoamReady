@@ -346,9 +346,8 @@ struct AssistantView: View {
         let target = currentTarget
         let selectedTrip = contextTrip
         let rig = selectedTrip == nil ? rigs.active.first : selectedTrip?.rig
-        let rigContext = rig.map { CampingRigContext($0) }
-        let tripFacts = selectedTrip.map { TripBookingFacts($0) }
-        let tools = selectedTrip.map { $0.assistantTools() }
+        // Saved trip and rig details reach the model only through its tools; the prompt names just the rig category.
+        let tools = selectedTrip.map { $0.assistantTools() } ?? CampingTools(rig: rig.map { CampingRigContext($0) })
         let steps: [ChecklistStepDraft]
         if let trip = selectedTrip {
             steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
@@ -388,8 +387,7 @@ struct AssistantView: View {
                 let answer = try await CampingAssistant.answer(question: submitted, steps: steps, rigType: rig?.type,
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        chat: session, chatScope: target, before: before,
-                                                       rigContext: rigContext, documents: evidence,
-                                                       tripFacts: tripFacts, tools: tools, stepContext: step,
+                                                       documents: evidence, tools: tools, stepContext: step,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
                     _ = progress.advance(to: stage, for: request)

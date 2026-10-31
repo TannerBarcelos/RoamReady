@@ -60,8 +60,8 @@ public struct CampingReply: Equatable, Sendable {
     public let coverage: DocumentCoverage
     /// Readiness of the request's scope when it was asked.
     public let readiness: ScopeReadiness
-    /// The question was about the booking and the saved trip's facts were supplied, or the model looked up the
-    /// trip's menu or checklist, so the saved trip is a source too.
+    /// The model looked up the trip or its menu (or, for callers that put trip facts in the prompt, the question
+    /// was about the booking), so the saved trip is a source too.
     public internal(set) var usedSavedTrip: Bool
     /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
     public var searched: [DocumentSource] = []

@@ -104,10 +104,12 @@ public extension Trip {
         return TripMenuFacts(days: planned + kept, today: today)
     }
 
-    /// What the Assistant may look up for this trip: its menu and its checklists with their progress.
+    /// What the Assistant may look up for this trip: the trip itself with its checklist progress, its menu, and
+    /// its rig. Nothing about the trip goes into the prompt any other way.
     func assistantTools(asOf now: Date = Date()) -> CampingTools {
-        CampingTools(menu: menuFacts(asOf: now),
-                     checklist: TripChecklistFacts(setup: steps(.setup).map(\.draft), teardown: steps(.teardown).map(\.draft)))
+        let checklist = TripChecklistFacts(setup: steps(.setup).map(\.draft), teardown: steps(.teardown).map(\.draft))
+        return CampingTools(menu: menuFacts(asOf: now), trip: TripToolFacts(self, notes: notes, checklist: checklist, now: now),
+                            rig: rig.map { CampingRigContext($0) })
     }
 
     /// Adds a dish after the meal's others. A standard meal's first dish stores the meal; with

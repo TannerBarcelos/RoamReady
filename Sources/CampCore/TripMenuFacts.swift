@@ -1,6 +1,6 @@
 import Foundation
 
-/// A snapshot of the meals the owner planned on a trip. The model reads it through the trip menu tool, only
+/// A snapshot of the meals the owner planned on a trip. The model reads it through `get_menu`, only
 /// when it decides a question needs it; the app never matches words to decide. Construct it while reading the
 /// library, before handing the request to an async generator.
 public struct TripMenuFacts: Equatable, Sendable {
@@ -109,7 +109,8 @@ public struct TripMenuFacts: Equatable, Sendable {
 /// Owner-entered text placed in a model's context: bounded, JSON-quoted, and unable to forge a block marker.
 enum OwnerText {
     static let markers = [TripMenuFacts.beginMarker, TripMenuFacts.endMarker,
-                          TripChecklistFacts.beginMarker, TripChecklistFacts.endMarker]
+                          TripBookingFacts.beginMarker, TripBookingFacts.endMarker,
+                          "BEGIN SAVED RIG PROFILE", "END SAVED RIG PROFILE"]
 
     static func clean(_ value: String, _ length: Int) -> String {
         var text = String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(length))

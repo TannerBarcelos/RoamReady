@@ -257,7 +257,8 @@ public final class CampingChat {
         }
         let text = sessionReply.text.trimmingCharacters(in: .whitespacesAndNewlines)
         var reply = Self.reply(text, to: request, sent: plan)
-        if !sessionReply.toolsUsed.isEmpty { reply.usedSavedTrip = true }
+        // Looking up the trip or its menu makes the saved trip a source; the rig isn't the trip.
+        if sessionReply.toolsUsed.contains(where: \.isTripData) { reply.usedSavedTrip = true }
         // The session holds the raw turn now. Store its clean form at once, so the transcript and `turns` agree.
         let turn = CampingChatTurn(question: request.question, answer: reply.text)
         currentSession().store(turn)
