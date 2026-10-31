@@ -79,7 +79,7 @@ struct MenuTests {
 
     @Test func everyDayHasTheFourStandardMeals() {
         #expect(MealKind.standard == [.breakfast, .lunch, .dinner, .snack])
-        #expect(MealKind.standard.allSatisfy(\.isStandard))
+        #expect(MealKind.standard.allSatisfy { $0.isStandard })
         #expect(!MealKind.other.isStandard)
     }
 }
