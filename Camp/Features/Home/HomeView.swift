@@ -5,6 +5,7 @@ import CampPersistence
 
 struct HomeView: View {
     @Environment(\.mainTabActions) private var tabActions
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(AppPermissions.self) private var permissions
     let weather: LocalWeather
     @Query private var profiles: [CamperProfile]
@@ -22,9 +23,9 @@ struct HomeView: View {
     }
 
     var body: some View {
-        // Highlight follows navigation. SwiftUI's selection reconciliation must not navigate:
-        // it can echo an old row or clear selection while the detail stack is pushing a page.
-        List(selection: .constant(selection)) { sections }
+        // Highlight follows navigation without accepting List's automatic selection writes.
+        // Compact rows reveal the detail explicitly, so only the expanded sidebar needs selection.
+        List(selection: horizontalSizeClass == .regular ? .constant(selection) : nil) { sections }
         .accessibilityIdentifier("homeTripList")
         .listSectionSpacing(.compact)
         .navigationTitle("Home")
@@ -130,6 +131,7 @@ struct HomeView: View {
                     .foregroundStyle(.tertiary)
                     .accessibilityHidden(true)
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .tag(destination)

@@ -70,6 +70,30 @@ On every PR and main push, the [iOS and iPad](../.github/workflows/app.yml) work
 
 Simulator tests are deferred to the manual [UI tests](../.github/workflows/ui-tests.yml) workflow. In GitHub Actions, select **UI tests (manual)**, choose the branch and a device, and click **Run workflow**. Each choice runs on one exact simulator so the result is evidence for that device: **iPhone** is the iPhone 18 Pro, **iPad** is the iPad Pro 13-inch (M5), and **iPhone Duo** is the iPhone Duo on iOS 27.1 or later (the first runtime that reports a hinge). The run fails if the runner lacks that simulator rather than picking another one. The Duo simulator can unfold using its posture controls; open-display and fold-transition checks are manual, and physical hardware is still required for final sign-off (#142 B14). The full native suite and its accessibility audits remain available (the only waiver is the scrolled Dynamic Type false positive from #93); no UI tests run automatically on PRs or main pushes. They cover navigation, onboarding/disk persistence, appearance, and simulated Assistant states, but do not establish real Foundation Models generation or physical-device behavior. Green build/package CI does not certify those audits; run the manual workflow for release validation.
 
+## Runtime warning investigation (October 31, 2026)
+
+The captured console log contains 97 `ButtonWrapper`/`_UIButtonBarButton` constraint conflicts, 13 keyboard prediction-cell constraint conflicts, and 41 animation decomposition warnings (38 naming `UIViewInProcessLayerAnimationCoordinator`, three naming `LittleGlowView`). It also includes one `NavigationRequestObserver` update warning, missing MapKit resources, and a missing English sentence embedding asset. Framework class names alone do not establish whether an app interaction caused the warning.
+
+A reproducible app defect was found in Home's compact navigation. Choosing a checklist or menu shortcut set the detail path, then SwiftUI cleared it during the split-column reveal, leaving trip details open instead of the requested page. A temporary state trace confirmed the push followed by a reset on both iPhone 18 Pro (iOS 27.0) and Duo (iOS 27.1). Removing the compact list's selection binding leaves the row action as the single navigation driver; regular-width sidebar selection remains enabled. The trace was removed. The plain row labels also define a rectangular content shape so taps in the empty space between a title and its chevron activate the shortcut. This fixes the shortcut regression; it does not establish a fix for the captured animation or toolbar warnings.
+
+The reported constraint, decomposition, and navigation-update messages did not reproduce during the simulator shortcut checks or the Mac Catalyst menu/checklist/phase-switch/reselection checks. The iPhone Assistant presentation and generated-reply rotation tests passed before the change. Mac Assistant, Add trip, and nested campground-picker sheet presentation/dismissal also completed without those messages. Exact triggering actions and a fresh device console capture are still needed for the original animation warnings. Do not hide the messages with global logging switches, disable native animations, or modify framework-owned constraints to claim a resolution.
+
+The missing English embedding asset did reproduce on the iPhone simulator. NaturalLanguage reported revision 1 as supported while loading the model returned `nil`; checking supported revisions would not establish asset availability. The provider already reports unavailable and the index supports lexical fallback. No embedding behavior was changed.
+
+Validation: unsigned Debug simulator and Mac Catalyst builds passed. On iPhone 18 Pro (iOS 27.0), `testEveryHomeTripShortcutHasBackNavigationToTripDetails` and `testSwitchingThePhaseInsideTheChecklistUpdatesHomesPick` both failed before the change and passed afterward. Both the checklist shortcut test and the all-shortcuts/back-navigation test also passed on Duo (iOS 27.1). Mac Catalyst checks covered menu/checklist shortcuts, phase switching, and trip reselection. Physical-device and fold-transition acceptance remain outstanding.
+
+Repeat the Home regression checks with the in-memory fixtures (the UI tests supply their launch arguments):
+
+```sh
+xcodebuild -project RoamReady.xcodeproj -scheme RoamReady \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath .derivedData \
+  CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO test \
+  -only-testing:RoamReadyUITests/DuoHomeUITests/testEveryHomeTripShortcutHasBackNavigationToTripDetails \
+  -only-testing:RoamReadyUITests/DuoHomeUITests/testSwitchingThePhaseInsideTheChecklistUpdatesHomesPick
+```
+
+On Duo, also run `DuoHomeUITests/testChecklistShortcutsOpenTheRightPhaseBesideHome`. On a regular-width Mac window, check Home's menu and checklist shortcuts, phase switching, and reselecting the trip row. Record folding, keyboard/emoji, map, and sheet interactions separately when collecting a new warning capture.
+
 ## Airplane-mode acceptance pass
 
 1. In airplane mode on a fresh install, complete rig/profile onboarding, including an emoji or photo and a VIN and plate, and add the initial trip. No account or connection is required. Check that an invalid VIN blocks Continue with its own message.
