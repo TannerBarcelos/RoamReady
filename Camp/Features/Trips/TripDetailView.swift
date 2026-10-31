@@ -4,11 +4,38 @@ import MapKit
 import CampCore
 import CampPersistence
 
+/// Pages above a trip's details in its navigation stack.
+enum TripPage: Hashable {
+    case checklist(ChecklistPhase), menu, memories, documents
+}
+
+extension EnvironmentValues {
+    @Entry var usesTripPagePath = false
+}
+
+/// Home controls a value path; trips pushed from Profile keep their existing view-based stack.
+struct TripPageLink<Destination: View, Label: View>: View {
+    @Environment(\.usesTripPagePath) private var usesPath
+    let page: TripPage
+    let destination: () -> Destination
+    let label: () -> Label
+
+    init(_ page: TripPage, @ViewBuilder destination: @escaping () -> Destination, @ViewBuilder label: @escaping () -> Label) {
+        self.page = page; self.destination = destination; self.label = label
+    }
+
+    var body: some View {
+        if usesPath { NavigationLink(value: page, label: label) }
+        else { NavigationLink(destination: destination, label: label) }
+    }
+}
+
 struct TripDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
     let trip: Trip
+    var onChecklistPhaseChange: ((ChecklistPhase) -> Void)? = nil
     @State private var showDelete = false
     @State private var showEdit = false
     @State private var showAssistant = false
@@ -30,19 +57,20 @@ struct TripDetailView: View {
             BookingCard(trip: trip)
             Section("Checklists") {
                 ForEach(ChecklistPhase.allCases) { phase in
-                    NavigationLink { ChecklistView(trip: trip, initialPhase: phase) } label: {
+                    TripPageLink(.checklist(phase)) { destination(for: .checklist(phase)) } label: {
                         VStack(alignment: .leading, spacing: 8) { Text(phase.title).font(.headline); ProgressSummary(steps: trip.steps(phase)) }
                     }
                     .accessibilityIdentifier("tripChecklist-\(phase.rawValue)")
                 }
             }
             Section("Meals") {
-                NavigationLink { TripMenuView(trip: trip) } label: { MenuEntryLabel(summary: trip.menuSummary) }
+                TripPageLink(.menu) { destination(for: .menu) } label: { MenuEntryLabel(summary: trip.menuSummary) }
                     .accessibilityIdentifier("tripMenu")
             }
             WeatherSection(trip: TripDraft(trip))
             Section("Make it memorable") {
-                NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
+                TripPageLink(.memories) { destination(for: .memories) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
+                    .accessibilityIdentifier("tripMemories")
                 if trip.rating != .unrated { Label(trip.rating.title, systemImage: trip.rating == .wouldReturn ? "heart" : "hand.thumbsdown") }
             }
             if CampingAssistant.showsChat {
@@ -64,7 +92,9 @@ struct TripDetailView: View {
                 Text("Trips complete on their own the day after departure. Completed trips add their campground to Have been.")
             }
         }
+        .accessibilityIdentifier("tripDetailsList")
         .navigationTitle(trip.campgroundName)
+        .navigationDestination(for: TripPage.self, destination: destination(for:))
         .toolbar { ToolbarOverflowMenu { tripActions } }
         .sheet(isPresented: $showEdit) { EditTripView(trip: trip) }
         .sheet(isPresented: $showAssistant) { TripAssistantSheet(trip: trip, step: nil) }
@@ -77,6 +107,19 @@ struct TripDetailView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text(TripDeletion.message(hasDocuments: !trip.attachedDocuments.isEmpty))
+        }
+    }
+
+    @ViewBuilder private func destination(for page: TripPage) -> some View {
+        switch page {
+        case .checklist(let phase):
+            ChecklistView(trip: trip, initialPhase: phase, onPhaseChange: onChecklistPhaseChange)
+        case .menu:
+            TripMenuView(trip: trip)
+        case .memories:
+            MemoriesView(trip: trip)
+        case .documents:
+            DocumentsView(owner: .trip(trip), title: "Confirmation & documents")
         }
     }
 
@@ -131,11 +174,12 @@ struct BookingCard: View {
                 Link(destination: url) { Label("Open booking link", systemImage: "safari") }
                     .accessibilityHint("Opens your booking in Safari")
             }
-            NavigationLink { DocumentsView(owner: .trip(trip), title: "Confirmation & documents") } label: {
+            TripPageLink(.documents) { DocumentsView(owner: .trip(trip), title: "Confirmation & documents") } label: {
                 LabeledContent { Text(String(trip.attachedDocuments.count)) } label: {
                     Label("View confirmation & documents", systemImage: "doc.text")
                 }
             }
+            .accessibilityIdentifier("tripDocuments")
             if let latitude = trip.latitude, let longitude = trip.longitude {
                 Button("Directions", systemImage: "car") {
                     let item = MKMapItem(location: CLLocation(latitude: latitude, longitude: longitude), address: nil)

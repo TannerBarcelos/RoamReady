@@ -28,6 +28,8 @@ Home shows the earliest-arriving active trip, checklist progress, memories, loca
 
 Home uses native adaptive split navigation on every device. At regular width it shows the selected trip beside it; at compact width it collapses to one column. The current trip is selected at first, or else the next upcoming one; overlapping trips follow Home's rule and choose the earliest arrival (`featuredTrip(asOf:)` in `CampCore`). Picking another trip replaces the details, and the setup and teardown checklist shortcuts open that checklist there. The menu shortcut on the current or next trip opens that trip's menu there the same way. If the picked trip is deleted, the pick is cleared and the details go back to the featured trip. With no current or upcoming trip, the details side is empty.
 
+Trip details are the root of the detail navigation stack. Menu, setup/teardown checklists, Photos & site notes, and documents push above that root, including when opened from a Home shortcut. Each has a native Back button to the trip's details. The trip row on Home remains actionable when already selected: tapping it clears the trip's pushed pages and returns directly to details, including from nested photo/note or meal screens. Selection, checklist phase, and the detail path stay above the split columns across layout changes.
+
 A trip represents one booking at one campground. Campground name, rig, and dates are required. Create a trip from a Camp Finder listing online or enter its campground by name offline. RoamReady records a booking; it does not make reservations.
 
 Optional fields can be edited at any time:
