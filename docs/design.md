@@ -84,3 +84,9 @@ The icon is a blaze-orange map pin holding a three-quarter progress ring and a c
 The bundle was written by hand rather than exported from Icon Composer. Open it in Icon Composer on a Mac to check its glass, shadow, and translucency settings in each appearance. Use the Home Screen, Spotlight, and Settings sizes to judge it, and check Clear and Tinted on a device. The preview image above approximates the flat artwork; it does not show Liquid Glass.
 
 Settings opens as a native sheet at standard text sizes and full screen when opened at accessibility text sizes, giving large text the available width. Its close icon retains a spoken Done label.
+
+### Supplemental icons
+
+Camping artwork lives in `Camp/Icons.xcassets`: 32 vector template assets covering rigs, shelter, campsite amenities, gear, utilities, and weather. `RigGlyph` selects the appropriate asset for each supported rig type in the trip details, scales it with Dynamic Type, and applies the app tint. The rooftop-tent icon is also available as an asset; it does not add a new rig type to the data model.
+
+The set combines Lucide icons and original rig/campsite drawings on the same 24-point grid. The imported icons and bundled license are listed in [Icon assets](icon-assets.md). Assets ship with the app and work offline without a package dependency. Add individual assets here when system symbols do not represent the subject accurately.

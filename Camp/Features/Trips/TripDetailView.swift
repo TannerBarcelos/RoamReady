@@ -17,7 +17,11 @@ struct TripDetailView: View {
             Section {
                 Text(trip.dateSummary)
                 if let rig = trip.rig {
-                    Label(rig.isArchived ? "\(rig.displayName) (archived)" : rig.displayName, systemImage: "car.side")
+                    Label {
+                        Text(rig.isArchived ? "\(rig.displayName) (archived)" : rig.displayName)
+                    } icon: {
+                        RigGlyph(type: rig.type)
+                    }
                 } else {
                     Label("Rig unavailable", systemImage: "exclamationmark.triangle").foregroundStyle(.secondary)
                 }
