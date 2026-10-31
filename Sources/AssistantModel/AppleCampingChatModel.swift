@@ -84,7 +84,7 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 
     /// Swaps the raw prompt (with its excerpts), the turn's tool calls and results, and the response just added for
-    /// the turn's stored form, so results never carry into later turns: each answer looks up fresh data.
+    /// the turn's stored form. Follow-ups keep the conversation; saved facts can be looked up fresh when needed.
     func store(_ turn: CampingChatTurn) {
         var history = session.properties.history
         guard let prompt = history.lastIndex(where: \.isPrompt) else { return }
@@ -118,12 +118,6 @@ private final class TurnContext: Sendable {
     var kept: Set<String> { state.withLock { $0.kept } }
     var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
     var offersTrip: Bool { state.withLock { $0.toolTurn != nil } }
-
-    /// With a trip selected, the model must call `get_trip` before it may answer. Required stops once a call is
-    /// made (Apple: a required mode needs an exit condition, or the model keeps calling).
-    var callingMode: GenerationOptions.ToolCallingMode {
-        state.withLock { $0.toolTurn != nil && $0.toolsUsed.isEmpty ? .required : .allowed }
-    }
 
     func set(instructions: String, kept: Set<String>, toolTurn: CampingToolTurn?) {
         state.withLock {
@@ -226,7 +220,8 @@ private struct ChatProfile: LanguageModelSession.DynamicProfile {
             .historyTransform { [context] entries in
                 CampingChatHistory.sent(entries, keeping: context.kept, kind: \.chatKind)
             }
-            .toolCallingMode(context.callingMode)
+            // Apple's default: the model decides whether a tool is needed, including on follow-ups.
+            .toolCallingMode(.allowed)
             .transcriptErrorHandlingPolicy(.revertTranscript)
             .maximumResponseTokens(PromptBudget.outputTokens)
     }

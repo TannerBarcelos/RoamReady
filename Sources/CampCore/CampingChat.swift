@@ -26,8 +26,8 @@ public protocol CampingChatSession: AnyObject {
     /// `history` is the stored turns this request may send, oldest first; every other stored turn stays out.
     /// A failed or cancelled request leaves the transcript as it was.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String
-    /// Answers one turn with `toolTurn`'s tool available to the model, which must call it at least once before
-    /// answering; the allowance bounds what results may add. Nil offers no tool. A turn's tool calls and results
+    /// Answers one turn with `toolTurn`'s tool available for the model to use when needed;
+    /// the allowance bounds what results may add. Nil offers no tool. A turn's tool calls and results
     /// are part of it until `store(_:)` replaces it with its stored form, so they never carry into later turns.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
                  toolTurn: CampingToolTurn?) async throws -> CampingSessionReply

@@ -22,6 +22,25 @@ For each question the runner does what the app does:
 
 See [Retrieval eval](architecture.md#retrieval-eval), [Prompt budget](architecture.md#prompt-budget), and [Index lifecycle](architecture.md#index-lifecycle) for how the pieces work.
 
+## Trip tool-calling checks
+
+These are manual production-model checks, separate from the document corpus below, which does not exercise the trip tool. Run on an Apple Intelligence-capable device with the production adapter and observe tool calls in the Foundation Models instrument. Record OS/model version, call focus and arguments, answer, source card, and latency. Repeat in fresh chats to check variability.
+
+Apple's [prompt-design guidance, at 4:05](https://developer.apple.com/videos/play/wwdc2025/248/?time=245), cautions that the on-device model has limited world knowledge. Model-selected tool calling does not establish cooking-answer accuracy; review the actual guidance as well as the tool trace on the target OS/model.
+
+Seed a trip with a dinner named "Steak and Brussels sprouts" and a recipe item "NY strip, 16 oz". Use the same conversation for the first three questions:
+
+| Question | Expected behavior |
+| --- | --- |
+| "What are we eating on this trip?" | Model calls `get_trip` with menu focus and answers from the saved dinner. Saved trip source appears. |
+| "How should I cook the steak? What's the best way?" | Model can answer directly using conversation context and general cooking knowledge. Check for cooking steps rather than a repeated menu; a direct answer has no Saved trip source. |
+| After editing the recipe item: "What cut and amount did I save?" | Model fetches the menu again and reports the edited value. |
+| "What did I save for dinner, and how should I cook it?" | Model fetches the saved dinner and combines it with general cooking advice. |
+| "How do I cook a steak?" in a fresh trip chat | Model can answer directly without retrieving unrelated trip data. |
+| "What trip is this?" | Model fetches the overview and reports saved facts without guessing. |
+
+Also check an empty menu and a chat without a selected trip: neither should invent a meal. The model retains the choice to call a tool; unnecessary lookups and missed lookups are quality findings, not app-side routing rules. `CampingToolsTests.cookingFollowUpKeepsContextAndAllowsNoLookup` verifies history, tool availability, and source handling with scripted replies; it does not validate Apple's model selection or cooking knowledge. These on-device checks have not been run for this change.
+
 ## The corpus
 
 The corpus is `Sources/AssistantEval/Corpus/corpus-v1.json`. It is synthetic. It has no private documents. It is versioned (`version` 1) and the report prints a checksum of it.

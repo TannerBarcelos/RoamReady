@@ -21,6 +21,8 @@ private final class ToolGenerator: CampingResponseGenerating {
 @MainActor
 private final class ToolTurnModel: CampingChatModel {
     var turns: [CampingToolTurn?] = []
+    var histories: [[CampingChatTurn]] = []
+    var replies: [CampingSessionReply] = []
 
     func makeSession(history: [CampingChatTurn]) -> any CampingChatSession { Session(model: self) }
     func summarize(_ turns: [CampingChatTurn], into summary: String?) async throws -> String { "summary" }
@@ -32,7 +34,8 @@ private final class ToolTurnModel: CampingChatModel {
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
                      toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
             model.turns.append(toolTurn)
-            return CampingSessionReply(text: "answer")
+            model.histories.append(history)
+            return model.replies.isEmpty ? CampingSessionReply(text: "answer") : model.replies.removeFirst()
         }
         func store(_ turn: CampingChatTurn) {}
         func remove(_ turnID: CampingChatTurn.ID) {}
@@ -72,7 +75,7 @@ struct CampingToolsTests {
         let turn = request("What am I making tonight?", tools: tools)
         #expect(turn.tools == tools)
         #expect(turn.instructions.contains(CampingToolKind.trip.name))
-        #expect(turn.instructions.contains("you must call it at least once"))
+        #expect(!turn.instructions.contains("you must call it at least once"))
         #expect(turn.instructions.contains("BEGIN SAVED RIG PROFILE"), "The rig is rebuilt into the instructions every turn")
         #expect(turn.instructions.contains("Manufacturer: \"Forest River\""))
         #expect(!turn.prompt.contains(TripBookingFacts.beginMarker), "Trip data arrives only through get_trip")
@@ -172,5 +175,25 @@ struct CampingToolsTests {
 
         let plain = try await CampingGeneration.answer(to: request("How do I level the trailer?", tools: tools), using: ToolGenerator())
         #expect(!plain.usedSavedTrip, "No call, no saved-trip source")
+    }
+
+    /// Verifies the chat plumbing accepts a model's choice to answer directly after a lookup.
+    /// Actual tool selection and cooking-answer quality still need an on-device model evaluation.
+    @Test func cookingFollowUpKeepsContextAndAllowsNoLookup() async throws {
+        let model = ToolTurnModel()
+        model.replies = [CampingSessionReply(text: "Dinner is NY strip steak.", toolsUsed: [.trip]),
+                         CampingSessionReply(text: "Pat the steak dry, season it, and sear it in a hot skillet.")]
+        let chat = CampingChat(model: model)
+        let menu = try await chat.answer(request("What are we eating on this trip?", tools: tools))
+        let cooking = try await chat.answer(request("How should I cook the steak? What's the best way?", tools: tools))
+
+        #expect(menu.usedSavedTrip)
+        #expect(!cooking.usedSavedTrip, "A direct answer has no saved-trip source")
+        #expect(model.turns.count == 2 && model.turns.allSatisfy { $0?.tools == tools },
+                "The tool stays available; the app does not classify or hide it for the follow-up")
+        let history = try #require(model.histories.last)
+        #expect(history.count == 1 && history.first?.answer == menu.text,
+                "The model can resolve the steak from the previous answer")
+        #expect(chat.turns.last?.answer == cooking.text)
     }
 }

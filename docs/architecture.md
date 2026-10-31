@@ -121,21 +121,21 @@ Apple's Foundation Models framework runs the tool loop ([Expanding generation wi
 | `menu` | The menu, or the asked `day` and `meal`, with dishes, notes, recipe items, and amounts, naming today's trip day |
 | `everything` | All of it, split so a long checklist can't crowd out the menu |
 
-The **core facts** come back whatever the focus: campground, dates, check-in and check-out with time zone, site, confirmation, and status ("starts in 3 days"). So every trip answer is grounded in the trip, and a wrong focus still returns the basics; the model can call again with another.
+The **core facts** come back whatever the focus: campground, dates, check-in and check-out with time zone, site, confirmation, and status ("starts in 3 days"). A wrong focus still returns the basics; the model can call again with another.
 
-**Every trip answer looks at the data.** Whenever a trip is selected, the model must call `get_trip` at least once before it may answer: the profile's tool-calling mode is `.required` until a call is made, then `.allowed`, Apple's documented exit condition. It may call again whenever it needs more, and the instructions forbid answering saved trip details from memory or earlier answers. A question that needs no trip data still costs one lookup (about a second, on device).
+**The model decides when to look up data.** The profile uses `.toolCallingMode(.allowed)` on every turn, including trip overviews and checklist help. Apple's [tool-calling documentation](https://developer.apple.com/documentation/foundationmodels/expanding-generation-with-tool-calling) defines this as the default: the model can call a tool or respond directly. Apple's [WWDC26 session, at 15:18](https://developer.apple.com/videos/play/wwdc2026/242/?time=918), recommends it when tool use depends on the request. `.required` deliberately overrides that choice; its exit-condition example is not a recommendation to force every chat turn through a database. The instructions describe when saved facts are useful and distinguish them from general advice. There is no app-side classifier or mandatory call. The tool stays available throughout trip chat, so the model can fetch current saved values or combine them with general knowledge.
 
 Scopes:
 
 | Scope | Tool | Rig profile in the instructions |
 | --- | --- | --- |
-| Trip and checklist chat, and help with a selected step | `get_trip`, required | Yes |
-| Trip overview ("What trip is this?") | `get_trip`, required | No |
+| Trip and checklist chat, and help with a selected step | `get_trip`, model decides | Yes |
+| Trip overview ("What trip is this?") | `get_trip`, model decides | No |
 | Chat without a trip | None; the instructions say no trip is selected, so the model says so instead of guessing | Yes |
 
 **Why the rig is in the instructions.** It's small, rarely changes, and most answers need it: Apple's guidance is to retrieve what the model always needs directly and use tools for what it may need. The instructions are `DynamicInstructions`, rebuilt from the library before every request, so an edited rig is in the next question's instructions with nothing to invalidate.
 
-**Why one tool with a focus, not one that returns everything.** A required call to a tool that always returns the whole trip costs the same data as putting the trip in the prompt, plus the tool definition and a second model round, and arrives after the budget was planned. The focus keeps each result small; one tool means the model can't pick the wrong tool.
+**Why one tool with a focus, not one that returns everything.** A tool that always returns the whole trip adds irrelevant data and arrives after the budget was planned. The focus keeps each result small; the model chooses the section and filters it needs.
 
 How it's built:
 - **Logic lives in `CampCore`, the Foundation Models types in `AssistantModel`.** `CampingTools` (`CampCore`) holds Sendable snapshots, `TripToolFacts` (with `TripBookingFacts` and `TripChecklistFacts`) and `TripMenuFacts`, built by `Trip.assistantTools()` (`CampPersistence`) while the library is read, so the tool never touches SwiftData during generation. It also owns the name, description, results, and instruction lines, so they're tested without Foundation Models. `TripTool` (`AssistantModel`) is a thin `Tool` conformance that calls into it.
@@ -147,10 +147,11 @@ How it's built:
 Budget and compaction:
 - **The tool definition** rides in the instructions on every trip turn. The plan counts a conservative 160 tokens (`PromptUsage.tools`).
 - **Tool results** arrive after the prompt was planned, and the model may call several times. Each request gets a `CampingToolAllowance`: what the instructions, prompt, and sent history leave of the input limit, always at least one focused result because the history window keeps that free. A focused result is at most 1,200 characters and `everything` at most 2,400 when there's room. Each is rendered to fit what's left, dropping detail first, and once less than a useful result remains, the tool returns a short note telling the model to answer from what it has and say what it couldn't check. An overflow from other causes still takes the compact retry.
-- **History.** A turn's tool calls and results are transcript entries between its prompt and response, sent with the current turn. `store(_:)` replaces the whole turn with its stored question and answer, so results never carry into later turns or summaries, as in Apple's "drop completed tool calls" example. That's safe because every trip answer looks up fresh data anyway: "What's for dinner on day 2?" → "What goes in it?" calls `get_trip(focus: menu, day: 2)` again, and an edit made mid-chat is always seen. Compaction is unchanged; see Chat sessions.
+- **History.** A turn's tool calls and results are transcript entries between its prompt and response, sent with the current turn. `store(_:)` replaces the whole turn with its stored question and answer, so raw results do not carry into later turns. Conversation context can identify a subject such as steak for general cooking advice. Questions about current saved ingredients or amounts should fetch fresh data instead of treating earlier generated answers as evidence. Tool selection is model behavior and needs on-device evaluation. Compaction is unchanged; see Chat sessions.
 
 Remaining risks:
 - **A wrong focus.** The core facts always come back, but a menu question answered from a `booking` focus lacks the menu unless the model calls again. Measure which focus each phrasing gets (#151).
+- **A missed or unnecessary call.** With model-selected tools, verify both saved-data questions and general-knowledge follow-ups. Deterministic chat tests cannot prove the model's decisions; see the [manual tool-calling checks](assistant-evals.md#trip-tool-calling-checks).
 - **Booking conflicts.** Comparing the saved check-in time with a confirmation PDF works from any focus, since check-in is a core fact.
 
 Alternatives considered:
@@ -161,12 +162,12 @@ Alternatives considered:
 | App-side word matching | Misses phrasings such as "What am I making tonight?". Built and removed; don't reintroduce it, including as a fallback. |
 | Whole menu in every prompt | Every trip question paid 400–700 tokens, earlier turns lost room, and answers couldn't show the saved trip as a source. |
 | Separate `get_trip`, `get_menu`, `get_rig` tools | The model could pick the wrong tool, three definitions cost tokens every turn, and the rig is needed often enough to send directly. |
-| `get_trip` with no arguments, always everything | With a required call, the same cost as the trip in the prompt plus a model round and the definition. |
-| Keeping the newest turn's results for follow-ups | With a required lookup every turn, kept results would duplicate the fresh ones. |
+| `get_trip` with no arguments, always everything | Returns irrelevant sections and consumes more context on every lookup. |
+| Keeping the newest turn's results for follow-ups | Increases context cost and can present stale saved values; the question and answer remain for conversational continuity. |
 | A separate classifier call | A second model call before every answer, and a wrong guess silently hides the data. |
 | Semantic retrieval over dishes | "Dinner on day 2" depends on structure a sentence embedding doesn't capture, whole-trip questions need every item, and Apple's embedding model can be missing. `get_trip`'s `day` and `meal` answer these exactly. |
 
-Not yet measured: which focus the on-device model picks for each phrasing, real tool-definition token counts, and the latency of the required lookup. Measure them with the Foundation Models instrument in Instruments and with eval cases before release (#151). Matched checklist guidance (the saved reference block) still uses word overlap, and document search runs before generation; both are candidates for tools (#151).
+Not yet measured: when the on-device model calls the tool, which focus it picks for each phrasing, real tool-definition token counts, and lookup latency. Measure them with the Foundation Models instrument in Instruments and with eval cases before release (#151). Matched checklist guidance (the saved reference block) still uses word overlap, and document search runs before generation; both are candidates for tools (#151).
 
 ### Search package decision
 
