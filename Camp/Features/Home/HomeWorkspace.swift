@@ -9,9 +9,10 @@ import CampPersistence
 enum HomeDestination: Hashable {
     case trip(PersistentIdentifier)
     case checklist(PersistentIdentifier, ChecklistPhase)
+    case menu(PersistentIdentifier)
 
     var tripID: PersistentIdentifier {
-        switch self { case .trip(let id), .checklist(let id, _): id }
+        switch self { case .trip(let id), .checklist(let id, _), .menu(let id): id }
     }
 }
 
@@ -72,6 +73,11 @@ struct HomeWorkspace: View {
                     .accessibilityLabel(shownChecklist?.title ?? "None")
                     .accessibilityIdentifier("homeDetailChecklist")
                     .allowsHitTesting(false)
+                Color.clear.frame(width: 1, height: 1)
+                    .accessibilityElement()
+                    .accessibilityLabel(showsMenu ? "Menu" : "None")
+                    .accessibilityIdentifier("homeDetailMenu")
+                    .allowsHitTesting(false)
             }
         }
         #endif
@@ -125,9 +131,11 @@ struct HomeWorkspace: View {
         if permissions.locationAllowed && connectivity.isOnline { await weather.refresh() }
     }
 
+    private enum DetailScreen: Hashable { case trip, checklist, menu }
+
     private struct DetailIdentity: Hashable {
         let trip: PersistentIdentifier
-        let showsChecklist: Bool
+        let screen: DetailScreen
     }
 
     /// The pick, while its trip is still in the library.
@@ -141,6 +149,12 @@ struct HomeWorkspace: View {
         if case .checklist(_, let phase)? = validSelection { phase } else { nil }
     }
 
+    private var showsMenu: Bool {
+        if case .menu? = validSelection { true } else { false }
+    }
+
+    private var detailScreen: DetailScreen { shownChecklist != nil ? .checklist : showsMenu ? .menu : .trip }
+
     /// Side by side, the featured trip is highlighted until the owner picks another. Collapsed,
     /// only a pick counts, so Home stays in front until a trip is tapped.
     private var listSelection: Binding<HomeDestination?> {
@@ -152,12 +166,14 @@ struct HomeWorkspace: View {
 
     @ViewBuilder private var detail: some View {
         if let trip = shownTrip {
-            // A new trip, or switching between its details and checklist, starts a fresh stack;
+            // A new trip, or switching between its details, checklist, and menu, starts a fresh stack;
             // switching the checklist's phase keeps it, along with anything pushed on top.
             NavigationStack {
                 Group {
                     if let phase = shownChecklist {
                         ChecklistView(trip: trip, initialPhase: phase) { selection = .checklist(trip.persistentModelID, $0) }
+                    } else if showsMenu {
+                        TripMenuView(trip: trip)
                     } else {
                         TripDetailView(trip: trip)
                     }
@@ -165,7 +181,7 @@ struct HomeWorkspace: View {
                 .assistantToolbarItem()
                 .toolbar { weatherToolbar }
             }
-            .id(DetailIdentity(trip: trip.persistentModelID, showsChecklist: shownChecklist != nil))
+            .id(DetailIdentity(trip: trip.persistentModelID, screen: detailScreen))
         } else {
             NavigationStack {
                 ContentUnavailableView("No trip to show", systemImage: "tent",

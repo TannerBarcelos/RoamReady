@@ -21,11 +21,11 @@ The root view resolves optional native location and camera prompts before showin
 
 Home keeps every current and upcoming trip accessible, including overlapping bookings. Completed trips are in Profile › Trip history, newest first.
 
-The current trip uses one grouped card for its campground, dates, site number, setup and teardown progress, and Photos & site notes. Its header shows the optional cover uploaded in Add trip or Edit trip. Without a cover, text uses the full width and no image area appears; memory photos are separate. Each checklist has one shortcut; remaining current and upcoming bookings appear under Later trips.
+The current trip uses one grouped card for its campground, dates, site number, setup and teardown progress, the trip's menu, and Photos & site notes. Its header shows the optional cover uploaded in Add trip or Edit trip. Without a cover, text uses the full width and no image area appears; memory photos are separate. Each checklist has one shortcut; remaining current and upcoming bookings appear under Later trips.
 
 With no current or upcoming trip, Home shows two standard iOS action rows: Add a trip and Find a campground. A small section heading and compact section spacing keep this state quiet and easy to scan. Everyday screens focus on the trip or document; connection and sync details belong in Settings or actionable availability and save errors.
 
-Trip details keep booking information together and link to setup/teardown, **Photos & site notes**, documents, and camping help. Forms group campground, rig, dates, optional site details, booking, timing, and cost so users can save a minimal trip before adding paperwork.
+Trip details keep booking information together and link to setup/teardown, the trip's menu (**Create menu** until a dish is planned), **Photos & site notes**, documents, and camping help. The menu is a native list with one section per day; meals push to their dishes and dishes to their recipe items, and dish and item edits use sheets so Cancel discards them. Forms group campground, rig, dates, optional site details, booking, timing, and cost so users can save a minimal trip before adding paperwork.
 
 ## Interaction rules
 

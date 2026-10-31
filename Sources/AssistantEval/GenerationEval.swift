@@ -402,6 +402,14 @@ private final class RecordingModel: CampingChatModel {
             recorder.lastResponse = response
             return response
         }
+        func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
+                     toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
+            recorder.calls += 1
+            recorder.lastPrompt = prompt
+            let reply = try await inner.respond(to: prompt, instructions: instructions, history: history, toolTurn: toolTurn)
+            recorder.lastResponse = reply.text
+            return reply
+        }
         func store(_ turn: CampingChatTurn) { inner.store(turn) }
         func remove(_ turnID: CampingChatTurn.ID) { inner.remove(turnID) }
         func prewarm() { inner.prewarm() }

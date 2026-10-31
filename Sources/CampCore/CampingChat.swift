@@ -26,6 +26,11 @@ public protocol CampingChatSession: AnyObject {
     /// `history` is the stored turns this request may send, oldest first; every other stored turn stays out.
     /// A failed or cancelled request leaves the transcript as it was.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String
+    /// Answers one turn with `toolTurn`'s tool available to the model, which must call it at least once before
+    /// answering; the allowance bounds what results may add. Nil offers no tool. A turn's tool calls and results
+    /// are part of it until `store(_:)` replaces it with its stored form, so they never carry into later turns.
+    func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
+                 toolTurn: CampingToolTurn?) async throws -> CampingSessionReply
     /// Replaces the turn just answered with its stored form.
     func store(_ turn: CampingChatTurn)
     /// Removes a stored turn, for an answer that was never shown or that compaction dropped.
@@ -36,6 +41,12 @@ public protocol CampingChatSession: AnyObject {
 
 extension CampingChatSession {
     public func prewarm() {}
+
+    /// Sessions without tool calling answer without the tools.
+    public func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
+                        toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
+        CampingSessionReply(text: try await respond(to: prompt, instructions: instructions, history: history))
+    }
 }
 
 @MainActor
@@ -65,6 +76,10 @@ public struct SingleTurnChatModel: CampingChatModel {
         init(generator: any CampingResponseGenerating) { self.generator = generator }
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String {
             try await generator.respond(to: prompt, instructions: instructions)
+        }
+        func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
+                     toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
+            try await generator.respond(to: prompt, instructions: instructions, tools: toolTurn?.tools)
         }
         func store(_ turn: CampingChatTurn) {}
         func remove(_ turnID: CampingChatTurn.ID) {}
@@ -217,10 +232,13 @@ public final class CampingChat {
         request.conversationSummary = request.isTripOverview ? nil : summary(before: turnID)
         let budget = PromptBudget(contextSize: counter.contextSize)
         var plan = try await request.plan(.full, counter: counter, budget: budget)
-        var history = request.isTripOverview ? [] : CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total, cost: cost)
-        let response: String
+        // Room for one tool result comes out of what earlier turns may use, never out of this turn's context.
+        let toolReserve = request.tools?.outputReserveTokens ?? 0
+        var history = request.isTripOverview ? [] : CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total - toolReserve, cost: cost)
+        let sessionReply: CampingSessionReply
         do {
-            response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
+            sessionReply = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history,
+                                                              toolTurn: toolTurn(request, plan, history, budget))
         } catch CampingChatFailure.contextTooLong {
             try Task.checkCancellation()
             // The counts said the first attempt fit, so the retry must send strictly less: a smaller prompt, or
@@ -233,12 +251,15 @@ public final class CampingChat {
             try Task.checkCancellation()
             request.conversationSummary = request.isTripOverview ? nil : summary(before: turnID)
             plan = try await request.plan(.compact, limitedBy: plan, counter: counter, budget: budget)
-            history = request.isTripOverview ? [] : CampingChatHistory.window(turns.filter { earlier.contains($0.id) }, budget: budget.inputLimit - plan.usage.total,
+            history = request.isTripOverview ? [] : CampingChatHistory.window(turns.filter { earlier.contains($0.id) }, budget: budget.inputLimit - plan.usage.total - toolReserve,
                                                 limit: limit, cost: cost)
-            response = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history)
+            sessionReply = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history,
+                                                              toolTurn: toolTurn(request, plan, history, budget))
         }
-        let text = response.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = sessionReply.text.trimmingCharacters(in: .whitespacesAndNewlines)
         var reply = Self.reply(text, to: request, sent: plan)
+        // Looking up the trip makes the saved trip a source.
+        if sessionReply.toolsUsed.contains(where: \.isTripData) { reply.usedSavedTrip = true }
         // The session holds the raw turn now. Store its clean form at once, so the transcript and `turns` agree.
         let turn = CampingChatTurn(question: request.question, answer: reply.text)
         currentSession().store(turn)
@@ -273,6 +294,15 @@ public final class CampingChat {
         turns.remove(at: index)
         costs[turnID] = nil
         session?.remove(turnID)
+    }
+
+    /// The request's tool with the room its results may take: whatever the prompt and the sent history leave.
+    /// It's at least one focused result, since the history window kept that free.
+    private func toolTurn(_ request: CampingHelpRequest, _ plan: PromptPlan, _ history: [CampingChatTurn],
+                          _ budget: PromptBudget) -> CampingToolTurn? {
+        guard let tools = request.tools else { return nil }
+        let sent = history.reduce(0) { $0 + cost($1) }
+        return CampingToolTurn(tools: tools, allowance: CampingToolAllowance(tokens: budget.inputLimit - plan.usage.total - sent))
     }
 
     /// The summary a request may carry: none when asking again as of a turn no longer stored, since the summary

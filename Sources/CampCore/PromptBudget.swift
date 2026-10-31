@@ -107,6 +107,8 @@ public struct PromptUsage: Equatable, Sendable {
     public let checklist: Int
     /// The trip's saved booking facts. Never shrunk: they and the question outlast everything else.
     public let savedTrip: Int
+    /// The definitions of the tools the model may call, which the framework adds to the instructions.
+    public let tools: Int
     public let evidence: Int
     public let question: Int
     /// Instructions plus prompt, counted as whole texts. This is what the budget is checked against.
@@ -205,16 +207,17 @@ extension CampingHelpRequest {
               counter: any PromptTokenCounting, budget: PromptBudget) async throws -> PromptPlan {
         var measurer = Measurer(counter: counter)
         var shape = initialShape(attempt).limited(by: limit?.shape)
-        let instructionTokens = try await measurer.count(instructions)
+        let instructionTokens = try await measurer.count(instructions) + (tools?.schemaTokens ?? 0)
         while true {
             try Task.checkCancellation()
             let rendered = render(shape)
             let promptTokens = try await measurer.count(rendered.prompt)
             if instructionTokens + promptTokens <= budget.inputLimit {
                 let usage = PromptUsage(
-                    instructions: instructionTokens,
+                    instructions: instructionTokens - (tools?.schemaTokens ?? 0),
                     checklist: try await measurer.count(rendered.checklist),
                     savedTrip: tripFacts == nil ? 0 : try await measurer.count(rendered.savedTrip),
+                    tools: tools?.schemaTokens ?? 0,
                     evidence: documents == nil ? 0 : try await measurer.count(rendered.evidence),
                     question: try await measurer.count(rendered.question),
                     total: instructionTokens + promptTokens, limit: budget.inputLimit)

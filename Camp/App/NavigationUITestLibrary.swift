@@ -33,6 +33,13 @@ enum NavigationUITestLibrary {
             draft.campgroundTimeZoneIdentifier = calendar.timeZone.identifier
             trips.append(try Trip.create(draft, rig: rig, in: context))
         }
+        // "Upcoming Lake" stays without a menu so tests can create one.
+        if let current = trips.first {
+            let dinner = try current.addDish(MenuDishDraft(name: "Steak with brussels sprouts and sourdough"),
+                                             to: .standard(day: 0, kind: .dinner))
+            try dinner.addItem(DishItemDraft(name: "Ribeye", quantity: "2 lb"))
+            try dinner.addItem(DishItemDraft(name: "Brussels sprouts", quantity: "1 bag"))
+        }
         // Resize checks open a photo and a document without changing the real layout traits.
         if LayoutUITest.isRequested, let current = trips.first {
             let jpeg = sampleImage()

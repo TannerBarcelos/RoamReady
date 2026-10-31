@@ -346,8 +346,9 @@ struct AssistantView: View {
         let target = currentTarget
         let selectedTrip = contextTrip
         let rig = selectedTrip == nil ? rigs.active.first : selectedTrip?.rig
+        // The rig rides in the instructions; the trip reaches the model only through `get_trip`.
         let rigContext = rig.map { CampingRigContext($0) }
-        let tripFacts = selectedTrip.map { TripBookingFacts($0) }
+        let tools = selectedTrip.map { $0.assistantTools() }
         let steps: [ChecklistStepDraft]
         if let trip = selectedTrip {
             steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
@@ -388,7 +389,7 @@ struct AssistantView: View {
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        chat: session, chatScope: target, before: before,
                                                        rigContext: rigContext, documents: evidence,
-                                                       tripFacts: tripFacts, stepContext: step,
+                                                       tools: tools, stepContext: step,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
                     _ = progress.advance(to: stage, for: request)

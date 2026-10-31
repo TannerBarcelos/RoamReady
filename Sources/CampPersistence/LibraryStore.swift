@@ -7,7 +7,8 @@ import CampCore
 public enum LibraryStore {
     public static var schema: Schema {
         Schema([CamperProfile.self, Rig.self, Trip.self, ChecklistStep.self, TripPhoto.self, NoteRevision.self,
-                SavedCampground.self, StoredDocument.self, DocumentContent.self])
+                SavedCampground.self, StoredDocument.self, DocumentContent.self,
+                TripMeal.self, MenuDish.self, DishItem.self])
     }
 
     /// `cloudKitContainer` nil keeps the library on this device only.

@@ -118,12 +118,13 @@ enum CampingAssistant {
                        scope: CampingHelpRequest.Scope = .checklist, chat: CampingChat, chatScope: AnyHashable,
                        before turnID: CampingChatTurn.ID? = nil,
                        rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
-                       tripFacts: TripBookingFacts? = nil, stepContext: CampingStepContext? = nil,
+                       tripFacts: TripBookingFacts? = nil, tools: CampingTools? = nil, stepContext: CampingStepContext? = nil,
                        onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType, step: step, scope: scope,
                                          previousQuestion: chat.previousQuestion(in: chatScope, before: turnID),
-                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, stepContext: stepContext)
+                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, tools: tools,
+                                         stepContext: stepContext)
         let reply: CampingReply
         do {
             try Task.checkCancellation()
@@ -152,6 +153,8 @@ enum CampingAssistant {
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
         var answersSavedTrip = false
+        /// Calls the menu tool for dinner and answers with its first dish, the way a model using the tool would.
+        var answersMenu = false
         var answersSelectedStep = false
         /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
         var delaysFirstCall = false
@@ -159,6 +162,32 @@ enum CampingAssistant {
         var failsFirstCall = false
         /// Waits before every answer, so a UI test can resize or rotate while it's generating.
         var delay: Duration = .zero
+        /// The saved-trip and menu modes stand in for a model that calls `get_trip` with an overview or menu focus.
+        func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
+            if answersMenu {
+                CampingAssistant.uiTestCalls += 1
+                let output = tools?.output(for: CampingToolCall(focus: .menu, meal: .dinner)) ?? ""
+                guard instructions.contains(CampingToolKind.trip.name),
+                      let dish = output.split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
+                    return CampingSessionReply(text: "Missing saved menu tool.")
+                }
+                return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1], toolsUsed: [.trip])
+            }
+            if answersSavedTrip {
+                CampingAssistant.uiTestCalls += 1
+                // An overview carries no rig, checklist, or documents, and no trip facts outside the tool.
+                guard let tools, !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
+                      !prompt.contains(TripBookingFacts.beginMarker), !instructions.contains("BEGIN SAVED RIG PROFILE"),
+                      !instructions.contains("routine maintenance"),
+                      let campground = tools.output(for: CampingToolCall(focus: .overview)).components(separatedBy: "\n")
+                          .first(where: { $0.hasPrefix("Campground: ") }) else {
+                    return CampingSessionReply(text: "Missing saved trip tool.")
+                }
+                return CampingSessionReply(text: "Your saved trip is \(campground.dropFirst("Campground: ".count)).", toolsUsed: [.trip])
+            }
+            return CampingSessionReply(text: try await respond(to: prompt, instructions: instructions))
+        }
+
         func respond(to prompt: String, instructions: String) async throws -> String {
             CampingAssistant.uiTestCalls += 1
             let isFirst = CampingAssistant.uiTestCalls == 1
@@ -174,15 +203,6 @@ enum CampingAssistant {
                 }
                 return ["title", "guidance", "notes", "section", "status", "priority", "phase"]
                     .compactMap { fields[$0] as? String }.joined(separator: " · ")
-            }
-            if answersSavedTrip {
-                guard !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
-                      !instructions.contains("BEGIN SAVED RIG PROFILE"), !instructions.contains("routine maintenance"),
-                      prompt.contains(TripBookingFacts.beginMarker),
-                      let campground = prompt.components(separatedBy: "\n").first(where: { $0.hasPrefix("Campground: ") }) else {
-                    return "Missing saved trip context."
-                }
-                return "Your saved trip is \(campground.dropFirst("Campground: ".count))."
             }
             if citesDocuments {
                 return prompt.contains("\n[S1] ")
@@ -206,6 +226,7 @@ enum CampingAssistant {
         case "failure": return UITestGenerator(fails: true)
         case "step-context": return UITestGenerator(fails: false, answersSelectedStep: true)
         case "saved-trip": return UITestGenerator(fails: false, answersSavedTrip: true)
+        case "saved-menu": return UITestGenerator(fails: false, answersMenu: true)
         case "document": return UITestGenerator(fails: false, citesDocuments: true)
         case "slow": return UITestGenerator(fails: false, delaysFirstCall: true)
         case "failure-once": return UITestGenerator(fails: false, failsFirstCall: true)

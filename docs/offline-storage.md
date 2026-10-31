@@ -12,21 +12,24 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | --- | --- | --- |
 | `CamperProfile` | name, experience | — |
 | `Rig` | owner-entered details, equipment, registration (VIN, plate, region; cloud-encrypted), photo (external storage), archive date | default `ChecklistStep`s (cascade), trips, documents |
-| `Trip` | campground, dates, time zones, site details, booking, completion, notes, rating | rig, `ChecklistStep`s, `TripPhoto`s, `NoteRevision`s (all cascade), documents |
+| `Trip` | campground, dates, time zones, site details, booking, completion, notes, rating | rig, `ChecklistStep`s, `TripPhoto`s, `NoteRevision`s, `TripMeal`s (all cascade), documents |
 | `ChecklistStep` | title, detail (guidance), notes, priority, section, status, phase, position | its trip, or its rig for default lists |
 | `TripPhoto` | resized JPEG (external storage), caption | trip |
 | `NoteRevision` | a saved version of a trip's notes | trip |
+| `TripMeal` | a meal on a trip day: day offset from arrival, raw meal kind, name for added meals, position | trip, `MenuDish`es (cascade) |
+| `MenuDish` | name, notes, resized JPEG (external storage, cloud-encrypted), position | meal, `DishItem`s (cascade) |
+| `DishItem` | one recipe line: name, free-text quantity, position | dish |
 | `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
 | `DocumentContent` | the original file bytes (external storage and cloud encryption); legacy bytes/keys remain readable | document |
 
-Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, and note versions; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
+Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, note versions, and menu; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
 
 Checklist priority uses a nullable persisted backing property mapped from the original `priority` attribute. Steps saved before priorities existed can have no stored value after lightweight migration; the public `priority` property reads these as None. Migration tests exercise the rig-default and trip-step draft reads used by Assistant Send, and preserve priorities written by the earlier model.
 
-The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, campground lists, and the document vault. Date, booking, site, and rig-detail rules live in `CampCore` (its `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested without SwiftData.
+The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `Trip+Menu.swift`, `SavedCampground+Library.swift`, `StoredDocument+Library.swift`): the one-active-rig limit, copying a rig's defaults into a new trip, "Save as defaults", completion, note versions, trip menus, campground lists, and the document vault. Date, booking, site, and rig-detail rules live in `CampCore` (its `TripDetails` and `RigDetails` protocols, shared by the models and the forms' drafts) and are tested without SwiftData.
 
-Screens read with `@Query` and edit models directly; SwiftData saves automatically, and `LibraryController.save()` saves after each deliberate action so a failure is shown. Forms edit a draft (`TripDraft`, `RigDraft`, `ChecklistStepDraft`) so Cancel discards changes.
+Screens read with `@Query` and edit models directly; SwiftData saves automatically, and `LibraryController.save()` saves after each deliberate action so a failure is shown. Forms edit a draft (`TripDraft`, `RigDraft`, `ChecklistStepDraft`, `MenuDishDraft`, `DishItemDraft`, `MealDraft`) so Cancel discards changes.
 
 **Schema changes.** The app has not shipped and the CloudKit schema is still in Development, so the models may change freely; delete and reinstall the app if a development store won't open. **Owner-confirmed on October 29, 2026: the schema has not been deployed to Production.** `StoredDocument.includeInAssistant` (optional-safe `Bool`, default `false`) is therefore part of the initial schema: confirm it appears in the Development schema in CloudKit Console before the first Production deployment (#6 A2). The Assistant's search index is a separate per-device file and adds nothing to the CloudKit schema. Once the schema is promoted to Production (#6), CloudKit accepts only additive changes: add optional attributes or models; never rename, retype, or remove one, and never change which attributes are cloud-encrypted. A change SwiftData can't infer then needs a `VersionedSchema` and `SchemaMigrationPlan`.
 
@@ -40,7 +43,7 @@ A new device needs an online initial download before photos and files are availa
 
 ## Conflicts
 
-Apple manages synchronization conflicts and timing; this is eventual consistency. Independent checklist steps are separate objects, so edits to different steps both survive. Two devices that each add a rig offline can end up with two active rigs; both stay readable and Profile asks the owner to archive one. Two devices that save the same campground can produce two list entries; the first one decides. Notes keep a version each time the Photos & site notes screen is left, so earlier text can be restored.
+Apple manages synchronization conflicts and timing; this is eventual consistency. Independent checklist steps are separate objects, so edits to different steps both survive. Two devices that each add a rig offline can end up with two active rigs; both stay readable and Profile asks the owner to archive one. Two devices that save the same campground can produce two list entries; the first one decides. Notes keep a version each time the Photos & site notes screen is left, so earlier text can be restored. A trip's menu has no single menu record, which two devices could each create; standard meals are stored when their first dish is added, and two devices that store the same day's meal show it as one meal with both sets of dishes (new dishes join the older record). Meals stored for an unknown meal kind from a newer app version are kept and shown as added meals.
 
 ## Backup
 

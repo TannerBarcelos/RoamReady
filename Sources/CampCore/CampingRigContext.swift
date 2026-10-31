@@ -2,7 +2,7 @@ import Foundation
 
 /// A bounded snapshot of useful rig facts. Registration and photo data are deliberately excluded.
 /// Construct it while reading the library, before handing the request to an async generator.
-public struct CampingRigContext: Sendable {
+public struct CampingRigContext: Equatable, Sendable {
     public let type: RigType
     private let make: String
     private let model: String

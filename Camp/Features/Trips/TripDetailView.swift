@@ -36,6 +36,10 @@ struct TripDetailView: View {
                     .accessibilityIdentifier("tripChecklist-\(phase.rawValue)")
                 }
             }
+            Section("Meals") {
+                NavigationLink { TripMenuView(trip: trip) } label: { MenuEntryLabel(summary: trip.menuSummary) }
+                    .accessibilityIdentifier("tripMenu")
+            }
             WeatherSection(trip: TripDraft(trip))
             Section("Make it memorable") {
                 NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
@@ -89,7 +93,7 @@ struct TripDetailView: View {
 enum TripDeletion {
     static func message(hasDocuments: Bool) -> String {
         [
-            "This permanently deletes the trip’s whole history on every device signed in to your iCloud account: its checklists and their progress, notes and all saved note versions, photos and captions, and site notes and rating. This can’t be undone.",
+            "This permanently deletes the trip’s whole history on every device signed in to your iCloud account: its checklists and their progress, its menu with dish photos and recipes, notes and all saved note versions, photos and captions, and site notes and rating. This can’t be undone.",
             hasDocuments
                 ? "Kept: its confirmation and paperwork files move to Profile › Unattached documents."
                 : "Kept: any confirmation files would move to Profile › Unattached documents.",

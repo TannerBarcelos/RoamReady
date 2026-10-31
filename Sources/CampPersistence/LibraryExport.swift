@@ -4,7 +4,7 @@ import CampCore
 import DocumentVault
 
 /// Profile › Settings › Prepare export: a zip with `library.json` (profile, rigs and their defaults, trips with
-/// their checklists and notes, saved campgrounds), `documents.json`, and `Documents/` holding each
+/// their checklists, notes, and menus, saved campgrounds), `documents.json`, and `Documents/` holding each
 /// document's verified original file. End-to-end encrypted documents are exported readable: the
 /// archive is the user's own copy, outside iCloud's protection. Trip photos are shared individually.
 public enum LibraryExport {
@@ -29,7 +29,8 @@ public enum LibraryExport {
             trips: try context.fetch(FetchDescriptor<Trip>(sortBy: [SortDescriptor(\.arrival)])).map { trip in
                 Library.TripEntry(details: TripDraft(trip), rig: trip.rig?.displayName, notes: trip.notes, rating: trip.rating,
                                   setup: trip.steps(.setup).map(\.draft), teardown: trip.steps(.teardown).map(\.draft),
-                                  photoCaptions: trip.sortedPhotos.map(\.caption))
+                                  photoCaptions: trip.sortedPhotos.map(\.caption),
+                                  menu: menuEntries(trip))
             },
             savedCampgrounds: try context.fetch(FetchDescriptor<SavedCampground>(sortBy: [SortDescriptor(\.campgroundID)])).map {
                 Library.Saved(campgroundID: $0.campgroundID, name: $0.name, region: $0.region,
@@ -60,6 +61,13 @@ public enum LibraryExport {
                        notDownloaded: entries.filter { $0.status == .notDownloaded }.count)
     }
 
+    private static func menuEntries(_ trip: Trip) -> [Library.MealEntry] {
+        trip.storedMeals.sorted { ($0.dayOffset, $0.createdAt) < ($1.dayOffset, $1.createdAt) }.map { meal in
+            let dishes = meal.sortedDishes.map { Library.DishEntry(name: $0.name, notes: $0.notes, items: $0.sortedItems.map(\.draft)) }
+            return Library.MealEntry(day: meal.dayOffset + 1, meal: meal.kindValue, title: meal.title, dishes: dishes)
+        }
+    }
+
     /// The system zips a directory when it is coordinated for uploading; no archive code ships here.
     private static func zip(_ folder: URL, to destination: URL) throws {
         var coordinationError: NSError?, result: Result<Void, any Error> = .failure(CocoaError(.fileWriteUnknown))
@@ -81,10 +89,14 @@ public enum LibraryExport {
         struct TripEntry: Encodable {
             let details: TripDraft; let rig: String?; let notes: String; let rating: SiteRating
             let setup: [ChecklistStepDraft]; let teardown: [ChecklistStepDraft]; let photoCaptions: [String]
+            let menu: [MealEntry]
         }
+        /// `day` is 1 for the arrival day. Dish photos are shared individually, like trip photos.
+        struct MealEntry: Encodable { let day: Int; let meal: String; let title: String; let dishes: [DishEntry] }
+        struct DishEntry: Encodable { let name, notes: String; let items: [DishItemDraft] }
         struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool? }
-        /// 3 added rig registration and checklist step notes and priority.
-        var schemaVersion = 3
+        /// 3 added rig registration and checklist step notes and priority. 4 added trip menus.
+        var schemaVersion = 4
         let profile: Profile?
         let rigs: [RigEntry]
         let trips: [TripEntry]

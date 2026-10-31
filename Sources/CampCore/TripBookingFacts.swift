@@ -133,7 +133,7 @@ public enum BookingFactQuestion {
 public enum BookingConflictRules {
     static func instructions(hasSavedFacts: Bool) -> String {
         let saved = hasSavedFacts
-            ? " The saved trip facts block holds values the owner entered, not a document; label them \"saved trip\"."
+            ? " Saved trip facts (from \(CampingToolKind.trip.name) or the saved trip facts block) hold values the owner entered, not a document; label them \"saved trip\"."
             : ""
         return """
 
