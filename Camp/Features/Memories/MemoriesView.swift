@@ -69,16 +69,26 @@ struct MemoriesView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
                         ForEach(photos) { photo in
                             Button { selectedPhoto = photo } label: {
-                                VStack(alignment: .leading) {
-                                    LocalPhoto(data: photo.imageData).frame(maxWidth: .infinity).frame(height: 135).clipped().clipShape(RoundedRectangle(cornerRadius: 12))
-                                    if !photo.caption.isEmpty { Text(photo.caption).font(.caption).lineLimit(2).foregroundStyle(.primary) }
-                                }
-                            }.buttonStyle(.plain).accessibilityLabel(photo.caption.isEmpty ? "Trip photo" : photo.caption)
+                                Color.clear.aspectRatio(1, contentMode: .fit)
+                                    .overlay { LocalPhoto(data: photo.imageData) }
+                                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    .overlay(alignment: .bottomTrailing) {
+                                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.primary)
+                                            .padding(8).background(.regularMaterial, in: Circle())
+                                            .padding(8).accessibilityHidden(true)
+                                    }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(photo.caption.isEmpty ? "Trip photo" : photo.caption)
+                            .accessibilityHint("Opens the photo, caption, and sharing options")
+                            .accessibilityIdentifier("tripPhotoThumbnail")
                         }
                     }.padding(.vertical, 6)
                 }
             } header: { Text("Photos · \(trip.sortedPhotos.count)") } footer: {
-                Text("Photos are saved in RoamReady, resized for storage, and sync with the trip. Use Share to save a copy elsewhere. iCloud-only library photos need a connection before importing.")
+                Text("Tap a photo for details, captions, and sharing. Photos sync with the trip. iCloud-only library photos need a connection before importing.")
             }
         }
         .navigationTitle("Photos & site notes")

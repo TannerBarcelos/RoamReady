@@ -147,13 +147,17 @@ struct CampFinderView: View {
             Section {
                 if includesMap { listMap }
                 ViewThatFits(in: .horizontal) {
-                    searchButtons(compact: false)
-                    searchButtons(compact: true)
-                    VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
                         nearMeButton
-                        searchAreaButton(compact: true)
+                        searchAreaButton
+                    }
+                    VStack(spacing: 12) {
+                        nearMeButton
+                        searchAreaButton
                     }
                 }
+                .fixedSize(horizontal: false, vertical: true)
+                .controlSize(.large)
                 if permissions.locationDenied {
                     Text("Location access is off. Search by city, park, or ZIP code, or allow location in Settings.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -185,22 +189,18 @@ struct CampFinderView: View {
     private var nearMeButton: some View {
         Button { searchNearMe() } label: {
             Label("Near me", systemImage: permissions.locationDenied ? "location.slash" : "location.fill")
+                .labelStyle(.titleAndIcon).fixedSize()
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered).disabled(!connectivity.isOnline || locating || permissions.locationDenied)
         .accessibilityIdentifier("campFinderNearMe")
     }
 
-    private func searchButtons(compact: Bool) -> some View {
-        HStack {
-            nearMeButton.fixedSize(horizontal: true, vertical: false)
-            Spacer(minLength: 8)
-            searchAreaButton(compact: compact).fixedSize(horizontal: true, vertical: false)
-        }
-    }
-
-    private func searchAreaButton(compact: Bool) -> some View {
+    private var searchAreaButton: some View {
         Button { searchVisibleArea() } label: {
-            Label(compact ? "Search" : "Search this area", systemImage: "arrow.clockwise").lineLimit(1)
+            Label("Search", systemImage: "arrow.clockwise")
+                .labelStyle(.titleAndIcon).fixedSize()
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered).disabled(!connectivity.isOnline || visibleRegion == nil)
         .accessibilityIdentifier("campFinderSearchArea")
