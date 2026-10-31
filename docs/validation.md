@@ -39,6 +39,8 @@ Derived data is written to `.derivedData/`. The shared scheme runs the app and i
 
 ## Test coverage and CI
 
+Trip back-navigation regression (October 31, 2026): `DuoHomeUITests.testEveryHomeTripShortcutHasBackNavigationToTripDetails` checks native Back from menu, both checklists, and photos opened directly from Home. `testSelectedTripRowAlwaysReturnsFromItsPagesAndNestedPhotos` checks reselecting the current trip from those pages, documents, note history, and a meal in an expanded window. Run the first on compact iPhone and both on iPad/expanded Duo. `NavigationUITests.testTripHistorySubpagesKeepTheTripInTheBackStack` checks the Profile/history entry path. Swift syntax parsing passed in the Linux workspace; iOS builds and UI execution were not run there. Existing phase-switching, deletion, and menu-resize tests remain relevant.
+
 The Mac workflow runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, migrating an older store, and the export.
 
 | Suite | Coverage |

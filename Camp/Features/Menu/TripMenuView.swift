@@ -45,6 +45,7 @@ struct TripMenuView: View {
                 }
             }
         }
+        .accessibilityIdentifier("tripMenuList")
         .navigationTitle("Menu")
         .sheet(item: $addingMealTo) { day in
             MealNameEditor(title: "New meal", meal: MealDraft()) { draft in

@@ -126,6 +126,27 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Profile"].waitForExistence(timeout: 5))
     }
 
+    func testTripHistorySubpagesKeepTheTripInTheBackStack() {
+        let app = launch()
+        app.navigationTab("Profile").tap()
+        app.buttons["tripHistoryLink"].tap()
+        app.staticTexts["Past Meadows"].tap()
+        XCTAssertTrue(app.navigationBars["Past Meadows"].waitForExistence(timeout: 5))
+        for (identifier, title) in [("tripMenu", "Menu"), ("tripChecklist-setup", "Setup"), ("tripMemories", "Photos & site notes")] {
+            let page = app.buttons[identifier]
+            let details = app.descendants(matching: .any)["tripDetailsList"].firstMatch
+            for _ in 0..<5 where !app.buttons["tripChecklist-setup"].isHittable { details.swipeDown() }
+            for _ in 0..<8 where !page.isHittable { details.swipeUp() }
+            XCTAssertTrue(page.isHittable)
+            page.tap()
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            app.buttons["BackButton"].firstMatch.tap()
+            XCTAssertTrue(app.navigationBars["Past Meadows"].waitForExistence(timeout: 5))
+        }
+        app.buttons["BackButton"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Trip history"].waitForExistence(timeout: 5))
+    }
+
     func testRigThumbnailIsAnAccessibleImage() {
         let app = launch()
         app.navigationTab("Profile").tap()

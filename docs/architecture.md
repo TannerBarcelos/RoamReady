@@ -107,66 +107,21 @@ Measured: `contextSize` 4096; 1,000 characters of English prose, 202 tokens; 200
 
 ### Assistant tools
 
-**Decision (owner, October 31, 2026): everything about a trip reaches the model through one tool, `get_trip`, and the rig profile rides in the instructions.** This replaces app-side word matching to decide when to send the menu, sending the whole menu with every question, and separate menu, checklist, and rig tools.
+The model decides whether to use `get_trip(focus)` and which resource to read: `overview`, `booking`, `checklist`, `menu`, or `everything`. The profile uses `.toolCallingMode(.allowed)`, Apple's default. The framework handles tool invocation, feeds the returned result back into the session, and continues until the model answers. See Apple's [tool-calling guide](https://developer.apple.com/documentation/foundationmodels/expanding-generation-with-tool-calling).
 
-Apple's Foundation Models framework runs the tool loop ([Expanding generation with tool calling](https://developer.apple.com/documentation/foundationmodels/expanding-generation-with-tool-calling)). The model calls the tool with arguments filled by guided generation, gets the result, and answers from it, all inside one `respond(to:)`.
+Retrieval is deliberately simple. Each call returns the complete selected resource from Sendable snapshots captured by `Trip.assistantTools()` before generation. `menu` returns every saved day, meal, dish, note, recipe item and amount; `checklist` returns both lists and all statuses/notes; `booking` returns all saved details/notes. `everything` combines them. The core booking facts and status accompany every resource. There are no day/meal filters, content modes, paging arguments, per-resource character limits, or ingredient cutoffs. Photos and registration remain outside the text resources. Owner text is JSON-quoted and forged block markers are neutralized.
 
-`get_trip(focus, day, meal, checklist, remainingOnly)`:
+Context management belongs to orchestration:
 
-| `focus` | Returns, after the core facts |
-| --- | --- |
-| `overview` | Nothing more: which trip, where, and when |
-| `booking` | Loop, site details, provider, costs, cancellation deadline, site notes |
-| `checklist` | Setup and teardown progress and steps with status, priority, and notes; `checklist` picks one phase and `remainingOnly` lists only what's left |
-| `menu` | The menu, or the asked `day` and `meal`, with dishes, notes, recipe items, and amounts, naming today's trip day |
-| `everything` | All of it, split so a long checklist can't crowd out the menu |
+- `CampingChat` plans the current prompt and reserves working space before choosing recent history. On context overflow, it summarizes older conversation turns, starts a fresh session, and retries once with less context.
+- `AppleToolResults` serializes result preparation and tracks the shared remaining token allowance across calls. A result that fits passes through unchanged.
+- Oversized results use the resource-independent `ToolResultCompaction` helper. It counts complete candidate prompts, splits the full returned text into chunks that fit separate model sessions, and carries a question-relevant summary forward. Every chunk is processed; retrieval does not choose records to drop. This follows Apple's [large-task context guidance](https://developer.apple.com/documentation/foundationmodels/managing-the-context-window).
+- Condensed results are labeled as model summaries, not complete verbatim data. Summarization can omit details; it is not lossless. Empty or over-budget summaries fail instead of being silently cut. Cancellation stops processing. Native context failures still reach the existing compact retry.
+- The tool loop and result preparation are independent of the subject of the user's question. General questions can be answered without tools. A trip source is shown only when the session reports a trip lookup (or a legacy prompt-based caller uses saved trip facts).
 
-The **core facts** come back whatever the focus: campground, dates, check-in and check-out with time zone, site, confirmation, and status ("starts in 3 days"). So every trip answer is grounded in the trip, and a wrong focus still returns the basics; the model can call again with another.
+The rig profile remains small context in the instructions. Completed turns retain their question and answer, while raw tool calls/results are removed after the response. Earlier answers and conversation summaries do not establish current saved values. Document search still runs through the existing scoped retrieval path before generation; this change does not convert it into a new tool.
 
-**Every trip answer looks at the data.** Whenever a trip is selected, the model must call `get_trip` at least once before it may answer: the profile's tool-calling mode is `.required` until a call is made, then `.allowed`, Apple's documented exit condition. It may call again whenever it needs more, and the instructions forbid answering saved trip details from memory or earlier answers. A question that needs no trip data still costs one lookup (about a second, on device).
-
-Scopes:
-
-| Scope | Tool | Rig profile in the instructions |
-| --- | --- | --- |
-| Trip and checklist chat, and help with a selected step | `get_trip`, required | Yes |
-| Trip overview ("What trip is this?") | `get_trip`, required | No |
-| Chat without a trip | None; the instructions say no trip is selected, so the model says so instead of guessing | Yes |
-
-**Why the rig is in the instructions.** It's small, rarely changes, and most answers need it: Apple's guidance is to retrieve what the model always needs directly and use tools for what it may need. The instructions are `DynamicInstructions`, rebuilt from the library before every request, so an edited rig is in the next question's instructions with nothing to invalidate.
-
-**Why one tool with a focus, not one that returns everything.** A required call to a tool that always returns the whole trip costs the same data as putting the trip in the prompt, plus the tool definition and a second model round, and arrives after the budget was planned. The focus keeps each result small; one tool means the model can't pick the wrong tool.
-
-How it's built:
-- **Logic lives in `CampCore`, the Foundation Models types in `AssistantModel`.** `CampingTools` (`CampCore`) holds Sendable snapshots, `TripToolFacts` (with `TripBookingFacts` and `TripChecklistFacts`) and `TripMenuFacts`, built by `Trip.assistantTools()` (`CampPersistence`) while the library is read, so the tool never touches SwiftData during generation. It also owns the name, description, results, and instruction lines, so they're tested without Foundation Models. `TripTool` (`AssistantModel`) is a thin `Tool` conformance that calls into it.
-- **The tool is dynamic per turn.** It's declared inside the profile's `DynamicInstructions`, re-evaluated before every request, so a turn without a trip carries no tool definition.
-- **Results are reference data.** Each result is one bounded `BEGIN SAVED TRIP FACTS` block with owner text JSON-quoted and forged markers removed. Booking-conflict rules label its values "saved trip" when the model compares them with document excerpts.
-- **Sources.** `CampingSessionReply.toolsUsed` reports the call, and the answer lists the saved trip as a source.
-- **Compatibility.** `CampingHelpRequest` still accepts `tripFacts` for callers that put trip facts in the prompt. The document eval harness uses it; the app doesn't, so those evals don't exercise the tool path yet (#151).
-
-Budget and compaction:
-- **The tool definition** rides in the instructions on every trip turn. The plan counts a conservative 160 tokens (`PromptUsage.tools`).
-- **Tool results** arrive after the prompt was planned, and the model may call several times. Each request gets a `CampingToolAllowance`: what the instructions, prompt, and sent history leave of the input limit, always at least one focused result because the history window keeps that free. A focused result is at most 1,200 characters and `everything` at most 2,400 when there's room. Each is rendered to fit what's left, dropping detail first, and once less than a useful result remains, the tool returns a short note telling the model to answer from what it has and say what it couldn't check. An overflow from other causes still takes the compact retry.
-- **History.** A turn's tool calls and results are transcript entries between its prompt and response, sent with the current turn. `store(_:)` replaces the whole turn with its stored question and answer, so results never carry into later turns or summaries, as in Apple's "drop completed tool calls" example. That's safe because every trip answer looks up fresh data anyway: "What's for dinner on day 2?" → "What goes in it?" calls `get_trip(focus: menu, day: 2)` again, and an edit made mid-chat is always seen. Compaction is unchanged; see Chat sessions.
-
-Remaining risks:
-- **A wrong focus.** The core facts always come back, but a menu question answered from a `booking` focus lacks the menu unless the model calls again. Measure which focus each phrasing gets (#151).
-- **Booking conflicts.** Comparing the saved check-in time with a confirmation PDF works from any focus, since check-in is a core fact.
-
-Alternatives considered:
-
-| Approach | Why not |
-| --- | --- |
-| Saved trip data in the instructions | Instructions take precedence over the prompt and are never shrunk; a long trip there is both an injection risk and a budget risk. The rig is the exception: small, stable, and needed by most answers. |
-| App-side word matching | Misses phrasings such as "What am I making tonight?". Built and removed; don't reintroduce it, including as a fallback. |
-| Whole menu in every prompt | Every trip question paid 400–700 tokens, earlier turns lost room, and answers couldn't show the saved trip as a source. |
-| Separate `get_trip`, `get_menu`, `get_rig` tools | The model could pick the wrong tool, three definitions cost tokens every turn, and the rig is needed often enough to send directly. |
-| `get_trip` with no arguments, always everything | With a required call, the same cost as the trip in the prompt plus a model round and the definition. |
-| Keeping the newest turn's results for follow-ups | With a required lookup every turn, kept results would duplicate the fresh ones. |
-| A separate classifier call | A second model call before every answer, and a wrong guess silently hides the data. |
-| Semantic retrieval over dishes | "Dinner on day 2" depends on structure a sentence embedding doesn't capture, whole-trip questions need every item, and Apple's embedding model can be missing. `get_trip`'s `day` and `meal` answer these exactly. |
-
-Not yet measured: which focus the on-device model picks for each phrasing, real tool-definition token counts, and the latency of the required lookup. Measure them with the Foundation Models instrument in Instruments and with eval cases before release (#151). Matched checklist guidance (the saved reference block) still uses word overlap, and document search runs before generation; both are candidates for tools (#151).
+Core tests verify complete retrieval across long menus, ingredient lists over 20 items, booking notes and checklists, plus bounded generic compaction and cancellation. Actual model choices, summary accuracy, latency, and iOS compilation require validation on Apple hardware; see the [manual checks](assistant-evals.md#trip-tool-calling-checks). The estimated schema reservation is still 160 tokens; measure the actual framework definition with Instruments.
 
 ### Search package decision
 
@@ -210,7 +165,9 @@ There is no raw SQL, custom CloudKit record transport, hosted user-data service,
 
 The app uses the window's real size classes, safe areas, and native containers on iPhone, iPad, and Catalyst. There is no hinge capability gate, model-name check, or forced compact size class. Native `TabView`, `NavigationSplitView`, toolbars, forms, and sheets own their platform adaptation. `MainTabs` owns selection and presented sheets; the Assistant conversation also lives there. The Assistant action is a native toolbar button everywhere, gated only by Apple's runtime model eligibility.
 
-`HomeWorkspace` owns Home's clock and `NavigationSplitView` selection above both columns. `HomeDestination` stores persistent identifiers rather than models: a trip, one of its checklists, or its menu. Native navigation collapses at compact width and expands when space allows. The detail shows the valid pick or featured trip (`displayedTrip(selected:asOf:)` in `CampCore`).
+`HomeWorkspace` owns Home's clock, selected trip identifier, and `[TripPage]` detail path above both split columns. `HomeDestination` identifies a trip or a Home shortcut to its checklist, menu, or memories. The sidebar rows are actionable buttons with selection tags, so reselecting the trip clears its detail path even if the row is already selected. The detail stack always starts at `TripDetailView`; `TripPage` values push checklists, menu, memories, and documents above it, providing native back navigation. Sidebar selection reflects the first detail page, and checklist phase changes update that path. Only changing trips changes the stack identity, so the path survives layout changes. Native navigation collapses at compact width and expands when space allows. The detail shows the valid pick or featured trip (`displayedTrip(selected:asOf:)` in `CampCore`).
+
+`TripPageLink` uses Home's value path only inside that workspace. Trip history retains its existing view-based links through Profile, history, and trip subpages: pushing a new value above those view destinations would pop them under SwiftUI's navigation rules.
 
 `HomeWorkspace` also owns one `LocalWeather` instance, its refresh lifecycle, and the location-permission alert. `CurrentWeatherBadge` renders that shared model without creating a session of its own. Expanded layouts attach both weather and the global Assistant to detail content so their items can use the system vertical bar; compact Home retains the actions in its own bar until navigation opens a detail. Weather’s custom item opts into `.verticalPreferred` on supported iOS SDKs, with a horizontal fallback on Catalyst and iOS 27.0. Its read-only text always includes °F or °C; denied location shows a crossed-out recovery action instead. The item hides its shared toolbar background, and Home’s list keeps attribution and the retrieval time.
 
@@ -228,7 +185,7 @@ Rig and trip validation is shared through `RigDetails` and `TripDetails` protoco
 
 Deleting a trip cascades to its steps, photos, note revisions, and menu (meals, dishes, and recipe items). Documents are retained as unattached.
 
-A trip's menu is its `TripMeal`s, keyed by a day offset from arrival so date edits keep meals on the same trip day. `TripMenuFacts` (in `CampCore`) is the Assistant's bounded, JSON-quoted snapshot of the menu, built from the library by `Trip.menuFacts(asOf:)` and returned by `get_trip` with a menu focus; see Assistant tools. `CampCore` also defines the meal kinds, the menu's days (`menuDays`, arrival through departure in the planning time zone, capped at 60), and the dish, item, and meal drafts. `Trip+Menu.swift` groups standard meals by day and kind, so duplicates created on two devices read as one, and keeps meals outside the trip's dates until they're moved or removed. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
+A trip's menu is its `TripMeal`s, keyed by a day offset from arrival so date edits keep meals on the same trip day. `TripMenuFacts` (in `CampCore`) is the Assistant's complete, JSON-quoted snapshot of the menu, built from the library by `Trip.menuFacts(asOf:)` and returned by `get_trip` with a menu focus; see Assistant tools. `CampCore` also defines the meal kinds, the menu's days (`menuDays`, arrival through departure in the planning time zone, capped at 60), and the dish, item, and meal drafts. `Trip+Menu.swift` groups standard meals by day and kind, so duplicates created on two devices read as one, and keeps meals outside the trip's dates until they're moved or removed. A rig can be deleted only when unused by trips. See [feature behavior](features.md) and [erasing data](erase-data.md).
 
 ## Feature services and network boundaries
 

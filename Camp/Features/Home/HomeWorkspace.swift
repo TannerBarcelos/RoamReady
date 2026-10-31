@@ -10,9 +10,10 @@ enum HomeDestination: Hashable {
     case trip(PersistentIdentifier)
     case checklist(PersistentIdentifier, ChecklistPhase)
     case menu(PersistentIdentifier)
+    case memories(PersistentIdentifier)
 
     var tripID: PersistentIdentifier {
-        switch self { case .trip(let id), .checklist(let id, _), .menu(let id): id }
+        switch self { case .trip(let id), .checklist(let id, _), .menu(let id), .memories(let id): id }
     }
 }
 
@@ -26,7 +27,8 @@ struct HomeWorkspace: View {
     @Environment(\.openURL) private var openURL
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     @State private var now = Date()
-    @State private var selection: HomeDestination?
+    @State private var selectedTripID: PersistentIdentifier?
+    @State private var detailPath: [TripPage] = []
     @State private var compactColumn = NavigationSplitViewColumn.sidebar
     @State private var weather = LocalWeather()
     @State private var showingWeatherPermissionHelp = false
@@ -83,7 +85,10 @@ struct HomeWorkspace: View {
         #endif
         // A deleted trip takes its pick with it, so the detail falls back to the featured trip.
         .onChange(of: trips.map(\.persistentModelID)) { _, ids in
-            if let id = selection?.tripID, !ids.contains(id) { selection = nil }
+            if let id = selectedTripID, !ids.contains(id) {
+                selectedTripID = nil
+                detailPath = []
+            }
         }
         .task(id: scenePhase) {
             guard scenePhase == .active else { return }
@@ -131,57 +136,58 @@ struct HomeWorkspace: View {
         if permissions.locationAllowed && connectivity.isOnline { await weather.refresh() }
     }
 
-    private enum DetailScreen: Hashable { case trip, checklist, menu }
-
-    private struct DetailIdentity: Hashable {
-        let trip: PersistentIdentifier
-        let screen: DetailScreen
-    }
-
     /// The pick, while its trip is still in the library.
-    private var validSelection: HomeDestination? {
-        selection.flatMap { pick in trips.contains { $0.persistentModelID == pick.tripID } ? pick : nil }
+    private var validTripID: PersistentIdentifier? {
+        selectedTripID.flatMap { id in trips.contains { $0.persistentModelID == id } ? id : nil }
     }
 
-    private var shownTrip: Trip? { trips.displayedTrip(selected: validSelection?.tripID, asOf: now) }
+    private var shownTrip: Trip? { trips.displayedTrip(selected: validTripID, asOf: now) }
 
     private var shownChecklist: ChecklistPhase? {
-        if case .checklist(_, let phase)? = validSelection { phase } else { nil }
+        if case .checklist(let phase)? = detailPath.first { phase } else { nil }
     }
 
     private var showsMenu: Bool {
-        if case .menu? = validSelection { true } else { false }
+        detailPath.first == .menu
     }
-
-    private var detailScreen: DetailScreen { shownChecklist != nil ? .checklist : showsMenu ? .menu : .trip }
 
     /// Side by side, the featured trip is highlighted until the owner picks another. Collapsed,
     /// only a pick counts, so Home stays in front until a trip is tapped.
     private var listSelection: Binding<HomeDestination?> {
         Binding(get: {
-            horizontalSizeClass == .compact ? validSelection
-                : validSelection ?? shownTrip.map { .trip($0.persistentModelID) }
-        }, set: { selection = $0 })
+            guard let trip = shownTrip, horizontalSizeClass != .compact || validTripID != nil else { return nil }
+            let id = trip.persistentModelID
+            switch detailPath.first {
+            case .checklist(let phase): return .checklist(id, phase)
+            case .menu: return .menu(id)
+            case .memories: return .memories(id)
+            default: return .trip(id)
+            }
+        }, set: { destination in
+            selectedTripID = destination?.tripID
+            switch destination {
+            case .checklist(_, let phase): detailPath = [.checklist(phase)]
+            case .menu: detailPath = [.menu]
+            case .memories: detailPath = [.memories]
+            default: detailPath = []
+            }
+            if destination != nil { compactColumn = .detail }
+        })
     }
 
     @ViewBuilder private var detail: some View {
         if let trip = shownTrip {
-            // A new trip, or switching between its details, checklist, and menu, starts a fresh stack;
-            // switching the checklist's phase keeps it, along with anything pushed on top.
-            NavigationStack {
-                Group {
-                    if let phase = shownChecklist {
-                        ChecklistView(trip: trip, initialPhase: phase) { selection = .checklist(trip.persistentModelID, $0) }
-                    } else if showsMenu {
-                        TripMenuView(trip: trip)
-                    } else {
-                        TripDetailView(trip: trip)
-                    }
+            // Every shortcut pushes above the trip root, so native Back always returns to its details.
+            NavigationStack(path: $detailPath) {
+                TripDetailView(trip: trip) { phase in
+                    guard case .checklist? = detailPath.first else { return }
+                    detailPath[0] = .checklist(phase)
                 }
-                .assistantToolbarItem()
-                .toolbar { weatherToolbar }
             }
-            .id(DetailIdentity(trip: trip.persistentModelID, screen: detailScreen))
+            .assistantToolbarItem()
+            .toolbar { weatherToolbar }
+            .environment(\.usesTripPagePath, true)
+            .id(trip.persistentModelID)
         } else {
             NavigationStack {
                 ContentUnavailableView("No trip to show", systemImage: "tent",

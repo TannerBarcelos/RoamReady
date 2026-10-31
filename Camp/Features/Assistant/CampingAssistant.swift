@@ -153,7 +153,7 @@ enum CampingAssistant {
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
         var answersSavedTrip = false
-        /// Calls the menu tool for dinner and answers with its first dish, the way a model using the tool would.
+        /// Reads the menu resource and answers with its first dish, the way a model using the tool would.
         var answersMenu = false
         var answersSelectedStep = false
         /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
@@ -166,7 +166,7 @@ enum CampingAssistant {
         func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
             if answersMenu {
                 CampingAssistant.uiTestCalls += 1
-                let output = tools?.output(for: CampingToolCall(focus: .menu, meal: .dinner)) ?? ""
+                let output = tools?.output(for: CampingToolCall(focus: .menu)) ?? ""
                 guard instructions.contains(CampingToolKind.trip.name),
                       let dish = output.split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
                     return CampingSessionReply(text: "Missing saved menu tool.")

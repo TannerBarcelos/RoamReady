@@ -52,7 +52,7 @@ final class AppleCampingChatSession: CampingChatSession {
         guard case .available = model.availability else { throw CampingChatFailure.notReady }
         guard model.supportsLocale() else { throw CampingChatFailure.unsupportedLanguage }
         try Task.checkCancellation()
-        context.set(instructions: instructions, kept: Set(history.map(\.id)), toolTurn: toolTurn)
+        context.set(instructions: instructions, kept: Set(history.map(\.id)), toolTurn: toolTurn, history: history)
         do {
             // No cancellation check after this: a finished turn is in the transcript, and `CampingChat` stores
             // or drops it.
@@ -60,9 +60,11 @@ final class AppleCampingChatSession: CampingChatSession {
             return CampingSessionReply(text: text, toolsUsed: context.toolsUsed)
         } catch is CancellationError {
             throw CancellationError()
-        } catch is LanguageModelSession.ToolCallError {
-            // The tools only read snapshots, so a failure here is the framework's; the transcript is reverted.
-            if Task.isCancelled { throw CancellationError() }
+        } catch let error as LanguageModelSession.ToolCallError {
+            if Task.isCancelled || error.underlyingError is CancellationError { throw CancellationError() }
+            if let failure = error.underlyingError as? CampingChatFailure { throw failure }
+            if let modelError = error.underlyingError as? LanguageModelError,
+               case .contextSizeExceeded = modelError { throw CampingChatFailure.contextTooLong }
             throw CampingChatFailure.failed
         } catch let error as LanguageModelError {
             if Task.isCancelled { throw CancellationError() }
@@ -84,7 +86,7 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 
     /// Swaps the raw prompt (with its excerpts), the turn's tool calls and results, and the response just added for
-    /// the turn's stored form, so results never carry into later turns: each answer looks up fresh data.
+    /// the turn's stored form. Follow-ups keep the conversation; saved facts can be looked up fresh when needed.
     func store(_ turn: CampingChatTurn) {
         var history = session.properties.history
         guard let prompt = history.lastIndex(where: \.isPrompt) else { return }
@@ -109,37 +111,65 @@ private final class TurnContext: Sendable {
         var instructions = ""
         var kept: Set<String> = []
         var toolTurn: CampingToolTurn?
-        var allowance = CampingToolAllowance(tokens: 0)
         var toolsUsed: Set<CampingToolKind> = []
     }
     private let state = Mutex(State())
+    let results: AppleToolResults
+
+    @MainActor init() { results = AppleToolResults() }
 
     var instructions: String { state.withLock { $0.instructions } }
     var kept: Set<String> { state.withLock { $0.kept } }
     var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
     var offersTrip: Bool { state.withLock { $0.toolTurn != nil } }
 
-    /// With a trip selected, the model must call `get_trip` before it may answer. Required stops once a call is
-    /// made (Apple: a required mode needs an exit condition, or the model keeps calling).
-    var callingMode: GenerationOptions.ToolCallingMode {
-        state.withLock { $0.toolTurn != nil && $0.toolsUsed.isEmpty ? .required : .allowed }
-    }
-
-    func set(instructions: String, kept: Set<String>, toolTurn: CampingToolTurn?) {
+    @MainActor func set(instructions: String, kept: Set<String>, toolTurn: CampingToolTurn?, history: [CampingChatTurn]) {
         state.withLock {
-            $0 = State(instructions: instructions, kept: kept, toolTurn: toolTurn,
-                       allowance: toolTurn?.allowance ?? CampingToolAllowance(tokens: 0))
+            $0 = State(instructions: instructions, kept: kept, toolTurn: toolTurn)
         }
+        let previous = history.last.map { "Previous exchange (for follow-up references only):\nCamper: \($0.question)\nAssistant: \($0.answer)\n" } ?? ""
+        results.reset(question: previous + "Current question: " + (toolTurn?.question ?? ""), tokens: toolTurn?.availableTokens ?? 0)
     }
 
-    /// Answers a call from the turn's snapshots within what the allowance has left, and records it.
+    /// Returns the complete resource snapshot; the shared orchestration layer manages its context cost.
     func call(_ call: CampingToolCall) -> String {
         state.withLock { state in
             let tools = state.toolTurn?.tools
-            let output = tools?.output(for: call, allowance: &state.allowance) ?? "No trip is selected."
+            let output = tools?.output(for: call) ?? "No trip is selected."
             state.toolsUsed.insert(call.kind)
             return output
         }
+    }
+}
+
+/// Shared by all resource calls in a request. Serializes preparation even if the framework invokes tools
+/// concurrently, so their combined outputs stay within the same token allowance.
+@available(iOS 27.0, macOS 27.0, *)
+@MainActor
+private final class AppleToolResults {
+    private var question = ""
+    private var tokens = 0
+    private var busy = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func reset(question: String, tokens: Int) { self.question = question; self.tokens = tokens }
+
+    func prepare(_ output: String) async throws -> String {
+        if busy { await withCheckedContinuation { waiters.append($0) } }
+        busy = true
+        defer {
+            if waiters.isEmpty { busy = false } else { waiters.removeFirst().resume() }
+        }
+        try Task.checkCancellation()
+        let counter = AppleTokenCounter()
+        let result = try await ToolResultCompaction.fit(output, question: question, tokenLimit: tokens - 40,
+                                                       counter: counter) { prompt, outputTokens in
+            let worker = LanguageModelSession(model: SystemLanguageModel.default, instructions: ToolResultCompaction.instructions)
+            return try await worker.respond(to: prompt, options: GenerationOptions(maximumResponseTokens: outputTokens)).content
+        }
+        let cost = (try? await counter.tokenCount(of: result)) ?? ConservativeTokenEstimator.estimate(result)
+        tokens -= cost + 40
+        return result
     }
 }
 
@@ -177,44 +207,14 @@ private struct TripTool: Tool {
     }
 
     @Generable
-    enum Meal {
-        case breakfast, lunch, dinner, snack, other
-
-        var kind: MealKind {
-            switch self {
-            case .breakfast: .breakfast
-            case .lunch: .lunch
-            case .dinner: .dinner
-            case .snack: .snack
-            case .other: .other
-            }
-        }
-    }
-
-    @Generable
-    enum Phase {
-        case setup, teardown
-
-        var phase: ChecklistPhase { self == .setup ? .setup : .teardown }
-    }
-
-    @Generable
     struct Arguments {
-        @Guide(description: "What to fetch.")
+        @Guide(description: "Saved resource to read: overview, booking, checklist, menu, or everything.")
         var focus: Focus
-        @Guide(description: "Menu: trip day number. Omit for every day.")
-        var day: Int?
-        @Guide(description: "Menu: omit for every meal.")
-        var meal: Meal?
-        @Guide(description: "Checklist: one phase. Omit for both.")
-        var checklist: Phase?
-        @Guide(description: "Checklist: true for only steps not done yet.")
-        var remainingOnly: Bool?
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.call(CampingToolCall(focus: arguments.focus.focus, day: arguments.day, meal: arguments.meal?.kind,
-                                     phase: arguments.checklist?.phase, remainingOnly: arguments.remainingOnly ?? false))
+        let output = context.call(CampingToolCall(focus: arguments.focus.focus))
+        return try await context.results.prepare(output)
     }
 }
 
@@ -226,7 +226,8 @@ private struct ChatProfile: LanguageModelSession.DynamicProfile {
             .historyTransform { [context] entries in
                 CampingChatHistory.sent(entries, keeping: context.kept, kind: \.chatKind)
             }
-            .toolCallingMode(context.callingMode)
+            // Apple's default: the model decides whether a tool is needed, including on follow-ups.
+            .toolCallingMode(.allowed)
             .transcriptErrorHandlingPolicy(.revertTranscript)
             .maximumResponseTokens(PromptBudget.outputTokens)
     }

@@ -26,8 +26,8 @@ public protocol CampingChatSession: AnyObject {
     /// `history` is the stored turns this request may send, oldest first; every other stored turn stays out.
     /// A failed or cancelled request leaves the transcript as it was.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String
-    /// Answers one turn with `toolTurn`'s tool available to the model, which must call it at least once before
-    /// answering; the allowance bounds what results may add. Nil offers no tool. A turn's tool calls and results
+    /// Answers one turn with `toolTurn`'s tool available for the model to use when needed;
+    /// the session manages result context and compaction. Nil offers no tool. A turn's tool calls and results
     /// are part of it until `store(_:)` replaces it with its stored form, so they never carry into later turns.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
                  toolTurn: CampingToolTurn?) async throws -> CampingSessionReply
@@ -232,7 +232,7 @@ public final class CampingChat {
         request.conversationSummary = request.isTripOverview ? nil : summary(before: turnID)
         let budget = PromptBudget(contextSize: counter.contextSize)
         var plan = try await request.plan(.full, counter: counter, budget: budget)
-        // Room for one tool result comes out of what earlier turns may use, never out of this turn's context.
+        // Leave working space for tool results when selecting earlier turns.
         let toolReserve = request.tools?.outputReserveTokens ?? 0
         var history = request.isTripOverview ? [] : CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total - toolReserve, cost: cost)
         let sessionReply: CampingSessionReply
@@ -296,13 +296,12 @@ public final class CampingChat {
         session?.remove(turnID)
     }
 
-    /// The request's tool with the room its results may take: whatever the prompt and the sent history leave.
-    /// It's at least one focused result, since the history window kept that free.
+    /// The request's tool with the room its results may take before the session needs compaction.
     private func toolTurn(_ request: CampingHelpRequest, _ plan: PromptPlan, _ history: [CampingChatTurn],
                           _ budget: PromptBudget) -> CampingToolTurn? {
         guard let tools = request.tools else { return nil }
         let sent = history.reduce(0) { $0 + cost($1) }
-        return CampingToolTurn(tools: tools, allowance: CampingToolAllowance(tokens: budget.inputLimit - plan.usage.total - sent))
+        return CampingToolTurn(tools: tools, question: request.question, availableTokens: budget.inputLimit - plan.usage.total - sent)
     }
 
     /// The summary a request may carry: none when asking again as of a turn no longer stored, since the summary

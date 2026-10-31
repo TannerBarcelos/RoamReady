@@ -21,8 +21,69 @@ final class DuoHomeUITests: XCTestCase {
     /// Back to Home when the split view is collapsed; side by side Home never left.
     private func showHome(_ app: XCUIApplication) {
         // The Duo cover display moves bar buttons into a side rail, outside the navigation bar.
-        if !app.staticTexts["Hello, Riley"].isHittable { app.buttons["BackButton"].firstMatch.tap() }
-        XCTAssertTrue(app.staticTexts["Hello, Riley"].waitForExistence(timeout: 5))
+        if app.windows.firstMatch.horizontalSizeClass == .compact {
+            for _ in 0..<3 where !app.navigationBars["Home"].isHittable {
+                app.buttons["BackButton"].firstMatch.tap()
+            }
+        }
+        let home = app.descendants(matching: .any)["homeTripList"].firstMatch
+        for _ in 0..<4 where !app.staticTexts["Hello, Riley"].isHittable { home.swipeDown() }
+        XCTAssertTrue(app.staticTexts["Hello, Riley"].isHittable)
+    }
+
+    func testEveryHomeTripShortcutHasBackNavigationToTripDetails() {
+        let app = launch()
+        for (shortcut, title) in [("homeMenu", "Menu"), ("homeChecklist-setup", "Setup"),
+                                  ("homeChecklist-teardown", "Teardown"), ("homeMemories", "Photos & site notes")] {
+            let button = app.buttons[shortcut]
+            let home = app.descendants(matching: .any)["homeTripList"].firstMatch
+            for _ in 0..<6 where !button.isHittable { home.swipeUp() }
+            XCTAssertTrue(button.isHittable)
+            button.tap()
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            let back = app.buttons["BackButton"].firstMatch
+            XCTAssertTrue(back.waitForExistence(timeout: 5), "\(title) needs a native back button")
+            back.tap()
+            XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5),
+                          "Back from \(title) returns to trip details")
+            XCTAssertTrue(app.buttons["tripChecklist-setup"].exists)
+            showHome(app)
+        }
+    }
+
+    func testSelectedTripRowAlwaysReturnsFromItsPagesAndNestedPhotos() throws {
+        let app = launch()
+        guard app.windows.firstMatch.horizontalSizeClass == .regular else {
+            throw XCTSkip("Reselecting a trip alongside its detail requires an expanded window")
+        }
+        let trip = app.buttons["tripRow-Current Pines"]
+        trip.tap()
+        for (identifier, title) in [("tripMemories", "Photos & site notes"), ("tripDocuments", "Confirmation & documents"), ("tripMenu", "Menu"),
+                                   ("tripChecklist-setup", "Setup"), ("tripChecklist-teardown", "Teardown")] {
+            let page = app.buttons[identifier]
+            let details = app.descendants(matching: .any)["tripDetailsList"].firstMatch
+            for _ in 0..<5 where !app.buttons["tripChecklist-setup"].isHittable { details.swipeDown() }
+            for _ in 0..<8 where !page.isHittable { details.swipeUp() }
+            XCTAssertTrue(page.isHittable)
+            page.tap()
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            if identifier == "tripMemories" {
+                app.buttons["Earlier note versions"].tap()
+                XCTAssertTrue(app.navigationBars["Note history"].waitForExistence(timeout: 5))
+            } else if identifier == "tripMenu" {
+                let dinner = app.buttons["menuMeal-1-dinner"]
+                let menu = app.descendants(matching: .any)["tripMenuList"].firstMatch
+                for _ in 0..<6 where !dinner.isHittable { menu.swipeUp() }
+                dinner.tap()
+                XCTAssertTrue(app.navigationBars["Dinner"].waitForExistence(timeout: 5))
+            }
+            XCTAssertTrue(trip.isEnabled && trip.isHittable)
+            trip.tap()
+            XCTAssertTrue(app.navigationBars["Current Pines"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.navigationBars[title].exists)
+            XCTAssertFalse(app.navigationBars["Note history"].exists)
+            XCTAssertFalse(app.navigationBars["Dinner"].exists)
+        }
     }
 
     func testCurrentTripIsSelectedAndPickingAnotherReplacesIt() {

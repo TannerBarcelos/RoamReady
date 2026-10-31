@@ -21,6 +21,8 @@ private final class ToolGenerator: CampingResponseGenerating {
 @MainActor
 private final class ToolTurnModel: CampingChatModel {
     var turns: [CampingToolTurn?] = []
+    var histories: [[CampingChatTurn]] = []
+    var replies: [CampingSessionReply] = []
 
     func makeSession(history: [CampingChatTurn]) -> any CampingChatSession { Session(model: self) }
     func summarize(_ turns: [CampingChatTurn], into summary: String?) async throws -> String { "summary" }
@@ -32,7 +34,8 @@ private final class ToolTurnModel: CampingChatModel {
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
                      toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
             model.turns.append(toolTurn)
-            return CampingSessionReply(text: "answer")
+            model.histories.append(history)
+            return model.replies.isEmpty ? CampingSessionReply(text: "answer") : model.replies.removeFirst()
         }
         func store(_ turn: CampingChatTurn) {}
         func remove(_ turnID: CampingChatTurn.ID) {}
@@ -72,7 +75,7 @@ struct CampingToolsTests {
         let turn = request("What am I making tonight?", tools: tools)
         #expect(turn.tools == tools)
         #expect(turn.instructions.contains(CampingToolKind.trip.name))
-        #expect(turn.instructions.contains("you must call it at least once"))
+        #expect(!turn.instructions.contains("you must call it at least once"))
         #expect(turn.instructions.contains("BEGIN SAVED RIG PROFILE"), "The rig is rebuilt into the instructions every turn")
         #expect(turn.instructions.contains("Manufacturer: \"Forest River\""))
         #expect(!turn.prompt.contains(TripBookingFacts.beginMarker), "Trip data arrives only through get_trip")
@@ -112,32 +115,16 @@ struct CampingToolsTests {
         #expect(booking.contains("Site notes: \"Shady pad near the creek\""))
         #expect(!booking.contains("Chili"))
 
-        let checklist = tools.output(for: CampingToolCall(focus: .checklist, phase: .setup, remainingOnly: true))
+        let checklist = tools.output(for: CampingToolCall(focus: .checklist))
         #expect(checklist.contains("Setup: 1 of 2 finished."))
         #expect(checklist.contains("- [to do] \"Level the trailer\" priority: high notes: \"Use blocks\""))
-        #expect(!checklist.contains("Chock wheels") && !checklist.contains("Teardown"))
+        #expect(checklist.contains("Chock wheels") && checklist.contains("Teardown"))
 
-        let dinner = tools.output(for: CampingToolCall(focus: .menu, day: 1, meal: .dinner))
+        let dinner = tools.output(for: CampingToolCall(focus: .menu))
         #expect(dinner.contains("\"Chili\"") && dinner.contains("\"Beans\", amount: \"2 cans\""))
-        #expect(tools.output(for: CampingToolCall(focus: .menu, day: 1, meal: .lunch)).contains("Nothing is planned for lunch on day 1."))
 
         let everything = tools.output(for: CampingToolCall(focus: .everything))
         for part in ["Booked through", "Setup: 1 of 2 finished.", "\"Chili\""] { #expect(everything.contains(part), "\(part)") }
-    }
-
-    @Test func theAllowanceSizesEachResultAndThenSaysTheRoomIsUsedUp() {
-        var roomy = CampingToolAllowance(tokens: 2000)
-        let full = tools.output(for: CampingToolCall(focus: .everything), allowance: &roomy)
-        #expect(full == tools.output(for: CampingToolCall(focus: .everything), limit: CampingTools.everythingCharacters))
-        #expect(roomy.characters == 6000 - full.count - CampingToolAllowance.callOverheadCharacters)
-
-        var tight = CampingToolAllowance(tokens: 200)
-        let first = tools.output(for: CampingToolCall(focus: .overview), allowance: &tight)
-        #expect(first.contains("Pinecrest Lake"), "A small allowance still returns the core facts")
-        #expect(tools.output(for: CampingToolCall(focus: .everything), allowance: &tight) == CampingTools.noRoomOutput)
-
-        var none = CampingToolAllowance(tokens: 0)
-        #expect(tools.output(for: CampingToolCall(focus: .menu), allowance: &none) == CampingTools.noRoomOutput)
     }
 
     @Test func theChatGivesTheToolTheRoomThePromptAndHistoryLeave() async throws {
@@ -148,8 +135,9 @@ struct CampingToolsTests {
         let plan = try await turn.plan(.full, counter: ConservativeTokenEstimator(), budget: PromptBudget())
         let offered = try #require(model.turns.first ?? nil)
         #expect(offered.tools == tools)
-        #expect(offered.allowance == CampingToolAllowance(tokens: PromptBudget().inputLimit - plan.usage.total))
-        #expect(offered.allowance.characters >= CampingTools.outputCharacters, "At least one focused result always fits")
+        #expect(offered.availableTokens == PromptBudget().inputLimit - plan.usage.total)
+        #expect(offered.question == "What's for dinner?")
+        #expect(offered.availableTokens >= tools.outputReserveTokens)
 
         _ = try await chat.answer(request("Will 30 amp run my AC?", tools: nil))
         #expect(model.turns.last == .some(nil), "No trip, no tool")
@@ -163,6 +151,17 @@ struct CampingToolsTests {
         #expect(offered.usage.total <= PromptBudget().inputLimit)
     }
 
+    @Test func resourceRetrievalDoesNotTruncateLongBookingNotesOrChecklists() {
+        let notes = String(repeating: "Booking details ", count: 300) + "Booking ending."
+        let steps = (1...50).map { ChecklistStepDraft(title: "Step \($0)", notes: String(repeating: "Follow this detail. ", count: 15) + "Step ending.") }
+        let complete = CampingTools(trip: TripToolFacts(trip, notes: notes, checklist: TripChecklistFacts(setup: steps, teardown: steps)),
+                                    menu: tools.menu)
+        let output = complete.output(for: CampingToolCall(focus: .everything))
+        #expect(output.contains("Booking ending."))
+        #expect(output.components(separatedBy: "Step ending.").count - 1 == 100)
+        #expect(output.contains("Chili") && output.contains("Beans"))
+    }
+
     @Test func aTripLookupMakesTheSavedTripASource() async throws {
         let generator = ToolGenerator()
         generator.calls = CampingToolCall(focus: .menu)
@@ -172,5 +171,25 @@ struct CampingToolsTests {
 
         let plain = try await CampingGeneration.answer(to: request("How do I level the trailer?", tools: tools), using: ToolGenerator())
         #expect(!plain.usedSavedTrip, "No call, no saved-trip source")
+    }
+
+    /// Verifies the chat plumbing accepts a model's choice to answer directly after a lookup.
+    /// Actual tool selection and cooking-answer quality still need an on-device model evaluation.
+    @Test func cookingFollowUpKeepsContextAndAllowsNoLookup() async throws {
+        let model = ToolTurnModel()
+        model.replies = [CampingSessionReply(text: "Dinner is NY strip steak.", toolsUsed: [.trip]),
+                         CampingSessionReply(text: "Pat the steak dry, season it, and sear it in a hot skillet.")]
+        let chat = CampingChat(model: model)
+        let menu = try await chat.answer(request("What are we eating on this trip?", tools: tools))
+        let cooking = try await chat.answer(request("How should I cook the steak? What's the best way?", tools: tools))
+
+        #expect(menu.usedSavedTrip)
+        #expect(!cooking.usedSavedTrip, "A direct answer has no saved-trip source")
+        #expect(model.turns.count == 2 && model.turns.allSatisfy { $0?.tools == tools },
+                "The tool stays available; the app does not classify or hide it for the follow-up")
+        let history = try #require(model.histories.last)
+        #expect(history.count == 1 && history.first?.answer == menu.text,
+                "The model can resolve the steak from the previous answer")
+        #expect(chat.turns.last?.answer == cooking.text)
     }
 }

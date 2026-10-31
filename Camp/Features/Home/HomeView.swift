@@ -22,6 +22,7 @@ struct HomeView: View {
 
     var body: some View {
         List(selection: selection) { sections }
+        .accessibilityIdentifier("homeTripList")
         .listSectionSpacing(.compact)
         .navigationTitle("Home")
     }
@@ -51,7 +52,7 @@ struct HomeView: View {
                     .accessibilityIdentifier("homeChecklist-\(phase.rawValue)")
                 }
                 menuLink(trip)
-                NavigationLink { MemoriesView(trip: trip) } label: { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
+                destinationButton(.memories(trip.persistentModelID)) { Label("Photos & site notes", systemImage: "photo.on.rectangle") }
                     .accessibilityIdentifier("homeMemories")
             } header: { Text("Current trip") }
         } else if let next = upcomingTrips.first, let days = next.daysUntilArrival(asOf: now) {
@@ -102,16 +103,32 @@ struct HomeView: View {
     }
 
     private func tripLink<Label: View>(_ trip: Trip, @ViewBuilder label: () -> Label) -> some View {
-        NavigationLink(value: HomeDestination.trip(trip.persistentModelID), label: label)
+        destinationButton(.trip(trip.persistentModelID), label: label)
     }
 
     private func menuLink(_ trip: Trip) -> some View {
-        NavigationLink(value: HomeDestination.menu(trip.persistentModelID)) { MenuEntryLabel(summary: trip.menuSummary) }
+        destinationButton(.menu(trip.persistentModelID)) { MenuEntryLabel(summary: trip.menuSummary) }
             .accessibilityIdentifier("homeMenu")
     }
 
     private func checklistLink<Label: View>(_ trip: Trip, _ phase: ChecklistPhase,
                                            @ViewBuilder label: () -> Label) -> some View {
-        NavigationLink(value: HomeDestination.checklist(trip.persistentModelID, phase), label: label)
+        destinationButton(.checklist(trip.persistentModelID, phase), label: label)
+    }
+
+    /// A selected row must still perform its action, including clearing the trip's pushed pages.
+    private func destinationButton<Label: View>(_ destination: HomeDestination, @ViewBuilder label: () -> Label) -> some View {
+        Button { selection.wrappedValue = destination } label: {
+            HStack {
+                label()
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .buttonStyle(.plain)
+        .tag(destination)
     }
 }

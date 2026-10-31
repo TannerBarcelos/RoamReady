@@ -27,6 +27,8 @@ If your build supports iCloud, onboarding and Profile → Settings offer **Sync 
 
 Home shows the earliest-arriving active trip from arrival through the end of departure day in the campground’s time zone. It disappears when its dates end or you mark it complete; other current and upcoming trips stay on Home. Completed trips move to **Profile → Trip history**, newest first. Setup, teardown, the trip's menu, and Photos & site notes open directly from Home.
 
+Use Back from the menu, a checklist, Photos & site notes, or documents to return to the trip's details. When Home is visible beside a trip page, tap the trip's row to return directly to details; the row works even when that trip is already selected.
+
 ## Add and manage a trip
 
 Reserve with the campground or booking provider first. RoamReady keeps the details of that booking.

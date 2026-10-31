@@ -16,8 +16,8 @@ public struct TripBookingFacts: Equatable, Sendable {
     private let site: String
     private let confirmation: String
 
-    public init(_ trip: some TripDetails) {
-        campground = Self.bounded(trip.campgroundName)
+    public init(_ trip: some TripDetails, textLimit: Int? = 100) {
+        campground = Self.bounded(trip.campgroundName, limit: textLimit)
         var planning = Calendar(identifier: .gregorian)
         planning.timeZone = trip.planningTimeZone
         planning.locale = Locale(identifier: "en_US")
@@ -27,8 +27,8 @@ public struct TripBookingFacts: Equatable, Sendable {
         timeZone = trip.campgroundCalendar.timeZone.identifier
         checkIn = trip.checkInMinutes.flatMap(Self.clock)
         checkOut = trip.checkOutMinutes.flatMap(Self.clock)
-        site = Self.bounded(trip.siteNumber)
-        confirmation = Self.bounded(trip.confirmationNumber ?? "")
+        site = Self.bounded(trip.siteNumber, limit: textLimit)
+        confirmation = Self.bounded(trip.confirmationNumber ?? "", limit: textLimit)
     }
 
     /// The labeled facts, one per line. Only facts the owner entered appear; a missing fact is left out, not guessed.
@@ -56,8 +56,9 @@ public struct TripBookingFacts: Equatable, Sendable {
 
     // MARK: Formatting
 
-    private static func bounded(_ value: String) -> String {
-        var text = String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(100))
+    private static func bounded(_ value: String, limit: Int?) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text = limit.map { String(trimmed.prefix(max(0, $0))) } ?? trimmed
         // Owner text must not close or reopen the block.
         for marker in [beginMarker, endMarker] {
             text = text.replacingOccurrences(of: marker, with: "[removed marker]", options: .caseInsensitive)
