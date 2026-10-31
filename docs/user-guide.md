@@ -74,7 +74,7 @@ Memories linked to a Camp Finder campground also appear in that campground's det
 
 ## Discover campgrounds
 
-Use **Camp Finder** while connected. Pan the map to see campgrounds and RV parks, then tap a place; choose **Near me** or **Search this area** for regional results, or submit a campground name, city, park, or ZIP. Near me uses the location permission checked at launch; if access is off, its crossed-out control is disabled and Open Settings lets you change access. Text search works without it.
+Use **Camp Finder** while connected. With location access, the map and list initially show campgrounds within 50 miles of you. Choose **Near me** to return there, **Search** (**Search this area** in wider panes) for the visible map area, or submit a campground name, city, park, or ZIP. Tap a campground for details. Near me uses the location permission checked at launch; if access is off, its crossed-out control is disabled and Open Settings lets you change access. Text search works without it.
 
 Open **Website** or **Call** to arrange a reservation with the operator, then return and choose **Add trip**. Check the prefilled campground time zone and enter the booking/site details yourself. **Directions** opens Apple Maps, and **Photos, ratings & hours** opens Apple's place card. Save places to **Want to go**, **Have been**, or **Favorites**.
 

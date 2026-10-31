@@ -15,6 +15,7 @@ import CampPersistence
 struct CampFinderView: View {
     @Environment(CampFinder.self) private var finder
     @Environment(AppPermissions.self) private var permissions
+    @Environment(Connectivity.self) private var connectivity
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var resultsPath = NavigationPath()
     @State private var search = CampFinderSearch()
@@ -29,6 +30,8 @@ struct CampFinderView: View {
     @State private var opened: CampgroundListing?
     @State private var tapFailure: CampFinderError?
     @State private var locating = false
+    @State private var locationTask: Task<Void, Never>?
+    @State private var locationRequest: UUID?
 
     var body: some View {
         content
@@ -37,8 +40,15 @@ struct CampFinderView: View {
     /// Bars belong to the results column so search never extends across the map.
     private func resultsPane(includesMap: Bool) -> some View {
         NavigationStack(path: $resultsPath) {
-            OnlineFeatureGate(feature: "Camp Finder", retry: { search.retry(using: finder) }) {
+            OnlineFeatureGate(feature: "Camp Finder", retry: retryDiscovery) {
                 results(includesMap: includesMap)
+                    .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
+                    .onSubmit(of: .search) {
+                        guard connectivity.isOnline, cleanedSearchText(text) != nil else { return }
+                        cancelLocation()
+                        tapFailure = nil
+                        search.run(.text(text, near: visibleRegion), using: finder)
+                    }
             }
             .navigationTitle("Camp Finder")
             .assistantToolbarItem()
@@ -47,15 +57,18 @@ struct CampFinderView: View {
                     NavigationLink { SavedCampgroundsView() } label: { Label("Your campgrounds", systemImage: "bookmark") }
                 }
             }
-            .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: "Campground, city, park, or ZIP code")
-            .onSubmit(of: .search) {
-                guard cleanedSearchText(text) != nil else { return }
-                search.run(.text(text, near: visibleRegion), using: finder)
-            }
         }
     }
 
     private var separatesMapAndResults: Bool { horizontalSizeClass == .regular }
+
+    private var showsUserLocation: Bool {
+        #if DEBUG
+        // Deterministic discovery tests use a synthetic fix instead of the simulator's privacy database.
+        if ProcessInfo.processInfo.arguments.contains("-camp-finder-ui-test") { return false }
+        #endif
+        return permissions.locationAllowed
+    }
 
     private var content: some View {
         // Presentation and search lifecycle stay above the adaptive panes so resizing preserves state.
@@ -67,9 +80,16 @@ struct CampFinderView: View {
         .onChange(of: tapped) { _, feature in
             guard let feature else { return }
             tapped = nil
+            guard connectivity.isOnline else { return }
             Task {
-                do { opened = try await finder.listing(for: feature); tapFailure = nil }
-                catch { tapFailure = error as? CampFinderError ?? .failed }
+                do {
+                    let listing = try await finder.listing(for: feature)
+                    guard connectivity.isOnline else { return }
+                    opened = listing; tapFailure = nil
+                } catch {
+                    guard connectivity.isOnline else { return }
+                    tapFailure = error as? CampFinderError ?? .failed
+                }
             }
         }
         .onChange(of: search.results.map(\.id)) { _, _ in fitResults() }
@@ -77,13 +97,16 @@ struct CampFinderView: View {
             // The map is rebuilt in its new place; open it where the person left it.
             if let lastCamera, !camera.followsUserLocation { camera = .camera(lastCamera) }
         }
-        .task {
-            // Searches nearby on its own only when permission was already given; never prompts on open.
-            if search.phase == .idle, permissions.locationAllowed {
+        .task(id: [connectivity.isOnline, permissions.locationAllowed]) {
+            guard connectivity.isOnline else { cancelDiscovery(); return }
+            if let lastCamera, !camera.followsUserLocation { camera = .camera(lastCamera) }
+            if search.wasInterrupted {
+                search.retry(using: finder)
+            } else if search.current == nil, permissions.locationAllowed {
                 searchNearMe()
             }
         }
-        .onDisappear { search.cancel() }
+        .onDisappear { cancelDiscovery() }
     }
 
     @ViewBuilder private var adaptiveResults: some View {
@@ -124,14 +147,11 @@ struct CampFinderView: View {
             Section {
                 if includesMap { listMap }
                 ViewThatFits(in: .horizontal) {
-                    HStack {
-                        nearMeButton
-                        Spacer()
-                        searchAreaButton
-                    }
+                    searchButtons(compact: false)
+                    searchButtons(compact: true)
                     VStack(alignment: .leading, spacing: 12) {
                         nearMeButton
-                        searchAreaButton
+                        searchAreaButton(compact: true)
                     }
                 }
                 if permissions.locationDenied {
@@ -141,13 +161,14 @@ struct CampFinderView: View {
                 }
                 if let tapFailure { Text(tapFailure.message).font(.footnote).foregroundStyle(.secondary) }
             } footer: {
-                Text("Tap a campground on the map, or search, to see its details.")
+                Text("Near me: 50-mile radius. Search: visible map area.")
+                    .accessibilityIdentifier("campFinderSearchHelp")
             }
             status
             if !search.results.isEmpty {
                 Section {
                     ForEach(search.results) { listing in
-                        Button { opened = listing } label: { CampgroundRow(listing: listing) }
+                        Button { showDetails(for: listing) } label: { CampgroundRow(listing: listing) }
                             .foregroundStyle(.primary)
                             .accessibilityIdentifier("campgroundResult")
                     }
@@ -165,21 +186,53 @@ struct CampFinderView: View {
         Button { searchNearMe() } label: {
             Label("Near me", systemImage: permissions.locationDenied ? "location.slash" : "location.fill")
         }
-        .buttonStyle(.bordered).disabled(locating || permissions.locationDenied)
+        .buttonStyle(.bordered).disabled(!connectivity.isOnline || locating || permissions.locationDenied)
+        .accessibilityIdentifier("campFinderNearMe")
     }
 
-    private var searchAreaButton: some View {
-        Button { searchVisibleArea() } label: { Label("Search this area", systemImage: "arrow.clockwise") }
-            .buttonStyle(.bordered).disabled(visibleRegion == nil)
+    private func searchButtons(compact: Bool) -> some View {
+        HStack {
+            nearMeButton.fixedSize(horizontal: true, vertical: false)
+            Spacer(minLength: 8)
+            searchAreaButton(compact: compact).fixedSize(horizontal: true, vertical: false)
+        }
     }
 
-    private var map: some View {
+    private func searchAreaButton(compact: Bool) -> some View {
+        Button { searchVisibleArea() } label: {
+            Label(compact ? "Search" : "Search this area", systemImage: "arrow.clockwise").lineLimit(1)
+        }
+        .buttonStyle(.bordered).disabled(!connectivity.isOnline || visibleRegion == nil)
+        .accessibilityIdentifier("campFinderSearchArea")
+        .accessibilityHint("Finds campgrounds in the visible map area")
+    }
+
+    @ViewBuilder private var map: some View {
+        if connectivity.isOnline {
+            interactiveMap
+        } else {
+            ContentUnavailableView("Map unavailable offline", systemImage: "wifi.slash")
+                .accessibilityIdentifier("campFinderOfflineMap")
+        }
+    }
+
+    private var interactiveMap: some View {
         Map(position: $camera, selection: $tapped) {
-            if permissions.locationAllowed { UserAnnotation() }
+            if showsUserLocation { UserAnnotation() }
+            ForEach(search.results) { listing in
+                Annotation(listing.name, coordinate: listing.coordinate) {
+                    Button { showDetails(for: listing) } label: {
+                        RigGlyph(type: listing.kind == .rvPark ? .travelTrailer : .tent)
+                            .padding(10).background(.regularMaterial, in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(listing.name)
+                }
+            }
         }
         .mapStyle(.standard(pointsOfInterest: .including(CampFinder.categories)))
         .mapControls {
-            if permissions.locationAllowed { MapUserLocationButton() }
+            if showsUserLocation { MapUserLocationButton() }
             MapCompass()
             MapScaleView()
         }
@@ -197,7 +250,9 @@ struct CampFinderView: View {
     @ViewBuilder private var status: some View {
         switch search.phase {
         case .idle:
-            EmptyView()
+            if locating {
+                Section { HStack { Spacer(); ProgressView("Finding your location…"); Spacer() } }
+            }
         case .loading:
             Section { HStack { Spacer(); ProgressView("Searching…"); Spacer() } }
         case .failed(let failure):
@@ -208,7 +263,7 @@ struct CampFinderView: View {
                 } description: {
                     Text(failure.message)
                 } actions: {
-                    if failure.canRetry { Button("Try again") { search.retry(using: finder) } }
+                    if failure.canRetry { Button("Try again", action: retryDiscovery) }
                 }
             }
         case .loaded:
@@ -221,20 +276,61 @@ struct CampFinderView: View {
         }
     }
 
+    private func showDetails(for listing: CampgroundListing) {
+        guard connectivity.isOnline else { return }
+        tapFailure = nil
+        opened = listing
+    }
+
     private func searchNearMe() {
+        guard connectivity.isOnline, !permissions.locationDenied, !locating else { return }
+        let request = UUID()
+        locationRequest = request
         locating = true
-        Task {
-            defer { locating = false }
-            guard let here = await location.currentLocation() else { return }
-            let region = MKCoordinateRegion(center: here.coordinate, latitudinalMeters: 40_000, longitudinalMeters: 40_000)
+        tapFailure = nil
+        locationTask = Task {
+            defer {
+                if locationRequest == request { locating = false; locationTask = nil; locationRequest = nil }
+            }
+            guard !Task.isCancelled, locationRequest == request, connectivity.isOnline else { return }
+            let here = await location.currentLocation()
+            guard !Task.isCancelled, locationRequest == request, connectivity.isOnline else { return }
+            guard let here else {
+                if !location.isDenied, !permissions.locationDenied { tapFailure = .locationUnavailable }
+                return
+            }
+            let region = CampFinder.nearbyRegion(around: here.coordinate)
+            visibleRegion = region
             camera = .region(region)
-            search.run(.area(region), using: finder)
+            search.run(.nearby(here.coordinate), using: finder)
         }
     }
 
     private func searchVisibleArea() {
-        guard let visibleRegion else { return }
+        guard connectivity.isOnline, let visibleRegion else { return }
+        cancelLocation()
+        tapFailure = nil
         search.run(.area(visibleRegion), using: finder)
+    }
+
+    private func cancelLocation() {
+        locationTask?.cancel()
+        locationTask = nil
+        locationRequest = nil
+        locating = false
+        location.cancelPendingRequest()
+    }
+
+    private func cancelDiscovery() {
+        cancelLocation()
+        search.cancel()
+    }
+
+    private func retryDiscovery() {
+        guard connectivity.isOnline else { return }
+        tapFailure = nil
+        if search.current != nil { search.retry(using: finder) }
+        else if permissions.locationAllowed { searchNearMe() }
     }
 
     /// Text searches move the map to what they found; area searches keep the person's view.

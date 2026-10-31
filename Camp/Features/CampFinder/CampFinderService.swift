@@ -9,13 +9,14 @@ import Campgrounds
 
 /// Why a Camp Finder search or lookup didn't finish, in terms the app can explain.
 enum CampFinderError: Error, Equatable {
-    case offline, throttled, notFound, failed
+    case offline, throttled, notFound, locationUnavailable, failed
 
     var message: String {
         switch self {
         case .offline: "Camp Finder needs an internet connection."
         case .throttled: "Apple Maps is limiting searches from this device for a moment. Try again shortly."
         case .notFound: "Apple Maps no longer lists this place. Your trips and lists are unchanged."
+        case .locationUnavailable: "Couldn’t get your location. Try Near me again or search by place."
         case .failed: "Apple Maps couldn’t finish the search. Try again."
         }
     }
@@ -43,6 +44,10 @@ enum CampFinderError: Error, Equatable {
 final class CampFinder {
     static let categories: [MKPointOfInterestCategory] = [.campground, .rvPark]
     static var filter: MKPointOfInterestFilter { MKPointOfInterestFilter(including: categories) }
+    static func nearbyRegion(around coordinate: CLLocationCoordinate2D) -> MKCoordinateRegion {
+        MKCoordinateRegion(center: coordinate, latitudinalMeters: NearbyCampgrounds.mapSpanMeters,
+                           longitudinalMeters: NearbyCampgrounds.mapSpanMeters)
+    }
     @ObservationIgnored private var items: [String: MKMapItem] = [:]
     private(set) var listings: [String: CampgroundListing] = [:]
 
@@ -50,6 +55,17 @@ final class CampFinder {
     /// alone lists only a few (none around Hollister, CA; 2 in Yosemite Valley), so category searches kept
     /// inside the region fill in the rest.
     func campgrounds(in region: MKCoordinateRegion) async throws -> [CampgroundListing] {
+        try Task.checkCancellation()
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-camp-finder-ui-test") {
+            return [
+                CampgroundListing(mapItemIdentifier: "fixture-nearby", name: "Nearby Pines", kind: .campground,
+                                  latitude: 37.1, longitude: -122),
+                CampgroundListing(mapItemIdentifier: "fixture-corner", name: "Corner Ridge", kind: .rvPark,
+                                  latitude: 37.65, longitude: -121.2)
+            ]
+        }
+        #endif
         let pointsOfInterest = MKLocalPointsOfInterestRequest(coordinateRegion: region)
         pointsOfInterest.pointOfInterestFilter = Self.filter
         var searches = [MKLocalSearch(request: pointsOfInterest)]
@@ -66,11 +82,13 @@ final class CampFinder {
         var failure: (any Error)?
         var anySucceeded = false
         for search in searches {
+            try Task.checkCancellation()
             switch await optional({ try await self.run(search) }) {
             case .success(let listings): found += listings; anySucceeded = true
             case .failure(let error): failure = failure ?? error
             }
         }
+        try Task.checkCancellation()
         // Any search finishing is a result; only all of them failing is an error.
         if !anySucceeded, let failure { throw failure }
         return found.merged(with: [], nearLatitude: region.center.latitude, longitude: region.center.longitude)
@@ -87,12 +105,14 @@ final class CampFinder {
         if let region { byName.region = region }
         let namedResult = await optional { try await self.run(MKLocalSearch(request: byName)) }
 
+        try Task.checkCancellation()
         let address = MKLocalSearch.Request()
         address.naturalLanguageQuery = text
         address.resultTypes = .address
         if let region { address.region = region }
         let place = try? await MKLocalSearch(request: address).start().mapItems.first?.location.coordinate
 
+        try Task.checkCancellation()
         var nearby: [CampgroundListing]?
         if let place {
             let area = MKCoordinateRegion(center: place, latitudinalMeters: 50_000, longitudinalMeters: 50_000)
@@ -136,6 +156,7 @@ final class CampFinder {
     }
 
     private func run(_ search: MKLocalSearch) async throws -> [CampgroundListing] {
+        try Task.checkCancellation()
         do { return try await search.start().mapItems.compactMap(remember) }
         // Apple Maps reports a search with no matches as "placemark not found": that's no results, not a missing place.
         catch let error as MKError where error.code == .placemarkNotFound { return [] }
@@ -189,6 +210,11 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
 
     /// One location fix, asking permission first if needed. Nil when denied or unavailable.
     func currentLocation() async -> CLLocation? {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-camp-finder-ui-test") {
+            return CLLocation(latitude: 37, longitude: -122)
+        }
+        #endif
         refreshAuthorization()
         if isDenied { return nil }
         return await withCheckedContinuation { continuation in
@@ -196,6 +222,12 @@ final class LocationProvider: NSObject, CLLocationManagerDelegate {
             guard waiting.count == 1 else { return }
             if authorization == .notDetermined { manager.requestWhenInUseAuthorization() } else { manager.requestLocation() }
         }
+    }
+
+    func cancelPendingRequest() {
+        guard !waiting.isEmpty else { return }
+        manager.stopUpdatingLocation()
+        finish(nil)
     }
 
     private func finish(_ location: CLLocation?) {

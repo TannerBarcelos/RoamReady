@@ -5,9 +5,42 @@ import XCTest
 /// stacked list. No search runs, so the test doesn't depend on Apple Maps results.
 @MainActor
 final class CampFinderDuoUITests: XCTestCase {
+    func testNearbyCampgroundsLoadWithoutSubmittingASearch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready", "-permissions-ui-test", "allowed",
+                               "-weather-ui-test", "-connectivity-ui-test", "online", "-camp-finder-ui-test"]
+        app.launch()
+        XCTAssertTrue(app.navigationTab("Camp Finder").waitForExistence(timeout: 10))
+        app.navigationTab("Camp Finder").tap()
+        let nearby = app.buttons.matching(identifier: "campgroundResult").matching(NSPredicate(format: "label CONTAINS 'Nearby Pines'")).firstMatch
+        XCTAssertTrue(nearby.waitForExistence(timeout: 15), "The list is pre-populated from the location fix")
+        XCTAssertFalse(app.buttons.matching(identifier: "campgroundResult").matching(NSPredicate(format: "label CONTAINS 'Corner Ridge'")).firstMatch.exists,
+                       "A place in the map rectangle but outside the 50-mile circle is excluded")
+        app.navigationTab("Profile").tap()
+        app.navigationTab("Camp Finder").tap()
+        XCTAssertTrue(nearby.waitForExistence(timeout: 5), "Returning to the tab retains the nearby results")
+    }
+
+    func testOfflineCampFinderDoesNotExposeDiscoveryControls() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready", "-permissions-ui-test", "allowed",
+                               "-weather-ui-test", "-connectivity-ui-test", "offline", "-camp-finder-ui-test"]
+        app.launch()
+        XCTAssertTrue(app.navigationTab("Camp Finder").waitForExistence(timeout: 10))
+        app.navigationTab("Camp Finder").tap()
+        XCTAssertTrue(app.staticTexts["Connection needed"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["campFinderSearchArea"].exists)
+        XCTAssertFalse(app.searchFields.firstMatch.exists)
+        XCTAssertFalse(app.descendants(matching: .any)["campFinderMap"].exists)
+        XCTAssertFalse(app.buttons["campgroundResult"].exists)
+        app.buttons["Try again"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Connection needed"].exists)
+        XCTAssertFalse(app.buttons["campgroundResult"].exists)
+    }
+
     func testDuoCampFinderPlacesResultsForTheAvailableWidth() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test"]
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test", "-connectivity-ui-test", "online"]
         app.launch()
         XCTAssertTrue(app.navigationTab("Camp Finder").waitForExistence(timeout: 10))
         app.navigationTab("Camp Finder").tap()
@@ -21,6 +54,12 @@ final class CampFinderDuoUITests: XCTestCase {
         XCTAssertTrue(results.waitForExistence(timeout: 5))
         XCTAssertTrue(map.waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Near me"].exists)
+        let areaSearch = app.buttons["campFinderSearchArea"].firstMatch
+        XCTAssertTrue(areaSearch.exists)
+        XCTAssertTrue(app.staticTexts["campFinderSearchHelp"].exists)
+        XCTAssertLessThanOrEqual(areaSearch.frame.maxX, results.frame.maxX + 1, "Search stays inside its pane")
+        XCTAssertLessThanOrEqual(areaSearch.frame.height, app.buttons["Near me"].frame.height + 4,
+                                 "The area search label fits on one line")
         XCTAssertTrue(app.searchFields.firstMatch.exists, "The search field stays visible in both layouts")
 
         let window = app.windows.firstMatch
