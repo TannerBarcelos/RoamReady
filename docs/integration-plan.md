@@ -63,6 +63,7 @@ See [data coverage](campground-data.md) and the [Camp Finder source guide](campg
 | --- | --- |
 | Rig catalog (#29) | Owner entry in v1; future lookup needs a licensed/permitted source and record provenance. Do not invent year ranges or floorplans. |
 | Offline maps and regional campground lists (#20) | Not implemented; hosting/licensing and download behavior need design and validation. |
+| Trip menu retrieval (#151) | v1 sends the whole trip menu with every trip question. v2 adds hybrid retrieval: the whole menu when it fits, semantic search over dishes plus an outline of every day when it doesn't. See [Trip menu context](architecture.md#trip-menu-context). |
 | Remote AI (#34) | Proposed v2 service with its own identity, consent, and cost controls; it must fit the one-time price (no subscription). |
 | Pricing | Settled: $4.99 one-time purchase, with no subscription or in-app purchases now or later. See [pricing](monetization.md). |
 

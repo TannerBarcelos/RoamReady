@@ -105,6 +105,34 @@ Limit validation. The method, run on the development Mac with Apple Intelligence
 
 Measured: `contextSize` 4096; 1,000 characters of English prose, 202 tokens; 200 accented letters, 201 tokens; "Error code E4 on the water heater igniter.", 12 tokens. Not yet measured: generation on a real iPhone near the limit (whether the model's own `contextSizeExceeded` ever fires after the planner says a prompt fits) or counting with the very large instruction block on a device. Repeat step 1 on a device, and on any new OS release, since the window and tokenizer can change.
 
+### Trip menu context
+
+**Decision (owner, October 31, 2026): v1 sends the whole menu with every trip question; v2 adds hybrid retrieval (#151).**
+
+`TripMenuFacts` (`CampCore`) is a bounded, JSON-quoted snapshot of the selected trip's menu, built from the library by `Trip.menuFacts` (`CampPersistence`). It lists each trip day that has dishes, then meals kept outside the trip's dates, with each meal's dishes, notes, and recipe items. It goes into the turn prompt as the `BEGIN SAVED TRIP MENU` block on every trip and checklist question. Trip overviews and selected-step help leave it out. An empty menu still sends a block saying nothing is planned, so the model doesn't invent meals.
+
+The model decides whether the menu is relevant. The app never matches words or searches the menu to choose what to send, and one instruction line tells the model to use the menu only for questions about meals, cooking, or food to buy or pack.
+
+Alternatives considered:
+
+| Approach | Why not in v1 |
+| --- | --- |
+| Menu in the instructions | Instructions go with every turn and the budget never shrinks them, so a long menu would make unrelated questions fail as too long. The menu is owner-entered data, which belongs in the prompt as quoted reference data, not in the instructions that set behavior. |
+| App-side word matching to decide when to send it | It misses phrasings such as "What am I making tonight?". It was built and then removed; don't reintroduce it, including as a fallback. |
+| Semantic retrieval alone (embed dishes, send the top matches) | "Dinner on day 2" depends on the day and meal a dish is filed under, which a sentence embedding doesn't capture. Whole-trip questions ("What groceries do I need?") need every item, and top-k drops most of them. Apple's sentence embedding model can be missing from the device, and one-line items embed poorly. |
+
+Budget: the block holds at most 2,000 characters (about 400–700 tokens) in the full prompt and 800 in the compact retry. Under budget pressure it shrinks first (1,200, 800, then 400 characters), before checklist context and document excerpts, because those are chosen for the question and the menu isn't. Shrinking drops notes and recipe items, then later days, and says that more is saved. The 400-character floor keeps the earliest days' dish names.
+
+Known costs:
+- **Tokens on every question.** Every trip question pays for the menu, so earlier turns get less room and a long trip chat forgets them sooner.
+- **Long menus get cut off.** A long or detailed menu loses later days and recipe items when the window is tight, for example when document excerpts are also in the prompt.
+- **No source shown.** Menu answers don't show "Saved trip" as a source, because the app doesn't know the question was about food.
+
+**v2: hybrid retrieval (#151).**
+- **Fits:** send the whole menu as now; most trips stay on this path.
+- **Doesn't fit:** send a compact outline of every day and meal (dish names only), plus the dishes closest to the question in full detail. Each dish is one passage in `DocumentSearchIndex`, with its day and meal stored alongside.
+- **No embedding model:** keep the v1 behavior. Never fall back to word matching.
+
 ### Search package decision
 
 `DocumentSearch` ships as its own local package product, with the C code in a sibling `CSQLiteVec` target. It was not folded into `CampPersistence` or another existing target. Evidence from the foundation work:
