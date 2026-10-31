@@ -67,21 +67,22 @@ struct PromptShape: Equatable, Sendable {
     var questionCharacters: Int
 
     static let checklistSteps = [2000, 1000, 500, 250, 0]
-    /// The menu keeps its nearest days' dish names to the end; a food question has little else to go on.
-    static let menuSteps = [1500, 800, 400]
+    /// Unlike the checklist and excerpts, the menu isn't chosen for the question, so it gives way first, but
+    /// keeps the earliest days' dish names so a food question still has something to answer from.
+    static let menuSteps = [1200, 800, 400]
     static let excerptSteps = [400, 300, 200]
     static let questionSteps = [800, 400]
 
-    /// The next smaller prompt, or nil at the floor. The order is the compaction priority: saved checklist
-    /// context first, then the saved menu, then the weakest evidence, then evidence text, and the current question last. Earlier
+    /// The next smaller prompt, or nil at the floor. The order is the compaction priority: the saved menu
+    /// first, then saved checklist context, then the weakest evidence, then evidence text, and the current question last. Earlier
     /// turns give way before any of these (see `CampingChat`). Saved trip facts are small and never shrunk.
     /// The strongest excerpt and the question outlast everything else.
     func shrunk() -> PromptShape? {
         var next = self
-        if let size = Self.checklistSteps.first(where: { $0 < checklistCharacters }) {
-            next.checklistCharacters = size
-        } else if let size = Self.menuSteps.first(where: { $0 < menuCharacters }) {
+        if let size = Self.menuSteps.first(where: { $0 < menuCharacters }) {
             next.menuCharacters = size
+        } else if let size = Self.checklistSteps.first(where: { $0 < checklistCharacters }) {
+            next.checklistCharacters = size
         } else if excerptCount > 1 {
             next.excerptCount -= 1
         } else if excerptCount == 1, let size = Self.excerptSteps.first(where: { $0 < excerptCharacters }) {
@@ -113,7 +114,7 @@ public struct PromptUsage: Equatable, Sendable {
     public let checklist: Int
     /// The trip's saved booking facts. Never shrunk: they and the question outlast everything else.
     public let savedTrip: Int
-    /// The saved trip menu, when the question brought it in.
+    /// The saved trip menu, on trip questions.
     public let menu: Int
     public let evidence: Int
     public let question: Int

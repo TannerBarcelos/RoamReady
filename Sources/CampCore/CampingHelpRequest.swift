@@ -22,15 +22,13 @@ public struct CampingHelpRequest: Sendable {
     public let documents: DocumentEvidence?
     /// The trip's saved booking facts, for trip and checklist help. Shown apart from document excerpts.
     public let tripFacts: TripBookingFacts?
-    /// The trip's planned meals, only when this question or the one before it is about food or names a dish.
+    /// The trip's planned meals, on every trip question except overviews and selected-step help.
     public let menu: TripMenuFacts?
     private let askedAboutBooking: Bool
     /// Earlier turns the chat folded away, carried in the instructions. Set by `CampingChat`, never by callers.
     var conversationSummary: String?
     /// Whether an answer to this question rests on the saved trip, so the reply can list it as a source.
-    public var usesSavedTrip: Bool {
-        tripFacts != nil && (isTripOverview || askedAboutBooking || menu != nil || Self.asksAboutTrip(question))
-    }
+    public var usesSavedTrip: Bool { tripFacts != nil && (isTripOverview || askedAboutBooking || Self.asksAboutTrip(question)) }
 
     private static func asksAboutTrip(_ question: String) -> Bool {
         let words = Set(question.lowercased().split { !$0.isLetter }.map(String.init))
@@ -70,7 +68,7 @@ public struct CampingHelpRequest: Sendable {
             full += "\nSaved trip facts are available from the app database independently of attachments. Use them to answer questions about the selected current or upcoming trip, including its campground and dates. Do not require a document to confirm these saved values."
         }
         if menu != nil {
-            full += "\nThe saved trip menu lists the dishes the owner planned for each trip day and meal, with recipe items and the owner's free-text amounts. Use it for questions about meals, cooking, or food to buy or pack. If a day, meal, or dish isn't on it, say it isn't planned; never invent dishes or amounts."
+            full += "\nThe saved trip menu lists the dishes the owner planned for each trip day and meal, with recipe items and the owner's free-text amounts. Use it only when the question is about meals, cooking, or food to buy or pack, and don't mention it otherwise. If a day, meal, or dish isn't on it, say it isn't planned; never invent dishes or amounts."
         }
         if let documents, !documents.isEmpty {
             full += documents.instructions
@@ -112,9 +110,7 @@ public struct CampingHelpRequest: Sendable {
         self.scope = scope
         self.tripFacts = tripFacts
         askedAboutBooking = BookingFactQuestion.isAboutBooking(question)
-        // A follow-up such as "and on day 2?" keeps the menu the previous question brought in.
-        let menuQuestion = ([previousQuestion].compactMap { $0 } + [question]).joined(separator: " ")
-        self.menu = tripOverview || selectedStep != nil ? nil : menu.flatMap { $0.isRelevant(to: menuQuestion) ? $0 : nil }
+        self.menu = tripOverview || selectedStep != nil ? nil : menu
         self.rigContext = tripOverview ? nil : rigContext
         self.documents = tripOverview ? nil : documents
         self.question = question

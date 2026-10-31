@@ -1,14 +1,13 @@
 import Foundation
 
-/// A snapshot of the meals the owner planned on a trip, for trip and checklist chat. It is added to a turn's
-/// prompt only when the question is about food or names something on the menu, so other questions don't
-/// spend the small context window on it. Construct it while reading the library, before handing the request
-/// to an async generator.
+/// A snapshot of the meals the owner planned on a trip, for trip and checklist chat. The whole menu goes with
+/// every trip question and the model decides what is relevant; the app never matches words to pick dishes.
+/// Construct it while reading the library, before handing the request to an async generator.
 public struct TripMenuFacts: Equatable, Sendable {
     public static let beginMarker = "BEGIN SAVED TRIP MENU"
     public static let endMarker = "END SAVED TRIP MENU"
     /// The block's size in the full prompt; budget shrinking and the compact retry go down from here.
-    static let fullCharacters = 3000
+    static let fullCharacters = 2000
     static let compactCharacters = 800
 
     public struct Item: Equatable, Sendable {
@@ -58,31 +57,6 @@ public struct TripMenuFacts: Equatable, Sendable {
 
     /// For meals kept on a day the trip no longer has, e.g. after it was shortened.
     public static func outsideLabel(dayNumber: Int) -> String { "Day \(dayNumber) (no longer within the trip's dates)" }
-
-    // MARK: Relevance
-
-    private static let foodWords: Set<String> = [
-        "menu", "menus", "meal", "meals", "food", "foods", "eat", "eats", "eating", "ate", "cook", "cooks", "cooking", "cooked",
-        "breakfast", "breakfasts", "brunch", "lunch", "lunches", "dinner", "dinners", "supper", "snack", "snacks",
-        "dish", "dishes", "recipe", "recipes", "ingredient", "ingredients", "grocery", "groceries", "shopping",
-        "cooler", "dessert", "desserts", "grill", "grilling", "hungry", "drinks"
-    ]
-    private static let ignoredNameWords: Set<String> = ["with", "and", "from", "some", "that", "this", "into", "plus"]
-
-    private static func words(_ text: String) -> Set<String> {
-        Set(text.lowercased().split { !$0.isLetter }.map(String.init))
-    }
-
-    /// Whether the question is about food, or names a dish or item on this menu ("How long do I grill the ribeye?").
-    /// An empty menu is relevant to food questions too, so the model can say nothing is planned instead of guessing.
-    public func isRelevant(to question: String) -> Bool {
-        let asked = Self.words(question)
-        if !asked.isDisjoint(with: Self.foodWords) { return true }
-        let names = days.flatMap(\.meals).flatMap(\.dishes).flatMap { [$0.name] + $0.items.map(\.name) }
-        let menuWords = names.reduce(into: Set<String>()) { $0.formUnion(Self.words($1)) }
-            .filter { $0.count > 3 && !Self.ignoredNameWords.contains($0) }
-        return !asked.isDisjoint(with: menuWords)
-    }
 
     // MARK: Prompt
 

@@ -28,8 +28,8 @@ struct TripMenuFactsTests {
         ])
     }
 
-    private func request(_ question: String, menu: TripMenuFacts?, previous: String? = nil) -> CampingHelpRequest {
-        CampingHelpRequest(question: question, steps: [], rigType: nil, step: nil, scope: .checklist, previousQuestion: previous,
+    private func request(_ question: String, menu: TripMenuFacts?) -> CampingHelpRequest {
+        CampingHelpRequest(question: question, steps: [], rigType: nil, step: nil, scope: .checklist,
                            tripFacts: TripBookingFacts(trip), menu: menu)
     }
 
@@ -39,32 +39,24 @@ struct TripMenuFactsTests {
         #expect(menu.days[1].label == "Day 3 (Sunday, June 14, 2026)")
     }
 
-    @Test func foodQuestionsAndDishNamesBringInTheMenu() {
-        for question in ["What's for dinner tonight?", "What groceries do I need?", "How long should I grill the ribeye?",
-                         "When are we having pancakes?", "What should I put in the cooler?"] {
-            #expect(menu.isRelevant(to: question), "\(question)")
+    @Test func everyTripQuestionCarriesTheWholeMenuForTheModelToRead() {
+        // The app never decides which questions are about food; the model reads the menu and judges.
+        for question in ["What's for dinner on day 1?", "How do I level the trailer?", "What am I making tonight?"] {
+            let turn = request(question, menu: menu)
+            #expect(turn.menu == menu, "\(question)")
+            #expect(turn.prompt.contains(TripMenuFacts.beginMarker))
+            #expect(turn.prompt.contains("\"Ribeye\", amount: \"2 lb\""))
+            #expect(turn.prompt.contains("\"Pancakes\""), "Every planned day is included")
+            #expect(turn.compactPrompt.contains("\"Steak with brussels sprouts\""))
+            #expect(turn.instructions.contains("saved trip menu"))
         }
-        for question in ["How do I level the trailer?", "What time is check-in?", "Is the dump station open late?"] {
-            #expect(!menu.isRelevant(to: question), "\(question)")
-        }
-        #expect(TripMenuFacts(days: []).isRelevant(to: "What's on the menu?"), "An empty menu still answers food questions")
-    }
-
-    @Test func theMenuJoinsOnlyRelevantTurnsAndKeepsAFollowUp() {
-        let food = request("What's for dinner on day 1?", menu: menu)
-        #expect(food.menu != nil && food.usesSavedTrip)
-        #expect(food.prompt.contains(TripMenuFacts.beginMarker))
-        #expect(food.prompt.contains("\"Ribeye\", amount: \"2 lb\""))
-        #expect(food.compactPrompt.contains("\"Steak with brussels sprouts\""))
-        #expect(food.instructions.contains("saved trip menu"))
-
-        let leveling = request("How do I level the trailer?", menu: menu)
-        #expect(leveling.menu == nil)
-        #expect(!leveling.prompt.contains(TripMenuFacts.beginMarker))
-        #expect(!leveling.instructions.contains("saved trip menu"))
-
-        #expect(request("And on day 3?", menu: menu, previous: "What's for breakfast?").menu != nil)
+        #expect(!request("How do I level the trailer?", menu: menu).usesSavedTrip, "The menu alone doesn't make the trip a source")
         #expect(request("What trip is this?", menu: menu).menu == nil, "Trip overviews stay on booking facts")
+        let step = CampingHelpRequest(question: "What's for dinner?", steps: [], rigType: nil,
+                                      step: ChecklistStepDraft(title: "Level the trailer"), scope: .checklist,
+                                      tripFacts: TripBookingFacts(trip), menu: menu)
+        #expect(step.menu == nil, "Selected-step help stays on its step")
+        #expect(!request("What's for dinner?", menu: nil).prompt.contains(TripMenuFacts.beginMarker))
     }
 
     @Test func anEmptyMenuSaysNothingIsPlanned() {
