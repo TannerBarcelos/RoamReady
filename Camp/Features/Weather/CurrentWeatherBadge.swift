@@ -29,7 +29,7 @@ struct CurrentWeatherBadge: View {
                 ProgressView().accessibilityLabel("Loading local weather")
             } else {
                 Button { Task { await weather.refresh(force: true) } } label: {
-                    Image(systemName: "cloud.slash").foregroundStyle(.secondary)
+                    Image(systemName: "thermometer.medium.slash").foregroundStyle(.secondary)
                 }
                 .disabled(!connectivity.isOnline || !permissions.locationAllowed)
                 .accessibilityLabel("Local weather unavailable")
