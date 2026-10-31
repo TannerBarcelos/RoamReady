@@ -2,28 +2,12 @@
 import Foundation
 import NaturalLanguage
 
-/// Prefer Apple's sentence vectors. If that OS asset is missing, use a contextual model whose assets
-/// the app can request. Each backend has its own profile, so the index never mixes their vectors.
+/// Apple's downloadable English contextual embedding model, shared by the app and eval command.
+/// The profile identifies the model and pooling algorithm so incompatible vectors are never compared.
 public actor NaturalLanguageEmbeddingProvider: EmbeddingProvider {
-    private enum Model {
-        case sentence(NLEmbedding)
-        case contextual(NLContextualEmbedding)
-
-        var profile: EmbeddingProfile {
-            switch self {
-            case .sentence(let model):
-                EmbeddingProfile(revision: "NLEmbedding.sentence.en.\(model.revision)", dimension: model.dimension)
-            case .contextual(let model):
-                EmbeddingProfile(revision: "NLContextualEmbedding.\(model.modelIdentifier).\(model.revision).mean-l2-v1",
-                                 dimension: model.dimension)
-            }
-        }
-    }
-
     private enum Failure: Error { case unavailable, noUsableVector }
-    private var selected: Model?
-    private var checkedSentenceModel = false
     private var contextual: NLContextualEmbedding?
+    private var isLoaded = false
     private let assets = EmbeddingAssetPreparation()
     private var reportedStatus: String?
     private static let maximumCharacters = 1_000
@@ -32,14 +16,14 @@ public actor NaturalLanguageEmbeddingProvider: EmbeddingProvider {
 
     public func availability() async -> EmbeddingAvailability {
         guard let model = usableModel() else { return .unavailable }
-        return .available(model.profile)
+        return .available(profile(for: model))
     }
 
     /// Asset preparation is explicit: normal availability/search calls never wait for a download.
     /// Concurrent callers share the OS request. The app reconciles its index when preparation finishes.
     @discardableResult
     public func prepare() async -> EmbeddingAvailability {
-        if let model = usableModel() { return .available(model.profile) }
+        if let model = usableModel() { return .available(profile(for: model)) }
         guard contextual != nil, !Task.isCancelled else { return .unavailable }
         _ = await assets.request { await self.requestAssets() }
         guard !Task.isCancelled else { return .unavailable }
@@ -65,35 +49,19 @@ public actor NaturalLanguageEmbeddingProvider: EmbeddingProvider {
         return try texts.map { original in
             try Task.checkCancellation()
             let text = String(original.prefix(Self.maximumCharacters))
-            switch model {
-            case .sentence(let sentence):
-                guard let vector = sentence.vector(for: text), vector.count == sentence.dimension,
-                      vector.allSatisfy(\.isFinite) else { throw Failure.noUsableVector }
-                let result = vector.map { Float($0) }
-                guard result.allSatisfy(\.isFinite) else { throw Failure.noUsableVector }
-                return result
-            case .contextual(let contextual):
-                let result = try contextual.embeddingResult(for: text, language: .english)
-                var pool = EmbeddingVectorPool(dimension: contextual.dimension)
-                result.enumerateTokenVectors(in: text.startIndex..<text.endIndex) { vector, _ in
-                    pool.add(vector)
-                    return true
-                }
-                guard let vector = pool.normalized() else { throw Failure.noUsableVector }
-                return vector
+            let result = try model.embeddingResult(for: text, language: .english)
+            var pool = EmbeddingVectorPool(dimension: model.dimension)
+            result.enumerateTokenVectors(in: text.startIndex..<text.endIndex) { vector, _ in
+                pool.add(vector)
+                return true
             }
+            guard let vector = pool.normalized() else { throw Failure.noUsableVector }
+            return vector
         }
     }
 
-    private func usableModel() -> Model? {
-        if let selected { return selected }
-        if !checkedSentenceModel {
-            checkedSentenceModel = true
-            if let sentence = NLEmbedding.sentenceEmbedding(for: .english), sentence.dimension > 0 {
-                return select(.sentence(sentence))
-            }
-            report("English sentence embedding asset missing; checking contextual fallback")
-        }
+    private func usableModel() -> NLContextualEmbedding? {
+        if isLoaded { return contextual }
         if contextual == nil { contextual = NLContextualEmbedding(language: .english) }
         guard let contextual, contextual.dimension > 0 else {
             report("no English contextual model supported; document search remains lexical")
@@ -102,17 +70,19 @@ public actor NaturalLanguageEmbeddingProvider: EmbeddingProvider {
         guard contextual.hasAvailableAssets else { return nil }
         do {
             try contextual.load()
-            return select(.contextual(contextual))
+            isLoaded = true
+            let profile = profile(for: contextual)
+            report("ready revision=\(profile.revision) dimension=\(profile.dimension)")
+            return contextual
         } catch {
             report("contextual model failed to load (error code \((error as NSError).code)); document search remains lexical")
             return nil
         }
     }
 
-    private func select(_ model: Model) -> Model {
-        selected = model
-        report("ready revision=\(model.profile.revision) dimension=\(model.profile.dimension)")
-        return model
+    private func profile(for model: NLContextualEmbedding) -> EmbeddingProfile {
+        EmbeddingProfile(revision: "NLContextualEmbedding.\(model.modelIdentifier).\(model.revision).mean-l2-v1",
+                         dimension: model.dimension)
     }
 
     private func report(_ status: String) {

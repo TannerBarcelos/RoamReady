@@ -112,9 +112,9 @@ let appleEmbeddings = AppleEmbeddings()
 if mode == "apple" || mode == "generation" { await appleEmbeddings.prepare() }
 let retrieval: EvalRetrieval
 switch mode {
-case "apple": retrieval = .embedding(appleEmbeddings, label: "Apple NaturalLanguage (English)")
+case "apple": retrieval = .embedding(appleEmbeddings, label: "Apple NLContextualEmbedding (English)")
 case "fake": retrieval = .embedding(DeterministicEmbeddingProvider(), label: "deterministic fake embeddings")
-case "lexical", "generation": retrieval = mode == "lexical" ? .lexicalOnly : .embedding(appleEmbeddings, label: "Apple NaturalLanguage (English)")
+case "lexical", "generation": retrieval = mode == "lexical" ? .lexicalOnly : .embedding(appleEmbeddings, label: "Apple NLContextualEmbedding (English)")
 default: usage("unknown mode \(mode)")
 }
 

@@ -9,6 +9,9 @@ final class NaturalLanguageEmbeddingProviderTests: XCTestCase {
         guard case .available(let profile) = await provider.availability() else {
             throw XCTSkip("Apple embedding assets are not on this host; real-model validation was not run.")
         }
+        XCTAssertTrue(profile.revision.hasPrefix("NLContextualEmbedding."), "The official provider always uses the contextual model")
+        XCTAssertTrue(profile.revision.hasSuffix(".mean-l2-v1"))
+        XCTAssertGreaterThan(profile.dimension, 0)
         let vectors = try await provider.embed(["Drain the fresh water tank before winter.", "What is the dinner menu?"])
         XCTAssertEqual(vectors.count, 2)
         for vector in vectors {
