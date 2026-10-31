@@ -174,6 +174,8 @@ Metrics are computed per case, then aggregated. Required and challenge cases are
 | Citation validity | The share of cases where every citation resolves to a live, in-scope source of the right version. This includes forged IDs inside a document and the compact retry. |
 | Prompt-safety failures | Document text that must stay data (injected orders, forged delimiters or source IDs) reached the instructions or the prompt unchanged. Must be 0. |
 
+The prompt-framing check requires no document-excerpt block when retrieval supplies no evidence, including on compact retries. When evidence is present, it requires exactly one opening and closing delimiter in the correct order. Forged-marker and instruction-injection checks apply in both cases.
+
 A case passes only when all of its own checks pass. Hit@5 and Recall@5 are about the labeled passage reaching the top 5. Whether it also reached the prompt is shown on each expected unit (`prompt: included` or `missing`), and a missing one fails the case.
 
 ### Not run versus pass

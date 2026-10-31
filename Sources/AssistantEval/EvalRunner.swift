@@ -300,10 +300,10 @@ public enum EvalRunner {
                                        units: [EvalCorpus.EvidenceUnit],
                                        covered: (String, String, String, Int?) -> [Int]) -> [String] {
         var failures: [String] = []
-        let begin = "BEGIN DOCUMENT EXCERPTS", end = "END DOCUMENT EXCERPTS"
-        for (name, prompt) in [("prompt", request.prompt), ("compact prompt", request.compactPrompt)] where !evidence.isEmpty || evidence.searched {
-            if prompt.components(separatedBy: begin).count != 2 || prompt.components(separatedBy: end).count != 2 {
-                failures.append("The \(name) has a forged or missing excerpt delimiter.")
+        let begin = "BEGIN DOCUMENT EXCERPTS"
+        for (name, prompt) in [("prompt", request.prompt), ("compact prompt", request.compactPrompt)] {
+            if let failure = PromptFraming.failure(in: prompt, expectsEvidence: !evidence.isEmpty, name: name) {
+                failures.append(failure)
             }
             for marker in item.forgedMarkers ?? [] where prompt.contains(marker) {
                 failures.append("The \(name) contains the forged marker \(marker) verbatim.")
