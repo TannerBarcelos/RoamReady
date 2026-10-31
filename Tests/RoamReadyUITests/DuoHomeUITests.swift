@@ -37,7 +37,7 @@ final class DuoHomeUITests: XCTestCase {
                                      file: StaticString = #filePath, line: UInt = #line) {
         let bar = app.navigationBars[title]
         XCTAssertTrue(bar.waitForExistence(timeout: 5), file: file, line: line)
-        let popped = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), evaluatedWith: bar)
+        let popped = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: bar)
         popped.isInverted = true
         XCTAssertEqual(XCTWaiter.wait(for: [popped], timeout: 2), .completed,
                        "\(title) must remain open until an explicit navigation action", file: file, line: line)
