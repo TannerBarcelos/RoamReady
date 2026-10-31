@@ -115,32 +115,16 @@ struct CampingToolsTests {
         #expect(booking.contains("Site notes: \"Shady pad near the creek\""))
         #expect(!booking.contains("Chili"))
 
-        let checklist = tools.output(for: CampingToolCall(focus: .checklist, phase: .setup, remainingOnly: true))
+        let checklist = tools.output(for: CampingToolCall(focus: .checklist))
         #expect(checklist.contains("Setup: 1 of 2 finished."))
         #expect(checklist.contains("- [to do] \"Level the trailer\" priority: high notes: \"Use blocks\""))
-        #expect(!checklist.contains("Chock wheels") && !checklist.contains("Teardown"))
+        #expect(checklist.contains("Chock wheels") && checklist.contains("Teardown"))
 
-        let dinner = tools.output(for: CampingToolCall(focus: .menu, day: 1, meal: .dinner))
+        let dinner = tools.output(for: CampingToolCall(focus: .menu))
         #expect(dinner.contains("\"Chili\"") && dinner.contains("\"Beans\", amount: \"2 cans\""))
-        #expect(tools.output(for: CampingToolCall(focus: .menu, day: 1, meal: .lunch)).contains("Nothing is planned for lunch on day 1."))
 
         let everything = tools.output(for: CampingToolCall(focus: .everything))
         for part in ["Booked through", "Setup: 1 of 2 finished.", "\"Chili\""] { #expect(everything.contains(part), "\(part)") }
-    }
-
-    @Test func theAllowanceSizesEachResultAndThenSaysTheRoomIsUsedUp() {
-        var roomy = CampingToolAllowance(tokens: 2000)
-        let full = tools.output(for: CampingToolCall(focus: .everything), allowance: &roomy)
-        #expect(full == tools.output(for: CampingToolCall(focus: .everything), limit: CampingTools.everythingCharacters))
-        #expect(roomy.characters == 6000 - full.count - CampingToolAllowance.callOverheadCharacters)
-
-        var tight = CampingToolAllowance(tokens: 200)
-        let first = tools.output(for: CampingToolCall(focus: .overview), allowance: &tight)
-        #expect(first.contains("Pinecrest Lake"), "A small allowance still returns the core facts")
-        #expect(tools.output(for: CampingToolCall(focus: .everything), allowance: &tight) == CampingTools.noRoomOutput)
-
-        var none = CampingToolAllowance(tokens: 0)
-        #expect(tools.output(for: CampingToolCall(focus: .menu), allowance: &none) == CampingTools.noRoomOutput)
     }
 
     @Test func theChatGivesTheToolTheRoomThePromptAndHistoryLeave() async throws {
@@ -151,8 +135,9 @@ struct CampingToolsTests {
         let plan = try await turn.plan(.full, counter: ConservativeTokenEstimator(), budget: PromptBudget())
         let offered = try #require(model.turns.first ?? nil)
         #expect(offered.tools == tools)
-        #expect(offered.allowance == CampingToolAllowance(tokens: PromptBudget().inputLimit - plan.usage.total))
-        #expect(offered.allowance.characters >= CampingTools.outputCharacters, "At least one focused result always fits")
+        #expect(offered.availableTokens == PromptBudget().inputLimit - plan.usage.total)
+        #expect(offered.question == "What's for dinner?")
+        #expect(offered.availableTokens >= tools.outputReserveTokens)
 
         _ = try await chat.answer(request("Will 30 amp run my AC?", tools: nil))
         #expect(model.turns.last == .some(nil), "No trip, no tool")
@@ -164,6 +149,17 @@ struct CampingToolsTests {
         #expect(offered.usage.tools == CampingTools.schemaTokensPerTool)
         #expect(plain.usage.tools == 0)
         #expect(offered.usage.total <= PromptBudget().inputLimit)
+    }
+
+    @Test func resourceRetrievalDoesNotTruncateLongBookingNotesOrChecklists() {
+        let notes = String(repeating: "Booking details ", count: 300) + "Booking ending."
+        let steps = (1...50).map { ChecklistStepDraft(title: "Step \($0)", notes: String(repeating: "Follow this detail. ", count: 15) + "Step ending.") }
+        let complete = CampingTools(trip: TripToolFacts(trip, notes: notes, checklist: TripChecklistFacts(setup: steps, teardown: steps)),
+                                    menu: tools.menu)
+        let output = complete.output(for: CampingToolCall(focus: .everything))
+        #expect(output.contains("Booking ending."))
+        #expect(output.components(separatedBy: "Step ending.").count - 1 == 100)
+        #expect(output.contains("Chili") && output.contains("Beans"))
     }
 
     @Test func aTripLookupMakesTheSavedTripASource() async throws {

@@ -39,7 +39,11 @@ Seed a trip with a dinner named "Steak and Brussels sprouts" and a recipe item "
 | "How do I cook a steak?" in a fresh trip chat | Model can answer directly without retrieving unrelated trip data. |
 | "What trip is this?" | Model fetches the overview and reports saved facts without guessing. |
 
+Repeat with saved meals on several days, including a day that is not today, and ask both for the entire menu and for a single meal. In both cases the raw menu resource should contain all saved meals; the model selects the answer from that data. Test more than 20 recipe items, long notes, named extra meals, and missing amounts. Also ask about booking notes and checklist progress, combine several resource requests, and ask unrelated general questions. Verify tool choice using the Foundation Models instrument, not the presence of a source card alone. For oversized resources, verify that generic compaction processes the final records and retains the facts relevant to the question. A condensed result must not be treated as a lossless copy. These are model-quality checks, separate from deterministic retrieval and compaction-plumbing tests.
+
 Also check an empty menu and a chat without a selected trip: neither should invent a meal. The model retains the choice to call a tool; unnecessary lookups and missed lookups are quality findings, not app-side routing rules. `CampingToolsTests.cookingFollowUpKeepsContextAndAllowsNoLookup` verifies history, tool availability, and source handling with scripted replies; it does not validate Apple's model selection or cooking knowledge. These on-device checks have not been run for this change.
+
+The log `Unable to locate Asset for sentence embedding model for local en` comes from `NLEmbedding.sentenceEmbedding(for: .english)`. `AppleEmbeddingProvider` reports unavailable and document search falls back to lexical matching. It does not affect the direct saved-trip/menu tool. Validate embedding and generation behavior on a supported physical device with Apple Intelligence ready; simulator availability is not proof of the device result. UIKit toolbar constraint and simulator service warnings are separate diagnostics and do not describe the model's tool arguments.
 
 ## The corpus
 
