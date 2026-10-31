@@ -403,10 +403,11 @@ private final class RecordingModel: CampingChatModel {
             return response
         }
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                     tools: CampingTools?) async throws -> CampingSessionReply {
+                     tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply {
             recorder.calls += 1
             recorder.lastPrompt = prompt
-            let reply = try await inner.respond(to: prompt, instructions: instructions, history: history, tools: tools)
+            let reply = try await inner.respond(to: prompt, instructions: instructions, history: history, tools: tools,
+                                                resultsOf: resultsOf)
             recorder.lastResponse = reply.text
             return reply
         }

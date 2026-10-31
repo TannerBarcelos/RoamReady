@@ -26,11 +26,12 @@ public protocol CampingChatSession: AnyObject {
     /// `history` is the stored turns this request may send, oldest first; every other stored turn stays out.
     /// A failed or cancelled request leaves the transcript as it was.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String
-    /// Answers one turn with `tools` available to the model. The tool calls and their results are part of the
-    /// turn until `store(_:)` replaces it with its stored form, so a result never carries into later turns.
+    /// Answers one turn with `tools` available to the model. `resultsOf` names the one stored turn whose tool
+    /// results this request may send with it: the newest, while its data is unchanged. Nil sends none.
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                 tools: CampingTools?) async throws -> CampingSessionReply
-    /// Replaces the turn just answered with its stored form.
+                 tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply
+    /// Replaces the turn just answered with its stored form. The newest turn keeps its tool calls and results;
+    /// every older turn is its question and answer alone.
     func store(_ turn: CampingChatTurn)
     /// Removes a stored turn, for an answer that was never shown or that compaction dropped.
     func remove(_ turnID: CampingChatTurn.ID)
@@ -43,7 +44,7 @@ extension CampingChatSession {
 
     /// Sessions without tool calling answer without the tools.
     public func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                        tools: CampingTools?) async throws -> CampingSessionReply {
+                        tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply {
         CampingSessionReply(text: try await respond(to: prompt, instructions: instructions, history: history))
     }
 }
@@ -77,7 +78,7 @@ public struct SingleTurnChatModel: CampingChatModel {
             try await generator.respond(to: prompt, instructions: instructions)
         }
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                     tools: CampingTools?) async throws -> CampingSessionReply {
+                     tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply {
             try await generator.respond(to: prompt, instructions: instructions, tools: tools)
         }
         func store(_ turn: CampingChatTurn) {}
@@ -125,25 +126,33 @@ public enum CampingChatHistory {
         case instructions
         case prompt(id: String)
         case response
+        /// A tool call or its result.
+        case tool
         case other
     }
 
     /// The entries one request sends: the instructions, the turns in `kept`, and the current prompt (the last
-    /// prompt with no response yet). A stored turn's response and anything else between prompts goes with it.
+    /// prompt with no response yet). A stored turn's response and anything else between prompts goes with it,
+    /// except tool calls and results: those go only with the current turn and the stored turn `resultsOf`.
     /// Used by the session's history transform, so the stored transcript itself is untouched.
-    public static func sent<Entry>(_ entries: [Entry], keeping kept: Set<String>, kind: (Entry) -> EntryKind) -> [Entry] {
+    public static func sent<Entry>(_ entries: [Entry], keeping kept: Set<String>, resultsOf: String? = nil,
+                                   kind: (Entry) -> EntryKind) -> [Entry] {
         let kinds = entries.map(kind)
         let currentPrompt = kinds.lastIndex { if case .prompt = $0 { true } else { false } }
             .flatMap { index in kinds[(index + 1)...].contains(.response) ? nil : index }
         var result: [Entry] = []
         var keepingTurn = true
+        var keepingTools = true
         for (index, entry) in entries.enumerated() {
             switch kinds[index] {
             case .instructions:
                 result.append(entry)
             case .prompt(let id):
                 keepingTurn = index == currentPrompt || kept.contains(id)
+                keepingTools = index == currentPrompt || id == resultsOf
                 if keepingTurn { result.append(entry) }
+            case .tool:
+                if keepingTurn && keepingTools { result.append(entry) }
             case .response, .other:
                 if keepingTurn { result.append(entry) }
             }
@@ -173,6 +182,9 @@ public final class CampingChat {
     /// Bumped by every reset, so compaction that started before it can't touch the new conversation.
     private var generation = 0
     private var costs: [CampingChatTurn.ID: Int] = [:]
+    /// The newest turn's tool results: which turn, the snapshots they came from, and their token cost. A follow-up
+    /// sends them with that turn while the snapshots are unchanged, so "What goes in it?" needn't look up again.
+    private var results: (turn: CampingChatTurn.ID, tools: CampingTools, tokens: Int)?
     private var session: (any CampingChatSession)?
     private var scope: AnyHashable?
     private let model: any CampingChatModel
@@ -189,6 +201,7 @@ public final class CampingChat {
     public func reset() {
         turns = []
         costs = [:]
+        results = nil
         session = nil
         scope = nil
         summary = nil
@@ -233,17 +246,21 @@ public final class CampingChat {
         var plan = try await request.plan(.full, counter: counter, budget: budget)
         // Room for one tool result comes out of what earlier turns may use, never out of this turn's context.
         let toolReserve = request.tools?.outputReserveTokens ?? 0
-        var history = request.isTripOverview ? [] : CampingChatHistory.window(turns, before: turnID, budget: budget.inputLimit - plan.usage.total - toolReserve, cost: cost)
+        var history: [CampingChatTurn] = []
+        var resultsOf: CampingChatTurn.ID? = nil
+        if !request.isTripOverview {
+            (history, resultsOf) = window(before: turnID, budget: budget.inputLimit - plan.usage.total - toolReserve, tools: request.tools)
+        }
         let sessionReply: CampingSessionReply
         do {
             sessionReply = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history,
-                                                              tools: request.tools)
+                                                              tools: request.tools, resultsOf: resultsOf)
         } catch CampingChatFailure.contextTooLong {
             try Task.checkCancellation()
             // The counts said the first attempt fit, so the retry must send strictly less: a smaller prompt, or
-            // at least one turn fewer. With neither left to give, the same request would overflow again.
+            // at least one turn fewer. Compaction starts a new session, which drops the kept tool results too.
             let promptShrank = request.compactPrompt(limitedBy: plan) != plan.prompt
-            guard promptShrank || !history.isEmpty else { throw CampingChatFailure.contextTooLong }
+            guard promptShrank || !history.isEmpty || resultsOf != nil else { throw CampingChatFailure.contextTooLong }
             let limit = min(CampingChatHistory.compactedTurns, promptShrank ? history.count : history.count - 1)
             let earlier = Set(CampingChatHistory.earlier(turns, before: turnID).map(\.id))
             await compact()
@@ -253,7 +270,7 @@ public final class CampingChat {
             history = request.isTripOverview ? [] : CampingChatHistory.window(turns.filter { earlier.contains($0.id) }, budget: budget.inputLimit - plan.usage.total - toolReserve,
                                                 limit: limit, cost: cost)
             sessionReply = try await currentSession().respond(to: plan.prompt, instructions: plan.instructions, history: history,
-                                                              tools: request.tools)
+                                                              tools: request.tools, resultsOf: nil)
         }
         let text = sessionReply.text.trimmingCharacters(in: .whitespacesAndNewlines)
         var reply = Self.reply(text, to: request, sent: plan)
@@ -281,6 +298,13 @@ public final class CampingChat {
             forget(turn.id)
             throw CancellationError()
         }
+        // Storing the turn dropped the previous turn's results from the session; this turn's take their place.
+        results = nil
+        if let tools = request.tools, !sessionReply.toolOutputs.isEmpty {
+            let text = sessionReply.toolOutputs.joined(separator: "\n")
+            let tokens = (try? await measurer.count(text)) ?? ConservativeTokenEstimator.estimate(text)
+            results = (turn.id, tools, tokens + sessionReply.toolOutputs.count * Self.toolCallOverheadTokens)
+        }
         // A backstop for when summaries keep failing; normally compaction keeps the chat far below this.
         while turns.count > CampingChatHistory.storedTurns { forget(turns[0].id) }
         scheduleCompaction()
@@ -292,7 +316,25 @@ public final class CampingChat {
         guard let index = turns.firstIndex(where: { $0.id == turnID }) else { return }
         turns.remove(at: index)
         costs[turnID] = nil
+        if results?.turn == turnID { results = nil }
         session?.remove(turnID)
+    }
+
+    /// A tool call's arguments and framing, on top of its result.
+    static let toolCallOverheadTokens = 30
+
+    /// The earlier turns a request sends, and whether the newest one's tool results go with it. They go only
+    /// when that turn is the newest sent, this request offers the same snapshots (nothing was edited and the day
+    /// hasn't changed), and the turn still fits with them; otherwise the turn goes alone.
+    private func window(before turnID: CampingChatTurn.ID?, budget: Int,
+                        tools: CampingTools?) -> (turns: [CampingChatTurn], resultsOf: CampingChatTurn.ID?) {
+        let plain = CampingChatHistory.window(turns, before: turnID, budget: budget, cost: cost)
+        guard let results, results.tools == tools, plain.last?.id == results.turn,
+              CampingChatHistory.earlier(turns, before: turnID).last?.id == results.turn else { return (plain, nil) }
+        let withResults = CampingChatHistory.window(turns, before: turnID, budget: budget) { turn in
+            self.cost(turn) + (turn.id == results.turn ? results.tokens : 0)
+        }
+        return withResults.last?.id == results.turn ? (withResults, results.turn) : (plain, nil)
     }
 
     /// The summary a request may carry: none when asking again as of a turn no longer stored, since the summary
@@ -310,6 +352,8 @@ public final class CampingChat {
         if let folded = await folded(dropped, into: summary) { summary = folded }
         turns = kept
         costs = costs.filter { id, _ in kept.contains { $0.id == id } }
+        // A new session starts from stored questions and answers only.
+        results = nil
         let made = model.makeSession(history: kept)
         made.prewarm()
         session = made

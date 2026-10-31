@@ -34,7 +34,11 @@ extension CampingResponseGenerating {
 public struct CampingSessionReply: Equatable, Sendable {
     public let text: String
     public let toolsUsed: Set<CampingToolKind>
-    public init(text: String, toolsUsed: Set<CampingToolKind> = []) { self.text = text; self.toolsUsed = toolsUsed }
+    /// What each tool call returned, so the chat can budget the results the newest turn keeps.
+    public let toolOutputs: [String]
+    public init(text: String, toolsUsed: Set<CampingToolKind> = [], toolOutputs: [String] = []) {
+        self.text = text; self.toolsUsed = toolsUsed; self.toolOutputs = toolOutputs
+    }
 }
 
 /// How an answer relates to the owner's documents.

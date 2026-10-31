@@ -29,9 +29,9 @@ public struct AppleCampingChatModel: CampingChatModel {
 
 /// One `LanguageModelSession` per chat. Its transcript holds the conversation. This turn's instructions and
 /// tools are `DynamicInstructions`, evaluated for each request and never stored as history. The framework runs
-/// the tool loop; a turn's tool calls and results stay in the transcript only until `store(_:)` replaces the
-/// turn with its stored form. The profile's history transform sends only the turns `CampingChat` chose, and a
-/// failed or cancelled request reverts the transcript.
+/// the tool loop. Only the newest stored turn keeps its tool calls and results, and the profile's history
+/// transform sends them only when `CampingChat` names that turn; it sends only the turns `CampingChat` chose,
+/// and a failed or cancelled request reverts the transcript.
 @available(iOS 27.0, macOS 27.0, *)
 @MainActor
 final class AppleCampingChatSession: CampingChatSession {
@@ -43,21 +43,21 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String {
-        try await respond(to: prompt, instructions: instructions, history: history, tools: nil).text
+        try await respond(to: prompt, instructions: instructions, history: history, tools: nil, resultsOf: nil).text
     }
 
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                 tools: CampingTools?) async throws -> CampingSessionReply {
+                 tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply {
         let model = SystemLanguageModel.default
         guard case .available = model.availability else { throw CampingChatFailure.notReady }
         guard model.supportsLocale() else { throw CampingChatFailure.unsupportedLanguage }
         try Task.checkCancellation()
-        context.set(instructions: instructions, kept: Set(history.map(\.id)), tools: tools)
+        context.set(instructions: instructions, kept: Set(history.map(\.id)), tools: tools, resultsOf: resultsOf)
         do {
             // No cancellation check after this: a finished turn is in the transcript, and `CampingChat` stores
             // or drops it.
             let text = try await session.respond(to: prompt).content
-            return CampingSessionReply(text: text, toolsUsed: context.toolsUsed)
+            return CampingSessionReply(text: text, toolsUsed: context.toolsUsed, toolOutputs: context.toolOutputs)
         } catch is CancellationError {
             throw CancellationError()
         } catch is LanguageModelSession.ToolCallError {
@@ -83,11 +83,16 @@ final class AppleCampingChatSession: CampingChatSession {
         session.prewarm()
     }
 
-    /// Swaps the raw prompt (with its excerpts) and response just added for the turn's stored form.
+    /// Swaps the raw prompt (with its excerpts) and response just added for the turn's stored form, keeping the
+    /// turn's tool calls and results between them. Older turns lose theirs: only the newest turn keeps results.
     func store(_ turn: CampingChatTurn) {
         var history = session.properties.history
         guard let prompt = history.lastIndex(where: \.isPrompt) else { return }
-        history.replaceSubrange(prompt..<history.endIndex, with: turn.transcriptEntries)
+        let older: [Transcript.Entry] = history[..<prompt].filter { !$0.isToolEntry }
+        let tools: [Transcript.Entry] = history[history.index(after: prompt)...].filter(\.isToolEntry)
+        let stored = turn.transcriptEntries
+        // Same mutation style as `remove(_:)`, so the history keeps its own collection type.
+        history.replaceSubrange(history.startIndex..<history.endIndex, with: older + [stored[0]] + tools + [stored[1]])
         session.properties.history = history
     }
 
@@ -108,7 +113,9 @@ private final class TurnContext: Sendable {
         var instructions = ""
         var kept: Set<String> = []
         var tools: CampingTools?
+        var resultsOf: String?
         var toolsUsed: Set<CampingToolKind> = []
+        var toolOutputs: [String] = []
     }
     private let state = Mutex(State())
 
@@ -116,6 +123,8 @@ private final class TurnContext: Sendable {
     var kept: Set<String> { state.withLock { $0.kept } }
     var tools: CampingTools? { state.withLock { $0.tools } }
     var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
+    var toolOutputs: [String] { state.withLock { $0.toolOutputs } }
+    var resultsOf: String? { state.withLock { $0.resultsOf } }
 
     func offers(_ kind: CampingToolKind) -> Bool { state.withLock { $0.tools?.kinds.contains(kind) == true } }
 
@@ -128,12 +137,17 @@ private final class TurnContext: Sendable {
         }
     }
 
-    func set(instructions: String, kept: Set<String>, tools: CampingTools?) {
-        state.withLock { $0 = State(instructions: instructions, kept: kept, tools: tools) }
+    func set(instructions: String, kept: Set<String>, tools: CampingTools?, resultsOf: String?) {
+        state.withLock { $0 = State(instructions: instructions, kept: kept, tools: tools, resultsOf: resultsOf) }
     }
 
-    func used(_ tool: CampingToolKind) {
-        _ = state.withLock { $0.toolsUsed.insert(tool) }
+    /// Records a call and returns its output, for the tools to return.
+    func used(_ tool: CampingToolKind, output: String) -> String {
+        state.withLock { state in
+            state.toolsUsed.insert(tool)
+            state.toolOutputs.append(output)
+        }
+        return output
     }
 }
 
@@ -182,8 +196,7 @@ private struct MenuTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.menu)
-        return context.tools?.menuOutput(day: arguments.day, meal: arguments.meal?.kind) ?? "This trip has no menu."
+        context.used(.menu, output: context.tools?.menuOutput(day: arguments.day, meal: arguments.meal?.kind) ?? "This trip has no menu.")
     }
 }
 
@@ -209,9 +222,8 @@ private struct TripTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.trip)
-        return context.tools?.tripOutput(phase: arguments.checklist?.phase, remainingOnly: arguments.remainingOnly ?? false)
-            ?? "No trip is selected."
+        context.used(.trip, output: context.tools?.tripOutput(phase: arguments.checklist?.phase,
+                                                               remainingOnly: arguments.remainingOnly ?? false) ?? "No trip is selected.")
     }
 }
 
@@ -225,8 +237,7 @@ private struct RigTool: Tool {
     struct Arguments {}
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.rig)
-        return context.tools?.rigOutput() ?? "No rig is saved."
+        context.used(.rig, output: context.tools?.rigOutput() ?? "No rig is saved.")
     }
 }
 
@@ -236,7 +247,7 @@ private struct ChatProfile: LanguageModelSession.DynamicProfile {
     var body: some LanguageModelSession.DynamicProfile {
         Profile { TurnInstructions(context: context) }
             .historyTransform { [context] entries in
-                CampingChatHistory.sent(entries, keeping: context.kept, kind: \.chatKind)
+                CampingChatHistory.sent(entries, keeping: context.kept, resultsOf: context.resultsOf, kind: \.chatKind)
             }
             .toolCallingMode(context.callingMode)
             .transcriptErrorHandlingPolicy(.revertTranscript)
@@ -260,11 +271,14 @@ extension Transcript.Entry {
         case .instructions: .instructions
         case .prompt(let prompt): .prompt(id: prompt.id)
         case .response: .response
+        case .toolCalls, .toolOutput: .tool
         default: .other
         }
     }
 
     var isPrompt: Bool { if case .prompt = self { true } else { false } }
+
+    var isToolEntry: Bool { chatKind == .tool }
 }
 
 /// Token counts and the context window come from the model itself, so the budget never rests on a

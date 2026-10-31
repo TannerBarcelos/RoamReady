@@ -166,11 +166,13 @@ enum CampingAssistant {
         func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
             if answersMenu {
                 CampingAssistant.uiTestCalls += 1
-                guard let tools, instructions.contains(CampingToolKind.menu.name),
-                      let dish = tools.menuOutput(day: nil, meal: .dinner).split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
+                let output = tools?.menuOutput(day: nil, meal: .dinner) ?? ""
+                guard instructions.contains(CampingToolKind.menu.name),
+                      let dish = output.split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
                     return CampingSessionReply(text: "Missing saved menu tool.")
                 }
-                return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1], toolsUsed: [.menu])
+                return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1],
+                                           toolsUsed: [.menu], toolOutputs: [output])
             }
             if answersSavedTrip {
                 CampingAssistant.uiTestCalls += 1
