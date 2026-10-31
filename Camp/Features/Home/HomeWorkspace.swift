@@ -35,7 +35,7 @@ struct HomeWorkspace: View {
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $compactColumn) {
-            HomeView(weather: weather, now: now, selection: listSelection)
+            HomeView(weather: weather, now: now, selection: listSelection, openDestination: openDestination)
                 .assistantToolbarItem(isEnabled: horizontalSizeClass == .compact)
                 .toolbar {
                     if horizontalSizeClass == .compact { weatherToolbar }
@@ -153,26 +153,28 @@ struct HomeWorkspace: View {
 
     /// Side by side, the featured trip is highlighted until the owner picks another. Collapsed,
     /// only a pick counts, so Home stays in front until a trip is tapped.
-    private var listSelection: Binding<HomeDestination?> {
-        Binding(get: {
-            guard let trip = shownTrip, horizontalSizeClass != .compact || validTripID != nil else { return nil }
-            let id = trip.persistentModelID
-            switch detailPath.first {
-            case .checklist(let phase): return .checklist(id, phase)
-            case .menu: return .menu(id)
-            case .memories: return .memories(id)
-            default: return .trip(id)
-            }
-        }, set: { destination in
-            selectedTripID = destination?.tripID
-            switch destination {
-            case .checklist(_, let phase): detailPath = [.checklist(phase)]
-            case .menu: detailPath = [.menu]
-            case .memories: detailPath = [.memories]
-            default: detailPath = []
-            }
-            if destination != nil { compactColumn = .detail }
-        })
+    private var listSelection: HomeDestination? {
+        guard let trip = shownTrip, horizontalSizeClass != .compact || validTripID != nil else { return nil }
+        let id = trip.persistentModelID
+        switch detailPath.first {
+        case .checklist(let phase): return .checklist(id, phase)
+        case .menu: return .menu(id)
+        case .memories: return .memories(id)
+        default: return .trip(id)
+        }
+    }
+
+    /// Only an explicit Home action replaces the stack. List selection is a read-only projection
+    /// of it; accepting List's automatic writes here can immediately pop a newly pushed page.
+    private func openDestination(_ destination: HomeDestination) {
+        selectedTripID = destination.tripID
+        switch destination {
+        case .checklist(_, let phase): detailPath = [.checklist(phase)]
+        case .menu: detailPath = [.menu]
+        case .memories: detailPath = [.memories]
+        case .trip: detailPath = []
+        }
+        compactColumn = .detail
     }
 
     @ViewBuilder private var detail: some View {

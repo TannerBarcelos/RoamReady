@@ -31,6 +31,49 @@ final class DuoHomeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Hello, Riley"].isHittable)
     }
 
+    /// Seeing a title for one frame is insufficient: selection reconciliation can pop it on
+    /// the next update. Observe the actual navigation bar, including on compact iPhone.
+    private func assertPageStaysOpen(_ title: String, in app: XCUIApplication,
+                                     file: StaticString = #filePath, line: UInt = #line) {
+        let bar = app.navigationBars[title]
+        XCTAssertTrue(bar.waitForExistence(timeout: 5), file: file, line: line)
+        let popped = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), evaluatedWith: bar)
+        popped.isInverted = true
+        XCTAssertEqual(XCTWaiter.wait(for: [popped], timeout: 2), .completed,
+                       "\(title) must remain open until an explicit navigation action", file: file, line: line)
+    }
+
+    func testTripDetailPagesStayOpenUntilBack() {
+        let app = launch()
+        // Exercise the automatically featured trip and a different explicit pick. Both must
+        // retain their root and pushed pages, regardless of sidebar visibility.
+        for tripName in ["Current Pines", "Upcoming Lake"] {
+            let trip = app.buttons["tripRow-\(tripName)"]
+            let home = app.descendants(matching: .any)["homeTripList"].firstMatch
+            for _ in 0..<6 where !trip.isHittable { home.swipeUp() }
+            XCTAssertTrue(trip.isHittable)
+            trip.tap()
+            XCTAssertTrue(app.navigationBars[tripName].waitForExistence(timeout: 5))
+
+            for (identifier, title) in [("tripChecklist-setup", "Setup"), ("tripChecklist-teardown", "Teardown"),
+                                       ("tripMenu", "Menu"), ("tripMemories", "Photos & site notes"),
+                                       ("tripDocuments", "Confirmation & documents")] {
+                let page = app.buttons[identifier]
+                let details = app.descendants(matching: .any)["tripDetailsList"].firstMatch
+                for _ in 0..<5 where !app.buttons["tripChecklist-setup"].isHittable { details.swipeDown() }
+                for _ in 0..<8 where !page.isHittable { details.swipeUp() }
+                XCTAssertTrue(page.isHittable)
+                page.tap()
+                assertPageStaysOpen(title, in: app)
+                XCTAssertEqual(detailTrip(app), tripName)
+                app.buttons["BackButton"].firstMatch.tap()
+                XCTAssertTrue(app.navigationBars[tripName].waitForExistence(timeout: 5))
+                XCTAssertFalse(app.navigationBars[title].exists)
+            }
+            showHome(app)
+        }
+    }
+
     func testEveryHomeTripShortcutHasBackNavigationToTripDetails() {
         let app = launch()
         for (shortcut, title) in [("homeMenu", "Menu"), ("homeChecklist-setup", "Setup"),
@@ -40,7 +83,7 @@ final class DuoHomeUITests: XCTestCase {
             for _ in 0..<6 where !button.isHittable { home.swipeUp() }
             XCTAssertTrue(button.isHittable)
             button.tap()
-            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            assertPageStaysOpen(title, in: app)
             let back = app.buttons["BackButton"].firstMatch
             XCTAssertTrue(back.waitForExistence(timeout: 5), "\(title) needs a native back button")
             back.tap()
@@ -66,16 +109,16 @@ final class DuoHomeUITests: XCTestCase {
             for _ in 0..<8 where !page.isHittable { details.swipeUp() }
             XCTAssertTrue(page.isHittable)
             page.tap()
-            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+            assertPageStaysOpen(title, in: app)
             if identifier == "tripMemories" {
                 app.buttons["Earlier note versions"].tap()
-                XCTAssertTrue(app.navigationBars["Note history"].waitForExistence(timeout: 5))
+                assertPageStaysOpen("Note history", in: app)
             } else if identifier == "tripMenu" {
                 let dinner = app.buttons["menuMeal-1-dinner"]
                 let menu = app.descendants(matching: .any)["tripMenuList"].firstMatch
                 for _ in 0..<6 where !dinner.isHittable { menu.swipeUp() }
                 dinner.tap()
-                XCTAssertTrue(app.navigationBars["Dinner"].waitForExistence(timeout: 5))
+                assertPageStaysOpen("Dinner", in: app)
             }
             XCTAssertTrue(trip.isEnabled && trip.isHittable)
             trip.tap()
@@ -127,7 +170,7 @@ final class DuoHomeUITests: XCTestCase {
         app.buttons["homeChecklist-teardown"].tap()
         XCTAssertTrue(app.navigationBars["Teardown"].waitForExistence(timeout: 5))
         app.segmentedControls.buttons["Setup"].tap()
-        XCTAssertTrue(app.navigationBars["Setup"].waitForExistence(timeout: 5))
+        assertPageStaysOpen("Setup", in: app)
         XCTAssertEqual(checklist(app), "Setup", "Home's pick follows the checklist's phase")
 
         showHome(app)

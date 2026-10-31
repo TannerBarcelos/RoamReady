@@ -41,6 +41,21 @@ Derived data is written to `.derivedData/`. The shared scheme runs the app and i
 
 Trip back-navigation regression (October 31, 2026): `DuoHomeUITests.testEveryHomeTripShortcutHasBackNavigationToTripDetails` checks native Back from menu, both checklists, and photos opened directly from Home. `testSelectedTripRowAlwaysReturnsFromItsPagesAndNestedPhotos` checks reselecting the current trip from those pages, documents, note history, and a meal in an expanded window. Run the first on compact iPhone and both on iPad/expanded Duo. `NavigationUITests.testTripHistorySubpagesKeepTheTripInTheBackStack` checks the Profile/history entry path. Swift syntax parsing passed in the Linux workspace; iOS builds and UI execution were not run there. Existing phase-switching, deletion, and menu-resize tests remain relevant.
 
+Follow-up for PR #153's immediate return to trip details: Home's `List` used a binding whose getter reflected `detailPath` and whose setter replaced it. A stale trip selection or deselection could therefore clear a newly pushed page. Home now supplies a constant selection binding for highlighting and a separate explicit row action for navigation. `DuoHomeUITests.testTripDetailPagesStayOpenUntilBack` opens both checklists, menu, memories, and documents for the current and another trip. It and the shortcut, reselect, and phase-switch tests observe page titles for two seconds to catch an immediate pop after initial presentation.
+
+Reproduce on the unfixed build and repeat on the fixed build with a compact iPhone and an expanded iPad: open a trip, tap each subpage, and leave it open before using Back. Also open Home's shortcuts, switch checklist phases, open a nested meal/note-history page, and reselect the trip row in the expanded sidebar. Pages must stay open; only Back or an explicit trip/shortcut action should change them. Run the focused native tests on a Mac with an installed iPhone simulator, then repeat with an iPad simulator:
+
+```sh
+xcodebuild test -project RoamReady.xcodeproj -scheme RoamReady -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -derivedDataPath .derivedData \
+  -only-testing:RoamReadyUITests/DuoHomeUITests \
+  -only-testing:RoamReadyUITests/NavigationUITests/testTripHistorySubpagesKeepTheTripInTheBackStack \
+  -only-testing:RoamReadyUITests/TripMenuUITests/testHomeMenuShortcutStaysOpenThroughAResize \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+For Mac Catalyst, launch **My Mac (Mac Catalyst)** with `-assistant-ui-test ready -navigation-ui-test -layout-ui-test` and repeat the same checks with a wide and narrow window, including switching trips and reselecting a trip from a nested page. The UI test target currently supports iOS simulators/devices only. Validation for this follow-up in Linux: changed Swift files parsed, `git diff --check` passed, and 221 portable `CampCore`/`Campgrounds` tests passed (186 XCTest and 35 Swift Testing). These package tests do not exercise SwiftUI navigation. Native reproduction, app compilation, and UI execution on iPhone and Mac remain unverified in this environment, which has no Xcode or Apple runtime.
+
 The Mac workflow runs every package suite with `swift test` on macOS, including the SwiftData tests against real stores: rig and trip rules, checklists and defaults, cascades, note history, the document vault, reopening from disk, migrating an older store, and the export.
 
 | Suite | Coverage |

@@ -11,7 +11,8 @@ struct HomeView: View {
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @Query(sort: \Trip.arrival) private var trips: [Trip]
     let now: Date
-    let selection: Binding<HomeDestination?>
+    let selection: HomeDestination?
+    let openDestination: (HomeDestination) -> Void
     private var currentTrip: Trip? { trips.first { $0.isActive(asOf: now) } }
     /// Trips whose arrival day is still ahead, soonest first.
     private var upcomingTrips: [Trip] { trips.filter { $0.daysUntilArrival(asOf: now) != nil } }
@@ -21,7 +22,9 @@ struct HomeView: View {
     }
 
     var body: some View {
-        List(selection: selection) { sections }
+        // Highlight follows navigation. SwiftUI's selection reconciliation must not navigate:
+        // it can echo an old row or clear selection while the detail stack is pushing a page.
+        List(selection: .constant(selection)) { sections }
         .accessibilityIdentifier("homeTripList")
         .listSectionSpacing(.compact)
         .navigationTitle("Home")
@@ -118,7 +121,7 @@ struct HomeView: View {
 
     /// A selected row must still perform its action, including clearing the trip's pushed pages.
     private func destinationButton<Label: View>(_ destination: HomeDestination, @ViewBuilder label: () -> Label) -> some View {
-        Button { selection.wrappedValue = destination } label: {
+        Button { openDestination(destination) } label: {
             HStack {
                 label()
                 Spacer(minLength: 8)
