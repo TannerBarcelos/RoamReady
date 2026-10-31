@@ -39,6 +39,11 @@ enum NavigationUITestLibrary {
             current.coverPhotoData = jpeg
             current.addPhoto(jpeg)
             current.sortedPhotos.first?.caption = "Site 14 from the road"
+            if ProcessInfo.processInfo.arguments.contains("-photo-grid-fixture") {
+                current.addPhoto(sampleImage(size: CGSize(width: 800, height: 1200)))
+                current.sortedPhotos.last?.caption = "Portrait photo"
+                current.addPhoto(jpeg)
+            }
             if ProcessInfo.processInfo.arguments.contains("-unreadable-photo-fixture") {
                 current.addPhoto(Data([0, 1, 2, 3]))
                 current.sortedPhotos.last?.caption = "Unreadable photo"
@@ -57,8 +62,7 @@ enum NavigationUITestLibrary {
         return container
     }
 
-    private static func sampleImage() -> Data {
-        let size = CGSize(width: 1200, height: 800)
+    private static func sampleImage(size: CGSize = CGSize(width: 1200, height: 800)) -> Data {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         return UIGraphicsImageRenderer(size: size, format: format).jpegData(withCompressionQuality: 0.8) { context in
             UIColor.systemTeal.setFill(); context.fill(CGRect(origin: .zero, size: size))

@@ -6,6 +6,28 @@ final class TripPhotoUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
+    func testPhotoGridShowsOnlyUniformTappableImages() {
+        let app = openTripPhotos(extraArguments: ["-photo-grid-fixture"])
+        let lastPhoto = app.buttons.matching(identifier: "tripPhotoThumbnail")
+            .matching(NSPredicate(format: "label == 'Trip photo'")).firstMatch
+        for _ in 0..<8 where !lastPhoto.isHittable { app.swipeUp() }
+        let photos = app.buttons.matching(identifier: "tripPhotoThumbnail").allElementsBoundByIndex
+        XCTAssertEqual(photos.count, 3)
+        XCTAssertFalse(app.staticTexts["Site 14 from the road"].exists, "Captions belong in the detail view")
+        XCTAssertFalse(app.staticTexts["Portrait photo"].exists)
+        for (index, photo) in photos.enumerated() {
+            XCTAssertGreaterThan(photo.frame.width, 0)
+            XCTAssertEqual(photo.frame.width, photo.frame.height, accuracy: 1)
+            XCTAssertEqual(photo.frame.width, photos[0].frame.width, accuracy: 1)
+            for other in photos.dropFirst(index + 1) {
+                XCTAssertFalse(photo.frame.intersects(other.frame), "Photo buttons must not overlap")
+            }
+        }
+        lastPhoto.tap()
+        assertPhotoLoaded(in: app)
+        XCTAssertTrue(app.buttons["Share photo"].waitForExistence(timeout: 5))
+    }
+
     func testPhotoLoadsAndStaysVisibleWhileEditingResizingAndReopening() throws {
         let app = openTripPhotos()
         tapReachable(app.buttons["Site 14 from the road"], in: app)

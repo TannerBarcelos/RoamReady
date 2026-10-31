@@ -79,9 +79,11 @@ Capture photos with the native camera or import locally available photos while o
 
 Opening a trip photo fits the entire image in the preview. Loading, content not yet downloaded, and an unreadable photo have distinct states; an unreadable preview offers **Retry**. Caption edits and sharing keep the loaded preview visible.
 
+The trip gallery shows evenly sized, image-only tiles with an expand glyph. Tap a tile to see the full photo, edit its caption, share it, or remove it. Captions remain accessible to VoiceOver in the gallery.
+
 ## Camp Finder
 
-Camp Finder is online-only discovery through Apple Maps (MapKit), with no server or API key. The map shows campground and RV park points of interest as you pan; tap one to open its detail. With location permission and connectivity, opening Camp Finder centers the map on the user and searches within a 50-mile radius, with matching campground pins and a pre-populated list. It waits for location/network availability and preserves existing searches across layout changes. Use **Near me**, **Search this area** (shortened to **Search** in narrow panes such as Duo), or search by campground name, city, park, or ZIP. Location permission is optional; text search works without it.
+Camp Finder is online-only discovery through Apple Maps (MapKit), with no server or API key. The map shows campground and RV park points of interest as you pan; tap one to open its detail. With location permission and connectivity, opening Camp Finder centers the map on the user and searches within a 50-mile radius, with matching campground pins and a pre-populated list. It waits for location/network availability and preserves existing searches across layout changes. Use **Near me**, **Search**, or search by campground name, city, park, or ZIP. The two native actions keep their icons and labels visible, stacking when space is too narrow. Location permission is optional; text search works without it.
 
 At regular width on iOS 27.1 or newer, a system split arrangement places results and map in separate panes, side by side in wide space or stacked in tall space, adapting around any fold. Catalyst and earlier supported runtimes use flexible side-by-side panes at regular width. At compact width, the map stays at the top of the results list. Moving between the layouts keeps the search text, results, map position, and open place, and doesn't search again. A campground's details open in a native sheet over Camp Finder at every width; tap **Done** to return to the same search.
 

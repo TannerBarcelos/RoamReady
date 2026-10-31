@@ -2,7 +2,7 @@ import XCTest
 
 /// Camp Finder follows real width traits. A regular-width window (Duo's open display, or an
 /// iPad simulator) arranges the results and map in separate panes; a compact one keeps the
-/// stacked list. No search runs, so the test doesn't depend on Apple Maps results.
+/// stacked list. Discovery fixtures keep the checks independent of Apple Maps results.
 @MainActor
 final class CampFinderDuoUITests: XCTestCase {
     func testNearbyCampgroundsLoadWithoutSubmittingASearch() {
@@ -40,7 +40,9 @@ final class CampFinderDuoUITests: XCTestCase {
 
     func testDuoCampFinderPlacesResultsForTheAvailableWidth() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test", "-connectivity-ui-test", "online"]
+        app.launchArguments = ["-assistant-ui-test", "ready", "-navigation-ui-test", "-layout-ui-test",
+                               "-permissions-ui-test", "allowed", "-weather-ui-test", "-camp-finder-ui-test",
+                               "-connectivity-ui-test", "online"]
         app.launch()
         XCTAssertTrue(app.navigationTab("Camp Finder").waitForExistence(timeout: 10))
         app.navigationTab("Camp Finder").tap()
@@ -53,12 +55,20 @@ final class CampFinderDuoUITests: XCTestCase {
         let map = app.descendants(matching: .any)["campFinderMap"].firstMatch
         XCTAssertTrue(results.waitForExistence(timeout: 5))
         XCTAssertTrue(map.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Near me"].exists)
+        let nearMe = app.buttons["campFinderNearMe"].firstMatch
+        XCTAssertTrue(nearMe.exists)
         let areaSearch = app.buttons["campFinderSearchArea"].firstMatch
         XCTAssertTrue(areaSearch.exists)
+        XCTAssertEqual(areaSearch.label, "Search")
+        XCTAssertEqual(nearMe.label, "Near me")
         XCTAssertTrue(app.staticTexts["campFinderSearchHelp"].exists)
-        XCTAssertLessThanOrEqual(areaSearch.frame.maxX, results.frame.maxX + 1, "Search stays inside its pane")
-        XCTAssertLessThanOrEqual(areaSearch.frame.height, app.buttons["Near me"].frame.height + 4,
+        for button in [nearMe, areaSearch] {
+            XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+            XCTAssertLessThanOrEqual(button.frame.height, 72, "The native action must not stretch vertically")
+            XCTAssertGreaterThanOrEqual(button.frame.minX, results.frame.minX - 1)
+            XCTAssertLessThanOrEqual(button.frame.maxX, results.frame.maxX + 1, "Actions stay inside their pane")
+        }
+        XCTAssertLessThanOrEqual(areaSearch.frame.height, nearMe.frame.height + 4,
                                  "The area search label fits on one line")
         XCTAssertTrue(app.searchFields.firstMatch.exists, "The search field stays visible in both layouts")
 

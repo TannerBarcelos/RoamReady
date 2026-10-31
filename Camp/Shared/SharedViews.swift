@@ -27,9 +27,8 @@ struct LocalPhoto: View {
     }
 
     var body: some View {
-        // A stable container keeps the loading task alive when the placeholder becomes an image.
-        ZStack {
-            Color(.tertiarySystemFill)
+        // The container owns both sizing and the task; decoding cannot resize a grid cell or restart the task.
+        Color(.tertiarySystemFill).overlay {
             if let thumbnail {
                 Image(uiImage: thumbnail).resizable().aspectRatio(contentMode: contentMode)
                     .accessibilityLabel("Photo")
@@ -59,6 +58,7 @@ struct LocalPhoto: View {
                     .accessibilityIdentifier("localPhotoLoading")
             }
         }
+        .clipped()
         .task(id: LoadRequest(data: data, maximumDimension: maximumDimension, attempt: attempt)) {
             thumbnail = nil
             failed = false
