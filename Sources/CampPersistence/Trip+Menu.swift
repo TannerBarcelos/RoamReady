@@ -84,6 +84,18 @@ public extension Trip {
         return MenuSummary(dishCount: planned.reduce(0) { $0 + $1.sortedDishes.count }, plannedMeals: meals.count)
     }
 
+    /// The menu as the Assistant sees it: days with planned dishes, then meals outside the trip's dates.
+    var menuFacts: TripMenuFacts {
+        let planned = menuDays.map { day in
+            TripMenuFacts.Day(label: TripMenuFacts.label(for: day, of: self), meals: Self.facts(menu(on: day.offset)))
+        }
+        let outside = mealsOutsideDates
+        let kept = Set(outside.map(\.day)).sorted().map { day in
+            TripMenuFacts.Day(label: TripMenuFacts.outsideLabel(dayNumber: day + 1), meals: Self.facts(outside.filter { $0.day == day }))
+        }
+        return TripMenuFacts(days: planned + kept)
+    }
+
     /// Adds a dish after the meal's others. A standard meal's first dish stores the meal; with
     /// duplicates from sync, the dish joins the oldest.
     @discardableResult
@@ -131,6 +143,16 @@ public extension Trip {
     /// Moves a meal and its dishes to another day. A standard meal joins that day's meal of the same kind.
     func moveMeal(_ meal: MenuMeal, toDay day: Int) {
         for record in meal.records where record.dayOffset != day { record.dayOffset = day }
+    }
+
+    private static func facts(_ meals: [MenuMeal]) -> [TripMenuFacts.Meal] {
+        meals.compactMap { meal in
+            let dishes = meal.dishes.map { dish in
+                TripMenuFacts.Dish(name: dish.name, notes: dish.notes,
+                                   items: dish.sortedItems.map { TripMenuFacts.Item(name: $0.name, quantity: $0.quantity) })
+            }
+            return dishes.isEmpty ? nil : TripMenuFacts.Meal(title: meal.title, dishes: dishes)
+        }
     }
 
     private static func addedMeals(_ records: [TripMeal]) -> [MenuMeal] {

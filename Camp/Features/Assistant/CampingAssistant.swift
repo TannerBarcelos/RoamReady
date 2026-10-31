@@ -118,12 +118,13 @@ enum CampingAssistant {
                        scope: CampingHelpRequest.Scope = .checklist, chat: CampingChat, chatScope: AnyHashable,
                        before turnID: CampingChatTurn.ID? = nil,
                        rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
-                       tripFacts: TripBookingFacts? = nil, stepContext: CampingStepContext? = nil,
+                       tripFacts: TripBookingFacts? = nil, menu: TripMenuFacts? = nil, stepContext: CampingStepContext? = nil,
                        onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType, step: step, scope: scope,
                                          previousQuestion: chat.previousQuestion(in: chatScope, before: turnID),
-                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, stepContext: stepContext)
+                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, menu: menu,
+                                         stepContext: stepContext)
         let reply: CampingReply
         do {
             try Task.checkCancellation()
@@ -152,6 +153,8 @@ enum CampingAssistant {
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
         var answersSavedTrip = false
+        /// Answers with the first dish of the saved menu block, the way a grounded model would.
+        var answersMenu = false
         var answersSelectedStep = false
         /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
         var delaysFirstCall = false
@@ -174,6 +177,14 @@ enum CampingAssistant {
                 }
                 return ["title", "guidance", "notes", "section", "status", "priority", "phase"]
                     .compactMap { fields[$0] as? String }.joined(separator: " · ")
+            }
+            if answersMenu {
+                guard let block = prompt.components(separatedBy: TripMenuFacts.beginMarker).dropFirst().first?
+                    .components(separatedBy: TripMenuFacts.endMarker).first,
+                      let dish = block.split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
+                    return "Missing saved menu context."
+                }
+                return "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1]
             }
             if answersSavedTrip {
                 guard !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
@@ -206,6 +217,7 @@ enum CampingAssistant {
         case "failure": return UITestGenerator(fails: true)
         case "step-context": return UITestGenerator(fails: false, answersSelectedStep: true)
         case "saved-trip": return UITestGenerator(fails: false, answersSavedTrip: true)
+        case "saved-menu": return UITestGenerator(fails: false, answersMenu: true)
         case "document": return UITestGenerator(fails: false, citesDocuments: true)
         case "slow": return UITestGenerator(fails: false, delaysFirstCall: true)
         case "failure-once": return UITestGenerator(fails: false, failsFirstCall: true)

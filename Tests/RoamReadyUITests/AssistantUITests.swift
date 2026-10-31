@@ -27,6 +27,18 @@ final class AssistantUITests: XCTestCase {
         XCTAssertFalse(app.buttons["assistantSourceRow"].exists)
     }
 
+    func testFoodQuestionsReceiveTheCurrentTripsSavedMenu() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready", "-assistant-generation-test", "saved-menu"]
+        app.launch()
+        openAssistant(app)
+        ask(app, "What’s for dinner?")
+        let reply = app.staticTexts["assistantGeneratedReply"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 15))
+        XCTAssertTrue(reply.label.contains("Steak with brussels sprouts and sourdough"), reply.label)
+        XCTAssertTrue(app.descendants(matching: .any)["assistantSavedTripSource"].exists)
+    }
+
     func testStepHelpUsesCurrentEditorDraftAndKeepsItForFollowUps() {
         let app = XCUIApplication()
         app.launchArguments = ["-navigation-ui-test", "-assistant-ui-test", "ready", "-assistant-generation-test", "step-context"]
