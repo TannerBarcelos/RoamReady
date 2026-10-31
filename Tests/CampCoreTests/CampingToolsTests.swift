@@ -52,8 +52,9 @@ struct CampingToolsTests {
     @Test func tripQuestionsOfferEveryToolAndCarryNoSavedDataInThePrompt() {
         let turn = request("What am I making tonight?", tools: tools)
         #expect(turn.tools?.kinds == [.menu, .trip, .rig])
-        #expect(turn.tools?.required == nil, "The model decides")
         for kind in CampingToolKind.allCases { #expect(turn.instructions.contains(kind.name)) }
+        #expect(turn.instructions.contains("you must call at least one"))
+        #expect(!turn.instructions.contains("No trip is selected"))
         #expect(!turn.prompt.contains(TripBookingFacts.beginMarker))
         #expect(!turn.prompt.contains(TripMenuFacts.beginMarker))
         #expect(!turn.instructions.contains("BEGIN SAVED RIG PROFILE"))
@@ -61,22 +62,49 @@ struct CampingToolsTests {
         #expect(!turn.usesSavedTrip, "Offering a tool isn't using the trip")
     }
 
-    @Test func anOverviewMustCallTheTripToolAndGetsNothingElse() {
+    @Test func anOverviewGetsOnlyTheTripTool() {
         let overview = request("What trip is this?", tools: tools)
         #expect(overview.isTripOverview)
         #expect(overview.tools?.kinds == [.trip])
-        #expect(overview.tools?.required == .trip)
         #expect(overview.instructions.contains("supplied for this turn by \(CampingToolKind.trip.name)"))
     }
 
-    @Test func stepHelpAndGeneralChatOfferOnlyTheRig() {
-        let step = request("What's next?", tools: tools, step: ChecklistStepDraft(title: "Level the trailer"))
-        #expect(step.tools?.kinds == [.rig])
+    @Test func stepHelpKeepsTheTripToolsAndChatWithoutATripSaysSo() {
+        let step = request("What's for dinner?", tools: tools, step: ChecklistStepDraft(title: "Level the trailer"))
+        #expect(step.tools?.kinds == [.menu, .trip, .rig], "A step question can still need the trip or its menu")
         let general = request("Will 30 amp run my AC?", tools: CampingTools(rig: tools.rig))
         #expect(general.tools?.kinds == [.rig])
-        #expect(!general.instructions.contains(CampingToolKind.trip.name))
+        #expect(!general.instructions.contains("\(CampingToolKind.trip.name):"))
+        #expect(general.instructions.contains("No trip is selected"), "The model is told rather than left to guess")
         #expect(request("Anything?", tools: CampingTools()).tools == nil)
-        #expect(CampingTools(required: .trip).required == nil, "A tool that isn't offered can't be required")
+    }
+
+    @Test func theAllowanceSizesEachResultAndThenSaysTheRoomIsUsedUp() {
+        var roomy = CampingToolAllowance(tokens: 2000)
+        let full = tools.output(for: .trip(phase: nil, remainingOnly: false), allowance: &roomy)
+        #expect(full == tools.tripOutput(phase: nil, remainingOnly: false))
+        #expect(roomy.characters == 6000 - full.count - CampingToolAllowance.callOverheadCharacters)
+
+        var tight = CampingToolAllowance(tokens: 160)
+        let first = tools.output(for: .menu(day: nil, meal: nil), allowance: &tight)
+        #expect(first.contains("Chili"), "A small allowance still returns a shortened result")
+        #expect(first.count <= 480 - CampingToolAllowance.callOverheadCharacters)
+        #expect(tools.output(for: .rig, allowance: &tight) == CampingTools.noRoomOutput)
+        #expect(tools.output(for: .trip(phase: nil, remainingOnly: false), allowance: &tight) == CampingTools.noRoomOutput)
+
+        var none = CampingToolAllowance(tokens: 0)
+        #expect(tools.output(for: .menu(day: 1, meal: .dinner), allowance: &none) == CampingTools.noRoomOutput)
+    }
+
+    @Test func theChatGivesToolsTheRoomThePromptAndHistoryLeave() async throws {
+        let model = ResultsModel(outputs: [nil])
+        let chat = CampingChat(model: model, counter: ConservativeTokenEstimator())
+        let turn = request("What's for dinner?", tools: tools)
+        _ = try await chat.answer(turn)
+        let plan = try await turn.plan(.full, counter: ConservativeTokenEstimator(), budget: PromptBudget())
+        let allowance = try #require(model.allowances.first)
+        #expect(allowance == CampingToolAllowance(tokens: PromptBudget().inputLimit - plan.usage.total))
+        #expect(allowance.characters >= CampingTools.outputCharacters, "At least one full result always fits")
     }
 
     @Test func theTripToolReturnsBookingDetailsNotesAndChecklistProgress() {
@@ -133,6 +161,7 @@ struct CampingToolsTests {
 @MainActor
 private final class ResultsModel: CampingChatModel {
     var resultsOf: [CampingChatTurn.ID?] = []
+    var allowances: [CampingToolAllowance] = []
     var histories: [[String]] = []
     /// One output per answer, or nil for an answer without a tool call.
     var outputs: [String?]
@@ -147,8 +176,9 @@ private final class ResultsModel: CampingChatModel {
         init(model: ResultsModel) { self.model = model }
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String { "answer" }
         func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                     tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply {
-            model.resultsOf.append(resultsOf)
+                     toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
+            model.resultsOf.append(toolTurn?.resultsOf)
+            if let toolTurn { model.allowances.append(toolTurn.allowance) }
             model.histories.append(history.map(\.question))
             let output = model.outputs.isEmpty ? nil : model.outputs.removeFirst()
             return CampingSessionReply(text: "answer", toolsUsed: output == nil ? [] : [.menu], toolOutputs: output.map { [$0] } ?? [])

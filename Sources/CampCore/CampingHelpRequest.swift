@@ -22,8 +22,8 @@ public struct CampingHelpRequest: Sendable {
     public let documents: DocumentEvidence?
     /// The trip's saved booking facts, for trip and checklist help. Shown apart from document excerpts.
     public let tripFacts: TripBookingFacts?
-    /// Saved data the model may look up while answering. A trip overview gets only `get_trip`, which it must
-    /// call; selected-step help gets only `get_rig`.
+    /// Saved data the model looks up while answering; it must make at least one call. A trip overview gets only
+    /// `get_trip`.
     public let tools: CampingTools?
     private let askedAboutBooking: Bool
     /// Earlier turns the chat folded away, carried in the instructions. Set by `CampingChat`, never by callers.
@@ -108,8 +108,7 @@ public struct CampingHelpRequest: Sendable {
         self.scope = scope
         self.tripFacts = tripFacts
         askedAboutBooking = BookingFactQuestion.isAboutBooking(question)
-        let offered = tripOverview ? tools?.limited(to: [.trip], requiring: .trip)
-            : selectedStep != nil ? tools?.limited(to: [.rig]) : tools
+        let offered = tripOverview ? tools?.limited(to: [.trip]) : tools
         self.tools = offered?.kinds.isEmpty != false ? nil : offered
         self.rigContext = tripOverview ? nil : rigContext
         self.documents = tripOverview ? nil : documents

@@ -176,8 +176,8 @@ enum CampingAssistant {
             }
             if answersSavedTrip {
                 CampingAssistant.uiTestCalls += 1
-                // An overview offers only the trip tool, required, and carries no rig, checklist, or documents.
-                guard let tools, tools.kinds == [.trip], tools.required == .trip,
+                // An overview offers only the trip tool and carries no rig, checklist, or documents.
+                guard let tools, tools.kinds == [.trip],
                       !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
                       !prompt.contains(TripBookingFacts.beginMarker), !instructions.contains("routine maintenance"),
                       let campground = tools.tripOutput(phase: nil, remainingOnly: false).components(separatedBy: "\n")

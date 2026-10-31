@@ -43,16 +43,16 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String {
-        try await respond(to: prompt, instructions: instructions, history: history, tools: nil, resultsOf: nil).text
+        try await respond(to: prompt, instructions: instructions, history: history, toolTurn: nil).text
     }
 
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
-                 tools: CampingTools?, resultsOf: CampingChatTurn.ID?) async throws -> CampingSessionReply {
+                 toolTurn: CampingToolTurn?) async throws -> CampingSessionReply {
         let model = SystemLanguageModel.default
         guard case .available = model.availability else { throw CampingChatFailure.notReady }
         guard model.supportsLocale() else { throw CampingChatFailure.unsupportedLanguage }
         try Task.checkCancellation()
-        context.set(instructions: instructions, kept: Set(history.map(\.id)), tools: tools, resultsOf: resultsOf)
+        context.set(instructions: instructions, kept: Set(history.map(\.id)), toolTurn: toolTurn)
         do {
             // No cancellation check after this: a finished turn is in the transcript, and `CampingChat` stores
             // or drops it.
@@ -112,8 +112,8 @@ private final class TurnContext: Sendable {
     private struct State {
         var instructions = ""
         var kept: Set<String> = []
-        var tools: CampingTools?
-        var resultsOf: String?
+        var toolTurn: CampingToolTurn?
+        var allowance = CampingToolAllowance(tokens: 0)
         var toolsUsed: Set<CampingToolKind> = []
         var toolOutputs: [String] = []
     }
@@ -121,33 +121,34 @@ private final class TurnContext: Sendable {
 
     var instructions: String { state.withLock { $0.instructions } }
     var kept: Set<String> { state.withLock { $0.kept } }
-    var tools: CampingTools? { state.withLock { $0.tools } }
+    var resultsOf: String? { state.withLock { $0.toolTurn?.resultsOf } }
     var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
     var toolOutputs: [String] { state.withLock { $0.toolOutputs } }
-    var resultsOf: String? { state.withLock { $0.resultsOf } }
 
-    func offers(_ kind: CampingToolKind) -> Bool { state.withLock { $0.tools?.kinds.contains(kind) == true } }
+    func offers(_ kind: CampingToolKind) -> Bool { state.withLock { $0.toolTurn?.tools.kinds.contains(kind) == true } }
 
-    /// A required tool is required until it's called; after that the model may answer (Apple: a required mode
-    /// needs an exit condition, or the model keeps calling the tool).
+    /// With tools offered, the model must call one before it may answer. Required stops once a call is made
+    /// (Apple: a required mode needs an exit condition, or the model keeps calling).
     var callingMode: GenerationOptions.ToolCallingMode {
-        state.withLock { state in
-            guard let required = state.tools?.required, !state.toolsUsed.contains(required) else { return .allowed }
-            return .required
+        state.withLock { $0.toolTurn != nil && $0.toolsUsed.isEmpty ? .required : .allowed }
+    }
+
+    func set(instructions: String, kept: Set<String>, toolTurn: CampingToolTurn?) {
+        state.withLock {
+            $0 = State(instructions: instructions, kept: kept, toolTurn: toolTurn,
+                       allowance: toolTurn?.allowance ?? CampingToolAllowance(tokens: 0))
         }
     }
 
-    func set(instructions: String, kept: Set<String>, tools: CampingTools?, resultsOf: String?) {
-        state.withLock { $0 = State(instructions: instructions, kept: kept, tools: tools, resultsOf: resultsOf) }
-    }
-
-    /// Records a call and returns its output, for the tools to return.
-    func used(_ tool: CampingToolKind, output: String) -> String {
+    /// Answers a call from the turn's snapshots within what the allowance has left, and records it.
+    func call(_ call: CampingToolCall) -> String {
         state.withLock { state in
-            state.toolsUsed.insert(tool)
+            let tools = state.toolTurn?.tools
+            let output = tools?.output(for: call, allowance: &state.allowance) ?? "This isn't available here."
+            state.toolsUsed.insert(call.kind)
             state.toolOutputs.append(output)
+            return output
         }
-        return output
     }
 }
 
@@ -163,8 +164,8 @@ private struct TurnInstructions: DynamicInstructions {
     }
 }
 
-// The tools are thin: names, descriptions, and output come from `CampingTools` in `CampCore`, where they're
-// tested without Foundation Models, over snapshots taken before the request.
+// The tools are thin: names, descriptions, output, and its budget come from `CampingTools` in `CampCore`, where
+// they're tested without Foundation Models, over snapshots taken before the request.
 
 @available(iOS 27.0, macOS 27.0, *)
 private struct MenuTool: Tool {
@@ -196,7 +197,7 @@ private struct MenuTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.menu, output: context.tools?.menuOutput(day: arguments.day, meal: arguments.meal?.kind) ?? "This trip has no menu.")
+        context.call(.menu(day: arguments.day, meal: arguments.meal?.kind))
     }
 }
 
@@ -222,8 +223,7 @@ private struct TripTool: Tool {
     }
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.trip, output: context.tools?.tripOutput(phase: arguments.checklist?.phase,
-                                                               remainingOnly: arguments.remainingOnly ?? false) ?? "No trip is selected.")
+        context.call(.trip(phase: arguments.checklist?.phase, remainingOnly: arguments.remainingOnly ?? false))
     }
 }
 
@@ -237,7 +237,7 @@ private struct RigTool: Tool {
     struct Arguments {}
 
     func call(arguments: Arguments) async throws -> String {
-        context.used(.rig, output: context.tools?.rigOutput() ?? "No rig is saved.")
+        context.call(.rig)
     }
 }
 
