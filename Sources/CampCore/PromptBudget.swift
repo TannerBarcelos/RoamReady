@@ -61,27 +61,21 @@ public enum PromptAttempt: Equatable, Sendable { case full, compact }
 /// How much of each shrinkable part a prompt carries.
 struct PromptShape: Equatable, Sendable {
     var checklistCharacters: Int
-    var menuCharacters: Int
     var excerptCount: Int
     var excerptCharacters: Int
     var questionCharacters: Int
 
     static let checklistSteps = [2000, 1000, 500, 250, 0]
-    /// Unlike the checklist and excerpts, the menu isn't chosen for the question, so it gives way first, but
-    /// keeps the earliest days' dish names so a food question still has something to answer from.
-    static let menuSteps = [1200, 800, 400]
     static let excerptSteps = [400, 300, 200]
     static let questionSteps = [800, 400]
 
-    /// The next smaller prompt, or nil at the floor. The order is the compaction priority: the saved menu
-    /// first, then saved checklist context, then the weakest evidence, then evidence text, and the current question last. Earlier
+    /// The next smaller prompt, or nil at the floor. The order is the compaction priority: saved checklist
+    /// context first, then the weakest evidence, then evidence text, and the current question last. Earlier
     /// turns give way before any of these (see `CampingChat`). Saved trip facts are small and never shrunk.
     /// The strongest excerpt and the question outlast everything else.
     func shrunk() -> PromptShape? {
         var next = self
-        if let size = Self.menuSteps.first(where: { $0 < menuCharacters }) {
-            next.menuCharacters = size
-        } else if let size = Self.checklistSteps.first(where: { $0 < checklistCharacters }) {
+        if let size = Self.checklistSteps.first(where: { $0 < checklistCharacters }) {
             next.checklistCharacters = size
         } else if excerptCount > 1 {
             next.excerptCount -= 1
@@ -100,7 +94,6 @@ struct PromptShape: Equatable, Sendable {
         guard let other else { return self }
         var result = self
         result.checklistCharacters = min(checklistCharacters, other.checklistCharacters)
-        result.menuCharacters = min(menuCharacters, other.menuCharacters)
         result.excerptCount = min(excerptCount, other.excerptCount)
         result.excerptCharacters = min(excerptCharacters, other.excerptCharacters)
         result.questionCharacters = min(questionCharacters, other.questionCharacters)
@@ -114,8 +107,8 @@ public struct PromptUsage: Equatable, Sendable {
     public let checklist: Int
     /// The trip's saved booking facts. Never shrunk: they and the question outlast everything else.
     public let savedTrip: Int
-    /// The saved trip menu, on trip questions.
-    public let menu: Int
+    /// The definitions of the tools the model may call, which the framework adds to the instructions.
+    public let tools: Int
     public let evidence: Int
     public let question: Int
     /// Instructions plus prompt, counted as whole texts. This is what the budget is checked against.
@@ -170,17 +163,17 @@ extension CampingHelpRequest {
         let excerpts = documents?.budgeted ?? []
         switch attempt {
         case .full:
-            return PromptShape(checklistCharacters: 4000, menuCharacters: TripMenuFacts.fullCharacters, excerptCount: excerpts.count, excerptCharacters: DocumentEvidence.maximumExcerptCharacters,
+            return PromptShape(checklistCharacters: 4000, excerptCount: excerpts.count, excerptCharacters: DocumentEvidence.maximumExcerptCharacters,
                                questionCharacters: 1500)
         case .compact:
-            return PromptShape(checklistCharacters: 500, menuCharacters: TripMenuFacts.compactCharacters,
+            return PromptShape(checklistCharacters: 500,
                                excerptCount: min(excerpts.count, 1), excerptCharacters: DocumentEvidence.maximumCompactCharacters,
                                questionCharacters: 1500)
         }
     }
 
     private struct Rendered {
-        var checklist = "", savedTrip = "", menu = "", evidence = "", question = ""
+        var checklist = "", savedTrip = "", evidence = "", question = ""
         var prompt = ""
         var sources: [DocumentSource] = []
         var passages: [DocumentSource.ID: String] = [:]
@@ -191,7 +184,6 @@ extension CampingHelpRequest {
         out.checklist = String(passages.prefix(shape.checklistCharacters))
         out.question = String(question.prefix(shape.questionCharacters))
         out.savedTrip = tripFacts?.promptBlock() ?? ""
-        out.menu = menu?.promptBlock(characters: shape.menuCharacters) ?? ""
         let shown = (documents?.budgeted ?? []).prefix(shape.excerptCount).map {
             DocumentExcerpt(source: $0.source, text: String($0.text.prefix(shape.excerptCharacters)))
         }
@@ -199,8 +191,7 @@ extension CampingHelpRequest {
         out.passages = Dictionary(shown.map { ($0.source.id, $0.text) }, uniquingKeysWith: { first, _ in first })
         if let documents { out.evidence = documents.promptBlock(excerpts: shown) }
         out.prompt = Self.render(category: promptCategory,
-                                 checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip,
-                                 menu: menu == nil ? nil : out.menu, evidence: out.evidence.isEmpty ? nil : out.evidence,
+                                 checklist: out.checklist, savedFacts: tripFacts == nil ? nil : out.savedTrip, evidence: out.evidence.isEmpty ? nil : out.evidence,
                                  question: out.question)
         return out
     }
@@ -216,17 +207,17 @@ extension CampingHelpRequest {
               counter: any PromptTokenCounting, budget: PromptBudget) async throws -> PromptPlan {
         var measurer = Measurer(counter: counter)
         var shape = initialShape(attempt).limited(by: limit?.shape)
-        let instructionTokens = try await measurer.count(instructions)
+        let instructionTokens = try await measurer.count(instructions) + (tools?.schemaTokens ?? 0)
         while true {
             try Task.checkCancellation()
             let rendered = render(shape)
             let promptTokens = try await measurer.count(rendered.prompt)
             if instructionTokens + promptTokens <= budget.inputLimit {
                 let usage = PromptUsage(
-                    instructions: instructionTokens,
+                    instructions: instructionTokens - (tools?.schemaTokens ?? 0),
                     checklist: try await measurer.count(rendered.checklist),
                     savedTrip: tripFacts == nil ? 0 : try await measurer.count(rendered.savedTrip),
-                    menu: menu == nil ? 0 : try await measurer.count(rendered.menu),
+                    tools: tools?.schemaTokens ?? 0,
                     evidence: documents == nil ? 0 : try await measurer.count(rendered.evidence),
                     question: try await measurer.count(rendered.question),
                     total: instructionTokens + promptTokens, limit: budget.inputLimit)

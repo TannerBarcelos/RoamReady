@@ -85,15 +85,29 @@ public extension Trip {
     }
 
     /// The menu as the Assistant sees it: days with planned dishes, then meals outside the trip's dates.
-    var menuFacts: TripMenuFacts {
-        let planned = menuDays.map { day in
-            TripMenuFacts.Day(label: TripMenuFacts.label(for: day, of: self), meals: Self.facts(menu(on: day.offset)))
+    /// Today is named when it falls within the trip, so the model can answer "tonight".
+    func menuFacts(asOf now: Date = Date()) -> TripMenuFacts {
+        let days = menuDays
+        let planned = days.map { day in
+            TripMenuFacts.Day(number: day.number, label: TripMenuFacts.label(for: day, of: self), meals: Self.facts(menu(on: day.offset)))
         }
         let outside = mealsOutsideDates
         let kept = Set(outside.map(\.day)).sorted().map { day in
-            TripMenuFacts.Day(label: TripMenuFacts.outsideLabel(dayNumber: day + 1), meals: Self.facts(outside.filter { $0.day == day }))
+            TripMenuFacts.Day(number: day + 1, label: TripMenuFacts.outsideLabel(dayNumber: day + 1),
+                              meals: Self.facts(outside.filter { $0.day == day }))
         }
-        return TripMenuFacts(days: planned + kept)
+        var planning = Calendar(identifier: .gregorian)
+        planning.timeZone = planningTimeZone
+        let today = days.first { planning.isDate($0.date, inSameDayAs: now) }.map { day in
+            TripMenuFacts.Day(number: day.number, label: TripMenuFacts.label(for: day, of: self), meals: [])
+        }
+        return TripMenuFacts(days: planned + kept, today: today)
+    }
+
+    /// What the Assistant may look up for this trip: its menu and its checklists with their progress.
+    func assistantTools(asOf now: Date = Date()) -> CampingTools {
+        CampingTools(menu: menuFacts(asOf: now),
+                     checklist: TripChecklistFacts(setup: steps(.setup).map(\.draft), teardown: steps(.teardown).map(\.draft)))
     }
 
     /// Adds a dish after the meal's others. A standard meal's first dish stores the meal; with
@@ -151,7 +165,7 @@ public extension Trip {
                 TripMenuFacts.Dish(name: dish.name, notes: dish.notes,
                                    items: dish.sortedItems.map { TripMenuFacts.Item(name: $0.name, quantity: $0.quantity) })
             }
-            return dishes.isEmpty ? nil : TripMenuFacts.Meal(title: meal.title, dishes: dishes)
+            return dishes.isEmpty ? nil : TripMenuFacts.Meal(kind: meal.kind, title: meal.title, dishes: dishes)
         }
     }
 

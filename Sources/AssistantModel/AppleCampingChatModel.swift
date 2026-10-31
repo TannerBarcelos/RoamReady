@@ -27,9 +27,11 @@ public struct AppleCampingChatModel: CampingChatModel {
     }
 }
 
-/// One `LanguageModelSession` per chat. Its transcript holds the conversation. This turn's instructions are
-/// `DynamicInstructions`, evaluated for each request and never stored as history. The profile's history
-/// transform sends only the turns `CampingChat` chose, and a failed or cancelled request reverts the transcript.
+/// One `LanguageModelSession` per chat. Its transcript holds the conversation. This turn's instructions and
+/// tools are `DynamicInstructions`, evaluated for each request and never stored as history. The framework runs
+/// the tool loop; a turn's tool calls and results stay in the transcript only until `store(_:)` replaces the
+/// turn with its stored form. The profile's history transform sends only the turns `CampingChat` chose, and a
+/// failed or cancelled request reverts the transcript.
 @available(iOS 27.0, macOS 27.0, *)
 @MainActor
 final class AppleCampingChatSession: CampingChatSession {
@@ -41,17 +43,27 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 
     func respond(to prompt: String, instructions: String, history: [CampingChatTurn]) async throws -> String {
+        try await respond(to: prompt, instructions: instructions, history: history, tools: nil).text
+    }
+
+    func respond(to prompt: String, instructions: String, history: [CampingChatTurn],
+                 tools: CampingTools?) async throws -> CampingSessionReply {
         let model = SystemLanguageModel.default
         guard case .available = model.availability else { throw CampingChatFailure.notReady }
         guard model.supportsLocale() else { throw CampingChatFailure.unsupportedLanguage }
         try Task.checkCancellation()
-        context.set(instructions: instructions, kept: Set(history.map(\.id)))
+        context.set(instructions: instructions, kept: Set(history.map(\.id)), tools: tools)
         do {
             // No cancellation check after this: a finished turn is in the transcript, and `CampingChat` stores
             // or drops it.
-            return try await session.respond(to: prompt).content
+            let text = try await session.respond(to: prompt).content
+            return CampingSessionReply(text: text, toolsUsed: context.toolsUsed)
         } catch is CancellationError {
             throw CancellationError()
+        } catch is LanguageModelSession.ToolCallError {
+            // The tools only read snapshots, so a failure here is the framework's; the transcript is reverted.
+            if Task.isCancelled { throw CancellationError() }
+            throw CampingChatFailure.failed
         } catch let error as LanguageModelError {
             if Task.isCancelled { throw CancellationError() }
             switch error {
@@ -88,24 +100,109 @@ final class AppleCampingChatSession: CampingChatSession {
     }
 }
 
-/// What the next request may use. Set on the main actor before each call and read by the framework while it
-/// builds the request, so it's guarded.
+/// What the next request may use, and which tools it called. Set on the main actor before each call and read
+/// by the framework and the tools while the request runs, so it's guarded.
 @available(iOS 27.0, macOS 27.0, *)
 private final class TurnContext: Sendable {
-    private let state = Mutex<(instructions: String, kept: Set<String>)>(("", []))
+    private struct State {
+        var instructions = ""
+        var kept: Set<String> = []
+        var tools: CampingTools?
+        var toolsUsed: Set<CampingToolKind> = []
+    }
+    private let state = Mutex(State())
 
     var instructions: String { state.withLock { $0.instructions } }
     var kept: Set<String> { state.withLock { $0.kept } }
+    var tools: CampingTools? { state.withLock { $0.tools } }
+    var toolsUsed: Set<CampingToolKind> { state.withLock { $0.toolsUsed } }
+    var offersMenu: Bool { state.withLock { $0.tools?.menu != nil } }
+    var offersChecklist: Bool { state.withLock { $0.tools?.checklist != nil } }
 
-    func set(instructions: String, kept: Set<String>) {
-        state.withLock { $0 = (instructions, kept) }
+    func set(instructions: String, kept: Set<String>, tools: CampingTools?) {
+        state.withLock { $0 = State(instructions: instructions, kept: kept, tools: tools) }
+    }
+
+    func used(_ tool: CampingToolKind) {
+        _ = state.withLock { $0.toolsUsed.insert(tool) }
     }
 }
 
+/// Re-evaluated before every model request, so a turn without trip tools carries no tool definitions.
 @available(iOS 27.0, macOS 27.0, *)
 private struct TurnInstructions: DynamicInstructions {
     let context: TurnContext
-    var body: some DynamicInstructions { Instructions(context.instructions) }
+    var body: some DynamicInstructions {
+        Instructions(context.instructions)
+        if context.offersMenu { TripMenuTool(context: context) }
+        if context.offersChecklist { TripChecklistTool(context: context) }
+    }
+}
+
+/// Reads the trip's menu snapshot. Names, descriptions, and output come from `CampingTools` in `CampCore`,
+/// where they're tested without Foundation Models.
+@available(iOS 27.0, macOS 27.0, *)
+private struct TripMenuTool: Tool {
+    let context: TurnContext
+    let name = CampingToolKind.tripMenu.name
+    let description = CampingToolKind.tripMenu.description
+
+    @Generable
+    enum Meal {
+        case breakfast, lunch, dinner, snack, other
+
+        var kind: MealKind {
+            switch self {
+            case .breakfast: .breakfast
+            case .lunch: .lunch
+            case .dinner: .dinner
+            case .snack: .snack
+            case .other: .other
+            }
+        }
+    }
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Trip day number. Omit for every day.")
+        var day: Int?
+        @Guide(description: "Omit for every meal.")
+        var meal: Meal?
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        context.used(.tripMenu)
+        return context.tools?.menuOutput(day: arguments.day, meal: arguments.meal?.kind) ?? "This trip has no menu."
+    }
+}
+
+/// Reads the trip's checklist snapshot with its progress.
+@available(iOS 27.0, macOS 27.0, *)
+private struct TripChecklistTool: Tool {
+    let context: TurnContext
+    let name = CampingToolKind.tripChecklist.name
+    let description = CampingToolKind.tripChecklist.description
+
+    @Generable
+    enum Phase {
+        case setup, teardown
+
+        var phase: ChecklistPhase { self == .setup ? .setup : .teardown }
+    }
+
+    @Generable
+    struct Arguments {
+        @Guide(description: "Omit for both checklists.")
+        var phase: Phase?
+        @Guide(description: "True for only the steps not done yet.")
+        var remainingOnly: Bool?
+    }
+
+    func call(arguments: Arguments) async throws -> String {
+        context.used(.tripChecklist)
+        return context.tools?.checklistOutput(phase: arguments.phase?.phase, remainingOnly: arguments.remainingOnly ?? false)
+            ?? "This trip has no checklist."
+    }
 }
 
 @available(iOS 27.0, macOS 27.0, *)

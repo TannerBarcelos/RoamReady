@@ -348,7 +348,7 @@ struct AssistantView: View {
         let rig = selectedTrip == nil ? rigs.active.first : selectedTrip?.rig
         let rigContext = rig.map { CampingRigContext($0) }
         let tripFacts = selectedTrip.map { TripBookingFacts($0) }
-        let menu = selectedTrip.map(\.menuFacts)
+        let tools = selectedTrip.map { $0.assistantTools() }
         let steps: [ChecklistStepDraft]
         if let trip = selectedTrip {
             steps = (trip.steps(.setup) + trip.steps(.teardown)).map(\.draft)
@@ -389,7 +389,7 @@ struct AssistantView: View {
                                                        step: step?.draft, scope: trip == nil ? .general : .checklist,
                                                        chat: session, chatScope: target, before: before,
                                                        rigContext: rigContext, documents: evidence,
-                                                       tripFacts: tripFacts, menu: menu, stepContext: step,
+                                                       tripFacts: tripFacts, tools: tools, stepContext: step,
                                                        onStage: { stage in
                     guard progress.isCurrent(request) else { return }
                     _ = progress.advance(to: stage, for: request)

@@ -20,6 +20,21 @@ public enum CampingChatFailure: Error, Equatable, LocalizedError, Sendable {
 @MainActor
 public protocol CampingResponseGenerating {
     func respond(to prompt: String, instructions: String) async throws -> String
+    /// Answers with `tools` available. Generators without tool calling answer without them.
+    func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply
+}
+
+extension CampingResponseGenerating {
+    public func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
+        CampingSessionReply(text: try await respond(to: prompt, instructions: instructions))
+    }
+}
+
+/// A session's answer to one turn, with the tools the model called to reach it.
+public struct CampingSessionReply: Equatable, Sendable {
+    public let text: String
+    public let toolsUsed: Set<CampingToolKind>
+    public init(text: String, toolsUsed: Set<CampingToolKind> = []) { self.text = text; self.toolsUsed = toolsUsed }
 }
 
 /// How an answer relates to the owner's documents.
@@ -45,8 +60,9 @@ public struct CampingReply: Equatable, Sendable {
     public let coverage: DocumentCoverage
     /// Readiness of the request's scope when it was asked.
     public let readiness: ScopeReadiness
-    /// The question was about the booking and the saved trip's facts were supplied, so they are a source too.
-    public let usedSavedTrip: Bool
+    /// The question was about the booking and the saved trip's facts were supplied, or the model looked up the
+    /// trip's menu or checklist, so the saved trip is a source too.
+    public internal(set) var usedSavedTrip: Bool
     /// Excerpts the model was given and did not cite. Shown as references searched, never as sources.
     public var searched: [DocumentSource] = []
     /// The passage text the model was shown for each cited or searched source, by source ID.

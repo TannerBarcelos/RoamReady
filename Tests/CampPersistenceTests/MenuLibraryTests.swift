@@ -147,20 +147,33 @@ struct MenuLibraryTests {
     }
 
     @Test func theAssistantSeesPlannedDaysThenMealsOutsideTheDates() throws {
-        #expect(trip.menuFacts.isEmpty)
+        #expect(trip.menuFacts().isEmpty)
         let steak = try trip.addDish(MenuDishDraft(name: "Steak", notes: "Sear hot"), to: .standard(day: 0, kind: .dinner))
         try steak.addItem(DishItemDraft(name: "Ribeye", quantity: "2 lb"))
         try trip.addMeal(MealDraft(title: "Empty extra meal"), day: 1)
         let late = try trip.addMeal(MealDraft(title: "Late snack"), day: 9)
         try trip.addDish(MenuDishDraft(name: "S'mores"), to: .added(late.persistentModelID))
 
-        let facts = trip.menuFacts
+        let facts = trip.menuFacts(asOf: trip.arrival.addingTimeInterval(86_400))
+        #expect(facts.days.map(\.number) == [1, 10])
         #expect(facts.days.map(\.label) == [TripMenuFacts.label(for: trip.menuDays[0], of: trip),
                                             TripMenuFacts.outsideLabel(dayNumber: 10)])
-        #expect(facts.days[0].meals.map(\.title) == ["Dinner"], "Meals with no dishes are left out")
+        #expect(facts.days[0].meals.map(\.kind) == [.dinner], "Meals with no dishes are left out")
         #expect(facts.days[0].meals[0].dishes == [TripMenuFacts.Dish(name: "Steak", notes: "Sear hot",
                                                                      items: [TripMenuFacts.Item(name: "Ribeye", quantity: "2 lb")])])
         #expect(facts.days[1].meals.map(\.title) == ["Late snack"])
+        #expect(facts.today?.number == 2, "The day after arrival is day 2")
+        #expect(trip.menuFacts(asOf: trip.arrival.addingTimeInterval(30 * 86_400)).today == nil, "Outside the trip there's no today")
+    }
+
+    @Test func theAssistantsToolsCarryTheMenuAndChecklistProgress() throws {
+        try trip.addDish(MenuDishDraft(name: "Chili"), to: .standard(day: 0, kind: .dinner))
+        trip.steps(.setup).first?.status = .completed
+        let tools = trip.assistantTools()
+        #expect(tools.kinds == [.tripMenu, .tripChecklist])
+        #expect(tools.menu?.days.first?.meals.first?.dishes.first?.name == "Chili")
+        #expect(tools.checklist?.setup == trip.steps(.setup).map(\.draft))
+        #expect(tools.checklist?.setup.first?.status == .completed)
     }
 
     @Test func deletingATripDeletesItsMenu() throws {

@@ -118,12 +118,12 @@ enum CampingAssistant {
                        scope: CampingHelpRequest.Scope = .checklist, chat: CampingChat, chatScope: AnyHashable,
                        before turnID: CampingChatTurn.ID? = nil,
                        rigContext: CampingRigContext? = nil, documents: DocumentEvidence? = nil,
-                       tripFacts: TripBookingFacts? = nil, menu: TripMenuFacts? = nil, stepContext: CampingStepContext? = nil,
+                       tripFacts: TripBookingFacts? = nil, tools: CampingTools? = nil, stepContext: CampingStepContext? = nil,
                        onStage: (@MainActor (AssistantStage) -> Void)? = nil) async throws -> CampingAnswer {
         try Task.checkCancellation()
         let request = CampingHelpRequest(question: question, steps: candidates, rigType: rigType, step: step, scope: scope,
                                          previousQuestion: chat.previousQuestion(in: chatScope, before: turnID),
-                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, menu: menu,
+                                         rigContext: rigContext, documents: documents, tripFacts: tripFacts, tools: tools,
                                          stepContext: stepContext)
         let reply: CampingReply
         do {
@@ -153,7 +153,7 @@ enum CampingAssistant {
         /// Answers from the first supplied excerpt and cites it, the way a grounded model would.
         var citesDocuments = false
         var answersSavedTrip = false
-        /// Answers with the first dish of the saved menu block, the way a grounded model would.
+        /// Calls the menu tool for dinner and answers with its first dish, the way a model using the tool would.
         var answersMenu = false
         var answersSelectedStep = false
         /// Waits before answering the first question only, so a test can close the sheet or retry mid-request.
@@ -162,6 +162,16 @@ enum CampingAssistant {
         var failsFirstCall = false
         /// Waits before every answer, so a UI test can resize or rotate while it's generating.
         var delay: Duration = .zero
+        func respond(to prompt: String, instructions: String, tools: CampingTools?) async throws -> CampingSessionReply {
+            guard answersMenu else { return CampingSessionReply(text: try await respond(to: prompt, instructions: instructions)) }
+            CampingAssistant.uiTestCalls += 1
+            guard let tools, instructions.contains(CampingToolKind.tripMenu.name),
+                  let dish = tools.menuOutput(day: nil, meal: .dinner).split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
+                return CampingSessionReply(text: "Missing saved menu tool.")
+            }
+            return CampingSessionReply(text: "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1], toolsUsed: [.tripMenu])
+        }
+
         func respond(to prompt: String, instructions: String) async throws -> String {
             CampingAssistant.uiTestCalls += 1
             let isFirst = CampingAssistant.uiTestCalls == 1
@@ -177,14 +187,6 @@ enum CampingAssistant {
                 }
                 return ["title", "guidance", "notes", "section", "status", "priority", "phase"]
                     .compactMap { fields[$0] as? String }.joined(separator: " · ")
-            }
-            if answersMenu {
-                guard let block = prompt.components(separatedBy: TripMenuFacts.beginMarker).dropFirst().first?
-                    .components(separatedBy: TripMenuFacts.endMarker).first,
-                      let dish = block.split(separator: "\n").first(where: { $0.contains("Dish: ") }) else {
-                    return "Missing saved menu context."
-                }
-                return "From your saved menu: " + dish.components(separatedBy: "Dish: ")[1]
             }
             if answersSavedTrip {
                 guard !prompt.contains("BEGIN SAVED REFERENCE"), !prompt.contains("DOCUMENT EXCERPTS"),
