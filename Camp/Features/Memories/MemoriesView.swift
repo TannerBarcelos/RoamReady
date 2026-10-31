@@ -126,14 +126,19 @@ struct PhotoDetailView: View {
         _caption = State(initialValue: photo.caption)
     }
     var body: some View {
+        let imageData = photo.imageData
         NavigationStack {
             Form {
-                LocalPhoto(data: photo.imageData, maximumDimension: 2048).frame(maxWidth: .infinity).frame(height: 300).clipped()
+                LocalPhoto(data: imageData, maximumDimension: 2048, contentMode: .fit, allowsRetry: true)
+                    .frame(maxWidth: .infinity).frame(height: 300).clipped()
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("tripPhotoPreview")
                 TextField("Caption", text: $caption, axis: .vertical)
+                    .accessibilityIdentifier("tripPhotoCaption")
                 if let shareURL { ShareLink("Share photo", item: shareURL) }
                 Button("Remove from trip", role: .destructive) { deleting = true }
             }
-            .task { shareURL = photo.imageData.flatMap { try? PhotoImport.shareableFile($0) } }
+            .task(id: imageData) { shareURL = imageData.flatMap { try? PhotoImport.shareableFile($0) } }
             .navigationTitle("Trip photo").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }

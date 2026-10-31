@@ -14,27 +14,60 @@ extension TripDetails {
 struct LocalPhoto: View {
     let data: Data?
     var maximumDimension = 512
+    var contentMode: ContentMode = .fill
+    var allowsRetry = false
     @State private var thumbnail: UIImage?
+    @State private var failed = false
+    @State private var attempt = 0
+
+    private struct LoadRequest: Equatable {
+        let data: Data?
+        let maximumDimension: Int
+        let attempt: Int
+    }
+
     var body: some View {
-        Group {
+        // A stable container keeps the loading task alive when the placeholder becomes an image.
+        ZStack {
+            Color(.tertiarySystemFill)
             if let thumbnail {
-                Image(uiImage: thumbnail).resizable().scaledToFill()
+                Image(uiImage: thumbnail).resizable().aspectRatio(contentMode: contentMode)
+                    .accessibilityLabel("Photo")
+                    .accessibilityIdentifier("localPhotoImage")
+            } else if data == nil {
+                VStack {
+                    Image(systemName: "icloud.and.arrow.down")
+                    Text("Not on this device yet").font(.caption2)
+                }.foregroundStyle(.secondary)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Photo not downloaded yet")
+            } else if failed {
+                VStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .accessibilityLabel("Couldn’t load photo")
+                        .accessibilityHidden(allowsRetry)
+                    if allowsRetry {
+                        Text("Couldn’t load photo").font(.callout)
+                        Button("Retry") { attempt += 1 }
+                            .buttonStyle(.bordered)
+                            .foregroundStyle(.tint)
+                    }
+                }.foregroundStyle(.secondary)
+                    .accessibilityIdentifier("localPhotoFailure")
             } else {
-                Color(.tertiarySystemFill).overlay {
-                    VStack {
-                        Image(systemName: data == nil ? "icloud.and.arrow.down" : "photo")
-                        if data == nil { Text("Not on this device yet").font(.caption2) }
-                    }.foregroundStyle(.secondary)
-                }.accessibilityLabel(data == nil ? "Photo not downloaded yet" : "Loading photo")
+                ProgressView().accessibilityLabel("Loading photo")
+                    .accessibilityIdentifier("localPhotoLoading")
             }
         }
-        .task(id: data) {
+        .task(id: LoadRequest(data: data, maximumDimension: maximumDimension, attempt: attempt)) {
             thumbnail = nil
+            failed = false
             guard let data else { return }
             let jpeg = await PhotoImport.thumbnail(data, maximumDimension: maximumDimension)
             // Downsampling runs detached; cancellation must be checked before updating a reused view.
             guard !Task.isCancelled else { return }
             thumbnail = jpeg.flatMap { UIImage(data: $0) }
+            failed = thumbnail == nil
         }
     }
 }

@@ -77,6 +77,8 @@ All new files use Apple-managed encrypted SwiftData fields and CloudKit assets; 
 
 Capture photos with the native camera or import locally available photos while offline. Images are resized to a maximum of 2560 pixels and stored with their rig or trip. Add captions, site notes, a site number, and a return-or-avoid rating, then share photos individually. Prior memories appear in matching campground details. Original imported photos remain in the user's photo library; cloud-only Photos items may need downloading first.
 
+Opening a trip photo fits the entire image in the preview. Loading, content not yet downloaded, and an unreadable photo have distinct states; an unreadable preview offers **Retry**. Caption edits and sharing keep the loaded preview visible.
+
 ## Camp Finder
 
 Camp Finder is online-only discovery through Apple Maps (MapKit), with no server or API key. The map shows campground and RV park points of interest as you pan; tap one to open its detail. With location permission and connectivity, opening Camp Finder centers the map on the user and searches within a 50-mile radius, with matching campground pins and a pre-populated list. It waits for location/network availability and preserves existing searches across layout changes. Use **Near me**, **Search this area** (shortened to **Search** in narrow panes such as Duo), or search by campground name, city, park, or ZIP. Location permission is optional; text search works without it.

@@ -39,6 +39,10 @@ enum NavigationUITestLibrary {
             current.coverPhotoData = jpeg
             current.addPhoto(jpeg)
             current.sortedPhotos.first?.caption = "Site 14 from the road"
+            if ProcessInfo.processInfo.arguments.contains("-unreadable-photo-fixture") {
+                current.addPhoto(Data([0, 1, 2, 3]))
+                current.sortedPhotos.last?.caption = "Unreadable photo"
+            }
             try StoredDocument.add(DocumentMetadata(title: "Campground map", category: .reservation),
                                    contents: DocumentPayload(bytes: jpeg, filename: "campground-map.jpg"),
                                    trip: current, in: context)
