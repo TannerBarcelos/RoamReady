@@ -156,8 +156,8 @@ struct WrappingLabel: View {
     }
 }
 
-/// A list row that deletes something. The destructive role colors only the title, and the app's blue
-/// tint would still win on the icon, so the icon is colored directly.
+/// A row or menu item that deletes something. The destructive role colors the title and, in a menu, the
+/// icon; in a list the app's blue tint wins on the icon, so the button is also tinted red.
 struct DestructiveButton: View {
     let title: String
     var systemImage = "trash"
@@ -177,5 +177,6 @@ struct DestructiveButton: View {
                 Image(systemName: systemImage).foregroundStyle(.red)
             }
         }
+        .tint(.red)
     }
 }
