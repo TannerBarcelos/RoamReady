@@ -101,7 +101,7 @@ public extension Trip {
         let today = days.first { planning.isDate($0.date, inSameDayAs: now) }.map { day in
             TripMenuFacts.Day(number: day.number, label: TripMenuFacts.label(for: day, of: self), meals: [])
         }
-        return TripMenuFacts(days: planned + kept, today: today)
+        return TripMenuFacts(days: planned + kept, today: today, groceryList: groceryList)
     }
 
     /// What the Assistant looks up with `get_trip`: the trip with its details, notes, checklist progress, and menu.
@@ -275,6 +275,7 @@ public extension MenuDish {
         item.name = details.name
         item.amountValue = details.amount
         item.unitValue = details.unit?.rawValue
+        item.setCategory(details.category)
         item.position = (sortedItems.last?.position ?? -1) + 1
         item.dish = self
         return item
@@ -297,20 +298,22 @@ public extension DishItem {
     /// The amount as a number and unit that can be added to others with `IngredientAmount.totals(of:)`.
     /// Nil when the ingredient has no amount, or its unit is one this version doesn't know (it would
     /// otherwise be summed with unitless amounts); `amountText` still shows those.
-    var amount: IngredientAmount? {
-        guard let amountValue, unitValue == nil || unit != nil else { return nil }
-        return IngredientAmount(amountValue, unit: unit)
-    }
+    var amount: IngredientAmount? { StoredAmount.amount(value: amountValue, unit: unitValue) }
 
     /// "2 lb", "1½ cup", "6", or "" when there is no amount. An unknown unit is shown as it was saved.
-    var amountText: String {
-        guard let amountValue, amountValue.isFinite, amountValue > 0 else { return "" }
-        let number = IngredientAmount.text(for: amountValue)
-        guard let unitValue, !unitValue.isEmpty else { return number }
-        return "\(number) \(unit?.title ?? unitValue)"
+    var amountText: String { StoredAmount.text(value: amountValue, unit: unitValue) }
+
+    /// The grocery store section; Other when unset or written by a newer app version with a category this one doesn't know.
+    var category: IngredientCategory { categoryValue.flatMap(IngredientCategory.init(rawValue:)) ?? .other }
+
+    /// Stores nothing for Other. A value this version doesn't know is kept until the camper chooses a category.
+    internal func setCategory(_ category: IngredientCategory) {
+        guard category != self.category else { return }
+        categoryValue = category == .other ? nil : category.rawValue
     }
 
-    var draft: DishItemDraft { DishItemDraft(name: name, amount: amountValue, unit: unit) }
+    /// Has no Have mark, so a copy made from it starts as Need; the category is kept.
+    var draft: DishItemDraft { DishItemDraft(name: name, amount: amountValue, unit: unit, category: category) }
 
     func update(_ draft: DishItemDraft) throws {
         let details = draft.cleaned
@@ -318,5 +321,6 @@ public extension DishItem {
         name = details.name
         amountValue = details.amount
         unitValue = details.unit?.rawValue
+        setCategory(details.category)
     }
 }

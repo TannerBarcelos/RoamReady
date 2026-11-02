@@ -6,7 +6,7 @@ import CampPersistence
 
 /// Pages above a trip's details in its navigation stack.
 enum TripPage: Hashable {
-    case checklist(ChecklistPhase), menu, memories, documents
+    case checklist(ChecklistPhase), menu, groceryList, memories, documents
 }
 
 extension EnvironmentValues {
@@ -66,6 +66,11 @@ struct TripDetailView: View {
             Section("Meals") {
                 TripPageLink(.menu) { destination(for: .menu) } label: { MenuEntryLabel(summary: trip.menuSummary) }
                     .accessibilityIdentifier("tripMenu")
+                let grocery = trip.groceryList
+                if !grocery.isEmpty {
+                    TripPageLink(.groceryList) { destination(for: .groceryList) } label: { GroceryEntryLabel(list: grocery) }
+                        .accessibilityIdentifier("tripGroceryList")
+                }
             }
             WeatherSection(trip: TripDraft(trip))
             Section("Make it memorable") {
@@ -115,6 +120,8 @@ struct TripDetailView: View {
             ChecklistView(trip: trip, initialPhase: phase, onPhaseChange: onChecklistPhaseChange)
         case .menu:
             TripMenuView(trip: trip)
+        case .groceryList:
+            GroceryListView(trip: trip)
         case .memories:
             MemoriesView(trip: trip)
         case .documents:

@@ -73,13 +73,24 @@ Documents retained after a trip or rig is deleted appear in **Profile → Unatta
 Open a trip and tap **Create menu**. Each day of the trip lists Breakfast, Lunch, Dinner, and Snacks; tap **Add a meal** for anything else.
 
 1. Tap a meal, then **Add a dish**. Name the whole plate, such as "Steak with brussels sprouts and sourdough", and add notes or a photo if you like.
-2. Open the dish and tap **Add ingredient** for each part of the dish. Choose an **Amount** and a **Unit** from the lists, such as 2 and lb, or leave them as None. Use **Save & add another** to enter several in a row.
+2. Open the dish and tap **Add ingredient** for each part of the dish. Choose an **Amount** and a **Unit** from the lists, such as 2 and lb, or leave them as None. Pick a **Category** for the part of the store you'd find it in, such as Produce or Dairy & Eggs, or leave it as Other. Use **Save & add another** to enter several in a row.
 3. Use **Edit** to reorder or remove dishes and ingredients. Swipe a meal on the menu to clear or remove it.
 4. To eat the same thing on several days, open the meal and tap **Repeat on other days**. Choose the dishes and the days (or **All days**), then tap **Repeat**. Each day gets its own copy, without the photo, and days that already have a dish with that name are skipped.
 
 If you shorten a trip, meals on the days you removed appear under **Outside trip dates**. Open one to move it to another day.
 
 If you planned a menu in an earlier test build, updating deletes it, because its amounts were free text. Plan it again with the new lists.
+
+## Use the grocery list
+
+Once a dish has an ingredient, a **Grocery list** row appears under Menu on the trip's details, and at the top of the Menu. It shows how many items are left, like "3 of 12 left".
+
+1. Open it to see every ingredient from the menu, one row per name, with amounts added up, grouped by store section. It always matches your menu, so there's nothing to update.
+2. Tap a row when you have it, whether you bought it or already had it. It moves from **Need** to **Have**. Tap it again to move it back.
+3. If the store sells a different size, such as a 5 lb pack when the menu needs 3 lb, swipe the row (or touch and hold it) and choose **Change amount**. The row shows your amount, with the menu's under it. Choose **Reset to menu total** to go back. Your menu isn't changed.
+4. Tap the share button to send what's still in Need, one item per line under its store section.
+
+If you add another ingredient with the same name as one you have, such as repeating a meal, it moves back to Need because you need more.
 
 ## Add memories
 

@@ -40,10 +40,13 @@ public struct TripMenuFacts: Equatable, Sendable {
     public let days: [Day]
     /// Today's trip day when today falls within the trip, so "tonight" can be answered.
     public let today: Day?
+    /// What the owner still needs to get and already has, from meals on the trip's days.
+    public let groceryList: GroceryList
 
-    public init(days: [Day], today: Day? = nil) {
+    public init(days: [Day], today: Day? = nil, groceryList: GroceryList = .empty) {
         self.days = days.filter { !$0.meals.isEmpty }
         self.today = today
+        self.groceryList = groceryList
     }
 
     public var isEmpty: Bool { days.isEmpty }
@@ -68,7 +71,7 @@ public struct TripMenuFacts: Equatable, Sendable {
         return [header, section(), Self.endMarker].joined(separator: "\n")
     }
 
-    /// Return every saved day, meal, dish, note, ingredient, and amount without filtering or truncation.
+    /// Return every saved day, meal, dish, note, ingredient, and amount, then the grocery list, without filtering or truncation.
     func section() -> String {
         var lines: [String] = []
         if let today { lines.append("Today is \(OwnerText.clean(today.label, 80)).") }
@@ -87,9 +90,29 @@ public struct TripMenuFacts: Equatable, Sendable {
                 }
             }
         }
+        lines.append(contentsOf: groceryLines())
         return lines.joined(separator: "\n")
     }
 
+    /// The Need and Have rows, so "what do I still need to buy?" can be answered from the menu resource.
+    private func groceryLines() -> [String] {
+        guard !groceryList.isEmpty else { return ["Grocery list: no ingredients are on the menu's days yet."] }
+        func line(_ row: GroceryList.Row) -> String {
+            var text = "- \(OwnerText.quoted(row.name)), category: \(OwnerText.quoted(row.category.title))"
+            if !row.amountText.isEmpty { text += ", amount: \(OwnerText.quoted(row.amountText))" }
+            if row.isOverridden { text += " (the owner changed it; the menu adds up to \(OwnerText.quoted(row.menuAmountText)))" }
+            return text
+        }
+        let need = groceryList.need, have = groceryList.have
+        var lines = ["Grocery list (ingredients of meals on the trip's days; Need is still to get, Have is bought or already on hand; each item has its grocery store category):"]
+        lines.append(need.isEmpty ? "Need: nothing, everything is Have." : "Need (\(need.count)):")
+        lines.append(contentsOf: need.map(line))
+        if !have.isEmpty {
+            lines.append("Have (\(have.count)):")
+            lines.append(contentsOf: have.map(line))
+        }
+        return lines
+    }
 }
 
 /// Owner-entered text placed in a model's context: bounded, JSON-quoted, and unable to forge a block marker.
