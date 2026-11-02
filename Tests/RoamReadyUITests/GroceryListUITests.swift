@@ -35,6 +35,10 @@ final class GroceryListUITests: XCTestCase {
             for _ in 0..<3 where !button.isHittable { app.swipeUp() }
             button.tap()
             if choice.waitForExistence(timeout: 3) { break }
+            // A long menu opens scrolled to the current choice, so the first options can be above the screen.
+            let anchor = app.buttons["Bakery"].firstMatch
+            for _ in 0..<3 where anchor.exists && !choice.exists { anchor.swipeDown() }
+            if choice.exists { break }
         }
         XCTAssertTrue(choice.exists, "\(option) is in the \(picker) menu")
         choice.tap()
