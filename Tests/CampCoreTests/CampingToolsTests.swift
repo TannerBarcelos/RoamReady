@@ -128,6 +128,25 @@ struct CampingToolsTests {
         for part in ["Booked through", "Setup: 1 of 2 finished.", "\"Chili\""] { #expect(everything.contains(part), "\(part)") }
     }
 
+    @Test func theMenuFocusAlsoAnswersWhatIsLeftToBuy() {
+        let grocery = GroceryList(ingredients: [
+            GroceryIngredient(name: "Beans", amount: IngredientAmount(2, unit: .can)),
+            GroceryIngredient(name: "Butter", amount: IngredientAmount(1, unit: .lb), have: true),
+        ])
+        let withList = CampingTools(trip: tools.trip, menu: TripMenuFacts(days: tools.menu.days, groceryList: grocery))
+
+        let menu = withList.output(for: CampingToolCall(focus: .menu))
+        #expect(menu.contains("Need (1):") && menu.contains("- \"Beans\", amount: \"2 can\""))
+        #expect(menu.contains("Have (1):") && menu.contains("- \"Butter\", amount: \"1 lb\""))
+        #expect(withList.output(for: CampingToolCall(focus: .everything)).contains("Need (1):"))
+        for focus in [TripFocus.overview, .booking, .checklist] {
+            #expect(!withList.output(for: CampingToolCall(focus: focus)).contains("Need (1):"), "\(focus)")
+        }
+        #expect(withList.instructions.contains("what the owner still needs to buy"))
+        #expect(withList.instructions.contains("get_trip"), "The lookup rules stay")
+        #expect(TripFocus.allCases.count == 5, "Asking for the list adds no focus")
+    }
+
     @Test func theChatGivesTheToolTheRoomThePromptAndHistoryLeave() async throws {
         let model = ToolTurnModel()
         let chat = CampingChat(model: model, counter: ConservativeTokenEstimator())
