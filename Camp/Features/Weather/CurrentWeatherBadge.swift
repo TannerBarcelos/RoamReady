@@ -1,4 +1,5 @@
 import SwiftUI
+import CampCore
 import CoreLocation
 import Observation
 
@@ -90,15 +91,12 @@ final class LocalWeather {
 enum WeatherFormat {
     /// Home always includes the degree unit, for example "72°F" or "22°C".
     static func currentTemperature(_ celsius: Double) -> String {
-        let unit: UnitTemperature = Locale.current.measurementSystem == .us ? .fahrenheit : .celsius
-        return Measurement(value: celsius, unit: UnitTemperature.celsius).converted(to: unit)
-            .formatted(.measurement(width: .narrow, usage: .asProvided,
-                                    numberFormatStyle: .number.precision(.fractionLength(0))))
+        TemperatureFormat.string(celsius: celsius, includeUnit: true)
     }
 
-    /// In the owner's preferred unit, for example "72°".
+    /// Whole degrees in the owner's preferred unit, for example "72°".
     static func temperature(_ celsius: Double) -> String {
-        Measurement(value: celsius, unit: UnitTemperature.celsius).formatted(.measurement(width: .narrow, usage: .weather))
+        TemperatureFormat.string(celsius: celsius)
     }
 }
 
