@@ -34,7 +34,8 @@ public enum LibraryExport {
             },
             savedCampgrounds: try context.fetch(FetchDescriptor<SavedCampground>(sortBy: [SortDescriptor(\.campgroundID)])).map {
                 Library.Saved(campgroundID: $0.campgroundID, name: $0.name, region: $0.region,
-                              wantToGo: $0.wantToGo, favorite: $0.favorite, beenTo: $0.beenTo)
+                              wantToGo: $0.wantToGo, favorite: $0.favorite, beenTo: $0.beenTo,
+                              wouldNotGo: $0.wouldNotGo, wouldNotReturn: $0.wouldNotReturn)
             })
         try encoder.encode(library).write(to: root.appending(path: "library.json"), options: .atomic)
 
@@ -99,11 +100,11 @@ public enum LibraryExport {
         /// `day` is 1 for the arrival day. Dish photos are shared individually, like trip photos.
         struct MealEntry: Encodable { let day: Int; let meal: String; let title: String; let dishes: [DishEntry] }
         struct DishEntry: Encodable { let name, notes: String; let items: [IngredientEntry] }
-        /// `unit` is the stored `IngredientUnit` raw value, like "lb" or "flOz", and `category` the stored `IngredientCategory` raw value, like "Dairy & Eggs". The retired free-text amount isn't exported.
+        /// `unit` is the stored `IngredientUnit` raw value, like "lb" or "flOz", and `category` the stored `IngredientCategory` raw value, like "dairyEggs". The retired free-text amount isn't exported.
         struct IngredientEntry: Encodable { let name: String; let amount: Double?; let unit: String?; let have: Bool; let category: String }
         /// An amount the camper set on a Grocery list row. `item` is the row's merge key (the ingredient name, lowercased).
         struct GroceryOverrideEntry: Encodable { let item: String; let amount: Double?; let unit: String?; let updatedAt: Date }
-        struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool? }
+        struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool?; let wouldNotGo, wouldNotReturn: Bool }
         /// 3 added rig registration and checklist step notes and priority. 4 added trip menus. 5 replaced an
         /// ingredient's free-text amount with `amount` (a number) and `unit`, and added each ingredient's `have` and `category` and each
         /// trip's `groceryOverrides` while 5 was still unreleased.

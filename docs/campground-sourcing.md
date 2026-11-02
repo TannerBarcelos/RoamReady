@@ -34,7 +34,7 @@ Apple Maps doesn't list every campground, especially primitive or dispersed site
 ## Identity and storage
 
 - Trips and saved lists refer to a Camp Finder place as `apple:<MKMapItem.Identifier>`. Apple provides this identifier so apps can store it and look the place up again (`MKMapItemRequest(mapItemIdentifier:)`).
-- Saved lists (Want to go, Have been, Favorites) store **only the identifier** for Apple Maps places. Their details are never copied into the library. The saved-campgrounds screen:
+- Saved lists (Want to go, Have been, Favorites, Would not go, Would not return) store **only the identifier** for Apple Maps places. Their details are never copied into the library. The saved-campgrounds screen:
   - shows the name from a trip there (the owner's own record), or
   - looks the place up in Apple Maps as each row comes into view while online (one lookup per visible row, never the whole list at once), or
   - shows "Saved campground" offline.

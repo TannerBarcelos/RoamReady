@@ -150,7 +150,7 @@ struct GroceryLibraryTests {
 
     @Test func aCategorySurvivesTheDraftRoundTripAndACopyStartsAsNeed() throws {
         let original = try dish("Chili", [DishItemDraft(name: "Beans", amount: 2, unit: .can, category: .cannedGoods)]).sortedItems[0]
-        #expect(original.category == .cannedGoods && original.categoryValue == "Canned Goods")
+        #expect(original.category == .cannedGoods && original.categoryValue == "cannedGoods")
         #expect(original.draft == DishItemDraft(name: "Beans", amount: 2, unit: .can, category: .cannedGoods))
         trip.setHave(true, forGroceryKey: GroceryList.key(for: "Beans"))
 
@@ -183,7 +183,7 @@ struct GroceryLibraryTests {
         try item.update(DishItemDraft(name: "Black beans", category: .other))
         #expect(item.categoryValue == "Deli", "Editing something else keeps a newer version's category")
         try item.update(DishItemDraft(name: "Black beans", category: .produce))
-        #expect(item.categoryValue == "Produce")
+        #expect(item.categoryValue == "produce")
         try item.update(DishItemDraft(name: "Black beans", category: .other))
         #expect(item.categoryValue == nil)
     }

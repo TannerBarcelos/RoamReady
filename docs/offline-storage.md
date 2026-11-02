@@ -20,7 +20,7 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | `MenuDish` | name, notes, resized JPEG (external storage, cloud-encrypted), position | meal, `DishItem`s (cascade) |
 | `DishItem` | one ingredient: name, amount number and raw unit (both optional), raw `categoryValue` (grocery store section; nil reads as Other), `have` (the Grocery list's Have mark, default false), position; the old free-text `quantity` is retired and unread | dish |
 | `GroceryAmountOverride` | an amount the camper set on one Grocery list row: the row's merge key (`itemKey`), amount number and raw unit (both optional), `updatedAt` | trip |
-| `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
+| `SavedCampground` | Camp Finder lists (want to go, favorite, have been, would not go, would not return); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
 | `DocumentContent` | the original file bytes (external storage and cloud encryption); legacy bytes/keys remain readable | document |
 

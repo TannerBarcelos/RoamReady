@@ -157,7 +157,7 @@ struct GroceryAmountEditor: View {
                 }
                 if row.override != nil {
                     Section {
-                        Button("Reset to menu total", systemImage: "arrow.uturn.backward", role: .destructive) {
+                        DestructiveButton("Reset to menu total", systemImage: "arrow.uturn.backward") {
                             onReset(); dismiss()
                         }
                         .accessibilityIdentifier("groceryResetAmount")

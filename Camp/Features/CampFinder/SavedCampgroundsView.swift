@@ -64,7 +64,7 @@ struct SavedCampgroundsView: View {
                     HStack {
                         row(id, lists: lists)
                         Spacer()
-                        Button("Remove", systemImage: "minus.circle") {
+                        DestructiveButton("Remove", systemImage: "minus.circle") {
                             do {
                                 try SavedCampground.set(id, name: "", region: "", on: list, false, in: context)
                                 library.save()
@@ -120,6 +120,8 @@ struct SavedCampgroundsView: View {
         case .wantToGo: "Add campgrounds from Camp Finder."
         case .beenTo: "Campgrounds from your completed trips appear here."
         case .favorite: "Star the campgrounds you love in Camp Finder."
+        case .wouldNotGo: "Add campgrounds to avoid from Camp Finder."
+        case .wouldNotReturn: "Mark places you wouldn’t go back to from Camp Finder."
         }
     }
 }
@@ -144,6 +146,8 @@ extension CampgroundList {
         case .wantToGo: "bookmark"
         case .beenTo: "checkmark.seal"
         case .favorite: "star"
+        case .wouldNotGo: "hand.raised"
+        case .wouldNotReturn: "arrow.uturn.left.circle"
         }
     }
 
@@ -153,6 +157,8 @@ extension CampgroundList {
         case .wantToGo: "Places you’re considering, saved from Camp Finder"
         case .beenTo: "Fills in from your completed trips"
         case .favorite: "The ones you’d return to"
+        case .wouldNotGo: "Places you’d rather skip, saved from Camp Finder"
+        case .wouldNotReturn: "Places you’ve been and wouldn’t go back to"
         }
     }
 }

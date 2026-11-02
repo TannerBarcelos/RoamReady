@@ -219,6 +219,9 @@ struct GroceryListTests {
 
     @Test func theCategoriesKeepTheirOrderAndStoredNames() {
         #expect(IngredientCategory.allCases.map(\.rawValue) == [
+            "produce", "meatSeafood", "dairyEggs", "bakery", "frozen", "cannedGoods", "pastaGrains",
+            "breakfastCereal", "condimentsSpices", "snacks", "beverages", "household", "other"])
+        #expect(IngredientCategory.allCases.map(\.title) == [
             "Produce", "Meat & Seafood", "Dairy & Eggs", "Bakery", "Frozen", "Canned Goods", "Pasta & Grains",
             "Breakfast & Cereal", "Condiments & Spices", "Snacks", "Beverages", "Paper & Household", "Other"])
         #expect(IngredientCategory.allCases.last == .other)

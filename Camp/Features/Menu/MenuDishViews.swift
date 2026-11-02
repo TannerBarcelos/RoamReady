@@ -95,8 +95,7 @@ struct MenuDishView: View {
                      : "Tap an ingredient to edit it. Use Edit to reorder or remove ingredients.")
             }
             Section {
-                Button("Remove dish", systemImage: "trash", role: .destructive) { removing = true }
-                    .tint(.red)
+                DestructiveButton("Remove dish") { removing = true }
             }
         }
         .navigationTitle(dish.name)
