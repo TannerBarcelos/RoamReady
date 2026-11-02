@@ -146,6 +146,53 @@ struct GroceryLibraryTests {
         #expect(DishItemDraft(name: "Beans", amount: 2, unit: .can) == original.draft, "The draft is only name, amount, and unit")
     }
 
+    // MARK: Categories
+
+    @Test func aCategorySurvivesTheDraftRoundTripAndACopyStartsAsNeed() throws {
+        let original = try dish("Chili", [DishItemDraft(name: "Beans", amount: 2, unit: .can, category: .cannedGoods)]).sortedItems[0]
+        #expect(original.category == .cannedGoods && original.categoryValue == "Canned Goods")
+        #expect(original.draft == DishItemDraft(name: "Beans", amount: 2, unit: .can, category: .cannedGoods))
+        trip.setHave(true, forGroceryKey: GroceryList.key(for: "Beans"))
+
+        let copy = try trip.addDish(MenuDishDraft(name: "Chili"), to: .standard(day: 1, kind: .dinner)).addItem(original.draft)
+        #expect(copy.category == .cannedGoods, "A copy keeps its category")
+        #expect(!copy.have, "and starts as Need")
+        #expect(row("Beans")?.category == .cannedGoods)
+    }
+
+    @Test func otherIsStoredAsNothingAndAnUnknownCategoryReadsAsOtherUntilChosenAgain() throws {
+        let item = try dish("Chili", [DishItemDraft(name: "Beans")]).sortedItems[0]
+        #expect(item.categoryValue == nil && item.category == .other)
+
+        item.categoryValue = "Deli"
+        #expect(item.category == .other)
+        try item.update(DishItemDraft(name: "Black beans", category: .other))
+        #expect(item.categoryValue == "Deli", "Editing something else keeps a newer version's category")
+        try item.update(DishItemDraft(name: "Black beans", category: .produce))
+        #expect(item.categoryValue == "Produce")
+        try item.update(DishItemDraft(name: "Black beans", category: .other))
+        #expect(item.categoryValue == nil)
+    }
+
+    @Test func editingAnIngredientChangesItsCategoryAndKeepsHave() throws {
+        let item = try dish("Chili", [DishItemDraft(name: "Beans")]).sortedItems[0]
+        trip.setHave(true, forGroceryKey: GroceryList.key(for: "Beans"))
+        try item.update(DishItemDraft(name: "Beans", category: .cannedGoods))
+        #expect(item.have && item.category == .cannedGoods)
+    }
+
+    @Test func theNeedRowsGroupByCategoryAcrossDishes() throws {
+        try dish("Breakfast", day: 0, kind: .breakfast, [DishItemDraft(name: "Eggs", amount: 6), DishItemDraft(name: "Oats", category: .breakfastCereal)])
+        try dish("Pancakes", day: 1, kind: .breakfast, [DishItemDraft(name: "eggs", amount: 6, category: .dairyEggs)])
+        try dish("Chili", [DishItemDraft(name: "Onions", category: .produce), DishItemDraft(name: "Foil")])
+        trip.setHave(true, forGroceryKey: GroceryList.key(for: "Oats"))
+
+        let sections = trip.groceryList.needSections
+        #expect(sections.map(\.category) == [.produce, .dairyEggs, .other])
+        #expect(sections.map { $0.rows.map(\.name) } == [["Onions"], ["Eggs"], ["Foil"]], "The row takes the first category other than Other")
+        #expect(trip.groceryList.have.map(\.name) == ["Oats"])
+    }
+
     // MARK: Overrides
 
     @Test func anOverrideChangesTheRowAndNotTheIngredients() throws {
@@ -294,15 +341,16 @@ struct GroceryLibraryTests {
     // MARK: Assistant and export
 
     @Test func theAssistantMenuResourceCarriesTheGroceryList() throws {
-        try dish("Cookout", [DishItemDraft(name: "Ribeye", amount: 3, unit: .lb), DishItemDraft(name: "Eggs", amount: 1, unit: .dozen)])
+        try dish("Cookout", [DishItemDraft(name: "Ribeye", amount: 3, unit: .lb, category: .meatSeafood),
+                             DishItemDraft(name: "Eggs", amount: 1, unit: .dozen, category: .dairyEggs)])
         trip.setHave(true, forGroceryKey: GroceryList.key(for: "Eggs"))
         trip.setGroceryAmount(IngredientAmount(5, unit: .lb), forKey: GroceryList.key(for: "Ribeye"))
 
         let menu = trip.assistantTools().output(for: CampingToolCall(focus: .menu))
         #expect(menu.contains("Need (1):"))
-        #expect(menu.contains("- \"Ribeye\", amount: \"5 lb\" (the owner changed it; the menu adds up to \"3 lb\")"))
+        #expect(menu.contains("- \"Ribeye\", category: \"Meat & Seafood\", amount: \"5 lb\" (the owner changed it; the menu adds up to \"3 lb\")"))
         #expect(menu.contains("Have (1):"))
-        #expect(menu.contains("- \"Eggs\", amount: \"1 dozen\""))
+        #expect(menu.contains("- \"Eggs\", category: \"Dairy & Eggs\", amount: \"1 dozen\""))
     }
 
     @Test func theExportWritesWithHaveMarksAndOverrides() throws {

@@ -218,6 +218,7 @@ public extension MenuDish {
         item.name = details.name
         item.amountValue = details.amount
         item.unitValue = details.unit?.rawValue
+        item.setCategory(details.category)
         item.position = (sortedItems.last?.position ?? -1) + 1
         item.dish = self
         return item
@@ -245,7 +246,17 @@ public extension DishItem {
     /// "2 lb", "1½ cup", "6", or "" when there is no amount. An unknown unit is shown as it was saved.
     var amountText: String { StoredAmount.text(value: amountValue, unit: unitValue) }
 
-    var draft: DishItemDraft { DishItemDraft(name: name, amount: amountValue, unit: unit) }
+    /// The grocery store section; Other when unset or written by a newer app version with a category this one doesn't know.
+    var category: IngredientCategory { categoryValue.flatMap(IngredientCategory.init(rawValue:)) ?? .other }
+
+    /// Stores nothing for Other. A value this version doesn't know is kept until the camper chooses a category.
+    internal func setCategory(_ category: IngredientCategory) {
+        guard category != self.category else { return }
+        categoryValue = category == .other ? nil : category.rawValue
+    }
+
+    /// Has no Have mark, so a copy made from it starts as Need; the category is kept.
+    var draft: DishItemDraft { DishItemDraft(name: name, amount: amountValue, unit: unit, category: category) }
 
     func update(_ draft: DishItemDraft) throws {
         let details = draft.cleaned
@@ -253,5 +264,6 @@ public extension DishItem {
         name = details.name
         amountValue = details.amount
         unitValue = details.unit?.rawValue
+        setCategory(details.category)
     }
 }

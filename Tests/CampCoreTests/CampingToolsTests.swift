@@ -130,14 +130,14 @@ struct CampingToolsTests {
 
     @Test func theMenuFocusAlsoAnswersWhatIsLeftToBuy() {
         let grocery = GroceryList(ingredients: [
-            GroceryIngredient(name: "Beans", amount: IngredientAmount(2, unit: .can)),
-            GroceryIngredient(name: "Butter", amount: IngredientAmount(1, unit: .lb), have: true),
+            GroceryIngredient(name: "Beans", amount: IngredientAmount(2, unit: .can), category: .cannedGoods),
+            GroceryIngredient(name: "Butter", amount: IngredientAmount(1, unit: .lb), have: true, category: .dairyEggs),
         ])
         let withList = CampingTools(trip: tools.trip, menu: TripMenuFacts(days: tools.menu.days, groceryList: grocery))
 
         let menu = withList.output(for: CampingToolCall(focus: .menu))
-        #expect(menu.contains("Need (1):") && menu.contains("- \"Beans\", amount: \"2 can\""))
-        #expect(menu.contains("Have (1):") && menu.contains("- \"Butter\", amount: \"1 lb\""))
+        #expect(menu.contains("Need (1):") && menu.contains("- \"Beans\", category: \"Canned Goods\", amount: \"2 can\""))
+        #expect(menu.contains("Have (1):") && menu.contains("- \"Butter\", category: \"Dairy & Eggs\", amount: \"1 lb\""))
         #expect(withList.output(for: CampingToolCall(focus: .everything)).contains("Need (1):"))
         for focus in [TripFocus.overview, .booking, .checklist] {
             #expect(!withList.output(for: CampingToolCall(focus: focus)).contains("Need (1):"), "\(focus)")

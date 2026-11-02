@@ -10,9 +10,11 @@ public struct GroceryIngredient: Equatable, Sendable {
     public let amountText: String
     /// Have, not Need.
     public let have: Bool
+    public let category: IngredientCategory
 
-    public init(name: String, amount: IngredientAmount? = nil, amountText: String? = nil, have: Bool = false) {
-        self.name = name; self.amount = amount; self.have = have
+    public init(name: String, amount: IngredientAmount? = nil, amountText: String? = nil, have: Bool = false,
+                category: IngredientCategory = .other) {
+        self.name = name; self.amount = amount; self.have = have; self.category = category
         self.amountText = amountText ?? amount?.text ?? ""
     }
 }
@@ -43,6 +45,8 @@ public struct GroceryList: Equatable, Sendable {
         public let name: String
         /// How many ingredients are merged into this row.
         public let ingredientCount: Int
+        /// The first category other than Other among the merged ingredients in menu order, else Other.
+        public let category: IngredientCategory
         /// Have only when every merged ingredient is. A mix reads as Need.
         public let isHave: Bool
         /// The menu's totals, one per unit, in the order each unit first appears.
@@ -100,7 +104,8 @@ public struct GroceryList: Equatable, Sendable {
         rows = order.compactMap { key -> Row? in
             guard let group = groups[key], let first = group.first else { return nil }
             return Row(key: key, name: first.name.trimmingCharacters(in: .whitespacesAndNewlines),
-                       ingredientCount: group.count, isHave: group.allSatisfy(\.have),
+                       ingredientCount: group.count, category: group.first { $0.category != .other }?.category ?? .other,
+                       isHave: group.allSatisfy(\.have),
                        menuTotals: IngredientAmount.totals(of: group.compactMap(\.amount)),
                        menuUnknownTexts: group.filter { $0.amount == nil && !$0.amountText.isEmpty }.map(\.amountText),
                        override: newest[key])
@@ -119,8 +124,25 @@ public struct GroceryList: Equatable, Sendable {
     }
 
     public var isEmpty: Bool { rows.isEmpty }
-    /// Still to get.
+    /// Still to get, alphabetical.
     public var need: [Row] { rows.filter { !$0.isHave } }
+
+    /// One category's Need rows.
+    public struct Section: Equatable, Identifiable, Sendable {
+        public let category: IngredientCategory
+        public let rows: [Row]
+        public var id: IngredientCategory { category }
+    }
+
+    /// Need split by category in `IngredientCategory`'s order, so Other is last. Empty categories are
+    /// left out and rows are alphabetical within each.
+    public var needSections: [Section] {
+        let need = self.need
+        return IngredientCategory.allCases.compactMap { category in
+            let rows = need.filter { $0.category == category }
+            return rows.isEmpty ? nil : Section(category: category, rows: rows)
+        }
+    }
     /// Bought or already on hand.
     public var have: [Row] { rows.filter(\.isHave) }
     public var needsNothing: Bool { !isEmpty && need.isEmpty }
@@ -132,12 +154,15 @@ public struct GroceryList: Equatable, Sendable {
         return left == 0 ? "All set" : "\(left) of \(rows.count) left"
     }
 
-    /// The Need rows as plain text for sharing: the campground's name, then one row per line using any
-    /// amount the camper set. Empty when there is nothing to get.
+    /// The Need rows as plain text for sharing: the campground's name, then each category as a header
+    /// line above its rows, one row per line using any amount the camper set. Empty when there is
+    /// nothing to get.
     public func shareText(campground: String) -> String {
-        let rows = need
-        guard !rows.isEmpty else { return "" }
+        let sections = needSections
+        guard !sections.isEmpty else { return "" }
         let name = campground.trimmingCharacters(in: .whitespacesAndNewlines)
-        return ([name.isEmpty ? "Grocery list" : "Grocery list for \(name)"] + rows.map(\.line)).joined(separator: "\n")
+        let title = name.isEmpty ? "Grocery list" : "Grocery list for \(name)"
+        return ([title] + sections.map { ([$0.category.title] + $0.rows.map(\.line)).joined(separator: "\n") })
+            .joined(separator: "\n\n")
     }
 }

@@ -196,6 +196,9 @@ public final class DishItem {
     /// A raw `IngredientUnit`, like `TripMeal.kindValue`, so a unit written by a newer app version is kept
     /// rather than failing to load.
     public var unitValue: String?
+    /// A raw `IngredientCategory`, like `unitValue`, so a category written by a newer app version is kept.
+    /// Nil, or a value this version doesn't know, reads as Other.
+    public var categoryValue: String?
     /// Have on the Grocery list, whether bought or already on hand. Not part of `DishItemDraft`, so an
     /// ingredient copied through its draft starts as Need, and editing an ingredient leaves it alone.
     public var have: Bool = false

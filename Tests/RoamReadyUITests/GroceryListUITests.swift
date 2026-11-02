@@ -29,9 +29,14 @@ final class GroceryListUITests: XCTestCase {
     private func choose(_ option: String, from picker: String, in app: XCUIApplication) {
         let button = app.buttons[picker]
         XCTAssertTrue(button.waitForExistence(timeout: 5))
-        button.tap()
         let choice = app.buttons[option].firstMatch
-        XCTAssertTrue(choice.waitForExistence(timeout: 5))
+        // The keyboard can cover pickers lower in the form, and a menu occasionally opens late or not at all.
+        for _ in 0..<3 {
+            for _ in 0..<3 where !button.isHittable { app.swipeUp() }
+            button.tap()
+            if choice.waitForExistence(timeout: 3) { break }
+        }
+        XCTAssertTrue(choice.exists, "\(option) is in the \(picker) menu")
         choice.tap()
     }
 
@@ -50,11 +55,15 @@ final class GroceryListUITests: XCTestCase {
         app.buttons["addDishItem"].tap()
         type("Potatoes", into: "dishItemName", in: app)
         choose("4", from: "dishItemAmount", in: app)
+        XCTAssertEqual(app.buttons["dishItemCategory"].label, "Category, Other", "Category defaults to Other")
+        choose("Produce", from: "dishItemCategory", in: app)
         app.buttons["saveAndAddDishItem"].tap()
         XCTAssertTrue(app.staticTexts["1 ingredient added"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["dishItemCategory"].label, "Category, Other", "Save & add another resets the category")
         type("Sausage", into: "dishItemName", in: app)
         choose("1½", from: "dishItemAmount", in: app)
         choose("lb", from: "dishItemUnit", in: app)
+        choose("Meat & Seafood", from: "dishItemCategory", in: app)
         app.buttons["Save"].tap()
         XCTAssertTrue(app.buttons["dishItem-Sausage"].waitForExistence(timeout: 5))
 
@@ -84,12 +93,14 @@ final class GroceryListUITests: XCTestCase {
         let potatoes = app.buttons["groceryRow-Potatoes"]
         XCTAssertTrue(potatoes.waitForExistence(timeout: 5))
         XCTAssertEqual(potatoes.value as? String, "Need")
-        XCTAssertTrue(app.staticTexts["Need"].exists)
+        XCTAssertTrue(app.staticTexts["Produce"].exists, "Need is grouped by category")
+        XCTAssertTrue(app.staticTexts["Meat & Seafood"].exists)
         XCTAssertFalse(app.staticTexts["Have"].exists)
 
         potatoes.tap()
         XCTAssertTrue(app.staticTexts["Have"].waitForExistence(timeout: 5), "A checked row moves under Have")
         XCTAssertEqual(app.buttons["groceryRow-Potatoes"].value as? String, "Have")
+        XCTAssertFalse(app.staticTexts["Produce"].exists, "A category with nothing left to get is hidden")
         XCTAssertEqual(app.buttons["groceryRow-Sausage"].value as? String, "Need")
         XCTAssertTrue(app.staticTexts["1 of 2 left"].exists)
 

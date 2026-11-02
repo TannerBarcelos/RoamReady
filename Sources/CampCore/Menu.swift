@@ -87,20 +87,23 @@ public struct MenuDishDraft: Equatable, Codable, Sendable {
     public func validate() throws { guard hasName else { throw CampError.missingDishName } }
 }
 
-/// One ingredient of a dish: a name and an optional amount, a number from a list with an optional unit.
-/// A number without a unit is valid ("6"); a unit without a number is not, and is dropped.
+/// One ingredient of a dish: a name, an optional amount (a number from a list with an optional unit), and
+/// the grocery store section it belongs to. A number without a unit is valid ("6"); a unit without a
+/// number is not, and is dropped. The category is part of the draft so an ingredient copied through it
+/// keeps its section; whether the camper has it (Have) is not, so a copy starts as Need.
 public struct DishItemDraft: Equatable, Codable, Sendable {
     public var name: String
     public var amount: Double?
     public var unit: IngredientUnit?
-    public init(name: String = "", amount: Double? = nil, unit: IngredientUnit? = nil) {
-        self.name = name; self.amount = amount; self.unit = unit
+    public var category: IngredientCategory
+    public init(name: String = "", amount: Double? = nil, unit: IngredientUnit? = nil, category: IngredientCategory = .other) {
+        self.name = name; self.amount = amount; self.unit = unit; self.category = category
     }
     public var hasName: Bool { !cleaned.name.isEmpty }
     public var cleaned: DishItemDraft {
         let valid = amount.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
         return DishItemDraft(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                             amount: valid, unit: valid == nil ? nil : unit)
+                             amount: valid, unit: valid == nil ? nil : unit, category: category)
     }
     /// The cleaned amount, or nil when there is none.
     public var ingredientAmount: IngredientAmount? { cleaned.amount.flatMap { IngredientAmount($0, unit: cleaned.unit) } }

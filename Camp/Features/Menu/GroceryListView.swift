@@ -42,7 +42,9 @@ struct GroceryListView: View {
                             .accessibilityIdentifier("groceryAllHave")
                     }
                 } else {
-                    Section("Need") { ForEach(list.need) { rowView($0) } }
+                    ForEach(list.needSections) { section in
+                        Section(section.category.title) { ForEach(section.rows) { rowView($0) } }
+                    }
                 }
                 if !list.have.isEmpty {
                     Section("Have") { ForEach(list.have) { rowView($0) } }

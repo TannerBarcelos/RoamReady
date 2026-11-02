@@ -179,6 +179,11 @@ struct DishItemEditor: View {
                         .focused($nameFocused)
                         .accessibilityIdentifier("dishItemName")
                     IngredientAmountPickers(amount: $item.amount, unit: $item.unit, identifierPrefix: "dishItem")
+                    Picker("Category", selection: $item.category) {
+                        ForEach(IngredientCategory.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("dishItemCategory")
                 } footer: {
                     if let failure { Text(failure).foregroundStyle(.red) }
                     else if added > 0 { Text(added == 1 ? "1 ingredient added" : "\(added) ingredients added") }

@@ -3,8 +3,9 @@ import Testing
 @testable import CampCore
 
 struct GroceryListTests {
-    private func ingredient(_ name: String, _ value: Double? = nil, _ unit: IngredientUnit? = nil, have: Bool = false) -> GroceryIngredient {
-        GroceryIngredient(name: name, amount: value.flatMap { IngredientAmount($0, unit: unit) }, have: have)
+    private func ingredient(_ name: String, _ value: Double? = nil, _ unit: IngredientUnit? = nil, have: Bool = false,
+                            category: IngredientCategory = .other) -> GroceryIngredient {
+        GroceryIngredient(name: name, amount: value.flatMap { IngredientAmount($0, unit: unit) }, have: have, category: category)
     }
 
     private func override(_ key: String, _ value: Double?, _ unit: IngredientUnit? = nil, at seconds: TimeInterval = 0) -> GroceryOverride {
@@ -161,15 +162,25 @@ struct GroceryListTests {
 
     // MARK: Sharing
 
-    @Test func theShareTextListsNeedRowsUnderTheCampgroundUsingOverriddenAmounts() {
+    @Test func theShareTextGroupsNeedRowsByCategoryUnderTheCampgroundUsingOverriddenAmounts() {
         let list = GroceryList(ingredients: [
-            ingredient("Ribeye", 3, .lb), ingredient("Eggs", 1, .dozen), ingredient("Eggs", 6), ingredient("Salt"),
-            ingredient("Butter", 1, .lb, have: true),
+            ingredient("Ribeye", 3, .lb, category: .meatSeafood), ingredient("Eggs", 1, .dozen, category: .dairyEggs),
+            ingredient("Eggs", 6), ingredient("Salt"), ingredient("Potatoes", 4, category: .produce),
+            ingredient("Butter", 1, .lb, have: true, category: .dairyEggs),
         ], overrides: [override("ribeye", 5, .lb)])
         #expect(list.shareText(campground: " Pinecrest Lake ") == """
         Grocery list for Pinecrest Lake
-        Eggs: 1 dozen, 6
+
+        Produce
+        Potatoes: 4
+
+        Meat & Seafood
         Ribeye: 5 lb
+
+        Dairy & Eggs
+        Eggs: 1 dozen, 6
+
+        Other
         Salt
         """)
     }
@@ -178,6 +189,40 @@ struct GroceryListTests {
         let done = GroceryList(ingredients: [ingredient("Butter", have: true)])
         #expect(done.shareText(campground: "Pinecrest Lake") == "")
         #expect(GroceryList.empty.shareText(campground: "Pinecrest Lake") == "")
-        #expect(GroceryList(ingredients: [ingredient("Butter")]).shareText(campground: "  ") == "Grocery list\nButter")
+        #expect(GroceryList(ingredients: [ingredient("Butter")]).shareText(campground: "  ") == "Grocery list\n\nOther\nButter")
+    }
+
+    // MARK: Categories
+
+    @Test func aRowTakesTheFirstCategoryThatIsNotOther() {
+        let list = GroceryList(ingredients: [
+            ingredient("Butter"), ingredient("butter", category: .dairyEggs), ingredient("BUTTER", category: .bakery),
+            ingredient("Salt"), ingredient("salt"),
+            ingredient("Milk", category: .beverages), ingredient("milk", category: .dairyEggs),
+        ])
+        #expect(list.rows.map(\.category) == [.dairyEggs, .beverages, .other])
+        #expect(list.rows.map(\.name) == ["Butter", "Milk", "Salt"])
+    }
+
+    @Test func needIsSplitByCategoryInTheListsOrderAndHaveStaysFlat() {
+        let list = GroceryList(ingredients: [
+            ingredient("Zucchini", category: .produce), ingredient("Apples", category: .produce), ingredient("Salt"),
+            ingredient("Bread", category: .bakery), ingredient("Soda", category: .beverages),
+            ingredient("Yogurt", have: true, category: .dairyEggs), ingredient("Bagels", have: true, category: .bakery),
+            ingredient("Ham", category: .meatSeafood),
+        ])
+        #expect(list.needSections.map(\.category) == [.produce, .meatSeafood, .bakery, .beverages, .other])
+        #expect(list.needSections.map { $0.rows.map(\.name) } == [["Apples", "Zucchini"], ["Ham"], ["Bread"], ["Soda"], ["Salt"]])
+        #expect(list.have.map(\.name) == ["Bagels", "Yogurt"], "Have is one alphabetical group")
+        #expect(GroceryList(ingredients: [ingredient("Yogurt", have: true)]).needSections.isEmpty)
+    }
+
+    @Test func theCategoriesKeepTheirOrderAndStoredNames() {
+        #expect(IngredientCategory.allCases.map(\.rawValue) == [
+            "Produce", "Meat & Seafood", "Dairy & Eggs", "Bakery", "Frozen", "Canned Goods", "Pasta & Grains",
+            "Breakfast & Cereal", "Condiments & Spices", "Snacks", "Beverages", "Paper & Household", "Other"])
+        #expect(IngredientCategory.allCases.last == .other)
+        #expect(DishItemDraft(name: "Eggs").category == .other)
+        #expect(DishItemDraft(name: " Eggs ", category: .dairyEggs).cleaned.category == .dairyEggs)
     }
 }

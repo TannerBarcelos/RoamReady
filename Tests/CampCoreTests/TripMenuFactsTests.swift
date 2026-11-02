@@ -56,24 +56,25 @@ struct TripMenuFactsTests {
         #expect(output.contains("Grocery list: no ingredients"))
     }
 
-    private func ingredient(_ name: String, _ value: Double? = nil, _ unit: IngredientUnit? = nil, have: Bool = false) -> GroceryIngredient {
-        GroceryIngredient(name: name, amount: value.flatMap { IngredientAmount($0, unit: unit) }, have: have)
+    private func ingredient(_ name: String, _ value: Double? = nil, _ unit: IngredientUnit? = nil, have: Bool = false,
+                            category: IngredientCategory = .other) -> GroceryIngredient {
+        GroceryIngredient(name: name, amount: value.flatMap { IngredientAmount($0, unit: unit) }, have: have, category: category)
     }
 
     @Test func theGroceryListComesBackWithTheMenuSplitIntoNeedAndHave() throws {
         let list = GroceryList(ingredients: [
-            ingredient("Ribeye", 3, .lb), ingredient("Eggs", 1, .dozen), ingredient("Eggs", 6),
-            ingredient("Butter", 1, .lb, have: true), ingredient("Salt", have: true),
+            ingredient("Ribeye", 3, .lb, category: .meatSeafood), ingredient("Eggs", 1, .dozen, category: .dairyEggs), ingredient("Eggs", 6),
+            ingredient("Butter", 1, .lb, have: true, category: .dairyEggs), ingredient("Salt", have: true, category: .condimentsSpices),
         ], overrides: [GroceryOverride(key: "ribeye", amount: IngredientAmount(5, unit: .lb), updatedAt: Date(timeIntervalSince1970: 1))])
         let output = TripMenuFacts(days: menu.days, today: menu.today, groceryList: list).toolOutput()
         let lines = output.components(separatedBy: "\n")
 
         #expect(lines.contains("Need (2):"))
-        #expect(lines.contains("- \"Eggs\", amount: \"1 dozen, 6\""))
-        #expect(lines.contains("- \"Ribeye\", amount: \"5 lb\" (the owner changed it; the menu adds up to \"3 lb\")"))
+        #expect(lines.contains("- \"Eggs\", category: \"Dairy & Eggs\", amount: \"1 dozen, 6\""))
+        #expect(lines.contains("- \"Ribeye\", category: \"Meat & Seafood\", amount: \"5 lb\" (the owner changed it; the menu adds up to \"3 lb\")"))
         #expect(lines.contains("Have (2):"))
-        #expect(lines.contains("- \"Butter\", amount: \"1 lb\""))
-        #expect(lines.contains("- \"Salt\""), "An ingredient with no amount has no amount text")
+        #expect(lines.contains("- \"Butter\", category: \"Dairy & Eggs\", amount: \"1 lb\""))
+        #expect(lines.contains("- \"Salt\", category: \"Condiments & Spices\""), "An ingredient with no amount has no amount text")
         let need = try #require(lines.firstIndex(of: "Need (2):")), have = try #require(lines.firstIndex(of: "Have (2):"))
         let heading = try #require(lines.firstIndex { $0.hasPrefix("Grocery list") })
         #expect(heading < need && need < have, "Need comes before Have, after the menu")
@@ -102,7 +103,7 @@ struct TripMenuFactsTests {
         }
         let list = GroceryList(ingredients: ingredients)
         let output = TripMenuFacts(days: [], groceryList: list).toolOutput()
-        for number in 1...120 { #expect(output.contains("\"Ingredient \(number)\", amount:"), "Ingredient \(number)") }
+        for number in 1...120 { #expect(output.contains("\"Ingredient \(number)\", category: \"Other\", amount:"), "Ingredient \(number)") }
         #expect(output.contains("Need (80):") && output.contains("Have (40):"))
     }
 

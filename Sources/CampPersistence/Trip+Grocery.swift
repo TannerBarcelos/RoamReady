@@ -13,7 +13,7 @@ public extension Trip {
 
     /// The list for the menu as it is now.
     var groceryList: GroceryList {
-        GroceryList(ingredients: groceryItems.map { GroceryIngredient(name: $0.name, amount: $0.amount, amountText: $0.amountText, have: $0.have) },
+        GroceryList(ingredients: groceryItems.map { GroceryIngredient(name: $0.name, amount: $0.amount, amountText: $0.amountText, have: $0.have, category: $0.category) },
                     overrides: (groceryOverrides ?? []).filter { !$0.isDeleted }.map(\.value))
     }
 

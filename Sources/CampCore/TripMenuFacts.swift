@@ -98,13 +98,13 @@ public struct TripMenuFacts: Equatable, Sendable {
     private func groceryLines() -> [String] {
         guard !groceryList.isEmpty else { return ["Grocery list: no ingredients are on the menu's days yet."] }
         func line(_ row: GroceryList.Row) -> String {
-            var text = "- \(OwnerText.quoted(row.name))"
+            var text = "- \(OwnerText.quoted(row.name)), category: \(OwnerText.quoted(row.category.title))"
             if !row.amountText.isEmpty { text += ", amount: \(OwnerText.quoted(row.amountText))" }
             if row.isOverridden { text += " (the owner changed it; the menu adds up to \(OwnerText.quoted(row.menuAmountText)))" }
             return text
         }
         let need = groceryList.need, have = groceryList.have
-        var lines = ["Grocery list (ingredients of meals on the trip's days; Need is still to get, Have is bought or already on hand):"]
+        var lines = ["Grocery list (ingredients of meals on the trip's days; Need is still to get, Have is bought or already on hand; each item has its grocery store category):"]
         lines.append(need.isEmpty ? "Need: nothing, everything is Have." : "Need (\(need.count)):")
         lines.append(contentsOf: need.map(line))
         if !have.isEmpty {

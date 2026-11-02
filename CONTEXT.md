@@ -56,6 +56,9 @@ _Avoid_: Linked dish, recurring meal
 A **Trip**'s **Ingredients** gathered from its **Menu** to show what the camper still needs. It always reflects the current menu. A camper can set a different amount on a row without changing the **Menu**.
 _Avoid_: Shopping list, generated list
 
+**Category**:
+The grocery store section a camper chooses for an **Ingredient**, like Produce or Dairy & Eggs.
+
 **Have**:
 An **Ingredient** the camper doesn't need to get, whether bought or already on hand. The opposite is **Need**.
 _Avoid_: Bought, purchased, in stock
