@@ -20,6 +20,13 @@ struct WeatherSection: View {
         let calendar = trip.campgroundCalendar
         return calendar.startOfDay(for: first.date) > window.lowerBound || calendar.startOfDay(for: last.date) < window.upperBound
     }
+    /// The one note under the forecast: when it was saved, and that it can be out of date.
+    var footerText: String? {
+        guard let forecast else { return nil }
+        let saved = forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened)
+        let note = "Forecast saved \(saved). Conditions may have changed."
+        return partialForecast && !matchingDays.isEmpty ? note + " Some trip dates aren’t available yet." : note
+    }
     func dayLabel(_ date: Date) -> String {
         var style = Date.FormatStyle().weekday(.abbreviated).month(.abbreviated).day()
         style.timeZone = trip.campgroundCalendar.timeZone
@@ -44,11 +51,6 @@ struct WeatherSection: View {
                         }.accessibilityElement(children: .combine)
                     }
                     if matchingDays.isEmpty { Text("These dates are outside the saved forecast window. Check again closer to departure.").foregroundStyle(.secondary) }
-                    if partialForecast {
-                        Text("The saved forecast covers part of your trip. Some dates aren’t available.").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Text("Downloaded \(forecast.fetchedAt.formatted(date: .abbreviated, time: .shortened)) · Conditions may have changed")
-                        .font(.caption).foregroundStyle(.secondary)
                     WeatherAttribution(legalURL: forecast.attributionURL, lightMarkURL: forecast.lightMarkURL,
                                        darkMarkURL: forecast.darkMarkURL)
                 } else {
@@ -62,8 +64,18 @@ struct WeatherSection: View {
                     else { Label("Refresh forecast", systemImage: "arrow.clockwise") }
                 }.disabled(refreshing)
             }
-        } header: { Text("Weather") }
+        } header: {
+            Text("Weather")
+        } footer: {
+            if trip.latitude != nil, let footerText { Text(footerText).accessibilityIdentifier("weatherFooter") }
+        }
         .task(id: "\(trip.latitude ?? 0),\(trip.longitude ?? 0)") {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-weather-forecast-fixture") {
+                forecast = fixtureForecast()
+                return
+            }
+            #endif
             if let latitude = trip.latitude, let longitude = trip.longitude {
                 forecast = await WeatherStore.shared.cached(latitude: latitude, longitude: longitude)
             } else { forecast = nil }
@@ -86,4 +98,25 @@ struct WeatherSection: View {
             failure = "Couldn’t update weather. Any saved forecast is still available. Check your connection and try again later."
         }
     }
+
+    #if DEBUG
+    /// Every trip day except the last, so the partial-forecast note shows. 64.6 °F / 49.7 °F checks rounding.
+    private func fixtureForecast() -> SavedForecast? {
+        guard let window = trip.forecastDayWindow else { return nil }
+        let calendar = trip.campgroundCalendar
+        var days: [SavedDayWeather] = []
+        var day = window.lowerBound
+        while day < window.upperBound {
+            days.append(SavedDayWeather(date: day, symbol: "sun.max.fill", condition: "Sunny",
+                                        lowCelsius: (49.745479 - 32) * 5 / 9, highCelsius: (64.601352 - 32) * 5 / 9,
+                                        precipitationChance: 0.2, windKPH: 14.6))
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return SavedForecast(fetchedAt: .now, latitude: trip.latitude ?? 0, longitude: trip.longitude ?? 0, days: days,
+                             attributionURL: URL(string: "https://weatherkit.apple.com/legal-attribution.html")!,
+                             lightMarkURL: URL(string: "https://weatherkit.apple.com/assets/branding/en/Apple_Weather_mark_Light.svg")!,
+                             darkMarkURL: URL(string: "https://weatherkit.apple.com/assets/branding/en/Apple_Weather_mark_Dark.svg")!)
+    }
+    #endif
 }
