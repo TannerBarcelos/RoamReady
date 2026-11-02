@@ -61,7 +61,11 @@ final class LibraryController {
             #endif
             try FileManager.default.createDirectory(at: Self.directory, withIntermediateDirectories: true,
                                                     attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
-            container = try LibraryStore.container(at: Self.directory.appending(path: "RoamReady.store"), cloudKitContainer: iCloud.containerForSession)
+            let opened = try LibraryStore.container(at: Self.directory.appending(path: "RoamReady.store"), cloudKitContainer: iCloud.containerForSession)
+            // Before anything reads the library. Only the real store gets here: the fixtures above return
+            // early, and their meals carry the marker anyway.
+            MenuWipe.runAtLaunch(in: opened.mainContext)
+            container = opened
             #if DEBUG
             if let container { try SampleTrips.seedIfRequested(in: container) }
             #endif

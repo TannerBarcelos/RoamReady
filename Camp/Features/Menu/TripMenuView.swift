@@ -3,7 +3,7 @@ import SwiftData
 import CampCore
 import CampPersistence
 
-/// A trip's menu: each day of the stay with its meals. Meals open to their dishes, and dishes to their recipe.
+/// A trip's menu: each day of the stay with its meals. Meals open to their dishes, and dishes to their ingredients.
 struct TripMenuView: View {
     @Environment(LibraryController.self) private var library
     let trip: Trip
@@ -58,7 +58,7 @@ struct TripMenuView: View {
                 trip.removeMeal(meal); library.save()
             }
         } message: { meal in
-            Text(meal.dishes.isEmpty ? "This meal has no dishes yet." : "Its dishes, notes, photos, and recipe items are removed too.")
+            Text(meal.dishes.isEmpty ? "This meal has no dishes yet." : "Its dishes, notes, photos, and ingredients are removed too.")
         }
     }
 

@@ -1,6 +1,6 @@
 import XCTest
 
-/// Trip menus: planning a dish and its recipe from Trip details, and Home's menu shortcut, which is
+/// Trip menus: planning a dish and its ingredients from Trip details, and Home's menu shortcut, which is
 /// held above the split view so a fold or resize keeps it open.
 @MainActor
 final class TripMenuUITests: XCTestCase {
@@ -29,7 +29,17 @@ final class TripMenuUITests: XCTestCase {
         field.typeText(text)
     }
 
-    func testPlanningADishAndItsRecipeFromTripDetails() {
+    /// Opens a menu-style picker and picks one of its options.
+    private func choose(_ option: String, from picker: String, in app: XCUIApplication) {
+        let button = app.buttons[picker]
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+        button.tap()
+        let choice = app.buttons[option].firstMatch
+        XCTAssertTrue(choice.waitForExistence(timeout: 5))
+        choice.tap()
+    }
+
+    func testPlanningADishAndItsIngredientsFromTripDetails() {
         let app = launch()
         tapReachable(app.buttons["tripRow-Upcoming Lake"], in: app)
         XCTAssertTrue(app.navigationBars["Upcoming Lake"].waitForExistence(timeout: 5))
@@ -47,13 +57,24 @@ final class TripMenuUITests: XCTestCase {
         tapReachable(app.buttons["menuDish-Foil packs"], in: app)
         XCTAssertTrue(app.navigationBars["Foil packs"].waitForExistence(timeout: 5))
         app.buttons["addDishItem"].tap()
+        XCTAssertTrue(app.navigationBars["New ingredient"].waitForExistence(timeout: 5))
         type("Potatoes", into: "dishItemName", in: app)
-        type("4", into: "dishItemQuantity", in: app)
+        XCTAssertFalse(app.buttons["dishItemUnit"].isEnabled, "A unit needs an amount")
+        choose("4", from: "dishItemAmount", in: app)
+        XCTAssertTrue(app.buttons["dishItemUnit"].isEnabled)
         app.buttons["saveAndAddDishItem"].tap()
+        XCTAssertTrue(app.staticTexts["1 ingredient added"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["dishItemAmount"].label, "Amount, None", "Save & add another resets the amount")
+        XCTAssertFalse(app.buttons["dishItemUnit"].isEnabled)
         type("Sausage", into: "dishItemName", in: app)
+        choose("1½", from: "dishItemAmount", in: app)
+        choose("lb", from: "dishItemUnit", in: app)
         app.buttons["Save"].tap()
         XCTAssertTrue(app.buttons["dishItem-Potatoes"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["dishItem-Sausage"].exists)
+        XCTAssertTrue(app.staticTexts["4"].exists)
+        XCTAssertTrue(app.staticTexts["1½ lb"].exists)
+        XCTAssertTrue(app.staticTexts["Ingredients · 2"].exists)
 
         app.buttons["BackButton"].firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Dinner"].waitForExistence(timeout: 5))
