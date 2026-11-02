@@ -35,6 +35,7 @@ Seed a trip with a dinner named "Steak and Brussels sprouts" and an ingredient "
 | "What are we eating on this trip?" | Model calls `get_trip` with menu focus and answers from the saved dinner. Saved trip source appears. |
 | "How should I cook the steak? What's the best way?" | Model can answer directly using conversation context and general cooking knowledge. Check for cooking steps rather than a repeated menu; a direct answer has no Saved trip source. |
 | After editing the ingredient: "What cut and amount did I save?" | Model fetches the menu again and reports the edited value. |
+| "What do I still need to buy?" (with a few ingredients on the Grocery list, some marked Have and one with a changed amount) | Model calls `get_trip` with menu focus and lists the Need rows with their amounts, including the changed amount, and does not list Have rows as still needed. Mark everything Have and ask again: it says nothing is left. |
 | "What did I save for dinner, and how should I cook it?" | Model fetches the saved dinner and combines it with general cooking advice. |
 | "How do I cook a steak?" in a fresh trip chat | Model can answer directly without retrieving unrelated trip data. |
 | "What trip is this?" | Model fetches the overview and reports saved facts without guessing. |

@@ -53,7 +53,7 @@ Copying a **Meal**'s **Dishes** to other days of the **Trip**. Each day gets its
 _Avoid_: Linked dish, recurring meal
 
 **Grocery list**:
-A **Trip**'s **Ingredients** gathered from its **Menu** to show what the camper still needs. It always reflects the current menu.
+A **Trip**'s **Ingredients** gathered from its **Menu** to show what the camper still needs. It always reflects the current menu. A camper can set a different amount on a row without changing the **Menu**.
 _Avoid_: Shopping list, generated list
 
 **Have**:

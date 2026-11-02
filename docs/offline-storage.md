@@ -12,18 +12,21 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | --- | --- | --- |
 | `CamperProfile` | name, experience | — |
 | `Rig` | owner-entered details, equipment, registration (VIN, plate, region; cloud-encrypted), photo (external storage), archive date | default `ChecklistStep`s (cascade), trips, documents |
-| `Trip` | campground, dates, time zones, site details, booking, completion, notes, rating | rig, `ChecklistStep`s, `TripPhoto`s, `NoteRevision`s, `TripMeal`s (all cascade), documents |
+| `Trip` | campground, dates, time zones, site details, booking, completion, notes, rating | rig, `ChecklistStep`s, `TripPhoto`s, `NoteRevision`s, `TripMeal`s, `GroceryAmountOverride`s (all cascade), documents |
 | `ChecklistStep` | title, detail (guidance), notes, priority, section, status, phase, position | its trip, or its rig for default lists |
 | `TripPhoto` | resized JPEG (external storage), caption | trip |
 | `NoteRevision` | a saved version of a trip's notes | trip |
 | `TripMeal` | a meal on a trip day: day offset from arrival, raw meal kind, name for added meals, position, `hasStructuredAmounts` marker (true on every meal this version creates) | trip, `MenuDish`es (cascade) |
 | `MenuDish` | name, notes, resized JPEG (external storage, cloud-encrypted), position | meal, `DishItem`s (cascade) |
-| `DishItem` | one ingredient: name, amount number and raw unit (both optional), position; the old free-text `quantity` is retired and unread | dish |
+| `DishItem` | one ingredient: name, amount number and raw unit (both optional), `have` (the Grocery list's Have mark, default false), position; the old free-text `quantity` is retired and unread | dish |
+| `GroceryAmountOverride` | an amount the camper set on one Grocery list row: the row's merge key (`itemKey`), amount number and raw unit (both optional), `updatedAt` | trip |
 | `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
 | `DocumentContent` | the original file bytes (external storage and cloud encryption); legacy bytes/keys remain readable | document |
 
-Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, note versions, and menu; its documents are kept and become unattached. A rig can be deleted only while no trip uses it.
+Every attribute is optional or has a default, every relationship is optional, and there are no unique constraints, as CloudKit mirroring requires. Deleting a trip cascades to its steps, photos, note versions, menu, and Grocery list amounts; its documents are kept and become unattached.
+
+The Grocery list itself isn't stored: `Trip.groceryList` (`Trip+Grocery.swift`) rebuilds it from the menu each time, and only `DishItem.have` and the `GroceryAmountOverride` records are saved. `have` is not part of `DishItemDraft`, so editing an ingredient leaves it alone and an ingredient copied through its draft starts as Need. Sync can leave two overrides for one row; the newest `updatedAt` is used, resetting a row deletes every record for its key, and an override for a name no longer on the menu is kept but not shown. `DishItem.have`, `GroceryAmountOverride`, and `Trip.groceryOverrides` are new to the CloudKit schema and, once deployed to Production, can't be removed or renamed. A rig can be deleted only while no trip uses it.
 
 Checklist priority uses a nullable persisted backing property mapped from the original `priority` attribute. Steps saved before priorities existed can have no stored value after lightweight migration; the public `priority` property reads these as None. Migration tests exercise the rig-default and trip-step draft reads used by Assistant Send, and preserve priorities written by the earlier model.
 

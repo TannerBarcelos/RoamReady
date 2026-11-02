@@ -80,6 +80,17 @@ If you shorten a trip, meals on the days you removed appear under **Outside trip
 
 If you planned a menu in an earlier test build, updating deletes it, because its amounts were free text. Plan it again with the new lists.
 
+## Use the grocery list
+
+Once a dish has an ingredient, a **Grocery list** row appears under Menu on the trip's details, and at the top of the Menu. It shows how many items are left, like "3 of 12 left".
+
+1. Open it to see every ingredient from the menu, one row per name, with amounts added up. It always matches your menu, so there's nothing to update.
+2. Tap a row when you have it, whether you bought it or already had it. It moves from **Need** to **Have**. Tap it again to move it back.
+3. If the store sells a different size, such as a 5 lb pack when the menu needs 3 lb, swipe the row (or touch and hold it) and choose **Change amount**. The row shows your amount, with the menu's under it. Choose **Reset to menu total** to go back. Your menu isn't changed.
+4. Tap the share button to send what's still in Need, one item per line.
+
+If you add another ingredient with the same name as one you have, such as repeating a meal, it moves back to Need because you need more.
+
 ## Add memories
 
 Open **Photos & site notes** from a trip. Take a photo or import one, add captions and notes, record the site number, and choose whether you would return or avoid it. Tap a photo tile to open the full image, edit its caption, or share it. A photo stored only in iCloud Photos may need downloading before an offline import.
