@@ -92,4 +92,5 @@ The tabs are Home, Trip (opens the new-trip sheet; it doesn't change tabs), Camp
 - Branch from `main` as `feature/…`, `fix/…`, `chore/…`, `docs/…`, or `ci/…`, and merge through a PR.
 - Commit subjects are short and imperative ("Add a debug-only sample-trip seeder").
 - CI runs on every PR and main push. The [iOS and iPad](.github/workflows/app.yml) workflow builds the universal iOS app in Debug/Release and compiles UI tests without booting a simulator. The [Mac](.github/workflows/mac.yml) workflow runs all package tests and builds Catalyst in Debug/Release. The [UI tests](.github/workflows/ui-tests.yml) workflow is manual-only: choose iPhone (iPhone 18 Pro), iPad (iPad Pro 13-inch (M5)), or iPhone Duo (iOS 27.1 or later) when UI or release validation is needed. It fails if the runner doesn't have that exact simulator. Do not add simulator launches back to regular CI without the owner's request.
+- To ship to TestFlight or the App Store, follow [docs/release-guide.md](docs/release-guide.md), and add each upload to its release log.
 - When behavior changes, update the matching file in `docs/` (usually `features.md`, `user-guide.md`, or `architecture.md`).
