@@ -4,7 +4,7 @@ import CampCore
 import DocumentVault
 
 /// Profile › Settings › Prepare export: a zip with `library.json` (profile, rigs and their defaults, trips with
-/// their checklists, notes, and menus, saved campgrounds), `documents.json`, and `Documents/` holding each
+/// their checklists, notes, menus with each ingredient's Have mark, and grocery list amounts, saved campgrounds), `documents.json`, and `Documents/` holding each
 /// document's verified original file. End-to-end encrypted documents are exported readable: the
 /// archive is the user's own copy, outside iCloud's protection. Trip photos are shared individually.
 public enum LibraryExport {
@@ -30,7 +30,7 @@ public enum LibraryExport {
                 Library.TripEntry(details: TripDraft(trip), rig: trip.rig?.displayName, notes: trip.notes, rating: trip.rating,
                                   setup: trip.steps(.setup).map(\.draft), teardown: trip.steps(.teardown).map(\.draft),
                                   photoCaptions: trip.sortedPhotos.map(\.caption),
-                                  menu: menuEntries(trip))
+                                  menu: menuEntries(trip), groceryOverrides: groceryEntries(trip))
             },
             savedCampgrounds: try context.fetch(FetchDescriptor<SavedCampground>(sortBy: [SortDescriptor(\.campgroundID)])).map {
                 Library.Saved(campgroundID: $0.campgroundID, name: $0.name, region: $0.region,
@@ -61,9 +61,14 @@ public enum LibraryExport {
                        notDownloaded: entries.filter { $0.status == .notDownloaded }.count)
     }
 
+    private static func groceryEntries(_ trip: Trip) -> [Library.GroceryOverrideEntry] {
+        (trip.groceryOverrides ?? []).filter { !$0.isDeleted }.sorted { ($0.itemKey, $0.updatedAt) < ($1.itemKey, $1.updatedAt) }
+            .map { Library.GroceryOverrideEntry(item: $0.itemKey, amount: $0.amountValue, unit: $0.unitValue, updatedAt: $0.updatedAt) }
+    }
+
     private static func menuEntries(_ trip: Trip) -> [Library.MealEntry] {
         trip.storedMeals.sorted { ($0.dayOffset, $0.createdAt) < ($1.dayOffset, $1.createdAt) }.map { meal in
-            let dishes = meal.sortedDishes.map { Library.DishEntry(name: $0.name, notes: $0.notes, items: $0.sortedItems.map { Library.IngredientEntry(name: $0.name, amount: $0.amountValue, unit: $0.unitValue) }) }
+            let dishes = meal.sortedDishes.map { Library.DishEntry(name: $0.name, notes: $0.notes, items: $0.sortedItems.map { Library.IngredientEntry(name: $0.name, amount: $0.amountValue, unit: $0.unitValue, have: $0.have) }) }
             return Library.MealEntry(day: meal.dayOffset + 1, meal: meal.kindValue, title: meal.title, dishes: dishes)
         }
     }
@@ -89,16 +94,19 @@ public enum LibraryExport {
         struct TripEntry: Encodable {
             let details: TripDraft; let rig: String?; let notes: String; let rating: SiteRating
             let setup: [ChecklistStepDraft]; let teardown: [ChecklistStepDraft]; let photoCaptions: [String]
-            let menu: [MealEntry]
+            let menu: [MealEntry]; let groceryOverrides: [GroceryOverrideEntry]
         }
         /// `day` is 1 for the arrival day. Dish photos are shared individually, like trip photos.
         struct MealEntry: Encodable { let day: Int; let meal: String; let title: String; let dishes: [DishEntry] }
         struct DishEntry: Encodable { let name, notes: String; let items: [IngredientEntry] }
         /// `unit` is the stored `IngredientUnit` raw value, like "lb" or "flOz". The retired free-text amount isn't exported.
-        struct IngredientEntry: Encodable { let name: String; let amount: Double?; let unit: String? }
+        struct IngredientEntry: Encodable { let name: String; let amount: Double?; let unit: String?; let have: Bool }
+        /// An amount the camper set on a Grocery list row. `item` is the row's merge key (the ingredient name, lowercased).
+        struct GroceryOverrideEntry: Encodable { let item: String; let amount: Double?; let unit: String?; let updatedAt: Date }
         struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool? }
         /// 3 added rig registration and checklist step notes and priority. 4 added trip menus. 5 replaced an
-        /// ingredient's free-text amount with `amount` (a number) and `unit`.
+        /// ingredient's free-text amount with `amount` (a number) and `unit`, and added each ingredient's `have` and each
+        /// trip's `groceryOverrides` while 5 was still unreleased.
         var schemaVersion = 5
         let profile: Profile?
         let rigs: [RigEntry]

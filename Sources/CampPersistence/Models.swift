@@ -87,6 +87,8 @@ public final class Trip: TripDetails {
     @Relationship(deleteRule: .cascade, inverse: \NoteRevision.trip) public var noteRevisions: [NoteRevision]? = []
     /// The trip's menu. Additive relationship: older records read as an empty menu.
     @Relationship(deleteRule: .cascade, inverse: \TripMeal.trip) public var meals: [TripMeal]? = []
+    /// Amounts the camper set on rows of the Grocery list. Additive relationship: older records read as none.
+    @Relationship(deleteRule: .cascade, inverse: \GroceryAmountOverride.trip) public var groceryOverrides: [GroceryAmountOverride]? = []
     /// Deleting the trip keeps its documents; they become unattached.
     @Relationship(inverse: \StoredDocument.trip) public var documents: [StoredDocument]? = []
     public init() {}
@@ -194,8 +196,27 @@ public final class DishItem {
     /// A raw `IngredientUnit`, like `TripMeal.kindValue`, so a unit written by a newer app version is kept
     /// rather than failing to load.
     public var unitValue: String?
+    /// Have on the Grocery list, whether bought or already on hand. Not part of `DishItemDraft`, so an
+    /// ingredient copied through its draft starts as Need, and editing an ingredient leaves it alone.
+    public var have: Bool = false
     public var position: Int = 0
     public var dish: MenuDish?
+    public init() {}
+}
+
+/// A different amount the camper set on one row of a trip's Grocery list, like 5 lb of ribeye when
+/// the menu adds up to 3 lb. The menu's ingredients are never changed. `itemKey` is the row's merge
+/// key (`GroceryList.key(for:)`). Sync can produce two records for one key; the newest `updatedAt`
+/// is the one in effect, and nothing is deleted to merge them.
+@Model
+public final class GroceryAmountOverride {
+    public var itemKey: String = ""
+    /// The amount's number, nil for none. Positive when set.
+    public var amountValue: Double?
+    /// A raw `IngredientUnit`, like `DishItem.unitValue`.
+    public var unitValue: String?
+    public var updatedAt: Date = Date.now
+    public var trip: Trip?
     public init() {}
 }
 
