@@ -75,6 +75,7 @@ Open a trip and tap **Create menu**. Each day of the trip lists Breakfast, Lunch
 1. Tap a meal, then **Add a dish**. Name the whole plate, such as "Steak with brussels sprouts and sourdough", and add notes or a photo if you like.
 2. Open the dish and tap **Add ingredient** for each part of the dish. Choose an **Amount** and a **Unit** from the lists, such as 2 and lb, or leave them as None. Use **Save & add another** to enter several in a row.
 3. Use **Edit** to reorder or remove dishes and ingredients. Swipe a meal on the menu to clear or remove it.
+4. To eat the same thing on several days, open the meal and tap **Repeat on other days**. Choose the dishes and the days (or **All days**), then tap **Repeat**. Each day gets its own copy, without the photo, and days that already have a dish with that name are skipped.
 
 If you shorten a trip, meals on the days you removed appear under **Outside trip dates**. Open one to move it to another day.
 

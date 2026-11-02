@@ -129,6 +129,7 @@ struct MealView: View {
     @State private var editing = EditMode.inactive
     @State private var addingDish = false
     @State private var renaming = false
+    @State private var repeating = false
 
     init(trip: Trip, mealID: MenuMeal.ID) {
         self.trip = trip
@@ -162,18 +163,24 @@ struct MealView: View {
                     }
                 }
                 let days = trip.menuDays
-                if !meal.isStandard || !days.contains(where: { $0.offset == meal.day }) {
+                let outsideDates = !days.contains { $0.offset == meal.day }
+                let canRepeat = !dishes.isEmpty && days.contains { $0.offset != meal.day }
+                if !meal.isStandard || outsideDates || canRepeat {
                     Section {
                         if !meal.isStandard {
                             Button("Rename meal", systemImage: "pencil") { renaming = true }
                         }
-                        if !days.isEmpty {
+                        if (!meal.isStandard || outsideDates), !days.isEmpty {
                             Menu {
                                 ForEach(days) { day in
                                     Button(trip.menuTitle(for: day)) { move(meal, to: day) }
                                         .disabled(day.offset == meal.day)
                                 }
                             } label: { Label("Move to another day", systemImage: "calendar") }
+                        }
+                        if canRepeat {
+                            Button("Repeat on other days", systemImage: "repeat") { repeating = true }
+                                .accessibilityIdentifier("repeatMeal")
                         }
                     }
                 }
@@ -188,6 +195,13 @@ struct MealView: View {
         .sheet(isPresented: $addingDish) {
             MenuDishEditor(title: "New dish", dish: MenuDishDraft(), photo: nil) { draft, photo in
                 try trip.addDish(draft, photo: photo, to: mealID); library.save()
+            }
+        }
+        .sheet(isPresented: $repeating) {
+            if let meal {
+                RepeatMealSheet(trip: trip, meal: meal) { dishes, days in
+                    try trip.repeatDishes(dishes, of: meal, onDays: days); library.save()
+                }
             }
         }
         .sheet(isPresented: $renaming) {
