@@ -42,7 +42,7 @@ Optional fields can be edited at any time:
 | Cost | Total cost and amount paid. |
 | Paperwork | Confirmation files and other attached documents. |
 | Memories | Initial site notes during creation; more notes, photos, and ratings in **Photos & site notes**. |
-| Meals | The trip's menu: dishes and recipe items for each meal of each day. See [Trip menu](#trip-menu). |
+| Meals | The trip's menu: dishes and ingredients for each meal of each day. See [Trip menu](#trip-menu). |
 
 The booking card offers **Open booking link**, **View confirmation & documents**, and **Directions** when the corresponding data exists. Planning dates retain their original time zone; forecasts match dates in the campground's time zone, including daylight-saving transitions.
 
@@ -82,11 +82,12 @@ Plan what you'll eat on a trip from **Create menu** (or **Menu**, once something
 
 - **Days.** The menu lists every day from arrival through departure, inclusive, in the time zone the dates were planned in (at most 60 days). Each day shows Breakfast, Lunch, Dinner, and Snacks. **Add a meal** adds a named meal to that day, like "Second breakfast"; added meals can be renamed or removed.
 - **Dishes.** A meal holds dishes, each a whole plate such as "Steak with brussels sprouts and sourdough". A dish has a name, optional notes, and an optional photo (resized like trip photos). Dishes can be reordered or removed with Edit.
-- **Recipe items.** Each dish lists its parts with a free-text amount, like "Ribeye, 2 lb". **Save & add another** keeps the item sheet open for quick entry. Items can be edited, reordered, and removed.
+- **Ingredients.** Each dish lists its parts, like "Ribeye, 2 lb". An optional **Amount** is chosen from a list (¼, ⅓, ½, ⅔, ¾, 1, 1½, 2, 2½, 3, then 4 through 50), and an optional **Unit** from another (lb, oz, g, kg, gal, qt, pt, cup, fl oz, tbsp, tsp, L, mL, dozen, pack, can, bottle, bag, box, bunch, loaf, slice). A unit needs an amount; an amount alone, like 6, is fine. **Save & add another** keeps the sheet open for quick entry. Ingredients can be edited, reordered, and removed.
+- **Menus before this change.** Menus planned with free-text amounts are deleted when the updated app opens, rather than converted. See [the decision](adr/0001-structured-ingredient-amounts.md).
 - **Changing dates.** Meals belong to a trip day (day 1 is arrival day), so moving a trip keeps them on the same days. If a trip is shortened, meals on days that no longer exist stay under **Outside trip dates** until they're moved to another day or removed; nothing is deleted.
 - **Sync.** The same standard meal created on two devices before they sync shows as one meal with both devices' dishes.
 
-Deleting a trip deletes its menu. Exports include each trip's menu without dish photos. The Assistant looks up the menu when a question needs it; see [Camping help](#camping-help).
+Deleting a trip deletes its menu. Exports include each trip's menu, with each ingredient's amount and unit, without dish photos. The Assistant looks up the menu when a question needs it; see [Camping help](#camping-help).
 
 ## Memories
 
