@@ -397,7 +397,9 @@ struct SavedMarker: View {
         let library = CampgroundLists(saved: saved, trips: trips)
         let lists = CampgroundList.allCases.filter { library.contains(campgroundID, on: $0) }
         if !lists.isEmpty {
-            Image(systemName: lists.contains(.favorite) ? "star.fill" : lists.contains(.wantToGo) ? "bookmark.fill" : "checkmark.seal.fill")
+            Image(systemName: lists.contains(.favorite) ? "star.fill" : lists.contains(.wantToGo) ? "bookmark.fill"
+                  : lists.contains(.wouldNotReturn) ? CampgroundList.wouldNotReturn.symbol
+                  : lists.contains(.wouldNotGo) ? CampgroundList.wouldNotGo.symbol : "checkmark.seal.fill")
                 .foregroundStyle(.tint)
                 .accessibilityLabel("Saved: " + lists.map(\.title).joined(separator: ", "))
         }

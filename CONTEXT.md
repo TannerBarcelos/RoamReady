@@ -60,6 +60,12 @@ _Avoid_: Shopping list, generated list
 An **Ingredient** the camper doesn't need to get, whether bought or already on hand. The opposite is **Need**.
 _Avoid_: Bought, purchased, in stock
 
+**Would not go**:
+A campground the camper wants to avoid and hasn't visited.
+
+**Would not return**:
+A campground the camper has visited and wouldn't go back to.
+
 ## Example dialogue
 
 **Camper:** I replaced my rig. Does that change my old bookings?

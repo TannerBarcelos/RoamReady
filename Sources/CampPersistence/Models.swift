@@ -211,6 +211,10 @@ public final class SavedCampground {
     /// Nil follows the trips: a completed trip here counts as been here. True or false is the
     /// owner's explicit choice.
     public var beenTo: Bool?
+    /// A place to avoid that the owner hasn't been to. Additive attributes: older records read as off.
+    public var wouldNotGo: Bool = false
+    /// A place the owner has been to and wouldn't go back to.
+    public var wouldNotReturn: Bool = false
     public init(campgroundID: String) { self.campgroundID = campgroundID }
 }
 

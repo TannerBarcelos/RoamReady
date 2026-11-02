@@ -19,7 +19,7 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | `TripMeal` | a meal on a trip day: day offset from arrival, raw meal kind, name for added meals, position, `hasStructuredAmounts` marker (true on every meal this version creates) | trip, `MenuDish`es (cascade) |
 | `MenuDish` | name, notes, resized JPEG (external storage, cloud-encrypted), position | meal, `DishItem`s (cascade) |
 | `DishItem` | one ingredient: name, amount number and raw unit (both optional), position; the old free-text `quantity` is retired and unread | dish |
-| `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
+| `SavedCampground` | Camp Finder lists (want to go, favorite, have been, would not go, would not return); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
 | `DocumentContent` | the original file bytes (external storage and cloud encryption); legacy bytes/keys remain readable | document |
 
