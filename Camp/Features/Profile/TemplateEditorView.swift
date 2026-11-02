@@ -11,6 +11,7 @@ struct TemplateEditorView: View {
     @State private var phase = ChecklistPhase.setup
     @State private var editedStep: ChecklistStepDraft?
     @State private var adding = false
+    @State private var confirmingReset = false
     init(rig: Rig) {
         self.rig = rig
         _template = State(initialValue: rig.defaultTemplate)
@@ -30,6 +31,18 @@ struct TemplateEditorView: View {
                     .onDelete { template[phase].remove(atOffsets: $0) }
                     .onMove { template[phase].move(fromOffsets: $0, toOffset: $1) }
                     Button("Add a step", systemImage: "plus") { adding = true }
+                }
+                Section {
+                    DestructiveButton("Reset to defaults", systemImage: "arrow.counterclockwise") { confirmingReset = true }
+                        .accessibilityIdentifier("resetRigDefaults")
+                    // Reset applies on confirm, then the editor shows the regenerated lists, so Save keeps them.
+                    .confirmationDialog("Reset to defaults?", isPresented: $confirmingReset, titleVisibility: .visible) {
+                        Button("Reset defaults for \(rig.displayName)", role: .destructive) {
+                            rig.resetDefaults()
+                            library.save()
+                            template = rig.defaultTemplate
+                        }
+                    } message: { Text("Your default lists are regenerated from the rig type. Existing trips keep their own lists.") }
                 }
             }
             .navigationTitle("Default checklists").navigationBarTitleDisplayMode(.inline)

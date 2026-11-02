@@ -9,7 +9,6 @@ struct RigsSection: View {
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @State private var editor: RigEditorView.Mode?
     @State private var editingDefaults: Rig?
-    @State private var resetting: Rig?
     @State private var failure: String?
     var body: some View {
         if rigs.needsRigResolution {
@@ -42,9 +41,6 @@ struct RigsSection: View {
                 Button { editingDefaults = rig } label: {
                     WrappingLabel("Default checklists", systemImage: "checklist")
                 }
-                Button { resetting = rig } label: {
-                    WrappingLabel("Reset default checklists", systemImage: "arrow.counterclockwise")
-                }
                 NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
                     LabeledContent { Text(String(rig.attachedDocuments.count)) } label: {
                         WrappingLabel("Manuals & paperwork", systemImage: "folder")
@@ -76,10 +72,6 @@ struct RigsSection: View {
         }
         .sheet(item: $editor) { mode in RigEditorView(mode: mode) }
         .sheet(item: $editingDefaults) { rig in TemplateEditorView(rig: rig) }
-        .confirmationDialog("Reset default checklists?", isPresented: Binding(get: { resetting != nil }, set: { if !$0 { resetting = nil } }),
-                            titleVisibility: .visible, presenting: resetting) { rig in
-            Button("Reset defaults for \(rig.displayName)", role: .destructive) { rig.resetDefaults(); library.save() }
-        } message: { _ in Text("Your default lists are regenerated from the rig type. Existing trips keep their own lists.") }
     }
 }
 

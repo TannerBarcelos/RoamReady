@@ -60,7 +60,7 @@ Each step also has a **priority** and **notes**, as in Apple Reminders:
 - **Notes** are your own text, shown in up to two lines under the title. They are kept apart from the step's **Guidance**, the generated advice, so editing one never touches the other.
 - Generated steps start with no priority and no notes.
 
-**Save as defaults for <rig>** requires confirmation and writes that trip's lists to its own rig, priorities and notes included; only progress resets. New trips copy priorities and notes from the defaults, which Profile › **Default checklists** edits the same way, and each trip then owns its copy. Resetting rig defaults regenerates them from the rig type, dropping custom priorities and notes; existing trips keep their lists.
+**Save as defaults for <rig>** requires confirmation and writes that trip's lists to its own rig, priorities and notes included; only progress resets. New trips copy priorities and notes from the defaults, which Profile › **Default checklists** edits the same way, and each trip then owns its copy. **Reset to defaults** at the bottom of Default checklists asks to confirm, then regenerates them from the rig type and shows the new lists in the editor (Save keeps them, Cancel doesn't undo the reset), dropping custom priorities and notes; existing trips keep their lists.
 
 Checklist help sends a step's notes to the on-device model, labeled as your notes, along with its guidance. Notes can also match a question on their own.
 
@@ -129,7 +129,7 @@ Saved lists persist only Apple place identifiers; details are looked up online o
 
 Home shows a read-only temperature with an explicit °F or °C unit, using the device locale. Launch checks request optional location and camera access through native system prompts before rig onboarding; already answered permissions are not requested again. With location denied, Home keeps a muted, crossed-out location icon that explains how to enable access in Settings. Near me and camera capture use crossed-out, disabled controls with a Settings action; text search and selected-photo import remain available. Permission status refreshes when returning from Settings. Location is approximate by default, rounded to about 1 km, and sent only to WeatherKit. The last reading remains visible offline while location access is allowed, with its retrieval time and Apple Weather attribution below Home’s content. Missing readings show a loading or unavailable state, with retry when connected.
 
-Trips with campground coordinates also show per-day forecasts, cached with their download time for offline use. Home weather and trip forecasts display Apple Weather attribution. Fresh readings require connectivity and a provisioned WeatherKit capability.
+Trips with campground coordinates also show per-day forecasts in whole degrees, cached for offline use. One note under the forecast gives when it was saved and that conditions may have changed, and mentions trip dates the forecast doesn’t cover yet. Home weather and trip forecasts display Apple Weather attribution. Fresh readings require connectivity and a provisioned WeatherKit capability.
 
 ## Camping help
 

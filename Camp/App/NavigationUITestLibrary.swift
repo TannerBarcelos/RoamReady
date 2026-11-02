@@ -31,6 +31,11 @@ enum NavigationUITestLibrary {
                                  arrival: calendar.date(byAdding: .day, value: start, to: today)!,
                                  departure: calendar.date(byAdding: .day, value: end, to: today)!)
             draft.campgroundTimeZoneIdentifier = calendar.timeZone.identifier
+            // `-weather-forecast-fixture` needs a location so the Weather section shows its forecast.
+            if ProcessInfo.processInfo.arguments.contains("-weather-forecast-fixture") {
+                draft.latitude = 38.9223
+                draft.longitude = -120.0477
+            }
             trips.append(try Trip.create(draft, rig: rig, in: context))
         }
         // "Upcoming Lake" stays without a menu so tests can create one.

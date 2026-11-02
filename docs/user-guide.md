@@ -48,7 +48,7 @@ Open a trip's **Setup** or **Teardown** checklist. Complete, uncheck, or skip st
 
 Tap a step's info button to set its **Priority** (None, Low, Medium, or High) and add **Notes**, as in Reminders. The list shows `!` to `!!!` before the title and your notes under it. Notes are separate from the step's **Guidance**. Saving a trip's lists as defaults keeps their priorities and notes, so the next trip starts with them.
 
-Trip edits do not change other trips or the rig's defaults. To reuse a trip's customized lists, choose **Save as defaults for <rig>** and confirm. In Profile, **Default checklists** edits a rig's reusable lists, and **Reset default checklists** regenerates them from its rig type. Existing trips keep their copies.
+Trip edits do not change other trips or the rig's defaults. To reuse a trip's customized lists, choose **Save as defaults for <rig>** and confirm. In Profile, **Default checklists** edits a rig's reusable lists, where **Reset to defaults** (at the bottom) regenerates them from its rig type. Existing trips keep their copies.
 
 Follow your manufacturer's instructions for equipment-specific procedures.
 

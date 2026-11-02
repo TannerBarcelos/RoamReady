@@ -181,9 +181,44 @@ final class NavigationUITests: XCTestCase {
         try audit(app, waivingDynamicType: true)
     }
 
+    func testResetToDefaultsLivesInDefaultChecklistsAndOnlyActsOnConfirm() {
+        let app = launch()
+        app.navigationTab("Profile").tap()
+        scrollToRigControls(in: app)
+        XCTAssertFalse(app.buttons["Reset default checklists"].exists)
+        app.buttons["Default checklists"].tap()
+        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 5))
+        let list = app.collectionViews.containing(.button, identifier: "Teardown").firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 5))
+        // Remove the third step so there is something for a reset to restore.
+        let row = list.cells.element(boundBy: 2)
+        let title = row.buttons.firstMatch.label
+        row.swipeLeft()
+        let remove = app.buttons["Delete"].firstMatch
+        remove.tap()
+        XCTAssertFalse(app.buttons[title].waitForExistence(timeout: 2))
+
+        let reset = app.buttons["resetRigDefaults"]
+        for _ in 0..<12 where !reset.isHittable { app.swipeUp() }
+        reset.tap()
+        XCTAssertTrue(app.staticTexts["Reset to defaults?"].waitForExistence(timeout: 5))
+        // Tapping outside the dialog dismisses it without resetting.
+        app.otherElements["PopoverDismissRegion"].firstMatch.tap()
+        XCTAssertFalse(app.staticTexts["Reset to defaults?"].waitForExistence(timeout: 2))
+        for _ in 0..<12 where !app.buttons[title].exists { app.swipeDown() }
+        XCTAssertFalse(app.buttons[title].exists, "Cancelling must not reset")
+
+        for _ in 0..<12 where !reset.isHittable { app.swipeUp() }
+        reset.tap()
+        XCTAssertTrue(app.staticTexts["Reset to defaults?"].waitForExistence(timeout: 5))
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Reset defaults for'")).firstMatch.tap()
+        for _ in 0..<12 where !app.buttons[title].exists { app.swipeDown() }
+        XCTAssertTrue(app.buttons[title].exists, "Confirming restores the default lists")
+    }
+
     /// Backs the #93 waiver: the rig section's text really scales between the default and largest sizes.
     func testProfileRigSectionTextGrowsAtLargestSize() {
-        let texts = ["Forest River No Boundaries", "Used by 4 trips", "Reset default checklists", "Replace rig"]
+        let texts = ["Forest River No Boundaries", "Used by 4 trips", "Default checklists", "Replace rig"]
         let regular = rigTextHeights(texts, extraArguments: [])
         let largest = rigTextHeights(texts, extraArguments: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
         for text in texts {
