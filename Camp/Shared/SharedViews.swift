@@ -155,3 +155,27 @@ struct WrappingLabel: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+/// A list row that deletes something. The destructive role colors only the title, and the app's blue
+/// tint would still win on the icon, so the icon is colored directly.
+struct DestructiveButton: View {
+    let title: String
+    var systemImage = "trash"
+    let action: () -> Void
+
+    init(_ title: String, systemImage: String = "trash", action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.action = action
+    }
+
+    var body: some View {
+        Button(role: .destructive, action: action) {
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: systemImage).foregroundStyle(.red)
+            }
+        }
+    }
+}

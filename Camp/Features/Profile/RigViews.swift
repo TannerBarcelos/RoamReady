@@ -106,7 +106,7 @@ struct ArchivedRigsView: View {
                     Button("Make active again", systemImage: "arrow.uturn.backward") { perform { try rig.unarchive() } }
                         .disabled(rigs.active.count >= RigPolicy.maxActiveRigs)
                     if rig.activeTrips.isEmpty {
-                        Button("Delete rig", systemImage: "trash", role: .destructive) { deleting = rig }
+                        DestructiveButton("Delete rig") { deleting = rig }
                     }
                 }
             }

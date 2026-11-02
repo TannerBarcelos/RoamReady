@@ -77,7 +77,7 @@ struct DocumentDetailView: View {
             Section { actions } footer: { if let fileProblem { Text(fileProblem) } }
             if let failure { Section { Text(failure).foregroundStyle(.red) } }
             Section {
-                Button("Delete document", systemImage: "trash", role: .destructive) { confirmingDelete = true }
+                DestructiveButton("Delete document") { confirmingDelete = true }
             }
         }
         .navigationTitle(document.title).navigationBarTitleDisplayMode(.inline)

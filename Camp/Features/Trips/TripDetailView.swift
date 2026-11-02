@@ -85,8 +85,7 @@ struct TripDetailView: View {
                 } else {
                     Button("Mark trip complete", systemImage: "checkmark.seal") { trip.setCompleted(true); library.save() }
                 }
-                Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
-                    .tint(.red)
+                DestructiveButton("Cancel & delete trip") { showDelete = true }
                     .accessibilityIdentifier("deleteTrip")
             } footer: {
                 Text("Trips complete on their own the day after departure. Completed trips add their campground to Have been.")
@@ -126,8 +125,7 @@ struct TripDetailView: View {
     private var tripActions: some View {
         Group {
             Button("Edit trip", systemImage: "pencil") { showEdit = true }
-            Button("Cancel & delete trip", systemImage: "trash", role: .destructive) { showDelete = true }
-                .tint(.red)
+            DestructiveButton("Cancel & delete trip") { showDelete = true }
         }
     }
 }
