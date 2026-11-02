@@ -136,7 +136,7 @@ struct TripDetailView: View {
 enum TripDeletion {
     static func message(hasDocuments: Bool) -> String {
         [
-            "This permanently deletes the trip’s whole history on every device signed in to your iCloud account: its checklists and their progress, its menu with dish photos and recipes, notes and all saved note versions, photos and captions, and site notes and rating. This can’t be undone.",
+            "This permanently deletes the trip’s whole history on every device signed in to your iCloud account: its checklists and their progress, its menu with dish photos and ingredients, notes and all saved note versions, photos and captions, and site notes and rating. This can’t be undone.",
             hasDocuments
                 ? "Kept: its confirmation and paperwork files move to Profile › Unattached documents."
                 : "Kept: any confirmation files would move to Profile › Unattached documents.",

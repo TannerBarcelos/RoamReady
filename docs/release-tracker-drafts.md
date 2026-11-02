@@ -71,7 +71,7 @@ Put all settings in an untracked `Config/Local.xcconfig` copied from `Config/Clo
 - [ ] Create a new CloudKit container. Enable iCloud (CloudKit) and Push Notifications on the App ID.
 - [ ] Set `ROAMREADY_MIRRORING_CONTAINER` and `CODE_SIGN_ENTITLEMENTS = Config/Cloud.entitlements`.
 - [ ] Create one of everything in the app: rig with photo, trip, checklist step, trip photo, note, saved campground, and documents of several categories, including an Other document with **Include in Assistant** turned on. Check that the `CD_` record types appear in CloudKit Console, including `StoredDocument.includeInAssistant`.
-- [ ] Deploy the schema to Production before TestFlight. As of Oct 29, 2026 the schema has **not** been deployed; `includeInAssistant` must be in the Development schema first. After the first Production deploy, model changes must be additive only (new optional attributes or models; never rename, retype, remove, or change encryption).
+- [ ] The schema is deployed to Production (owner-confirmed Nov 2, 2026; testers are on TestFlight). Model changes must be additive only (new optional attributes or models; never rename, retype, remove, or change encryption). Before each upload, create the release's new attributes in a signed Development build and deploy them to Production. For structured ingredient amounts: `DishItem.amountValue`, `DishItem.unitValue`, and `TripMeal.hasStructuredAmounts`.
 
 ## A3. WeatherKit
 - [ ] Enable WeatherKit on the App ID. The entitlement is already in `Config/Cloud.entitlements`.

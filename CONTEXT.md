@@ -30,6 +30,36 @@ A **Document** associated with neither a **Rig** nor a **Trip**, including paper
 **Assistant scope**:
 The **Rig** or **Trip** whose documents the camper is asking about. General Assistant uses the active rig; Assistant opened from a trip includes that trip and its rig.
 
+**Menu**:
+What a camper plans to eat on a **Trip**: its days, each with **Meals**. Deleting a trip deletes its menu.
+
+**Meal**:
+One eating occasion on one day of a **Trip**: Breakfast, Lunch, Dinner, Snacks, or one the camper names. A meal holds **Dishes**.
+
+**Dish**:
+One whole plate within a **Meal**, like "Steak with brussels sprouts and sourdough". It lists its **Ingredients**.
+_Avoid_: Recipe, menu item
+
+**Ingredient**:
+One part of a **Dish** with an optional **Amount**, like "Ribeye, 2 lb".
+_Avoid_: Recipe item, grocery item
+
+**Amount**:
+A number chosen from a list together with a unit chosen from a list, like "2" and "lb". **Grocery list** rows add up amounts that share a unit.
+_Avoid_: Quantity (the retired free-text field)
+
+**Repeat**:
+Copying a **Meal**'s **Dishes** to other days of the **Trip**. Each day gets its own independent copy, so changing one day's dish doesn't change the others.
+_Avoid_: Linked dish, recurring meal
+
+**Grocery list**:
+A **Trip**'s **Ingredients** gathered from its **Menu** to show what the camper still needs. It always reflects the current menu.
+_Avoid_: Shopping list, generated list
+
+**Have**:
+An **Ingredient** the camper doesn't need to get, whether bought or already on hand. The opposite is **Need**.
+_Avoid_: Bought, purchased, in stock
+
 ## Example dialogue
 
 **Camper:** I replaced my rig. Does that change my old bookings?
@@ -51,3 +81,11 @@ The **Rig** or **Trip** whose documents the camper is asking about. General Assi
 **Camper:** My trip says check-in is at 2 p.m., but the confirmation says 3 p.m.
 
 **Developer:** The Assistant shows both values and where they came from. Your saved trip stays unchanged until you edit it.
+
+**Camper:** I repeated breakfast across the trip, then changed Saturday's. Does Sunday change?
+
+**Developer:** No. Repeat gives each day its own copy of the dishes and their ingredients.
+
+**Camper:** I already bought the eggs, but I just repeated breakfast onto another day.
+
+**Developer:** Eggs moves back to Need on your grocery list, because that new day's ingredient isn't something you have yet.

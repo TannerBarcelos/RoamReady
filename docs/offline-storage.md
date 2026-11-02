@@ -16,9 +16,9 @@ The models live in `Sources/CampPersistence/Models.swift`:
 | `ChecklistStep` | title, detail (guidance), notes, priority, section, status, phase, position | its trip, or its rig for default lists |
 | `TripPhoto` | resized JPEG (external storage), caption | trip |
 | `NoteRevision` | a saved version of a trip's notes | trip |
-| `TripMeal` | a meal on a trip day: day offset from arrival, raw meal kind, name for added meals, position | trip, `MenuDish`es (cascade) |
+| `TripMeal` | a meal on a trip day: day offset from arrival, raw meal kind, name for added meals, position, `hasStructuredAmounts` marker (true on every meal this version creates) | trip, `MenuDish`es (cascade) |
 | `MenuDish` | name, notes, resized JPEG (external storage, cloud-encrypted), position | meal, `DishItem`s (cascade) |
-| `DishItem` | one recipe line: name, free-text quantity, position | dish |
+| `DishItem` | one ingredient: name, amount number and raw unit (both optional), position; the old free-text `quantity` is retired and unread | dish |
 | `SavedCampground` | Camp Finder lists (want to go, favorite, have been); Apple Maps places keep only their identifier | — |
 | `StoredDocument` | document details; text fields cloud-encrypted | rig or trip (neither = unattached), `DocumentContent` (cascade) |
 | `DocumentContent` | the original file bytes (external storage and cloud encryption); legacy bytes/keys remain readable | document |
@@ -31,7 +31,9 @@ The rules live next to the models (`Rig+Library.swift`, `Trip+Library.swift`, `T
 
 Screens read with `@Query` and edit models directly; SwiftData saves automatically, and `LibraryController.save()` saves after each deliberate action so a failure is shown. Forms edit a draft (`TripDraft`, `RigDraft`, `ChecklistStepDraft`, `MenuDishDraft`, `DishItemDraft`, `MealDraft`) so Cancel discards changes.
 
-**Schema changes.** The app has not shipped and the CloudKit schema is still in Development, so the models may change freely; delete and reinstall the app if a development store won't open. **Owner-confirmed on October 29, 2026: the schema has not been deployed to Production.** `StoredDocument.includeInAssistant` (optional-safe `Bool`, default `false`) is therefore part of the initial schema: confirm it appears in the Development schema in CloudKit Console before the first Production deployment (#6 A2). The Assistant's search index is a separate per-device file and adds nothing to the CloudKit schema. Once the schema is promoted to Production (#6), CloudKit accepts only additive changes: add optional attributes or models; never rename, retype, or remove one, and never change which attributes are cloud-encrypted. A change SwiftData can't infer then needs a `VersionedSchema` and `SchemaMigrationPlan`.
+**Schema changes.** **Owner-confirmed on November 2, 2026: testers are on TestFlight and the CloudKit schema is deployed to Production.** CloudKit now accepts only additive changes: add optional attributes or models; never rename, retype, or remove one, and never change which attributes are cloud-encrypted. A change SwiftData can't infer needs a `VersionedSchema` and `SchemaMigrationPlan`. Every new attribute must be created in the Development schema by a signed build and deployed to Production before the build that uses it is uploaded. The Assistant's search index is a separate per-device file and adds nothing to the CloudKit schema.
+
+This release adds `DishItem.amountValue`, `DishItem.unitValue`, and `TripMeal.hasStructuredAmounts`; `DishItem.quantity` is retired in place, unread and unwritten. Deploy those three to Production first: if `hasStructuredAmounts` is missing there, new meals won't sync. See [the decision](adr/0001-structured-ingredient-amounts.md).
 
 ## Photos and documents
 
@@ -56,7 +58,7 @@ The default build declares no entitlements and an empty `ROAMREADY_MIRRORING_CON
 1. Register the App ID, team, and a **new dedicated CloudKit container** for mirroring.
 2. Apply `Config/Cloud.xcconfig.example`, set the actual `ROAMREADY_MIRRORING_CONTAINER`, and use `Config/Cloud.entitlements` (CloudKit and WeatherKit). Enable iCloud (CloudKit), Push Notifications, and WeatherKit on the App ID. Let signing supply the appropriate `aps-environment`. `remote-notification` background mode is declared in Info.plist.
 3. Sync is on by default. The "Sync with iCloud" preference (onboarding and Settings) works offline and applies **on the next app launch**. The current session keeps its launch configuration, and the UI shows pending changes. Turning sync off does not delete local data or the iCloud copy. Validate preference changes and relaunches during large transfers on devices before release.
-4. Run a signed development build on Apple hardware so SwiftData creates the CloudKit schema in the Development environment, exercising every model (including documents). Inspect it in CloudKit Console and deploy it to Production before TestFlight. Do not mutate generated system fields.
+4. Run a signed development build on Apple hardware so SwiftData creates any new attributes in the CloudKit Development schema, exercising every model (including documents). Inspect them in CloudKit Console and deploy the changes to Production before each TestFlight upload. Do not mutate generated system fields.
 5. Test two devices, account transitions, offline operation, and large attachments before shipping.
 
 `ICloudSettings` passively observes mirroring events (`NSPersistentCloudKitContainer.eventChangedNotification`) to show the last successful activity and the last completed activity's error. A completed event means that activity completed, not that every device is up to date. The status never claims global delivery. No force-sync or account-retry button is exposed.

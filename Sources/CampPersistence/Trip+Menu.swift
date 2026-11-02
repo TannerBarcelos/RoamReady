@@ -164,7 +164,7 @@ public extension Trip {
         meals.compactMap { meal in
             let dishes = meal.dishes.map { dish in
                 TripMenuFacts.Dish(name: dish.name, notes: dish.notes,
-                                   items: dish.sortedItems.map { TripMenuFacts.Item(name: $0.name, quantity: $0.quantity) })
+                                   items: dish.sortedItems.map { TripMenuFacts.Item(name: $0.name, quantity: $0.amountText) })
             }
             return dishes.isEmpty ? nil : TripMenuFacts.Meal(kind: meal.kind, title: meal.title, dishes: dishes)
         }
@@ -216,7 +216,8 @@ public extension MenuDish {
         let item = DishItem()
         modelContext.insert(item)
         item.name = details.name
-        item.quantity = details.quantity
+        item.amountValue = details.amount
+        item.unitValue = details.unit?.rawValue
         item.position = (sortedItems.last?.position ?? -1) + 1
         item.dish = self
         return item
@@ -233,12 +234,32 @@ public extension MenuDish {
 }
 
 public extension DishItem {
-    var draft: DishItemDraft { DishItemDraft(name: name, quantity: quantity) }
+    /// The ingredient's unit, or nil when it has none or a newer app version wrote one this version doesn't know.
+    var unit: IngredientUnit? { unitValue.flatMap(IngredientUnit.init(rawValue:)) }
+
+    /// The amount as a number and unit that can be added to others with `IngredientAmount.totals(of:)`.
+    /// Nil when the ingredient has no amount, or its unit is one this version doesn't know (it would
+    /// otherwise be summed with unitless amounts); `amountText` still shows those.
+    var amount: IngredientAmount? {
+        guard let amountValue, unitValue == nil || unit != nil else { return nil }
+        return IngredientAmount(amountValue, unit: unit)
+    }
+
+    /// "2 lb", "1½ cup", "6", or "" when there is no amount. An unknown unit is shown as it was saved.
+    var amountText: String {
+        guard let amountValue, amountValue.isFinite, amountValue > 0 else { return "" }
+        let number = IngredientAmount.text(for: amountValue)
+        guard let unitValue, !unitValue.isEmpty else { return number }
+        return "\(number) \(unit?.title ?? unitValue)"
+    }
+
+    var draft: DishItemDraft { DishItemDraft(name: name, amount: amountValue, unit: unit) }
 
     func update(_ draft: DishItemDraft) throws {
         let details = draft.cleaned
         try details.validate()
         name = details.name
-        quantity = details.quantity
+        amountValue = details.amount
+        unitValue = details.unit?.rawValue
     }
 }

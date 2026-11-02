@@ -73,10 +73,12 @@ Documents retained after a trip or rig is deleted appear in **Profile → Unatta
 Open a trip and tap **Create menu**. Each day of the trip lists Breakfast, Lunch, Dinner, and Snacks; tap **Add a meal** for anything else.
 
 1. Tap a meal, then **Add a dish**. Name the whole plate, such as "Steak with brussels sprouts and sourdough", and add notes or a photo if you like.
-2. Open the dish and tap **Add item** for each part of the recipe, with an amount such as "2 lb". Use **Save & add another** to enter several in a row.
-3. Use **Edit** to reorder or remove dishes and items. Swipe a meal on the menu to clear or remove it.
+2. Open the dish and tap **Add ingredient** for each part of the dish. Choose an **Amount** and a **Unit** from the lists, such as 2 and lb, or leave them as None. Use **Save & add another** to enter several in a row.
+3. Use **Edit** to reorder or remove dishes and ingredients. Swipe a meal on the menu to clear or remove it.
 
 If you shorten a trip, meals on the days you removed appear under **Outside trip dates**. Open one to move it to another day.
+
+If you planned a menu in an earlier test build, updating deletes it, because its amounts were free text. Plan it again with the new lists.
 
 ## Add memories
 
