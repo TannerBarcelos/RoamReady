@@ -37,8 +37,8 @@ enum NavigationUITestLibrary {
         if let current = trips.first {
             let dinner = try current.addDish(MenuDishDraft(name: "Steak with brussels sprouts and sourdough"),
                                              to: .standard(day: 0, kind: .dinner))
-            try dinner.addItem(DishItemDraft(name: "Ribeye", quantity: "2 lb"))
-            try dinner.addItem(DishItemDraft(name: "Brussels sprouts", quantity: "1 bag"))
+            try dinner.addItem(DishItemDraft(name: "Ribeye", amount: 2, unit: .lb))
+            try dinner.addItem(DishItemDraft(name: "Brussels sprouts", amount: 1, unit: .bag))
         }
         // Resize checks open a photo and a document without changing the real layout traits.
         if LayoutUITest.isRequested, let current = trips.first {

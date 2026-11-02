@@ -24,7 +24,7 @@ struct MenuDishRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(dish.name)
                 let count = dish.sortedItems.count
-                Text(count == 0 ? "No recipe items yet" : count == 1 ? "1 item" : "\(count) items")
+                Text(count == 0 ? "No ingredients yet" : count == 1 ? "1 ingredient" : "\(count) ingredients")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -34,7 +34,7 @@ struct MenuDishRow: View {
     }
 }
 
-/// A dish with its notes, photo, and recipe items. Items are edited in place; the dish's own details
+/// A dish with its notes, photo, and ingredients. Ingredients are edited in place; the dish's own details
 /// go through an editor sheet so Cancel discards them.
 struct MenuDishView: View {
     @Environment(\.modelContext) private var context
@@ -73,7 +73,7 @@ struct MenuDishView: View {
                 ForEach(items) { item in
                     Button { editedItem = item } label: {
                         LabeledContent {
-                            Text(item.quantity)
+                            Text(item.amountText)
                         } label: {
                             Text(item.name).foregroundStyle(.primary)
                         }
@@ -85,14 +85,14 @@ struct MenuDishView: View {
                     dish.reorderItems(ordered); library.save()
                 }
                 .onDelete { offsets in dish.removeItems(offsets.map { items[$0] }); library.save() }
-                Button("Add item", systemImage: "plus") { addingItem = true }
+                Button("Add ingredient", systemImage: "plus") { addingItem = true }
                     .accessibilityIdentifier("addDishItem")
             } header: {
-                Text("Recipe · \(items.count)")
+                Text("Ingredients · \(items.count)")
             } footer: {
                 Text(items.isEmpty
                      ? "List each part of the dish and how much to bring, like “Ribeye, 2 lb”."
-                     : "Tap an item to edit it. Use Edit to reorder or remove items.")
+                     : "Tap an ingredient to edit it. Use Edit to reorder or remove ingredients.")
             }
             Section {
                 Button("Remove dish", systemImage: "trash", role: .destructive) { removing = true }
@@ -118,7 +118,7 @@ struct MenuDishView: View {
         .confirmationDialog("Remove “\(dish.name)”?", isPresented: $removing, titleVisibility: .visible) {
             Button("Remove dish", role: .destructive) { dismiss(); context.delete(dish); library.save() }
         } message: {
-            Text("Its notes, photo, and recipe items are removed too.")
+            Text("Its notes, photo, and ingredients are removed too.")
         }
     }
 }
@@ -143,7 +143,7 @@ struct MenuDishEditor: View {
                         .accessibilityIdentifier("menuDishNotes")
                 } footer: {
                     if let failure { Text(failure).foregroundStyle(.red) }
-                    else { Text("A dish is the whole plate. List its parts as recipe items after you save.") }
+                    else { Text("A dish is the whole plate. List its parts as ingredients after you save.") }
                 }
                 DishPhotoSection(data: $photo, importing: $importing)
             }
@@ -161,7 +161,7 @@ struct MenuDishEditor: View {
     }
 }
 
-/// Edits one recipe item. When adding, "Save & add another" keeps the sheet open for the next item.
+/// Edits one ingredient. When adding, "Save & add another" keeps the sheet open for the next one.
 struct DishItemEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State var item: DishItemDraft
@@ -175,14 +175,27 @@ struct DishItemEditor: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Item, like ribeye", text: $item.name)
+                    TextField("Ingredient, like ribeye", text: $item.name)
                         .focused($nameFocused)
                         .accessibilityIdentifier("dishItemName")
-                    TextField("Amount, like 2 lb", text: $item.quantity)
-                        .accessibilityIdentifier("dishItemQuantity")
+                    Picker("Amount", selection: $item.amount) {
+                        Text("None").tag(Double?.none)
+                        ForEach(IngredientAmount.choices(including: item.amount), id: \.self) { value in
+                            Text(IngredientAmount.text(for: value)).tag(Double?.some(value))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityIdentifier("dishItemAmount")
+                    Picker("Unit", selection: $item.unit) {
+                        Text("No unit").tag(IngredientUnit?.none)
+                        ForEach(IngredientUnit.allCases) { unit in Text(unit.title).tag(IngredientUnit?.some(unit)) }
+                    }
+                    .pickerStyle(.menu)
+                    .disabled(item.amount == nil)
+                    .accessibilityIdentifier("dishItemUnit")
                 } footer: {
                     if let failure { Text(failure).foregroundStyle(.red) }
-                    else if added > 0 { Text(added == 1 ? "1 item added" : "\(added) items added") }
+                    else if added > 0 { Text(added == 1 ? "1 ingredient added" : "\(added) ingredients added") }
                 }
                 if addsAnother {
                     Section {
@@ -194,13 +207,14 @@ struct DishItemEditor: View {
                     }
                 }
             }
-            .navigationTitle(addsAnother ? "New item" : "Recipe item").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(addsAnother ? "New ingredient" : "Edit ingredient").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(added > 0 ? "Done" : "Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { if save() { dismiss() } }.disabled(!item.hasName)
                 }
             }
+            .onChange(of: item.amount) { _, amount in if amount == nil { item.unit = nil } }
             .onAppear { if addsAnother { nameFocused = true } }
         }
     }

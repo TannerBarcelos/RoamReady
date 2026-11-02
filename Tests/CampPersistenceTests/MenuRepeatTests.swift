@@ -28,8 +28,8 @@ struct MenuRepeatTests {
     private func names(_ id: MenuMeal.ID) -> [String] { trip.menuMeal(id)?.dishes.map(\.name) ?? [] }
 
     /// One place that builds an ingredient, so a change to the draft's fields touches one line.
-    private func ingredient(_ name: String, _ amount: String = "") -> DishItemDraft {
-        DishItemDraft(name: name, quantity: amount)
+    private func ingredient(_ name: String, _ amount: Double? = nil, _ unit: IngredientUnit? = nil) -> DishItemDraft {
+        DishItemDraft(name: name, amount: amount, unit: unit)
     }
 
     @discardableResult
@@ -41,7 +41,7 @@ struct MenuRepeatTests {
     }
 
     @Test func eachDayGetsAnIndependentCopy() throws {
-        let pancakes = try plan("Pancakes", notes: "Cast iron", ingredients: [ingredient("Mix", "1 box")], in: breakfast(0))
+        let pancakes = try plan("Pancakes", notes: "Cast iron", ingredients: [ingredient("Mix", 1, .box)], in: breakfast(0))
         let source = try meal(breakfast(0))
 
         #expect(try trip.repeatDishes([pancakes], of: source, onDays: [1, 2]) == 2)
@@ -51,17 +51,17 @@ struct MenuRepeatTests {
         #expect(first !== pancakes && first !== second)
 
         try first.update(MenuDishDraft(name: "Waffles", notes: "Iron"), photo: nil)
-        try first.sortedItems[0].update(ingredient("Batter", "2"))
+        try first.sortedItems[0].update(ingredient("Batter", 2))
         try pancakes.addItem(ingredient("Syrup"))
         #expect(second.draft == MenuDishDraft(name: "Pancakes", notes: "Cast iron"))
-        #expect(second.sortedItems.map(\.draft) == [ingredient("Mix", "1 box")])
+        #expect(second.sortedItems.map(\.draft) == [ingredient("Mix", 1, .box)])
         #expect(pancakes.sortedItems.map(\.name) == ["Mix", "Syrup"])
         #expect(names(breakfast(0)) == ["Pancakes"])
     }
 
     @Test func notesAndIngredientOrderAreCopiedButNotThePhoto() throws {
         let jpeg = Data([0xFF, 0xD8, 0xFF, 0x01])
-        let ingredients = [ingredient("Eggs", "12"), ingredient("Bacon", "1 lb"), ingredient("Bread")]
+        let ingredients = [ingredient("Eggs", 12), ingredient("Bacon", 1, .lb), ingredient("Bread")]
         let dish = try plan("Breakfast burritos", notes: "Wrap in foil", ingredients: ingredients, photo: jpeg, in: breakfast(0))
         try trip.repeatDishes([dish], of: try meal(breakfast(0)), onDays: [1])
 

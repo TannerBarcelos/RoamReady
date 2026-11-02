@@ -63,8 +63,8 @@ struct MenuTests {
     @Test func draftsTrimAndRequireNames() throws {
         #expect(MenuDishDraft(name: "  Foil packs \n", notes: " Prep at home ").cleaned == MenuDishDraft(name: "Foil packs", notes: "Prep at home"))
         #expect(throws: CampError.missingDishName) { try MenuDishDraft(name: "   ").validate() }
-        #expect(DishItemDraft(name: " Ribeye ", quantity: " 2 lb ").cleaned == DishItemDraft(name: "Ribeye", quantity: "2 lb"))
-        #expect(throws: CampError.missingItemName) { try DishItemDraft(name: "", quantity: "2").validate() }
+        #expect(DishItemDraft(name: " Ribeye ", amount: 2, unit: .lb).cleaned == DishItemDraft(name: "Ribeye", amount: 2, unit: .lb))
+        #expect(throws: CampError.missingItemName) { try DishItemDraft(name: "", amount: 2).validate() }
         #expect(throws: CampError.missingMealName) { try MealDraft(title: " ").validate() }
         try MealDraft(title: "Second breakfast").validate()
     }

@@ -28,18 +28,18 @@ These are manual production-model checks, separate from the document corpus belo
 
 Apple's [prompt-design guidance, at 4:05](https://developer.apple.com/videos/play/wwdc2025/248/?time=245), cautions that the on-device model has limited world knowledge. Model-selected tool calling does not establish cooking-answer accuracy; review the actual guidance as well as the tool trace on the target OS/model.
 
-Seed a trip with a dinner named "Steak and Brussels sprouts" and a recipe item "NY strip, 16 oz". Use the same conversation for the first three questions:
+Seed a trip with a dinner named "Steak and Brussels sprouts" and an ingredient "NY strip" with amount 16 and unit oz. Use the same conversation for the first three questions:
 
 | Question | Expected behavior |
 | --- | --- |
 | "What are we eating on this trip?" | Model calls `get_trip` with menu focus and answers from the saved dinner. Saved trip source appears. |
 | "How should I cook the steak? What's the best way?" | Model can answer directly using conversation context and general cooking knowledge. Check for cooking steps rather than a repeated menu; a direct answer has no Saved trip source. |
-| After editing the recipe item: "What cut and amount did I save?" | Model fetches the menu again and reports the edited value. |
+| After editing the ingredient: "What cut and amount did I save?" | Model fetches the menu again and reports the edited value. |
 | "What did I save for dinner, and how should I cook it?" | Model fetches the saved dinner and combines it with general cooking advice. |
 | "How do I cook a steak?" in a fresh trip chat | Model can answer directly without retrieving unrelated trip data. |
 | "What trip is this?" | Model fetches the overview and reports saved facts without guessing. |
 
-Repeat with saved meals on several days, including a day that is not today, and ask both for the entire menu and for a single meal. In both cases the raw menu resource should contain all saved meals; the model selects the answer from that data. Test more than 20 recipe items, long notes, named extra meals, and missing amounts. Also ask about booking notes and checklist progress, combine several resource requests, and ask unrelated general questions. Verify tool choice using the Foundation Models instrument, not the presence of a source card alone. For oversized resources, verify that generic compaction processes the final records and retains the facts relevant to the question. A condensed result must not be treated as a lossless copy. These are model-quality checks, separate from deterministic retrieval and compaction-plumbing tests.
+Repeat with saved meals on several days, including a day that is not today, and ask both for the entire menu and for a single meal. In both cases the raw menu resource should contain all saved meals; the model selects the answer from that data. Test more than 20 ingredients, long notes, named extra meals, and missing amounts. Also ask about booking notes and checklist progress, combine several resource requests, and ask unrelated general questions. Verify tool choice using the Foundation Models instrument, not the presence of a source card alone. For oversized resources, verify that generic compaction processes the final records and retains the facts relevant to the question. A condensed result must not be treated as a lossless copy. These are model-quality checks, separate from deterministic retrieval and compaction-plumbing tests.
 
 Also check an empty menu and a chat without a selected trip: neither should invent a meal. The model retains the choice to call a tool; unnecessary lookups and missed lookups are quality findings, not app-side routing rules. `CampingToolsTests.cookingFollowUpKeepsContextAndAllowsNoLookup` verifies history, tool availability, and source handling with scripted replies; it does not validate Apple's model selection or cooking knowledge. These on-device checks have not been run for this change.
 

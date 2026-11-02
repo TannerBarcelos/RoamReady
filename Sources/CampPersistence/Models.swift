@@ -157,12 +157,17 @@ public final class TripMeal {
     /// Orders added meals within their day.
     public var position: Int = 0
     public var createdAt: Date = Date.now
+    /// True on every meal this version creates. The property default stays false so records made before
+    /// it, and by older builds that sync in later, read as false. Menu data that predates structured
+    /// amounts is deleted when the library opens (`MenuWipe`), and this marker is how it is told apart.
+    /// See docs/adr/0001-structured-ingredient-amounts.md.
+    public var hasStructuredAmounts: Bool = false
     public var trip: Trip?
     @Relationship(deleteRule: .cascade, inverse: \MenuDish.meal) public var dishes: [MenuDish]? = []
-    public init(day: Int = 0, kind: MealKind = .other) { dayOffset = day; kindValue = kind.rawValue }
+    public init(day: Int = 0, kind: MealKind = .other) { dayOffset = day; kindValue = kind.rawValue; hasStructuredAmounts = true }
 }
 
-/// A whole plate within a meal, with its notes, photo, and recipe items.
+/// A whole plate within a meal, with its notes, photo, and ingredients.
 @Model
 public final class MenuDish {
     public var name: String = ""
@@ -176,11 +181,19 @@ public final class MenuDish {
     public init() {}
 }
 
-/// One line of a dish's recipe, like "Ribeye, 2 lb".
+/// One ingredient of a dish, like "Ribeye, 2 lb".
 @Model
 public final class DishItem {
     public var name: String = ""
+    /// Retired: the free-text amount from before amounts were structured. Nothing reads or writes it. It
+    /// stays because a CloudKit Production field can't be removed or change type; see
+    /// docs/adr/0001-structured-ingredient-amounts.md.
     public var quantity: String = ""
+    /// The amount's number, nil for none. Positive when set.
+    public var amountValue: Double?
+    /// A raw `IngredientUnit`, like `TripMeal.kindValue`, so a unit written by a newer app version is kept
+    /// rather than failing to load.
+    public var unitValue: String?
     public var position: Int = 0
     public var dish: MenuDish?
     public init() {}
