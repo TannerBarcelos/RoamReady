@@ -63,7 +63,7 @@ public enum LibraryExport {
 
     private static func menuEntries(_ trip: Trip) -> [Library.MealEntry] {
         trip.storedMeals.sorted { ($0.dayOffset, $0.createdAt) < ($1.dayOffset, $1.createdAt) }.map { meal in
-            let dishes = meal.sortedDishes.map { Library.DishEntry(name: $0.name, notes: $0.notes, items: $0.sortedItems.map(\.draft)) }
+            let dishes = meal.sortedDishes.map { Library.DishEntry(name: $0.name, notes: $0.notes, items: $0.sortedItems.map { Library.IngredientEntry(name: $0.name, amount: $0.amountValue, unit: $0.unitValue) }) }
             return Library.MealEntry(day: meal.dayOffset + 1, meal: meal.kindValue, title: meal.title, dishes: dishes)
         }
     }
@@ -93,10 +93,13 @@ public enum LibraryExport {
         }
         /// `day` is 1 for the arrival day. Dish photos are shared individually, like trip photos.
         struct MealEntry: Encodable { let day: Int; let meal: String; let title: String; let dishes: [DishEntry] }
-        struct DishEntry: Encodable { let name, notes: String; let items: [DishItemDraft] }
+        struct DishEntry: Encodable { let name, notes: String; let items: [IngredientEntry] }
+        /// `unit` is the stored `IngredientUnit` raw value, like "lb" or "flOz". The retired free-text amount isn't exported.
+        struct IngredientEntry: Encodable { let name: String; let amount: Double?; let unit: String? }
         struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool? }
-        /// 3 added rig registration and checklist step notes and priority. 4 added trip menus.
-        var schemaVersion = 4
+        /// 3 added rig registration and checklist step notes and priority. 4 added trip menus. 5 replaced an
+        /// ingredient's free-text amount with `amount` (a number) and `unit`.
+        var schemaVersion = 5
         let profile: Profile?
         let rigs: [RigEntry]
         let trips: [TripEntry]

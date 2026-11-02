@@ -105,19 +105,52 @@ struct MenuLibraryTests {
 
     @Test func dishItemsAreAddedEditedReorderedAndRemoved() throws {
         let dish = try trip.addDish(MenuDishDraft(name: "Foil packs"), to: .standard(day: 0, kind: .dinner))
-        let potatoes = try dish.addItem(DishItemDraft(name: " Potatoes ", quantity: " 4 "))
-        let sausage = try dish.addItem(DishItemDraft(name: "Sausage", quantity: "1 lb"))
+        let potatoes = try dish.addItem(DishItemDraft(name: " Potatoes ", amount: 4))
+        let sausage = try dish.addItem(DishItemDraft(name: "Sausage", amount: 1, unit: .lb))
         let onion = try dish.addItem(DishItemDraft(name: "Onion"))
-        #expect(potatoes.name == "Potatoes" && potatoes.quantity == "4")
+        #expect(potatoes.name == "Potatoes" && potatoes.amountValue == 4 && potatoes.unitValue == nil && potatoes.amountText == "4")
         #expect(dish.sortedItems.map(\.name) == ["Potatoes", "Sausage", "Onion"])
         #expect(throws: CampError.missingItemName) { try dish.addItem(DishItemDraft(name: "  ")) }
 
         dish.reorderItems([onion, potatoes, sausage])
         #expect(dish.sortedItems.map(\.name) == ["Onion", "Potatoes", "Sausage"])
-        try sausage.update(DishItemDraft(name: "Kielbasa", quantity: "2"))
+        try sausage.update(DishItemDraft(name: "Kielbasa", amount: 2, unit: .pack))
         dish.removeItems([onion])
         try context.save()
-        #expect(dish.sortedItems.map(\.draft) == [DishItemDraft(name: "Potatoes", quantity: "4"), DishItemDraft(name: "Kielbasa", quantity: "2")])
+        #expect(dish.sortedItems.map(\.draft) == [DishItemDraft(name: "Potatoes", amount: 4), DishItemDraft(name: "Kielbasa", amount: 2, unit: .pack)])
+    }
+
+    @Test func ingredientAmountsAreStoredAsANumberAndARawUnit() throws {
+        let dish = try trip.addDish(MenuDishDraft(name: "Breakfast burritos"), to: .standard(day: 0, kind: .breakfast))
+        let flour = try dish.addItem(DishItemDraft(name: "Flour", amount: 1.0 / 3.0, unit: .cup))
+        let eggs = try dish.addItem(DishItemDraft(name: "Eggs", amount: 6))
+        let salt = try dish.addItem(DishItemDraft(name: "Salt", amount: nil, unit: .oz))
+        let rejected = try dish.addItem(DishItemDraft(name: "Pepper", amount: -1, unit: .tsp))
+        try context.save()
+        #expect(flour.unitValue == "cup" && flour.amountText == "⅓ cup" && flour.draft.unit == .cup)
+        #expect(eggs.unitValue == nil && eggs.amountText == "6" && eggs.amount == IngredientAmount(6))
+        #expect(salt.amountValue == nil && salt.unitValue == nil && salt.amountText == "" && salt.amount == nil, "A unit needs a number")
+        #expect(rejected.amountValue == nil && rejected.amountText == "")
+        #expect(flour.quantity.isEmpty && eggs.quantity.isEmpty, "The retired field is never written")
+
+        try eggs.update(DishItemDraft(name: "Eggs", amount: 1, unit: .dozen))
+        #expect(eggs.amountText == "1 dozen")
+        try eggs.update(DishItemDraft(name: "Eggs"))
+        #expect(eggs.amountValue == nil && eggs.unitValue == nil && eggs.quantity.isEmpty)
+    }
+
+    @Test func aUnitFromANewerAppVersionIsKeptShownAndNeverSummedWithOthers() throws {
+        let dish = try trip.addDish(MenuDishDraft(name: "Trail mix"), to: .standard(day: 0, kind: .snack))
+        let item = try dish.addItem(DishItemDraft(name: "Almonds", amount: 2, unit: .bag))
+        item.unitValue = "scoop"
+        #expect(item.unit == nil && item.amountText == "2 scoop", "Shown as saved")
+        #expect(item.amount == nil, "Not summed with unitless amounts")
+        #expect(item.unitValue == "scoop", "Reading it doesn't rewrite it")
+
+        let sum = [try dish.addItem(DishItemDraft(name: "Dates", amount: 0.5, unit: .lb)),
+                   try dish.addItem(DishItemDraft(name: "Figs", amount: 1.5, unit: .lb)),
+                   try dish.addItem(DishItemDraft(name: "Nuts", amount: 1, unit: .bag))].compactMap(\.amount)
+        #expect(IngredientAmount.totals(of: sum).map(\.text) == ["2 lb", "1 bag"])
     }
 
     @Test func editingADishKeepsAnUnchangedPhoto() throws {
@@ -149,7 +182,7 @@ struct MenuLibraryTests {
     @Test func theAssistantSeesPlannedDaysThenMealsOutsideTheDates() throws {
         #expect(trip.menuFacts().isEmpty)
         let steak = try trip.addDish(MenuDishDraft(name: "Steak", notes: "Sear hot"), to: .standard(day: 0, kind: .dinner))
-        try steak.addItem(DishItemDraft(name: "Ribeye", quantity: "2 lb"))
+        try steak.addItem(DishItemDraft(name: "Ribeye", amount: 2, unit: .lb))
         try trip.addMeal(MealDraft(title: "Empty extra meal"), day: 1)
         let late = try trip.addMeal(MealDraft(title: "Late snack"), day: 9)
         try trip.addDish(MenuDishDraft(name: "S'mores"), to: .added(late.persistentModelID))

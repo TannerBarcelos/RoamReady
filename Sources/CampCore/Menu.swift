@@ -87,16 +87,23 @@ public struct MenuDishDraft: Equatable, Codable, Sendable {
     public func validate() throws { guard hasName else { throw CampError.missingDishName } }
 }
 
-/// One part of a dish's recipe, with a free-text amount such as "2 lb" or "1 loaf".
+/// One ingredient of a dish: a name and an optional amount, a number from a list with an optional unit.
+/// A number without a unit is valid ("6"); a unit without a number is not, and is dropped.
 public struct DishItemDraft: Equatable, Codable, Sendable {
     public var name: String
-    public var quantity: String
-    public init(name: String = "", quantity: String = "") { self.name = name; self.quantity = quantity }
+    public var amount: Double?
+    public var unit: IngredientUnit?
+    public init(name: String = "", amount: Double? = nil, unit: IngredientUnit? = nil) {
+        self.name = name; self.amount = amount; self.unit = unit
+    }
     public var hasName: Bool { !cleaned.name.isEmpty }
     public var cleaned: DishItemDraft {
-        DishItemDraft(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                      quantity: quantity.trimmingCharacters(in: .whitespacesAndNewlines))
+        let valid = amount.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        return DishItemDraft(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                             amount: valid, unit: valid == nil ? nil : unit)
     }
+    /// The cleaned amount, or nil when there is none.
+    public var ingredientAmount: IngredientAmount? { cleaned.amount.flatMap { IngredientAmount($0, unit: cleaned.unit) } }
     public func validate() throws { guard hasName else { throw CampError.missingItemName } }
 }
 

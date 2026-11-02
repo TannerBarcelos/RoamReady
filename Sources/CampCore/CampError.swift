@@ -28,7 +28,7 @@ public enum CampError: Error, LocalizedError, Equatable, Sendable {
         case .rigArchived: "Archived rigs can't be used for new trips."
         case .rigUnavailable: "This trip's rig isn't available on this device yet."
         case .missingDishName: "Enter a name for this dish."
-        case .missingItemName: "Enter a name for this item."
+        case .missingItemName: "Enter a name for this ingredient."
         case .missingMealName: "Enter a name for this meal."
         case .mealUnavailable: "This meal isn’t on the trip anymore. It may have been removed on another device."
         }
