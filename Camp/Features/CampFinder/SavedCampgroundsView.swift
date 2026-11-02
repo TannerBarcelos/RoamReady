@@ -64,7 +64,7 @@ struct SavedCampgroundsView: View {
                     HStack {
                         row(id, lists: lists)
                         Spacer()
-                        Button("Remove", systemImage: "minus.circle") {
+                        DestructiveButton("Remove", systemImage: "minus.circle") {
                             do {
                                 try SavedCampground.set(id, name: "", region: "", on: list, false, in: context)
                                 library.save()
