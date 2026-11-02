@@ -178,21 +178,7 @@ struct DishItemEditor: View {
                     TextField("Ingredient, like ribeye", text: $item.name)
                         .focused($nameFocused)
                         .accessibilityIdentifier("dishItemName")
-                    Picker("Amount", selection: $item.amount) {
-                        Text("None").tag(Double?.none)
-                        ForEach(IngredientAmount.choices(including: item.amount), id: \.self) { value in
-                            Text(IngredientAmount.text(for: value)).tag(Double?.some(value))
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .accessibilityIdentifier("dishItemAmount")
-                    Picker("Unit", selection: $item.unit) {
-                        Text("No unit").tag(IngredientUnit?.none)
-                        ForEach(IngredientUnit.allCases) { unit in Text(unit.title).tag(IngredientUnit?.some(unit)) }
-                    }
-                    .pickerStyle(.menu)
-                    .disabled(item.amount == nil)
-                    .accessibilityIdentifier("dishItemUnit")
+                    IngredientAmountPickers(amount: $item.amount, unit: $item.unit, identifierPrefix: "dishItem")
                 } footer: {
                     if let failure { Text(failure).foregroundStyle(.red) }
                     else if added > 0 { Text(added == 1 ? "1 ingredient added" : "\(added) ingredients added") }
@@ -214,13 +200,42 @@ struct DishItemEditor: View {
                     Button("Save") { if save() { dismiss() } }.disabled(!item.hasName)
                 }
             }
-            .onChange(of: item.amount) { _, amount in if amount == nil { item.unit = nil } }
             .onAppear { if addsAnother { nameFocused = true } }
         }
     }
 
     private func save() -> Bool {
         do { try onSave(item); failure = nil; return true } catch { failure = error.localizedDescription; return false }
+    }
+}
+
+/// The Amount and Unit pickers, shared by the ingredient editor and the Grocery list's amount sheet. Unit
+/// is disabled until an amount is chosen, and clearing the amount clears it. Identifiers are
+/// `<prefix>Amount` and `<prefix>Unit`.
+struct IngredientAmountPickers: View {
+    @Binding var amount: Double?
+    @Binding var unit: IngredientUnit?
+    let identifierPrefix: String
+
+    var body: some View {
+        Group {
+            Picker("Amount", selection: $amount) {
+                Text("None").tag(Double?.none)
+                ForEach(IngredientAmount.choices(including: amount), id: \.self) { value in
+                    Text(IngredientAmount.text(for: value)).tag(Double?.some(value))
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityIdentifier(identifierPrefix + "Amount")
+            Picker("Unit", selection: $unit) {
+                Text("No unit").tag(IngredientUnit?.none)
+                ForEach(IngredientUnit.allCases) { unit in Text(unit.title).tag(IngredientUnit?.some(unit)) }
+            }
+            .pickerStyle(.menu)
+            .disabled(amount == nil)
+            .accessibilityIdentifier(identifierPrefix + "Unit")
+        }
+        .onChange(of: amount) { _, amount in if amount == nil { unit = nil } }
     }
 }
 

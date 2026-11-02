@@ -13,7 +13,14 @@ struct TripMenuView: View {
     var body: some View {
         let days = trip.menuDays
         let outside = trip.mealsOutsideDates
+        let grocery = trip.groceryList
         List {
+            if !grocery.isEmpty {
+                Section {
+                    NavigationLink { GroceryListView(trip: trip) } label: { GroceryEntryLabel(list: grocery) }
+                        .accessibilityIdentifier("menuGroceryList")
+                }
+            }
             Section {
                 MenuEntryLabel(summary: trip.menuSummary)
                 SaveStatus()
