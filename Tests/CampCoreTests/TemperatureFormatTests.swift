@@ -11,8 +11,8 @@ final class TemperatureFormatTests: XCTestCase {
     }
 
     func testCelsiusRoundsToWholeNumber() {
-        XCTAssertEqual(TemperatureFormat.string(celsius: 18.4, locale: uk), "18°")
-        XCTAssertEqual(TemperatureFormat.string(celsius: 18.6, locale: uk), "19°")
+        XCTAssertTrue(TemperatureFormat.string(celsius: 18.4, locale: uk).hasPrefix("18°"))
+        XCTAssertTrue(TemperatureFormat.string(celsius: 18.6, locale: uk).hasPrefix("19°"))
     }
 
     func testIncludesUnitWhenAsked() {

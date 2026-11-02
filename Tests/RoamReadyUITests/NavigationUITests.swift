@@ -195,7 +195,6 @@ final class NavigationUITests: XCTestCase {
         let title = row.buttons.firstMatch.label
         row.swipeLeft()
         let remove = app.buttons["Delete"].firstMatch
-        if !remove.waitForExistence(timeout: 3) { print("DEBUGTREE", app.debugDescription) }
         remove.tap()
         XCTAssertFalse(app.buttons[title].waitForExistence(timeout: 2))
 

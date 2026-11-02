@@ -9,9 +9,14 @@ public enum TemperatureFormat {
 
     /// For example "65°", or "65°F" when `includeUnit` is true.
     public static func string(celsius: Double, includeUnit: Bool = false, locale: Locale = .current) -> String {
+        let measurement = Measurement(value: celsius, unit: UnitTemperature.celsius)
+        let whole = FloatingPointFormatStyle<Double>.number.precision(.fractionLength(0))
+        // The weather usage honors the device's Temperature setting, not just the region.
+        guard includeUnit else {
+            return measurement.formatted(.measurement(width: .narrow, usage: .weather, numberFormatStyle: whole).locale(locale))
+        }
         let unit = preferredUnit(locale)
-        let value = Measurement(value: celsius, unit: UnitTemperature.celsius).converted(to: unit).value
-        let number = value.formatted(.number.precision(.fractionLength(0)).locale(locale))
-        return number + (includeUnit ? (unit == .fahrenheit ? "°F" : "°C") : "°")
+        let number = measurement.converted(to: unit).value.formatted(whole.locale(locale))
+        return number + (unit == .fahrenheit ? "°F" : "°C")
     }
 }
