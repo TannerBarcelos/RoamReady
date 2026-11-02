@@ -135,7 +135,7 @@ The owner approved one narrow waiver:
 
 - The unscrolled Profile audit stays unfiltered.
 - Only the Dynamic Type findings from the scrolled rig-section audit are waived. That applies in `NavigationUITests.testProfileRigSectionPassesDynamicTypeAuditAtLargestSize` and in the same scrolled audit in `LibraryWorkflowUITests`. "Text clipped" findings still fail there.
-- The waiver is backed by `NavigationUITests.testProfileRigSectionTextGrowsAtLargestSize`. It checks that the rig name, "Used by" count, "Reset default checklists" and "Replace rig" each get more than 1.5 times taller from the default size to `AccessibilityXXXL`.
+- The waiver is backed by `NavigationUITests.testProfileRigSectionTextGrowsAtLargestSize`. It checks that the rig name, "Used by" count, "Default checklists" and "Replace rig" each get more than 1.5 times taller from the default size to `AccessibilityXXXL`.
 
 Verified at `6e2fda8` on the iOS 27.0 simulators:
 
