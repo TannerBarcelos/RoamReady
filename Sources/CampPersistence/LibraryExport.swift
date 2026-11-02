@@ -34,7 +34,8 @@ public enum LibraryExport {
             },
             savedCampgrounds: try context.fetch(FetchDescriptor<SavedCampground>(sortBy: [SortDescriptor(\.campgroundID)])).map {
                 Library.Saved(campgroundID: $0.campgroundID, name: $0.name, region: $0.region,
-                              wantToGo: $0.wantToGo, favorite: $0.favorite, beenTo: $0.beenTo)
+                              wantToGo: $0.wantToGo, favorite: $0.favorite, beenTo: $0.beenTo,
+                              wouldNotGo: $0.wouldNotGo, wouldNotReturn: $0.wouldNotReturn)
             })
         try encoder.encode(library).write(to: root.appending(path: "library.json"), options: .atomic)
 
@@ -96,7 +97,7 @@ public enum LibraryExport {
         struct DishEntry: Encodable { let name, notes: String; let items: [IngredientEntry] }
         /// `unit` is the stored `IngredientUnit` raw value, like "lb" or "flOz". The retired free-text amount isn't exported.
         struct IngredientEntry: Encodable { let name: String; let amount: Double?; let unit: String? }
-        struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool? }
+        struct Saved: Encodable { let campgroundID, name, region: String; let wantToGo, favorite: Bool; let beenTo: Bool?; let wouldNotGo, wouldNotReturn: Bool }
         /// 3 added rig registration and checklist step notes and priority. 4 added trip menus. 5 replaced an
         /// ingredient's free-text amount with `amount` (a number) and `unit`.
         var schemaVersion = 5

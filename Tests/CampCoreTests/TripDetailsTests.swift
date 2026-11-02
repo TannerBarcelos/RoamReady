@@ -161,4 +161,21 @@ final class TripDetailsTests: XCTestCase {
         XCTAssertTrue(CampgroundList.wantToGo.includes(wantToGo: true, favorite: false, beenTo: nil, hasCompletedTrip: false))
         XCTAssertFalse(CampgroundList.favorite.includes(wantToGo: true, favorite: false, beenTo: true, hasCompletedTrip: true))
     }
+
+    func testAvoidedPlacesAreOnExactlyOneAvoidListByWhetherTheyWereBeenTo() {
+        func on(_ list: CampgroundList, goMark: Bool = false, returnMark: Bool = false, beenTo: Bool? = nil, trip: Bool = false) -> Bool {
+            list.includes(wantToGo: false, favorite: false, wouldNotGo: goMark, wouldNotReturn: returnMark, beenTo: beenTo, hasCompletedTrip: trip)
+        }
+        XCTAssertTrue(on(.wouldNotGo, goMark: true))
+        XCTAssertFalse(on(.wouldNotReturn, goMark: true))
+        XCTAssertTrue(on(.wouldNotReturn, goMark: true, beenTo: true), "Been to explicitly")
+        XCTAssertFalse(on(.wouldNotGo, goMark: true, beenTo: true))
+        XCTAssertTrue(on(.wouldNotReturn, goMark: true, trip: true), "Been to through a completed trip")
+        XCTAssertFalse(on(.wouldNotGo, goMark: true, trip: true))
+        XCTAssertTrue(on(.wouldNotGo, goMark: true, beenTo: false, trip: true), "Explicitly not been to wins over the trip")
+        XCTAssertTrue(on(.wouldNotReturn, returnMark: true, beenTo: true))
+        XCTAssertFalse(on(.wouldNotGo, returnMark: true, beenTo: true))
+        XCTAssertFalse(on(.wouldNotGo) || on(.wouldNotReturn) || on(.wouldNotReturn, trip: true), "No mark, no avoid list")
+        XCTAssertEqual(CampgroundList.allCases.map(\.title).suffix(2), ["Would not go", "Would not return"])
+    }
 }

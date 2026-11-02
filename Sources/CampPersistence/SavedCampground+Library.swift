@@ -17,7 +17,8 @@ public struct CampgroundLists {
 
     public func contains(_ campgroundID: String, on list: CampgroundList) -> Bool {
         let entry = entry(campgroundID)
-        return list.includes(wantToGo: entry?.wantToGo ?? false, favorite: entry?.favorite ?? false, beenTo: entry?.beenTo,
+        return list.includes(wantToGo: entry?.wantToGo ?? false, favorite: entry?.favorite ?? false,
+                             wouldNotGo: entry?.wouldNotGo ?? false, wouldNotReturn: entry?.wouldNotReturn ?? false, beenTo: entry?.beenTo,
                              hasCompletedTrip: trips.contains { $0.campgroundID == campgroundID && $0.isCompleted(asOf: now) })
     }
 
@@ -45,7 +46,14 @@ public struct CampgroundLists {
 
 public extension SavedCampground {
     /// Puts a campground on a list or takes it off. Taking it off "Have been" sticks even when a
-    /// completed trip would otherwise put it there. An entry left on no list is deleted. An Apple
+    /// completed trip would otherwise put it there. An entry left on no list is deleted.
+    ///
+    /// The avoid lists contradict the others: adding to either one takes the place off "Want to go"
+    /// and "Favorites", and adding to those takes it off both. "Would not return" also marks the place
+    /// as been to; a place already been to explicitly goes on "Would not return" when "Would not go"
+    /// is asked for. (A place been to only through a completed trip is sorted out when the lists are
+    /// read.) Taking a place off either avoid list clears both marks, and choosing "Have been" as
+    /// false takes it off "Would not return". An Apple
     /// Maps place keeps only its ID: its name and region are never stored.
     static func set(_ campgroundID: String, name: String, region: String, on list: CampgroundList, _ included: Bool,
                     in context: ModelContext) throws {
@@ -59,10 +67,23 @@ public extension SavedCampground {
             if !region.isEmpty { entry.region = region }
         }
         switch list {
-        case .wantToGo: entry.wantToGo = included
-        case .favorite: entry.favorite = included
-        case .beenTo: entry.beenTo = included
+        case .wantToGo:
+            entry.wantToGo = included
+            if included { entry.wouldNotGo = false; entry.wouldNotReturn = false }
+        case .favorite:
+            entry.favorite = included
+            if included { entry.wouldNotGo = false; entry.wouldNotReturn = false }
+        case .beenTo:
+            entry.beenTo = included
+            if !included { entry.wouldNotReturn = false }
+        case .wouldNotGo, .wouldNotReturn:
+            entry.wouldNotGo = false; entry.wouldNotReturn = false
+            if included {
+                entry.wantToGo = false; entry.favorite = false
+                if list == .wouldNotReturn { entry.beenTo = true }
+                if list == .wouldNotReturn || entry.beenTo == true { entry.wouldNotReturn = true } else { entry.wouldNotGo = true }
+            }
         }
-        if !entry.wantToGo && !entry.favorite && entry.beenTo == nil { context.delete(entry) }
+        if !entry.wantToGo && !entry.favorite && entry.beenTo == nil && !entry.wouldNotGo && !entry.wouldNotReturn { context.delete(entry) }
     }
 }
