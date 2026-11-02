@@ -92,6 +92,33 @@ final class TripMenuUITests: XCTestCase {
         XCTAssertTrue(app.buttons["menuMeal-1-Second breakfast"].waitForExistence(timeout: 5))
     }
 
+    func testRepeatingABreakfastOnAllDays() {
+        let app = launch()
+        tapReachable(app.buttons["tripRow-Upcoming Lake"], in: app)
+        tapReachable(app.buttons["tripMenu"], in: app)
+        tapReachable(app.buttons["menuMeal-1-breakfast"], in: app)
+        XCTAssertFalse(app.buttons["repeatMeal"].exists, "Nothing to repeat until a dish is planned")
+        app.buttons["addDish"].tap()
+        type("Oatmeal", into: "menuDishName", in: app)
+        app.buttons["Save"].tap()
+
+        tapReachable(app.buttons["repeatMeal"], in: app)
+        XCTAssertTrue(app.switches["repeatAllDays"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.switches["repeatDay-1"].exists, "The day being repeated isn't listed")
+        XCTAssertTrue(app.switches["repeatDay-2"].exists && app.switches["repeatDay-3"].exists)
+        XCTAssertFalse(app.buttons["Repeat"].isEnabled, "Pick a day first")
+        // The row's label isn't a hit target; the switch itself is at the trailing edge.
+        app.switches["repeatAllDays"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertEqual(app.switches["repeatDay-2"].value as? String, "1")
+        XCTAssertTrue(app.buttons["Repeat"].isEnabled)
+        app.buttons["Repeat"].tap()
+        XCTAssertFalse(app.switches["repeatAllDays"].waitForExistence(timeout: 2), "The sheet closes on success")
+
+        app.buttons["BackButton"].firstMatch.tap()
+        tapReachable(app.buttons["menuMeal-3-breakfast"], in: app)
+        XCTAssertTrue(app.buttons["menuDish-Oatmeal"].waitForExistence(timeout: 5))
+    }
+
     func testHomeMenuShortcutStaysOpenThroughAResize() {
         let app = launch()
         tapReachable(app.buttons["homeMenu"], in: app)

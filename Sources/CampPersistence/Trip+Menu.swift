@@ -150,6 +150,63 @@ public extension Trip {
         return meal
     }
 
+    /// Copies dishes from a meal onto other days of the trip, each day getting its own independent copy
+    /// with the name, notes, and ingredients but not the photo, which would multiply the iCloud storage.
+    /// A standard meal repeats onto the same kind; an added meal onto one on that day with the same title,
+    /// created if there is none. A day that already has a dish with the same name keeps it and gets no
+    /// copy, so repeating twice adds nothing. Days that aren't listed on the menu, and the meal's own day,
+    /// are ignored. Returns how many dishes were copied.
+    @discardableResult
+    func repeatDishes(_ dishes: [MenuDish], of meal: MenuMeal, onDays days: [Int]) throws -> Int {
+        guard modelContext != nil else { throw CampError.mealUnavailable }
+        let listed = Set(menuDays.map(\.offset))
+        let targets = Set(days).intersection(listed).subtracting([meal.day]).sorted()
+        // Taken up front, in the meal's order, so what's copied is what the owner chose even as dishes are added.
+        let chosen = Set(dishes.map(\.persistentModelID))
+        let copies = meal.dishes.filter { chosen.contains($0.persistentModelID) }.compactMap { dish -> DishCopy? in
+            let details = dish.draft.cleaned
+            guard details.hasName else { return nil }
+            return DishCopy(draft: details, items: dish.sortedItems.map(\.draft).filter { (try? $0.validate()) != nil })
+        }
+        guard !copies.isEmpty else { return 0 }
+
+        var copied = 0
+        for day in targets {
+            let existing = repeatTarget(for: meal, on: day)
+            let present = Set((existing.flatMap { menuMeal($0) }?.dishes ?? []).map { Self.comparable($0.name) })
+            let missing = copies.filter { !present.contains(Self.comparable($0.draft.name)) }
+            guard !missing.isEmpty else { continue }
+            let target = try existing ?? targetMealID(for: meal, creatingOn: day)
+            for copy in missing {
+                let dish = try addDish(copy.draft, to: target)
+                for item in copy.items { try dish.addItem(item) }
+                copied += 1
+            }
+        }
+        return copied
+    }
+
+    private struct DishCopy {
+        let draft: MenuDishDraft
+        let items: [DishItemDraft]
+    }
+
+    /// The meal a repeat lands in on `day`, or nil when an added meal has no match there yet.
+    /// A standard meal needs no lookup: it is stored by its first dish.
+    private func repeatTarget(for meal: MenuMeal, on day: Int) -> MenuMeal.ID? {
+        if meal.isStandard { return .standard(day: day, kind: meal.kind) }
+        let title = Self.comparable(meal.title)
+        return menu(on: day).first { !$0.isStandard && Self.comparable($0.title) == title }?.id
+    }
+
+    private func targetMealID(for meal: MenuMeal, creatingOn day: Int) throws -> MenuMeal.ID {
+        .added(try addMeal(MealDraft(title: meal.title), day: day).persistentModelID)
+    }
+
+    private static func comparable(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
     /// Removes an added meal, or clears a standard one; its dishes and their items go with it.
     func removeMeal(_ meal: MenuMeal) {
         for record in meal.records { modelContext?.delete(record) }

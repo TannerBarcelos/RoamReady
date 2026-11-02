@@ -160,6 +160,7 @@ struct GroceryAmountEditor: View {
                         Button("Reset to menu total", systemImage: "arrow.uturn.backward", role: .destructive) {
                             onReset(); dismiss()
                         }
+                        .tint(.red)
                         .accessibilityIdentifier("groceryResetAmount")
                     }
                 }

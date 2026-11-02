@@ -160,6 +160,20 @@ struct GroceryLibraryTests {
         #expect(row("Beans")?.category == .cannedGoods)
     }
 
+    @Test func aRepeatedIngredientKeepsItsCategoryAndStartsAsNeed() throws {
+        let dinner = try dish("Chili", [DishItemDraft(name: "Beans", amount: 2, unit: .can, category: .cannedGoods)])
+        trip.setHave(true, forGroceryKey: GroceryList.key(for: "Beans"))
+        let meal = try #require(trip.menuMeal(.standard(day: 0, kind: .dinner)))
+
+        #expect(try trip.repeatDishes([dinner], of: meal, onDays: [1]) == 1)
+        let copy = try #require(trip.menuMeal(.standard(day: 1, kind: .dinner))?.dishes.first?.sortedItems.first)
+        #expect(copy.category == .cannedGoods)
+        #expect(!copy.have)
+        #expect(dinner.sortedItems[0].have, "The original keeps its mark")
+        #expect(row("Beans")?.isHave == false, "More beans are needed now")
+        #expect(row("Beans")?.amountText == "4 can")
+    }
+
     @Test func otherIsStoredAsNothingAndAnUnknownCategoryReadsAsOtherUntilChosenAgain() throws {
         let item = try dish("Chili", [DishItemDraft(name: "Beans")]).sortedItems[0]
         #expect(item.categoryValue == nil && item.category == .other)
