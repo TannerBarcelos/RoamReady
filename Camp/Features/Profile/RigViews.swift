@@ -5,6 +5,7 @@ import CampPersistence
 
 /// Profile › Rig. Editing, replacing, archiving, and default checklists all work offline.
 struct RigsSection: View {
+    @Environment(StoreController.self) private var store
     @Environment(LibraryController.self) private var library
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
     @State private var editor: RigEditorView.Mode?
@@ -35,10 +36,10 @@ struct RigsSection: View {
                         Text("Used by \(rig.activeTrips.count) trips").font(.caption).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 6)
-                Button { editor = .edit(rig) } label: {
+                Button { store.ifFullAccess { editor = .edit(rig) } } label: {
                     WrappingLabel("Edit rig", systemImage: "pencil")
                 }
-                Button { editingDefaults = rig } label: {
+                Button { store.ifFullAccess { editingDefaults = rig } } label: {
                     WrappingLabel("Default checklists", systemImage: "checklist")
                 }
                 NavigationLink { DocumentsView(owner: .rig(rig), title: "Rig documents") } label: {
@@ -46,7 +47,7 @@ struct RigsSection: View {
                         WrappingLabel("Manuals & paperwork", systemImage: "folder")
                     }
                 }
-                Button { editor = .replace(rig) } label: {
+                Button { store.ifFullAccess { editor = .replace(rig) } } label: {
                     WrappingLabel("Replace rig", systemImage: "arrow.triangle.2.circlepath")
                 }
                 .accessibilityIdentifier("replaceRig")
@@ -59,7 +60,7 @@ struct RigsSection: View {
         }
         Section {
             if rigs.active.count < RigPolicy.maxActiveRigs {
-                Button("Add a rig", systemImage: "plus") { editor = .add }
+                Button("Add a rig", systemImage: "plus") { store.ifFullAccess { editor = .add } }
             }
             if !rigs.archived.isEmpty {
                 NavigationLink { ArchivedRigsView() } label: {

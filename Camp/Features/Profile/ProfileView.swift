@@ -4,6 +4,7 @@ import CampCore
 import CampPersistence
 
 struct ProfileView: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query private var profiles: [CamperProfile]
     @Query private var trips: [Trip]
@@ -20,7 +21,7 @@ struct ProfileView: View {
                         Text(profile.name.isEmpty ? "Your camping profile" : profile.name).font(.title3.bold())
                         Text(profile.experience.title).font(.caption).foregroundStyle(.secondary)
                     }.padding(.vertical, 4)
-                    Button { editing = true } label: {
+                    Button { store.ifFullAccess { editing = true } } label: {
                         WrappingLabel("Edit profile", systemImage: "pencil")
                     }
                 }
@@ -39,6 +40,7 @@ struct ProfileView: View {
                     .accessibilityIdentifier("savedCampgroundsLink")
             }
             RigsSection()
+            SubscriptionSection()
             if !unattached.isEmpty {
                 Section {
                     NavigationLink { UnattachedDocumentsView() } label: {

@@ -31,6 +31,7 @@ struct TripPageLink<Destination: View, Label: View>: View {
 }
 
 struct TripDetailView: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
@@ -86,9 +87,9 @@ struct TripDetailView: View {
                     Label("Completed: this trip’s dates have passed", systemImage: "checkmark.seal")
                 } else if trip.completedAt != nil {
                     Label("Marked complete", systemImage: "checkmark.seal")
-                    Button("Reopen trip", systemImage: "arrow.uturn.backward") { trip.setCompleted(false); library.save() }
+                    Button("Reopen trip", systemImage: "arrow.uturn.backward") { store.ifFullAccess { trip.setCompleted(false); library.save() } }
                 } else {
-                    Button("Mark trip complete", systemImage: "checkmark.seal") { trip.setCompleted(true); library.save() }
+                    Button("Mark trip complete", systemImage: "checkmark.seal") { store.ifFullAccess { trip.setCompleted(true); library.save() } }
                 }
                 DestructiveButton("Cancel & delete trip") { showDelete = true }
                     .accessibilityIdentifier("deleteTrip")
@@ -131,7 +132,7 @@ struct TripDetailView: View {
 
     private var tripActions: some View {
         Group {
-            Button("Edit trip", systemImage: "pencil") { showEdit = true }
+            Button("Edit trip", systemImage: "pencil") { store.ifFullAccess { showEdit = true } }
             DestructiveButton("Cancel & delete trip") { showDelete = true }
         }
     }

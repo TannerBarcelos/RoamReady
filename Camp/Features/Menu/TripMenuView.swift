@@ -5,6 +5,7 @@ import CampPersistence
 
 /// A trip's menu: each day of the stay with its meals. Meals open to their dishes, and dishes to their ingredients.
 struct TripMenuView: View {
+    @Environment(StoreController.self) private var store
     @Environment(LibraryController.self) private var library
     let trip: Trip
     @State private var addingMealTo: MenuDay?
@@ -34,7 +35,7 @@ struct TripMenuView: View {
             ForEach(days) { day in
                 Section {
                     ForEach(trip.menu(on: day.offset)) { meal in mealLink(meal) }
-                    Button("Add a meal", systemImage: "plus") { addingMealTo = day }
+                    Button("Add a meal", systemImage: "plus") { store.ifFullAccess { addingMealTo = day } }
                         .accessibilityIdentifier("addMeal-\(day.number)")
                 } header: {
                     Text(trip.menuTitle(for: day))
@@ -130,6 +131,7 @@ struct MenuEntryLabel: View {
 /// One meal's dishes. The meal is looked up by identity on every update, so a dish added on another
 /// device, or a standard meal stored by its first dish, appears here without reopening it.
 struct MealView: View {
+    @Environment(StoreController.self) private var store
     @Environment(LibraryController.self) private var library
     let trip: Trip
     @State private var mealID: MenuMeal.ID
@@ -154,11 +156,12 @@ struct MealView: View {
                             .accessibilityIdentifier("menuDish-\(dish.name)")
                     }
                     .onMove { offsets, destination in
+                        guard store.status.canEdit else { return }
                         var ordered = dishes; ordered.move(fromOffsets: offsets, toOffset: destination)
                         meal.reorderDishes(ordered); library.save()
                     }
                     .onDelete { offsets in meal.removeDishes(offsets.map { dishes[$0] }); library.save() }
-                    Button("Add a dish", systemImage: "plus") { addingDish = true }
+                    Button("Add a dish", systemImage: "plus") { store.ifFullAccess { addingDish = true } }
                         .accessibilityIdentifier("addDish")
                 } header: {
                     Text(dayTitle(meal.day))
@@ -175,7 +178,7 @@ struct MealView: View {
                 if !meal.isStandard || outsideDates || canRepeat {
                     Section {
                         if !meal.isStandard {
-                            Button("Rename meal", systemImage: "pencil") { renaming = true }
+                            Button("Rename meal", systemImage: "pencil") { store.ifFullAccess { renaming = true } }
                         }
                         if (!meal.isStandard || outsideDates), !days.isEmpty {
                             Menu {
@@ -186,7 +189,7 @@ struct MealView: View {
                             } label: { Label("Move to another day", systemImage: "calendar") }
                         }
                         if canRepeat {
-                            Button("Repeat on other days", systemImage: "repeat") { repeating = true }
+                            Button("Repeat on other days", systemImage: "repeat") { store.ifFullAccess { repeating = true } }
                                 .accessibilityIdentifier("repeatMeal")
                         }
                     }

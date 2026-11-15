@@ -52,6 +52,11 @@ final class LibraryController {
         guard container == nil else { return }
         do {
             #if DEBUG
+            if AppStoreScreenshotLibrary.isRequested {
+                container = try AppStoreScreenshotLibrary.make()
+                openFailure = nil
+                return
+            }
             if ProcessInfo.processInfo.arguments.contains("-navigation-ui-test") {
                 container = try NavigationUITestLibrary.make()
                 openFailure = nil

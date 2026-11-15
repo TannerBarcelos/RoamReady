@@ -136,6 +136,10 @@ In Profile, **Edit rig** changes details shown by every trip using that rig. Whe
 
 Only one rig can be active in v1. Open **Archived rigs** to reactivate one within that limit, or delete a rig that no trip uses. Deleting an unused rig removes its defaults and leaves its documents unattached. If two devices produce extra active rigs before syncing, archive the one you no longer use.
 
+## RoamReady Pro
+
+RoamReady is free to download. Start the free week from the plans that appear after setup, or later from **Profile › RoamReady Pro › See plans**. Choose Monthly or Yearly, or buy Lifetime once. If a subscription ends, you can still open everything you've saved; adding and editing come back when you subscribe again. To cancel, use **Manage subscription**. On a new device, signed in to the same Apple Account, tap **Restore purchases**.
+
 ## Export or delete data
 
 **Profile → Settings → Prepare export** creates a zip containing library metadata and verified original document files. Encrypted documents are readable in the export, so store it privately. Photo bytes are not included; share trip photos individually. Review missing-file statuses before relying on the archive. There is no in-app restore workflow.

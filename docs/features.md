@@ -186,6 +186,13 @@ Edit profile and rig details (including registration) offline, manage archived r
 
 SwiftData stores the library locally. When a dedicated CloudKit container is configured, private iCloud mirroring is on by default. Apple manages connectivity, account transitions, scheduling, and retries. The onboarding/Settings toggle works offline and takes effect on the next app launch, with pending changes shown explicitly; turning it off deletes neither local nor cloud data. The default unconfigured build stays local-only. See [storage and sync](offline-storage.md) and [erasing data](erase-data.md).
 
+## RoamReady Pro
+
+- RoamReady is free to download. Pro is Monthly or Yearly (each with a 1-week free trial) or a one-time Lifetime purchase. See [Pricing](monetization.md).
+- The plans appear once after onboarding, from **Read-only** on Home, from Profile › RoamReady Pro, and whenever something that adds or edits is tapped without Pro.
+- Without Pro, everything saved stays readable and openable offline. Deleting and erasing always work.
+- Profile › RoamReady Pro shows the current plan and renewal date, **Manage subscription**, and **Restore purchases**.
+
 ## Connectivity at a glance
 
 | Workflow | Offline behavior |
