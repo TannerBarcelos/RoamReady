@@ -104,7 +104,7 @@ Testers with automatic updates on in TestFlight get it on their own. Others get 
 
 ## 6. Release on the App Store
 
-Not done yet. Before the first release, work through [#142](https://github.com/TannerBarcelos/RoamReady/issues/142) and [App Store listing preparation](app-store-listing.md), which cover the agreements, pricing, screenshots, privacy label, and age rating.
+Not done yet. For the first release, follow [App Store launch](app-store-launch.md): agreements, in-app purchases, screenshots, privacy label, age rating, and submission. The open gates are in [#142](https://github.com/TannerBarcelos/RoamReady/issues/142).
 
 1. Set a new **Marketing Version** under the target's **Versioning** settings, then archive and upload as in step 3. Test that build on TestFlight first.
 2. In App Store Connect, open the **Distribution** tab and create a new version with the same number.

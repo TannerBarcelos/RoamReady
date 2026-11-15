@@ -7,6 +7,7 @@ struct HomeView: View {
     @Environment(\.mainTabActions) private var tabActions
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(AppPermissions.self) private var permissions
+    @Environment(StoreController.self) private var store
     let weather: LocalWeather
     @Query private var profiles: [CamperProfile]
     @Query(sort: \Rig.createdAt) private var rigs: [Rig]
@@ -32,6 +33,7 @@ struct HomeView: View {
     }
 
     @ViewBuilder private var sections: some View {
+        if store.status == .readOnly { Section { ReadOnlyNotice() } }
         if let profile = profiles.first {
             Section {
                 HStack(spacing: 16) {

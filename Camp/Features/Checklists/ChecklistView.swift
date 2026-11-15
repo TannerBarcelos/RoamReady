@@ -6,6 +6,7 @@ import CampPersistence
 /// A trip's checklist. Steps are edited in place; the rig's defaults never change unless the owner
 /// saves this trip's lists as defaults.
 struct ChecklistView: View {
+    @Environment(StoreController.self) private var store
     @Environment(LibraryController.self) private var library
     let trip: Trip
     @State private var phase: ChecklistPhase
@@ -85,8 +86,10 @@ struct ChecklistView: View {
                 ForEach(shownSteps) { step in
                     HStack(alignment: .top, spacing: 14) {
                         Button {
-                            step.status = step.status == .completed ? .pending : .completed
-                            library.save()
+                            store.ifFullAccess {
+                                step.status = step.status == .completed ? .pending : .completed
+                                library.save()
+                            }
                         } label: {
                             Image(systemName: step.status == .completed ? "checkmark.circle.fill" : step.status == .skipped ? "minus.circle" : "circle")
                                 .font(.title2).foregroundStyle(step.status == .completed ? Color.blue : .secondary)
@@ -104,19 +107,21 @@ struct ChecklistView: View {
                             Button("Ask about this step", systemImage: "sparkles") { helpStep = CampingStepContext(step.draft, phase: step.phase, position: step.position); showAssistant = true }
                         }
                         Button(step.status == .skipped ? "Mark pending" : "Skip this step", systemImage: "arrow.uturn.right") {
-                            step.status = step.status == .skipped ? .pending : .skipped
-                            library.save()
+                            store.ifFullAccess {
+                                step.status = step.status == .skipped ? .pending : .skipped
+                                library.save()
+                            }
                         }
                     }
                     .moveDisabled(sectionFilter != nil)
                 }
                 .onMove { offsets, destination in
-                    guard sectionFilter == nil else { return }
+                    guard sectionFilter == nil, store.status.canEdit else { return }
                     var ordered = shownSteps; ordered.move(fromOffsets: offsets, toOffset: destination)
                     trip.reorder(ordered); library.save()
                 }
                 .onDelete { offsets in trip.removeSteps(offsets.map { shownSteps[$0] }); library.save() }
-                Button("Add a step", systemImage: "plus") { adding = true }
+                Button("Add a step", systemImage: "plus") { store.ifFullAccess { adding = true } }
             } header: { flowHeader } footer: {
                 Text(sectionFilter == nil
                      ? "Tap a circle to finish a step. Use Edit to reorder or remove steps. Follow your rig’s manuals for equipment-specific procedures."
@@ -126,7 +131,7 @@ struct ChecklistView: View {
                 if offersHelp {
                     Button("Ask about this checklist", systemImage: "sparkles") { helpStep = nil; showAssistant = true }
                 }
-                Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { confirmingDefaults = true }
+                Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { store.ifFullAccess { confirmingDefaults = true } }
                     .disabled(trip.rig == nil)
                 if defaultsSaved { Label("Defaults updated for \(rigName)", systemImage: "checkmark.circle").foregroundStyle(.secondary) }
                 if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
@@ -190,6 +195,7 @@ struct ChecklistStepSummary: View {
 
 /// Edits a copy of a step, so Cancel discards the changes.
 struct ChecklistStepEditor: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State var step: ChecklistStepDraft
     let onSave: (ChecklistStepDraft) -> Void
@@ -226,7 +232,7 @@ struct ChecklistStepEditor: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { onSave(step); dismiss() }.disabled(!step.hasTitle)
+                    Button("Save") { store.ifFullAccess { onSave(step); dismiss() } }.disabled(!step.hasTitle)
                 }
             }
         }

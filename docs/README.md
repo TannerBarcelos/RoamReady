@@ -26,6 +26,7 @@ RoamReady keeps camping trips, rig details, checklists, documents, and memories 
 | Guide | What it covers |
 | --- | --- |
 | [Shipping a release](release-guide.md) | Step-by-step CloudKit schema deploy, Xcode upload, TestFlight, and App Store release, with a release log. |
+| [App Store launch](app-store-launch.md) | First App Store release: agreements, in-app purchases, sandbox testing, screenshots, privacy label, and submission. |
 | [V1 readiness audit](v1-audit.md) | Requirement coverage, fixes, validation evidence, and remaining certification gates. |
 | [App Store listing preparation](app-store-listing.md) | Prepared listing copy, policy/support URLs, required assets and account steps. |
 | [Build and validation](validation.md) | Local setup, dependencies, checks, CI, Apple capabilities, and device acceptance. |

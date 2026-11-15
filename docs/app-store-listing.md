@@ -12,7 +12,7 @@ Prepared copy for the confirmed iPhone, iPad and Mac v1. Nothing has been submit
 | Subtitle | Camping trips, ready offline |
 | Promotional text | Plan your camping trips, personalize setup and teardown checklists, and keep bookings, paperwork, and memories together—even beyond reception. |
 | Keywords | camping,rv,camper,checklist,campground,trailer,trip,offline,travel,booking,tent |
-| Price | $4.99 USD one-time purchase. No subscription. Set the price in App Store Connect; there are no in-app purchases or unlocks. |
+| Price | Free download. In-app purchases: RoamReady Pro Monthly $4.99, Yearly $34.99 (both with a 1-week free trial), Lifetime $99.99. See [Pricing](monetization.md). |
 | Support URL | https://github.com/TannerBarcelos/RoamReady/issues |
 | Privacy policy URL | https://github.com/TannerBarcelos/RoamReady/blob/main/docs/privacy-policy.md — verify it is public after merge, before submission. |
 
@@ -43,7 +43,10 @@ On devices that support Apple Intelligence, ask Apple's on-device model general 
 BUILT FOR YOUR DEVICES
 Choose System, Light, or Dark appearance. Optional private iCloud sync keeps your library across your Apple devices. Core planning, checklists, saved documents, and locally available photos work offline. Camp Finder, fresh weather, web links, cloud transfers, and downloading cloud-only files or photos need a connection.
 
-$4.99 one-time purchase. No subscription.
+ROAMREADY PRO
+RoamReady is free to download. Try everything free for a week, then choose monthly or yearly, or buy Lifetime once. Without Pro, everything you've saved stays readable; adding and editing need Pro. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period, and you can manage or cancel them in your Apple Account settings.
+
+Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 ## Assets and account steps still needed
 
@@ -53,4 +56,5 @@ $4.99 one-time purchase. No subscription.
 - Choose the final bundle ID and development team, provision the dedicated CloudKit container and WeatherKit, deploy the production schema, and validate the signed archive and checked-in icon.
 - Capture actual Release-build screenshots on the required iPhone, iPad and Mac sizes. Useful screens: Home with a current trip, booking/site details, a personalized checklist, memories, and Camp Finder. Use demonstration data and photos you can publish. Do not present simulator AI test replies as real generated responses.
 - Complete the App Store age-rating and export-compliance questionnaires using the shipped build. Confirm privacy declarations against the [privacy policy](privacy-policy.md), manifest and actual Apple capabilities; no answers have been submitted here.
+- Create the three in-app purchases (IDs in [Pricing](monetization.md)), each with a review screenshot of the paywall, and attach them to the first version before submitting.
 - Complete the Paid Apps Agreement, tax/banking information, pricing schedule, TestFlight and review steps in #142. Those require the owner's authorized Apple account.

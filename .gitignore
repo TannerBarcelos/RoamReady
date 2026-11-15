@@ -12,3 +12,5 @@ Config/Local.xcconfig
 
 __pycache__/
 *.pyc
+AppStoreScreenshots/
+.derivedData-shots/

@@ -8,6 +8,7 @@ import CampPersistence
 /// A Camp Finder place. Opened from a search result or a map tap (already looked up), or from a
 /// saved campground's Apple Maps identifier, which is looked up again.
 struct CampgroundDetailView: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(CampFinder.self) private var finder
@@ -82,7 +83,7 @@ struct CampgroundDetailView: View {
                 }
             }
             Section {
-                Button("Add trip", systemImage: "calendar.badge.plus") { planning = true }
+                Button("Add trip", systemImage: "calendar.badge.plus") { store.ifFullAccess { planning = true } }
                     .accessibilityHint("Enter a booking you’ve already made at this campground")
                 Button("Open in Apple Maps", systemImage: "map") { mapItem(for: listing).openInMaps() }
                     .accessibilityHint("Opens this campground in the Maps app")
@@ -110,6 +111,7 @@ struct CampgroundDetailView: View {
                                      })) {
                     Label(list.title, systemImage: list.symbol)
                 }
+                .disabled(!store.status.canEdit)
             }
         } header: { Text("Your lists") } footer: {
             Text("Campgrounds from your completed trips are added to Have been automatically. Turn it off to remove one.")

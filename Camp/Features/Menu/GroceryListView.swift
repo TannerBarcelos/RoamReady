@@ -18,6 +18,7 @@ struct GroceryEntryLabel: View {
 /// A trip's Grocery list, built from its menu every time it is shown. Tapping a row moves it between
 /// Need and Have; the amount a row shows can be changed here without changing the menu.
 struct GroceryListView: View {
+    @Environment(StoreController.self) private var store
     @Environment(LibraryController.self) private var library
     let trip: Trip
     @State private var changingAmount: GroceryList.Row?
@@ -71,21 +72,21 @@ struct GroceryListView: View {
     }
 
     private func rowView(_ row: GroceryList.Row) -> some View {
-        Button { setHave(!row.isHave, row) } label: { GroceryRow(row: row) }
+        Button { store.ifFullAccess { setHave(!row.isHave, row) } } label: { GroceryRow(row: row) }
             .buttonStyle(.plain)
             .accessibilityIdentifier("groceryRow-\(row.name)")
             .swipeActions {
-                Button("Change amount", systemImage: "scalemass") { changingAmount = row }
+                Button("Change amount", systemImage: "scalemass") { store.ifFullAccess { changingAmount = row } }
                     .tint(.orange)
             }
             .contextMenu {
                 Button(row.isHave ? "Move to Need" : "Move to Have", systemImage: row.isHave ? "circle" : "checkmark.circle") {
-                    setHave(!row.isHave, row)
+                    store.ifFullAccess { setHave(!row.isHave, row) }
                 }
-                Button("Change amount", systemImage: "scalemass") { changingAmount = row }
+                Button("Change amount", systemImage: "scalemass") { store.ifFullAccess { changingAmount = row } }
                 if row.override != nil {
                     Button("Reset amount", systemImage: "arrow.uturn.backward") {
-                        trip.resetGroceryAmount(forKey: row.key); library.save()
+                        store.ifFullAccess { trip.resetGroceryAmount(forKey: row.key); library.save() }
                     }
                 }
             }

@@ -6,6 +6,7 @@ import CampCore
 import CampPersistence
 
 struct MemoriesView: View {
+    @Environment(StoreController.self) private var store
     @Environment(LibraryController.self) private var library
     @Environment(AppPermissions.self) private var permissions
     @Bindable var trip: Trip
@@ -19,11 +20,13 @@ struct MemoriesView: View {
     var body: some View {
         List {
             Section("Remember this site") {
-                TextField("Site number", text: $trip.siteNumber)
+                if !store.status.canEdit { ReadOnlyNotice() }
+                TextField("Site number", text: $trip.siteNumber).disabled(!store.status.canEdit)
                 Picker("Stay again?", selection: $trip.rating) {
                     ForEach(SiteRating.allCases) { Text($0.title).tag($0) }
-                }
+                }.disabled(!store.status.canEdit)
                 TextField("Shade, slope, noise, favorite spots…", text: $trip.notes, axis: .vertical).lineLimit(5...15)
+                    .disabled(!store.status.canEdit)
                 SaveStatus()
                 NavigationLink("Earlier note versions") { NoteHistoryView(trip: trip) }
             }
@@ -46,9 +49,13 @@ struct MemoriesView: View {
                     }
                     .disabled(importing || requestingCamera || permissions.cameraDenied)
                 }
-                PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images, preferredItemEncoding: .current) {
-                    Label("Add trip photos", systemImage: "photo.badge.plus")
-                }.disabled(importing || requestingCamera)
+                if store.status.canEdit {
+                    PhotosPicker(selection: $selections, maxSelectionCount: 20, matching: .images, preferredItemEncoding: .current) {
+                        Label("Add trip photos", systemImage: "photo.badge.plus")
+                    }.disabled(importing || requestingCamera)
+                } else {
+                    Button { store.ifFullAccess {} } label: { Label("Add trip photos", systemImage: "photo.badge.plus") }
+                }
                 if importing { ProgressView("Saving on this device") }
                 if let failure { Text(failure).font(.caption).foregroundStyle(.red) }
                 if CameraAccess.isAvailable && (needsCameraPermission || permissions.cameraDenied) {
@@ -124,6 +131,7 @@ struct MemoriesView: View {
 }
 
 struct PhotoDetailView: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
@@ -153,7 +161,7 @@ struct PhotoDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { photo.caption = caption; library.save(); dismiss() }
+                    Button("Save") { store.ifFullAccess { photo.caption = caption; library.save(); dismiss() } }
                 }
             }
             .confirmationDialog("Remove this photo from the trip?", isPresented: $deleting, titleVisibility: .visible) {

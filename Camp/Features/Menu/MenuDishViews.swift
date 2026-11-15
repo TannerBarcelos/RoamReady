@@ -37,6 +37,7 @@ struct MenuDishRow: View {
 /// A dish with its notes, photo, and ingredients. Ingredients are edited in place; the dish's own details
 /// go through an editor sheet so Cancel discards them.
 struct MenuDishView: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(\.dismiss) private var dismiss
@@ -65,13 +66,13 @@ struct MenuDishView: View {
                     if !dish.notes.isEmpty { Text(dish.notes).foregroundStyle(.secondary) }
                 }
                 .padding(.vertical, 2)
-                Button("Edit dish", systemImage: "pencil") { editingDetails = true }
+                Button("Edit dish", systemImage: "pencil") { store.ifFullAccess { editingDetails = true } }
                     .accessibilityIdentifier("editMenuDish")
                 SaveStatus()
             }
             Section {
                 ForEach(items) { item in
-                    Button { editedItem = item } label: {
+                    Button { store.ifFullAccess { editedItem = item } } label: {
                         LabeledContent {
                             Text(item.amountText)
                         } label: {
@@ -81,11 +82,12 @@ struct MenuDishView: View {
                     .accessibilityIdentifier("dishItem-\(item.name)")
                 }
                 .onMove { offsets, destination in
+                    guard store.status.canEdit else { return }
                     var ordered = items; ordered.move(fromOffsets: offsets, toOffset: destination)
                     dish.reorderItems(ordered); library.save()
                 }
                 .onDelete { offsets in dish.removeItems(offsets.map { items[$0] }); library.save() }
-                Button("Add ingredient", systemImage: "plus") { addingItem = true }
+                Button("Add ingredient", systemImage: "plus") { store.ifFullAccess { addingItem = true } }
                     .accessibilityIdentifier("addDishItem")
             } header: {
                 Text("Ingredients · \(items.count)")

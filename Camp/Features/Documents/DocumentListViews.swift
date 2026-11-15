@@ -57,6 +57,7 @@ struct PendingDocumentFile: Identifiable, Sendable {
 
 /// Reusable list + add controls for any owner. Embed in a Form or List (onboarding, rig, trip).
 struct DocumentVaultSection: View {
+    @Environment(StoreController.self) private var store
     let owner: DocumentOwner
     var header = "Documents"
     var footer = "Add PDFs, images, or links."
@@ -74,9 +75,9 @@ struct DocumentVaultSection: View {
                 NavigationLink { DocumentDetailView(document: document) } label: { DocumentRow(document: document) }
             }
             Menu {
-                Button("Import PDF or image file", systemImage: "doc.badge.plus") { importingFile = true }
-                Button("Choose from Photos", systemImage: "photo.badge.plus") { choosingPhoto = true }
-                Button("Add a link", systemImage: "link.badge.plus") { addingLink = true }
+                Button("Import PDF or image file", systemImage: "doc.badge.plus") { store.ifFullAccess { importingFile = true } }
+                Button("Choose from Photos", systemImage: "photo.badge.plus") { store.ifFullAccess { choosingPhoto = true } }
+                Button("Add a link", systemImage: "link.badge.plus") { store.ifFullAccess { addingLink = true } }
             } label: { Label("Add document", systemImage: "plus") }
             .disabled(reading)
             if reading { ProgressView("Reading file…") }

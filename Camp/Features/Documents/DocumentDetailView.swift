@@ -6,6 +6,7 @@ import CampPersistence
 import DocumentVault
 
 struct DocumentDetailView: View {
+    @Environment(StoreController.self) private var store
     @Environment(\.modelContext) private var context
     @Environment(LibraryController.self) private var library
     @Environment(Connectivity.self) private var connectivity
@@ -59,6 +60,7 @@ struct DocumentDetailView: View {
             if showsAssistant && document.category == .other {
                 Section {
                     Toggle("Include in Assistant", isOn: includeInAssistant)
+                        .disabled(!store.status.canEdit)
                 } footer: {
                     Text(document.file == nil
                          ? "The Assistant only reads documents saved on this device. Save a copy of the link first."
@@ -81,7 +83,7 @@ struct DocumentDetailView: View {
             }
         }
         .navigationTitle(document.title).navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button("Edit") { editing = true } } }
+        .toolbar { ToolbarItem(placement: .primaryAction) { Button("Edit") { store.ifFullAccess { editing = true } } } }
         .sheet(isPresented: $editing) { DocumentEditorView(mode: .edit(document)) }
         .task(id: "\(document.checksum ?? "")-\(document.availability == .offline)") { await prepareFile() }
         .confirmationDialog("Delete “\(document.title)”?", isPresented: $confirmingDelete, titleVisibility: .visible) {

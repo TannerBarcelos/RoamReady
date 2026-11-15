@@ -9,6 +9,7 @@ struct RoamReadyApp: App {
     @State private var connectivity = Connectivity()
     @State private var campFinder = CampFinder()
     @State private var permissions = AppPermissions()
+    @State private var store = StoreController()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
@@ -30,16 +31,18 @@ struct RoamReadyApp: App {
             .environment(connectivity)
             .environment(campFinder)
             .environment(permissions)
+            .environment(store)
             .tint(.blue)
             .preferredColorScheme(appearance.colorScheme)
             // No accounts: the library belongs to this device and its iCloud account, and opens offline.
             .task { library.open() }
+            .task { await store.refresh() }
             #if DEBUG
             .task { await DocumentSearchSmokeCheck.runIfRequested() }
             .task { await AssistantPerformanceBaseline.runIfRequested() }
             #endif
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { permissions.checkOnLaunch() }
+                if phase == .active { permissions.checkOnLaunch(); Task { await store.refresh() } }
                 if phase != .active { library.save() }
                 library.documentAssistant.setActive(phase == .active)
             }
@@ -76,6 +79,9 @@ struct RootView: View {
 struct MainTabs: View {
     enum Destination: Hashable { case home, campFinder, newTrip, profile }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(StoreController.self) private var store
+    /// The plans appear once, right after onboarding; after that only when an edit needs them.
+    @AppStorage("hasOfferedPlans") private var hasOfferedPlans = false
     // Selection, sheets, and the conversation outlive every size-class and window change.
     @State private var showsAssistant = CampingAssistant.showsChat
     @State private var selection = Destination.home
@@ -94,6 +100,12 @@ struct MainTabs: View {
         .environment(\.mainTabActions, tabActions)
         .sheet(isPresented: $addingTrip) { NewTripView() }
         .sheet(isPresented: $askingAssistant) { AssistantView(chat: assistantConversation) }
+        .task {
+            await store.refresh()
+            guard !hasOfferedPlans, store.offersPlansAtLaunch else { return }
+            hasOfferedPlans = true
+            if !store.status.canEdit { PaywallPresenter.present(store: store) }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { showsAssistant = CampingAssistant.showsChat }
         }
@@ -110,14 +122,14 @@ struct MainTabs: View {
     }
 
     private var tabActions: MainTabActions {
-        var actions = MainTabActions(addTrip: { addingTrip = true }, showCampFinder: { selection = .campFinder })
+        var actions = MainTabActions(addTrip: { store.ifFullAccess { addingTrip = true } }, showCampFinder: { selection = .campFinder })
         if showsAssistant { actions.askAssistant = { askingAssistant = true } }
         return actions
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.
     private var tabSelection: Binding<Destination> {
         Binding(get: { selection }, set: { destination in
-            if destination == .newTrip { addingTrip = true } else { selection = destination }
+            if destination == .newTrip { store.ifFullAccess { addingTrip = true } } else { selection = destination }
         })
     }
 }
