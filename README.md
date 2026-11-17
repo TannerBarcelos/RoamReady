@@ -5,9 +5,9 @@
 [![Built for iPhone Duo](docs/badges/built-for-iphone-duo.svg)](docs/duo-readiness.md)
 
 <p align="center">
-  <img src="docs/home-screen.png" alt="RoamReady's Home screen on iPhone, showing the current trip, its setup checklist progress, and later trips" width="184">
+  <img src="docs/home-screen.png" alt="RoamReady's Home screen on iPhone, showing the current trip, its setup checklist progress, and later trips" width="150">
   &nbsp;
-  <img src="docs/duo-workspace.png" alt="RoamReady open on iPhone Duo, with Home beside the selected trip's booking and checklists" width="569">
+  <img src="docs/duo-workspace.png" alt="RoamReady open on iPhone Duo, with Home beside the selected trip's booking and checklists" width="463">
 </p>
 
 RoamReady is a native app for iPhone, iPad, and Mac for planning camping trips and keeping rig details, setup and teardown checklists, booking information, documents, and trip memories together.
