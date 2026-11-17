@@ -19,7 +19,7 @@ struct PaywallView: View {
         .subscriptionStorePolicyDestination(url: Self.termsURL, for: .termsOfService)
         .subscriptionStorePolicyDestination(url: Self.privacyURL, for: .privacyPolicy)
         .onInAppPurchaseCompletion { _, result in
-            await store.refresh()
+            await store.complete(result)
             if case .success(.success) = result, store.status.canEdit { onClose() }
         }
         .accessibilityIdentifier("paywall")

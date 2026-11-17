@@ -66,6 +66,14 @@ final class StoreController {
         }
     }
 
+    /// Handling `onInAppPurchaseCompletion` takes over from StoreKit's default, and paywall purchases
+    /// don't arrive through `Transaction.updates`, so finish them here. An unfinished transaction is
+    /// treated as undelivered and comes back on every launch.
+    func complete(_ result: Result<Product.PurchaseResult, any Error>) async {
+        if case .success(.success(.verified(let transaction))) = result { await transaction.finish() }
+        await refresh()
+    }
+
     func restore() async throws {
         try await AppStore.sync()
         await refresh()
