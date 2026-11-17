@@ -138,7 +138,7 @@ Only one rig can be active in v1. Open **Archived rigs** to reactivate one withi
 
 ## RoamReady Pro
 
-RoamReady is free to download. Start the free week from the plans that appear after setup, or later from **Profile › RoamReady Pro › See plans**. Choose Monthly or Yearly, or buy Lifetime once. If a subscription ends, you can still open everything you've saved; adding and editing come back when you subscribe again. To cancel, use **Manage subscription**. On a new device, signed in to the same Apple Account, tap **Restore purchases**.
+RoamReady is free to download. Start the free week from the plans that appear after setup, or later from **Profile › RoamReady Pro › See plans**. Choose Monthly or Yearly, or buy Lifetime once. If a subscription ends, you can still open everything you've saved and search Camp Finder; adding, editing, and the Assistant come back when you subscribe again. To cancel, use **Manage subscription**. On a new device, signed in to the same Apple Account, tap **Restore purchases**.
 
 ## Export or delete data
 

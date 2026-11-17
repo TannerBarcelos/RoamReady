@@ -123,7 +123,8 @@ struct MainTabs: View {
 
     private var tabActions: MainTabActions {
         var actions = MainTabActions(addTrip: { store.ifFullAccess { addingTrip = true } }, showCampFinder: { selection = .campFinder })
-        if showsAssistant { actions.askAssistant = { askingAssistant = true } }
+        // The Assistant is a Pro feature; without Pro the button stays and opens the plans.
+        if showsAssistant { actions.askAssistant = { store.ifFullAccess { askingAssistant = true } } }
         return actions
     }
     /// Choosing Trip presents the new-trip sheet and leaves the current tab selected.

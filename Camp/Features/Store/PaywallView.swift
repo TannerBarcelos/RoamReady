@@ -44,6 +44,10 @@ private struct PaywallHeader: View {
                 Label("Manuals and paperwork, offline", systemImage: "doc.text")
                 Label("Photos, notes, and campground lists", systemImage: "photo.on.rectangle")
                 Label("Private iCloud sync across your devices", systemImage: "icloud")
+                // Only where Apple Intelligence can run, so no one is sold a feature their device lacks.
+                if CampingAssistant.showsChat {
+                    Label("Ask the on-device Assistant about camping and your manuals", systemImage: "sparkles")
+                }
             }
             .font(.subheadline)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -44,7 +44,7 @@ BUILT FOR YOUR DEVICES
 Choose System, Light, or Dark appearance. Optional private iCloud sync keeps your library across your Apple devices. Core planning, checklists, saved documents, and locally available photos work offline. Camp Finder, fresh weather, web links, cloud transfers, and downloading cloud-only files or photos need a connection.
 
 ROAMREADY PRO
-RoamReady is free to download. Try everything free for a week, then choose monthly or yearly, or buy Lifetime once. Without Pro, everything you've saved stays readable; adding and editing need Pro. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period, and you can manage or cancel them in your Apple Account settings.
+RoamReady is free to download. Try everything free for a week, then choose monthly or yearly, or buy Lifetime once. Without Pro, everything you've saved stays readable; adding, editing, and the Assistant need Pro. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period, and you can manage or cancel them in your Apple Account settings.
 
 Terms of Use: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
