@@ -1,6 +1,6 @@
 # RoamReady privacy policy
 
-Effective October 29, 2026.
+Effective November 16, 2026.
 
 RoamReady helps you plan camping trips and keep your rig details, checklists, documents and memories together. It requires no RoamReady account. It has no advertising, analytics SDK, tracking, or app-operated backend. We do not sell your data.
 
@@ -9,6 +9,12 @@ RoamReady helps you plan camping trips and keep your rig details, checklists, do
 The app stores the information you choose to enter on your device: profile and rig details (including optional VIN and registration), bookings, campground locations, checklists, notes, photos, documents and saved campground lists. Core library features work offline.
 
 In a build configured for iCloud, optional private iCloud synchronization uses your Apple account and Apple's CloudKit service. Apple manages the service, transfers and encryption. The preference can be changed in Profile › Settings and takes effect when you next launch the app. Turning sync off does not delete either copy of your library. Apple's privacy terms apply to its services.
+
+## Purchases
+
+RoamReady is free to download. RoamReady Pro (a subscription or a one-time Lifetime purchase) is sold through Apple's App Store. Apple processes the payment, manages renewals, cancellations and refunds, and its privacy terms apply. RoamReady never receives your payment details, Apple Account details, or purchase history.
+
+To decide whether Pro is unlocked, the app reads the purchases Apple keeps on your device (StoreKit). It checks them on the device only and does not send them anywhere. Manage or cancel a subscription in your Apple Account settings, or from Profile › RoamReady Pro.
 
 ## Location and online services
 
