@@ -2,14 +2,17 @@
 
 [![iOS and iPad](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml/badge.svg?branch=main)](https://github.com/TannerBarcelos/RoamReady/actions/workflows/app.yml)
 [![Mac](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml/badge.svg?branch=main)](https://github.com/TannerBarcelos/RoamReady/actions/workflows/mac.yml)
+[![Built for iPhone Duo](docs/badges/built-for-iphone-duo.svg)](docs/duo-readiness.md)
 
 <p align="center">
-  <img src="docs/home-screen.png" alt="RoamReady's Home screen showing the next trip, its setup checklist progress, and later trips" width="300">
+  <img src="docs/home-screen.png" alt="RoamReady's Home screen on iPhone, showing the current trip, its setup checklist progress, and later trips" width="184">
+  &nbsp;
+  <img src="docs/duo-workspace.png" alt="RoamReady open on iPhone Duo, with Home beside the selected trip's booking and checklists" width="569">
 </p>
 
 RoamReady is a native app for iPhone, iPad, and Mac for planning camping trips and keeping rig details, setup and teardown checklists, booking information, documents, and trip memories together.
 
-Its core workflows work offline, with no account required. Camp Finder helps you explore campgrounds and RV parks through Apple Maps when connected.
+On iPhone Duo's open display, Home sits beside the selected trip or checklist, and Camp Finder shows results beside a larger map. Its core workflows work offline, with no account required. Camp Finder helps you explore campgrounds and RV parks through Apple Maps when connected.
 
 ## Features
 
