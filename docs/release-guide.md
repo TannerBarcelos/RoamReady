@@ -2,7 +2,7 @@
 
 [Documentation index](README.md)
 
-How to get what's on `main` to TestFlight testers and the App Store. The TestFlight steps come from shipping `0.1.0 (2)` on Nov 2, 2026. The App Store steps haven't been done yet; correct them after the first release.
+How to get what's on `main` to TestFlight testers and the App Store. The TestFlight steps come from shipping `0.1.0 (2)` on Nov 2, 2026. The App Store steps come from submitting `1.0.0 (1)` on Nov 16, 2026; the full walkthrough is in [App Store launch](app-store-launch.md).
 
 An agent can do step 1 and read the repo. Everything from step 2 on needs the owner's Apple account: CloudKit Console, a signed Xcode archive, and App Store Connect.
 
@@ -120,3 +120,4 @@ Add a row for each upload, so the next release knows what to compare against for
 | --- | --- | --- | --- |
 | `0.1.0 (1)` | Oct 31, 2026 | not recorded | Initial schema |
 | `0.1.0 (2)` | Nov 2, 2026 | `d63d902` | `DishItem`: `amountValue`, `unitValue`, `categoryValue`, `have`. `TripMeal`: `hasStructuredAmounts`. `SavedCampground`: `wouldNotGo`, `wouldNotReturn`. New model: `GroceryAmountOverride`. |
+| `1.0.0 (1)` | Nov 16, 2026 | `76a6bdd` | None (no model changes since `0.1.0 (2)`). First App Store submission, with the RoamReady Pro group, Monthly, Yearly, and Lifetime. See [App Store launch](app-store-launch.md). |

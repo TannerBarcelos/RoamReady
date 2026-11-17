@@ -10,17 +10,19 @@ Prepared copy for the confirmed iPhone, iPad and Mac v1. Nothing has been submit
 | --- | --- |
 | Name | RoamReady |
 | Subtitle | Camping trips, ready offline |
-| Promotional text | Plan your camping trips, personalize setup and teardown checklists, and keep bookings, paperwork, and memories together—even beyond reception. |
-| Keywords | camping,rv,camper,checklist,campground,trailer,trip,offline,travel,booking,tent |
+| Promotional text | Plan camping trips, run setup and teardown checklists, build menus and a grocery list, and keep bookings and manuals with you—even beyond reception. |
+| Keywords | rv,camper,campground,checklist,trailer,motorhome,tent,booking,meal,grocery,weather,campsite,glamping (exactly 100 characters; leaves out words already in the name and subtitle) |
 | Price | Free download. In-app purchases: RoamReady Pro Monthly $4.99, Yearly $34.99 (both with a 1-week free trial), Lifetime $99.99. See [Pricing](monetization.md). |
 | Support URL | https://github.com/TannerBarcelos/RoamReady/issues |
 | Privacy policy URL | https://github.com/TannerBarcelos/RoamReady/blob/main/docs/privacy-policy.md — verify it is public after merge, before submission. |
 
 ### Description
 
+As submitted for 1.0 (Nov 16, 2026):
+
 A little preparation. A lot more camping.
 
-RoamReady brings your rig, camping trips, checklists, paperwork, and memories together on iPhone, iPad, and Mac. Plan at home and keep the essentials with you when reception disappears. No RoamReady account required.
+RoamReady brings your rig, camping trips, checklists, meals, paperwork, and memories together on iPhone and iPad. Plan at home and keep the essentials with you when reception disappears. No account required.
 
 MAKE YOUR RIG FEEL LIKE YOURS
 Keep your setup details, photo or emoji, and optional registration information handy. Replace your rig without losing the one recorded on past trips.
@@ -29,19 +31,22 @@ ARRIVE WITH A PLAN
 Record a booking, campground, dates, site details, and confirmation paperwork. Add check-in times, a booking link, and notes about the site. RoamReady records your reservation; it does not make bookings or show availability.
 
 CHECKLISTS THAT FIT YOUR FLOW
-Start with setup and teardown lists tailored to your rig and equipment. Add, edit, reorder, complete, or skip steps. Keep priorities and personal notes separate from general guidance. Each trip gets independent progress, and you choose when to update reusable defaults.
+Start with setup and teardown lists tailored to your rig and equipment. Add, edit, reorder, complete, or skip steps. Each trip gets its own progress, and you choose when to update your reusable defaults.
+
+MEALS AND GROCERIES
+Plan each day's meals, list every dish's ingredients, and get a grocery list grouped by store section. Tap what you already have, and share the rest.
 
 KEEP PAPERWORK AND MEMORIES CLOSE
 Save manuals, insurance, registration, and trip confirmations as PDFs or images for offline access. Add campsite photos, captions, notes, and return-or-avoid ratings so your next visit starts with what you learned last time.
 
 EXPLORE WHEN CONNECTED
-Find campgrounds and RV parks through Apple Maps, save places to your lists, open their websites, or get directions. Check local weather and trip forecasts, with saved readings available offline.
+Find campgrounds and RV parks through Apple Maps, save places to your lists, open their websites, or get directions. Check local weather and trip forecasts, with the last forecast saved for offline use.
 
 ASK FOR CAMPING HELP
-On devices that support Apple Intelligence, ask Apple's on-device model general camping and checklist questions, and get answers from your own manuals and reservation paperwork (English documents) with the pages it used. Documents are read on your device and never leave it. Apple Intelligence must be enabled and its model ready. Your conversation stays in memory across closing the Assistant and clears when you start a new chat or quit the app. Check generated advice against your rig's manuals; it is not a substitute for qualified assistance.
+With RoamReady Pro on devices that support Apple Intelligence, ask camping and checklist questions and get answers from your own manuals and reservation paperwork, with the pages it used. Everything runs on your device; your documents never leave it. Check generated advice against your rig's manuals; it is not a substitute for qualified assistance.
 
 BUILT FOR YOUR DEVICES
-Choose System, Light, or Dark appearance. Optional private iCloud sync keeps your library across your Apple devices. Core planning, checklists, saved documents, and locally available photos work offline. Camp Finder, fresh weather, web links, cloud transfers, and downloading cloud-only files or photos need a connection.
+Optimized for iPhone Duo: on the open display, Home sits beside your trip and Camp Finder shows results beside a larger map. Optional private iCloud sync keeps your library across your Apple devices. Choose System, Light, or Dark appearance.
 
 ROAMREADY PRO
 RoamReady is free to download. Try everything free for a week, then choose monthly or yearly, or buy Lifetime once. Without Pro, everything you've saved stays readable; adding, editing, and the Assistant need Pro. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period, and you can manage or cancel them in your Apple Account settings.
