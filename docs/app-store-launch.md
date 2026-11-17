@@ -10,6 +10,8 @@ How RoamReady 1.0 actually got to the App Store (submitted Nov 16, 2026), writte
 - **[Launch day](#part-4-launch-day)**: release, offer codes, checks.
 - **[Things that tripped us up](#part-5-things-that-tripped-us-up)**: read this first next time.
 
+The app-agnostic version of this playbook, for other apps, is in [ios-release-runbooks](https://github.com/TannerBarcelos/ios-release-runbooks).
+
 Everything below happens in [App Store Connect](https://appstoreconnect.apple.com) unless it says Xcode. Archive and upload steps are in the [release guide](release-guide.md#3-archive-and-upload).
 
 ## Part 1: Once per Apple account
