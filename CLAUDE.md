@@ -86,7 +86,7 @@ The tabs are Home, Trip (opens the new-trip sheet; it doesn't change tabs), Camp
 - **SwiftData models must stay CloudKit-compatible:** every attribute is optional or has a default, every relationship is optional, and there are no unique constraints. After the CloudKit schema goes to Production (#6), only add optional attributes or new models. Never rename, retype, or remove an attribute, and never change its cloud encryption.
 - **Concurrency:** Swift 6 with strict concurrency. Default MainActor inference is deliberately off, so put `@MainActor` on the declarations that own state.
 - **New files** under `Camp/` join the app target automatically (the project uses synchronized folders), so you don't need to edit `project.pbxproj`.
-- **Pro access:** any control that adds or edits saved data goes through `store.ifFullAccess { … }` (or is disabled with `!store.status.canEdit`). Reading, deleting, and erasing are never gated. See [monetization.md](docs/monetization.md).
+- **Pro access:** any control that adds or edits saved data goes through `store.ifFullAccess { … }` (or is disabled with `!store.status.canEdit`). Reading, deleting, and erasing are never gated; the Assistant's entry points are. See [monetization.md](docs/monetization.md).
 - **Test-only code** goes inside `#if DEBUG` and is turned on with a launch argument. Fixtures that must not touch the user's library use an in-memory store.
 - **Style:** follow the surrounding code. Comments are sparse and explain why. User-facing text is short and plain, and the UI uses native lists, forms, and sheets (see [design.md](docs/design.md)).
 

@@ -104,7 +104,7 @@ struct ChecklistView: View {
                     }
                     .contextMenu {
                         if offersHelp {
-                            Button("Ask about this step", systemImage: "sparkles") { helpStep = CampingStepContext(step.draft, phase: step.phase, position: step.position); showAssistant = true }
+                            Button("Ask about this step", systemImage: "sparkles") { store.ifFullAccess { helpStep = CampingStepContext(step.draft, phase: step.phase, position: step.position); showAssistant = true } }
                         }
                         Button(step.status == .skipped ? "Mark pending" : "Skip this step", systemImage: "arrow.uturn.right") {
                             store.ifFullAccess {
@@ -129,7 +129,7 @@ struct ChecklistView: View {
             }
             Section {
                 if offersHelp {
-                    Button("Ask about this checklist", systemImage: "sparkles") { helpStep = nil; showAssistant = true }
+                    Button("Ask about this checklist", systemImage: "sparkles") { store.ifFullAccess { helpStep = nil; showAssistant = true } }
                 }
                 Button("Save as defaults for \(rigName)", systemImage: "square.on.square") { store.ifFullAccess { confirmingDefaults = true } }
                     .disabled(trip.rig == nil)
@@ -147,7 +147,7 @@ struct ChecklistView: View {
         .environment(\.editMode, $editing)
         .sensoryFeedback(.success, trigger: steps.filter { $0.status == .completed }.count)
         .sheet(item: $editedStep, onDismiss: {
-            if helpAfterDismiss { helpAfterDismiss = false; showAssistant = true }
+            if helpAfterDismiss { helpAfterDismiss = false; store.ifFullAccess { showAssistant = true } }
         }) { step in
             ChecklistStepEditor(step: step.draft, onSave: { edited in step.apply(edited); library.save() },
                                 onHelp: offersHelp ? { draft in

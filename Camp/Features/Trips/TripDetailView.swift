@@ -80,7 +80,7 @@ struct TripDetailView: View {
                 if trip.rating != .unrated { Label(trip.rating.title, systemImage: trip.rating == .wouldReturn ? "heart" : "hand.thumbsdown") }
             }
             if CampingAssistant.showsChat {
-                Section { Button("Ask for camping help", systemImage: "sparkles") { showAssistant = true } }
+                Section { Button("Ask for camping help", systemImage: "sparkles") { store.ifFullAccess { showAssistant = true } } }
             }
             Section {
                 if trip.endedByDate() {

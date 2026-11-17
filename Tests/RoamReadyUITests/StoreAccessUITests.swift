@@ -3,9 +3,9 @@ import XCTest
 /// Read-only access after a subscription lapses: everything stays readable, and edits open the plans.
 @MainActor
 final class StoreAccessUITests: XCTestCase {
-    private func launch(_ access: String) -> XCUIApplication {
+    private func launch(_ access: String, assistant: String = "unsupported") -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-assistant-ui-test", "unsupported", "-navigation-ui-test", "-store-ui-test", access]
+        app.launchArguments = ["-assistant-ui-test", assistant, "-navigation-ui-test", "-store-ui-test", access]
         app.launch()
         XCTAssertTrue(app.navigationTab("Home").waitForExistence(timeout: 10))
         return app
@@ -38,6 +38,15 @@ final class StoreAccessUITests: XCTestCase {
         XCTAssertTrue(paywall(app).waitForExistence(timeout: 10))
         app.swipeDown(velocity: .fast)
         XCTAssertTrue(app.buttons[label].waitForExistence(timeout: 5), "The step stays unchanged")
+    }
+
+    func testReadOnlyAssistantButtonOpensThePlansInsteadOfTheChat() {
+        let app = launch("read-only", assistant: "ready")
+        let button = app.buttons["openAssistant"]
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "The Assistant stays visible so campers know it exists")
+        button.tap()
+        XCTAssertTrue(paywall(app).waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["assistantScope"].exists, "The chat must not open without Pro")
     }
 
     func testFullAccessHasNoNoticeAndOpensTheForm() {

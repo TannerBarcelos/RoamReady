@@ -15,8 +15,8 @@ Product IDs are in `StoreProduct` ([Access.swift](../Sources/CampCore/Access.swi
 ## Access rules
 
 - **Onboarding is free.** A new camper finishes onboarding, and the plans appear once afterward. Closing them is allowed.
-- **Pro (trial, subscription, or Lifetime) unlocks everything:** adding and editing trips, rigs, checklists, menus, documents, photos, notes, and campground lists.
-- **Without Pro, the app is read-only.** Everything saved stays visible and openable, offline included: trips, checklists, paperwork, photos, the Assistant, weather, and Camp Finder search. Tapping something that adds or edits opens the plans instead. Deleting and **Erase all data** always work, so nobody is stuck with data they can't remove.
+- **Pro (trial, subscription, or Lifetime) unlocks everything:** adding and editing trips, rigs, checklists, menus, documents, photos, notes, and campground lists, plus the Assistant (on devices with Apple Intelligence).
+- **Without Pro, the app is read-only.** Everything saved stays visible and openable, offline included: trips, checklists, paperwork, photos, weather, and Camp Finder search. The Assistant button stays visible but opens the plans (decided Nov 14, 2026). Tapping something that adds or edits opens the plans instead. Deleting and **Erase all data** always work, so nobody is stuck with data they can't remove.
 - **Lapsed subscriptions** fall back to read-only. Nothing is hidden or deleted.
 - **Lifetime wins** over any subscription. Refunded purchases (`revocationDate`) never count.
 - **Offline:** StoreKit 2 keeps verified entitlements on the device, so access works without a connection. There is no server and no account.

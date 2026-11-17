@@ -190,7 +190,7 @@ SwiftData stores the library locally. When a dedicated CloudKit container is con
 
 - RoamReady is free to download. Pro is Monthly or Yearly (each with a 1-week free trial) or a one-time Lifetime purchase. See [Pricing](monetization.md).
 - The plans appear once after onboarding, from **Read-only** on Home, from Profile › RoamReady Pro, and whenever something that adds or edits is tapped without Pro.
-- Without Pro, everything saved stays readable and openable offline. Deleting and erasing always work.
+- Without Pro, everything saved stays readable and openable offline, and Camp Finder search works. Deleting and erasing always work. The Assistant, adding, and editing open the plans.
 - Profile › RoamReady Pro shows the current plan and renewal date, **Manage subscription**, and **Restore purchases**.
 
 ## Connectivity at a glance
