@@ -14,7 +14,7 @@ The app targets iOS 27.0 on iPhone and iPad, and Mac through Mac Catalyst. The l
 
 | Module | Dependencies | Responsibilities |
 | --- | --- | --- |
-| `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, Assistant availability and request preparation, and campground identities. |
+| `CampCore` | Foundation | Shared rig/trip rules and form drafts, booking/site validation, checklist templates, campground lists, Assistant availability and request preparation, campground identities, and RoamReady Pro access rules (`StoreProduct`, `AccessStatus`). |
 | `Campgrounds` | `CampCore` | Apple Maps place model, website/phone links, cleaned search text, and result merging. |
 | `DocumentVault` | CryptoKit | Document types/import policy, bounded temporary files, SHA-256 integrity, and read-only legacy AES-GCM decoding. |
 | `DocumentSearch` | `CSQLiteVec`, system SQLite | The document Assistant's search index: a separate, disposable SQLite file (never SwiftData's store) with FTS5 and sqlite-vec. Versioned schema, staged per-document generations published atomically, lexical and vector readiness tracked separately, scoped lexical and KNN search with a document ID allow-list applied during candidate selection, safe FTS expressions, and an `EmbeddingProvider` protocol with a deterministic test fake. Embedding revision and dimension come from the provider at runtime. It also owns the index lifecycle rules: `DocumentIndexCoordinator`, `ReconciliationPlan`, and the `DocumentIndexSource` protocol (see Index lifecycle below). |
@@ -154,12 +154,23 @@ The Xcode project uses filesystem-synchronized groups: new source files under `C
 
 1. `RoamReadyApp` creates `LibraryController` and connectivity state, then opens the library.
 2. The library exposes a SwiftData model container. If opening fails, the root shows an error and retry.
-3. `AppPermissions` checks native location and camera authorization before `RootView` shows profile content, requests only unanswered permissions, and refreshes status on foregrounding. Location access uses the manager’s cached authorization status and delegate updates, avoiding a synchronous global-services query on the main thread. Core Location reports global Location Services being disabled as denied authorization ([Apple documentation](https://developer.apple.com/documentation/corelocation/clauthorizationstatus/denied)). Denial does not block setup. `RootView` queries for a profile, displaying onboarding or four tabs: Home, Trip (add sheet), Camp Finder, and Profile. The shared circular Assistant accessory opens a sheet on supported AI devices. Home lists current/upcoming trips; Profile links to completed trip history and saved campgrounds, with app preferences and library tools in its Settings sheet.
+3. `AppPermissions` checks native location and camera authorization before `RootView` shows profile content, requests only unanswered permissions, and refreshes status on foregrounding. Location access uses the manager’s cached authorization status and delegate updates, avoiding a synchronous global-services query on the main thread. Core Location reports global Location Services being disabled as denied authorization ([Apple documentation](https://developer.apple.com/documentation/corelocation/clauthorizationstatus/denied)). Denial does not block setup. `RootView` queries for a profile, displaying onboarding or four tabs: Home, Trip (add sheet), Camp Finder, and Profile. The shared circular Assistant accessory opens a sheet on supported AI devices (with RoamReady Pro; see Pro access below). Home lists current/upcoming trips; Profile links to completed trip history and saved campgrounds, with app preferences and library tools in its Settings sheet.
 4. Screens read models with `@Query`. Forms edit drafts such as `TripDraft`, `RigDraft`, and `ChecklistStepDraft`, then validate and apply them.
 5. Model extensions enforce library rules. `LibraryController.save()` performs deliberate saves and surfaces failures; scene transitions also trigger saving.
 6. If configured and enabled at launch, Apple mirrors the library to the device's private CloudKit database and manages connectivity, retries, and account transitions.
 
 There is no raw SQL, custom CloudKit record transport, hosted user-data service, or app account/session backend. See [storage and synchronization](offline-storage.md) for model relationships, schema constraints, conflict behavior, and identity transitions.
+
+### Pro access
+
+RoamReady is free to download; RoamReady Pro (Monthly, Yearly, or Lifetime) unlocks adding, editing, and the Assistant. See [Pricing](monetization.md) for the products and rules.
+
+- **Rules (`CampCore/Access.swift`).** `StoreProduct` holds the product IDs, which must match App Store Connect and `Config/RoamReady.storekit`. `AccessStatus.resolve(_:)` turns verified entitlements into `lifetime`, `subscribed`, or `readOnly`: Lifetime wins, revoked (refunded) purchases never count, and it trusts StoreKit's `currentEntitlements` rather than the device clock, so billing grace periods keep access. `AccessStatusTests` cover it.
+- **`StoreController` (app, `@MainActor @Observable`).** Created by `RoamReadyApp` and shared through the environment. At launch it starts listening to `Transaction.updates` (renewals, refunds, Ask to Buy, purchases on other devices), finishing each verified transaction. It refreshes from `currentEntitlements` at launch and on each foregrounding, assigning `status` only when it changes. `complete(_:)` finishes purchases made from the paywall, because `.onInAppPurchaseCompletion` replaces StoreKit's automatic finish. `restore()` calls `AppStore.sync()`.
+- **Gating.** Controls that add or edit saved data, and the Assistant's entry points, call `store.ifFullAccess { … }`; inline controls use `.disabled(!store.status.canEdit)`. Reading, deleting, and erasing are never gated. Without Pro, Home shows a **Read-only** row.
+- **Paywall.** `PaywallView` is Apple's `SubscriptionStoreView` (plans, trial, Restore, Terms and Privacy links) with a Lifetime `ProductView`. `PaywallPresenter` presents it from UIKit's topmost view controller, because most gated taps happen inside an editor that is already a sheet. It is offered once after onboarding (`hasOfferedPlans`). Profile's `SubscriptionSection` shows the status and uses `AppStore.showManageSubscriptions(in:)` for managing.
+- **Offline and server.** There is no server and no receipt validation: StoreKit 2 keeps verified entitlements on the device, so access works offline. An expiry sends no update, so the app notices it at the next refresh (launch or foregrounding).
+- **Testing.** `Config/RoamReady.storekit` drives local purchases when selected in the scheme. `-store-ui-test full|read-only` pins access in Debug builds; other UI-test flags and `-app-store-screenshots` imply full access. `StoreAccessUITests` cover gating.
 
 ### Adaptive workspace
 
@@ -200,6 +211,7 @@ The Grocery list is a live view of the menu, not stored rows. `GroceryList` (`Ca
 | Camp Finder | MapKit campground/RV park points of interest, typed/area searches, and place lookups. Session-only results; saved lists keep Apple identifiers. No server, API key, owned dataset, or live availability. |
 | Weather | WeatherKit for location temperature and campground forecasts; saved readings have timestamps and work offline. |
 | Camping assistant | Bundled guidance plus Foundation Models after product/device and runtime availability checks. No remote question transfer in v1. |
+| Purchases | StoreKit 2 with Apple's App Store; entitlements are read and verified on the device. No server, receipt upload, or purchase data leaves the app. |
 | Memories | Native camera, PhotosPicker, bounded image import, and system sharing. Cloud-only Photos items may need a download. |
 | Documents | System file representations, bounded staging, Quick Look, HTTPS links, verified bytes, and Apple-managed encryption. |
 | Sync | SwiftData/CloudKit mirroring, enabled by configuration and a default-on launch preference. Apple owns its runtime lifecycle. |
