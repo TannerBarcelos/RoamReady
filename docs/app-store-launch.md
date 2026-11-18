@@ -195,6 +195,67 @@ Later releases with no new products only need the version.
 
 Choose **Manually release this version**. Review usually takes 1–2 days; questions or rejections appear under **App Review** in the sidebar.
 
+### 3.2 If App Review asks for information (Guideline 2.1)
+
+On Nov 18, 2026, 1.0.0 (1) came back as **Rejected, 2.1 Information Needed**. Nothing was wrong with the build. Apple asked for a screen recording and five answers in **App Review Information › Notes**, and then a resubmission. The subscriptions stayed **Ready for Review** and go back in with the version. No new build is needed.
+
+**1. Record on a physical device.** Use the latest iOS release (Settings › General › Software Update says it's up to date) and the **same build** you submitted, installed from TestFlight. TestFlight purchases are free, so the trial can be shown for real.
+
+1. Delete RoamReady first, then reinstall it from TestFlight, so the recording starts from a fresh launch.
+2. Start a screen recording from Control Center, go to the Home Screen, and launch RoamReady.
+3. Onboarding: answer the location and camera prompts, choose a travel trailer, confirm equipment, and finish.
+4. Paid features: on the plans sheet, start the Monthly free trial. Later, show **Profile › RoamReady Pro** with **Restore purchases**.
+5. Add a trip: **Trip (+)**, a campground name, dates, a site number, then **Save**. Show it on Home.
+6. Checklists: open **Setup**, check off two steps, and set one step's priority.
+7. Menu: add a dinner dish with two ingredients, then open **Grocery list**.
+8. Documents: **Profile › your rig › Manuals & paperwork**, import a PDF manual, and open it.
+9. Assistant: ask a question about that manual, and tap the cited source. Wait until the document's status is ready first.
+10. Camp Finder: **Near me**, open a campground, and save it to **Want to go**.
+11. Weather on Home and on the trip.
+12. **Profile › Settings**: **Prepare export**, then **Erase all data** to show that a person can delete everything. There's no account to delete.
+
+Aim for 3–5 minutes. Upload the video under **App Review Information › Attachment**.
+
+**2. Paste these notes** into **App Review Information › Notes**. Fill in the device and iOS version. The field is limited to 4,000 characters, and this is about 3,900.
+
+```text
+SCREEN RECORDING
+Attached under App Review Information > Attachment: recorded on an iPhone [MODEL] running iOS [VERSION], using build 1.0.0 (1) installed from TestFlight. It starts by launching the app from the Home Screen and shows onboarding, starting the free trial (paid features), adding a trip, checklists, the menu and grocery list, a document, the Assistant, Camp Finder, weather, and exporting and erasing data. The app has no accounts, login, or user-generated content shared between users.
+
+1. PURPOSE AND AUDIENCE
+RoamReady is a trip organizer for people who camp with a tent, trailer, or RV. Campgrounds often have no cell signal, and a trip's details end up scattered across emails, PDFs, and paper. RoamReady keeps them together on the device so they work offline: the booking and site details, setup and teardown checklists tailored to the camper's equipment, a meal plan with a grocery list, manuals and confirmations, photos and site notes, weather, and campground discovery through Apple Maps. An optional on-device Assistant answers questions from the camper's own manuals, citing the page it used.
+
+2. SETUP AND MAIN FEATURES
+- No account or login is needed, so there are no demo credentials.
+- First launch: optional location and camera prompts (both can be declined), then onboarding: choose a rig type, confirm its equipment, and finish.
+- Paid features (RoamReady Pro): a plans sheet appears after onboarding. Start the 1-week free trial (Monthly or Yearly) or buy Lifetime. If the sheet is closed, the app is read-only: saved data stays viewable and deletable, and adding, editing, or opening the Assistant shows the plans. Plans and Restore Purchases are also in Profile > RoamReady Pro.
+- Add a trip: tap Trip (+) in the tab bar, enter any campground name and dates, and tap Save. Open the trip from Home for Setup and Teardown checklists, Menu, Grocery list, documents, and Photos & site notes.
+- Documents: Profile > your rig > Manuals & paperwork, then add any PDF or photo. Any appliance or RV manual works; no special sample file is needed.
+- Assistant: the sparkle button (Ask Assistant). It's shown on devices that support Apple Intelligence and runs on device. If Apple Intelligence is turned off, it explains how to turn it on.
+- Camp Finder tab (needs a connection): tap Near me, or search a place such as "Yosemite". Open a result to save it or start a trip there.
+- Profile > Settings: iCloud sync, Prepare export, and Erase all data.
+
+3. EXTERNAL SERVICES
+Only Apple frameworks. There's no backend, analytics, advertising, or third-party SDK.
+- StoreKit: subscriptions and the Lifetime purchase
+- CloudKit: optional sync to the user's private iCloud database
+- WeatherKit: forecasts, with Apple Weather attribution
+- MapKit: campground search, place details, and directions in Apple Maps
+- Foundation Models (Apple Intelligence): the on-device Assistant
+- Vision and Natural Language: on-device text recognition and search for documents
+The open-source sqlite-vec library (MIT/Apache-2.0) is compiled into the app for document search. It is not a service.
+
+4. REGIONAL DIFFERENCES
+The app works the same in every storefront where it's offered. The only differences come from Apple's services: the Assistant appears where Apple Intelligence is available, document questions cover English text in this version, and Apple Maps and Apple Weather coverage varies by region. The app is not offered in EU storefronts or China mainland at this time.
+
+5. REGULATED INDUSTRY OR THIRD-PARTY MATERIAL
+Not applicable. RoamReady isn't in a regulated industry and doesn't make, sell, or resell reservations; it records bookings the camper made elsewhere. Checklist content is original. Campground and place details come from Apple Maps, and weather from Apple Weather with attribution. All data is private to the user's device and iCloud.
+```
+
+**3. Resubmit.** Save the version page, open the submission under **App Review**, and choose **Resubmit to App Review**. If you like, reply to Apple's message with "Updated the Notes and attached a screen recording as requested."
+
+For future versions, keep these notes in the Notes field, so reviewers have the answers from the start. Update them whenever a feature or service changes.
+
 ## Part 4: Launch day
 
 After the status reads **Pending Developer Release**:
@@ -215,6 +276,7 @@ After the status reads **Pending Developer Release**:
 - **An overloaded Mac** (load average in the hundreds) makes UI tests hang or fail to launch the app. Shut down unused simulators, or restart, before testing.
 - **Xcode's first run on a new iOS version** spends 5–15 minutes on "Extracting OS library symbols". Keep the phone unlocked and wait.
 - **China and EU warnings** appear even when you don't sell there. Exclude the countries, and the rows stop blocking.
+- **"2.1 Information Needed" on a first submission:** Apple wanted a screen recording on a physical device plus five written answers before it would review. Put them in the Notes from the start. See [3.2](#32-if-app-review-asks-for-information-guideline-21).
 
 ## Still to do after 1.0
 
